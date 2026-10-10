@@ -1,1 +1,0 @@
-# Quantitative-Trading-Prompted
