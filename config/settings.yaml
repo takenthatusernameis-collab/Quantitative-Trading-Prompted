@@ -1,0 +1,37 @@
+# Configuration for Quantitative Trading Research
+
+data:
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  cache_dir: "data/cache"
+
+research:
+  hypotheses_dir: "research/hypotheses"
+  experiments_dir: "research/experiments"
+  reports_dir: "research/reports"
+
+backtest:
+  default_commission_bps: 1.0
+  default_slippage_bps: 2.0
+  default_funding_rate_annual: 0.0
+  min_trade_size_usd: 10.0
+
+evaluation:
+  risk_free_rate_annual: 0.02
+  benchmark_symbols:
+    - "BTC-USD"
+    - "ETH-USD"
+    - "SPY"
+
+# Data source configurations (free/public only)
+data_sources:
+  yahoo_finance:
+    enabled: true
+    rate_limit: 2000  # requests per hour
+  ccxt:
+    enabled: true
+    exchanges:
+      - "binance"
+      - "bybit"
+      - "okx"
+    rate_limit: 1000  # requests per minute per exchange

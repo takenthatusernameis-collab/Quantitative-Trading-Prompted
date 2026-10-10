@@ -1,0 +1,34 @@
+# Core data science
+numpy>=1.24.0
+pandas>=2.0.0
+scipy>=1.10.0
+
+# Time series and statistics
+statsmodels>=0.14.0
+arch>=6.0.0
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Data access (free/public sources)
+yfinance>=0.2.0
+ccxt>=4.0.0
+
+# Backtesting
+vectorbt>=0.25.0
+
+# Utilities
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# Type checking
+mypy>=1.5.0
+types-requests>=2.31.0
+
+# Linting
+ruff>=0.1.0
