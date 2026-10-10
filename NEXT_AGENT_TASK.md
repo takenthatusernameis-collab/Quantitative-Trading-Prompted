@@ -1,98 +1,162 @@
-# Next Agent Task: Cycle 2 - Baseline US Equity Time-Series Momentum
+# Next Agent Task: Cycle 3 - Robustness & Statistical Validation
 
 ## Context
 
-Cycle 1 completed data inventory and opportunity scoping. The highest-scoring opportunity is US Equity Time-Series Momentum (28/35), selected for:
-- Longest verified data history (SPY from 1993, QQQ from 1999, IWM from 2000, 25-30+ years)
-- Lowest implementation complexity (daily rebalancing, simple ranking)
-- Best diversification from existing large-cap crypto exposure
-- Realistic cost model available in `config/settings.yaml`
-- Well-documented structural mechanism (time-series momentum anomaly)
+Cycle 2 completed the baseline US Equity Time-Series Momentum backtest. The
+end-to-end pipeline (data ingestion → feature engineering → backtest →
+evaluation → documentation) is validated and working.
 
-Data availability verified via live API:
-- yfinance provides daily OHLCV for SPY (8,482 days), QQQ (6,940 days), IWM (6,632 days)
-- Settings.yaml defines: 1.0 bps commission, 2.0 bps slippage, 2.0% risk-free rate
-- No data currently cached locally; pipeline must fetch at runtime
+### Baseline Results Summary
+
+| Period | Sharpe | Ann. Return | Max DD | Trades |
+|--------|--------|-------------|--------|--------|
+| Train (1993-2009) | 0.283 | 7.69% | -61.35% | 139 |
+| Validation (2010-2017) | 0.555 | 9.18% | -16.25% | 194 |
+| **Test (2018-2026)** | **0.645** | **12.09%** | **-30.41%** | **190** |
+
+### Falsification Check
+
+- Test Sharpe (0.645) ≥ 0.5 → **PASS**
+- Test Max DD (-30.41%) > -30% → **FAIL** (exceeds by 0.41%)
+- Test Profit Factor (1.15) ≥ 1.0 → **PASS**
+- Test Sharpe > Train Sharpe - 1σ → **PASS**
+
+### Promotion Gates
+
+- Net OOS Sharpe ≥ 0.9 → **NOT MET** (0.645)
+- >100 pooled OOS trades → **MET** (190)
+
+### Classification
+
+**Exploratory Signal** — Pipeline validated; promotion gates not met. One
+falsification condition triggered (max drawdown slightly exceeds threshold).
+
+---
 
 ## Objective
 
-Implement a transparent baseline time-series momentum strategy on US equity ETFs, run a chronological split backtest (train/validation/test), and document results. This validates the end-to-end research pipeline (data ingestion → strategy → backtest → evaluation → documentation) before advancing to more complex opportunities.
+Conduct rigorous robustness and statistical validation of the baseline strategy
+to determine if it warrants promotion to "credible candidate" or should be
+rejected. This includes parameter sensitivity analysis, walk-forward testing,
+multiple-testing corrections, and proper benchmark comparison.
+
+---
 
 ## Acceptance Criteria
 
-1. **Data pipeline** created at `src/data/yfinance_fetcher.py` that:
-   - Fetches daily OHLCV from yfinance for SPY, QQQ, IWM, TLT, GLD, EFA, EEM
-   - Caches results to `data/raw/` as parquet files
-   - Returns timezone-normalized daily data with no missing dates
-   - Accepts start_date, end_date, and symbol list as parameters
+1. **Parameter Sensitivity Analysis** at `research/experiments/tsmomentum_robustness_001.md`:
+   - Test lookback windows: [126, 189, 252, 315, 378] trading days (6-18 months)
+   - Test skip windows: [10, 21, 42, 63] trading days (0.5-3 months)
+   - Test top fractions: [0.3, 0.4, 0.5, 0.6, 0.7]
+   - Report heatmap of test-period Sharpe across all combinations
+   - Identify if baseline (252, 21, 0.5) is on a plateau or peak
 
-2. **Strategy module** created at `src/features/momentum.py` that:
-   - Computes 12-month price momentum (12-month return excluding most recent 1 month) for each asset
-   - Ranks assets and selects top decile (or top 50% for small universe)
-   - Returns position weights (long-only, dollar-neutral not required)
-   - Uses only lagged data (point-in-time, no look-ahead bias)
+2. **Walk-Forward Testing** at `research/experiments/tsmomentum_walkforward_001.md`:
+   - Expanding window: train on [1993, t], test on [t+1, t+12 months]
+   - Rolling window: 10-year train, 1-year test, step 6 months
+   - Purge: 21 days between train and test (matching skip window)
+   - Embargo: 21 days after test period
+   - Report per-fold Sharpe, return, DD, turnover; aggregate statistics
 
-3. **Backtest engine** created at `src/backtest/engine.py` that:
-   - Executes daily rebalancing per strategy signals
-   - Applies commission (1.0 bps) and slippage (2.0 bps) from settings.yaml
-   - Uses chronological train/validation/test split:
-     - Train: 1993-01-01 to 2009-12-31
-     - Validation: 2010-01-01 to 2017-12-31
-     - Test: 2018-01-01 to 2026-10-09 (most recent)
-   - Computes: cumulative returns, annualized return, annualized volatility, Sharpe ratio, max drawdown, turnover, trade count
+3. **Statistical Significance** at `research/experiments/tsmomentum_statistics_001.md`:
+   - Deflated Sharpe Ratio (DSR) with 1,000 block bootstrap samples
+   - Probabilistic Sharpe Ratio (PSR) against 0 benchmark
+   - Parameter Plateau Analysis: perturbation of ±10% on all params
+   - False Discovery Rate control across all tested configurations
+   - Minimum 500 configurations tested for PBO/CSCV
 
-4. **Baseline results** written to `research/experiments/tsmomentum_baseline_001.md` containing:
-   - Hypothesis reference (documented here inline)
-   - Data used (source, date range, frequency, universe)
-   - Point-in-time treatment description
-   - Configuration (parameters, hyperparameters)
-   - Train/validation/test split dates
-   - Results: all metrics for each period
-   - Number of trades/observations
-   - Cost assumptions used
-   - Reproduction commands
+4. **Benchmark Comparison** at `research/experiments/tsmomentum_benchmark_001.md`:
+   - Equal-weighted (1/N) portfolio of same 7 assets
+   - SPY buy-and-hold
+   - Risk-free rate (2%)
+   - Risk-adjusted alpha/beta regression (daily, monthly)
+   - Correlation analysis of returns
 
-5. **Hypothesis document** created at `research/hypotheses/tsmomentum_001.md` containing:
-   - Mechanism description (time-series momentum via underreaction/slow diffusion)
-   - Expected direction and magnitude (positive carry, 3-8% annualized gross)
-   - Holding horizon (monthly rebalance, 20-day holding)
-   - Asset universe (SPY, QQQ, IWM, TLT, GLD, EFA, EEM)
-   - Features and data sources (12-month price momentum, yfinance daily)
-   - Entry/exit rules (rank by 12-month return, go long top 50%, rebalance monthly)
-   - Benchmark (equal-weighted portfolio of same assets)
-   - Known confounders (regime changes, volatility clustering, transaction costs)
-   - Falsification condition (test Sharpe < 0.5 net of costs OR test Sharpe < train Sharpe - 1 std)
-   - Cost model assumptions (1.0 bps commission, 2.0 bps slippage, 2.0% risk-free rate)
+5. **Risk Management Overlay** at `research/experiments/tsmomentum_risk_001.md`:
+   - Volatility targeting (10%, 15%, 20% annualized vol)
+   - Max drawdown control (reduce exposure when DD > 15%, 20%)
+   - Test if overlays reduce max DD below 30% while preserving Sharpe > 0.5
+
+6. **Updated Hypothesis** at `research/hypotheses/tsmomentum_002.md`:
+   - Incorporate robustness findings
+   - Update falsification conditions based on evidence
+   - Document parameter stability or sensitivity
+
+7. **Decision Document** at `research/reports/tsmomentum_decision_001.md`:
+   - Label: Credible Candidate / Exploratory Signal / Rejected / Blocked
+   - Evidence summary for each criterion
+   - Next steps if credible; rejection rationale if rejected
+
+---
 
 ## Validation Commands
 
 ```bash
-# Verify source files exist
-test -f src/data/yfinance_fetcher.py && wc -l src/data/yfinance_fetcher.py
-test -f src/features/momentum.py && wc -l src/features/momentum.py
-test -f src/backtest/engine.py && wc -l src/backtest/engine.py
-test -f research/hypotheses/tsmomentum_001.md && wc -l research/hypotheses/tsmomentum_001.md
-test -f research/experiments/tsmomentum_baseline_001.md && wc -l research/experiments/tsmomentum_baseline_001.md
+# Verify all output files exist
+test -f research/experiments/tsmomentum_robustness_001.md
+test -f research/experiments/tsmomentum_walkforward_001.md
+test -f research/experiments/tsmomentum_statistics_001.md
+test -f research/experiments/tsmomentum_benchmark_001.md
+test -f research/experiments/tsmomentum_risk_001.md
+test -f research/hypotheses/tsmomentum_002.md
+test -f research/reports/tsmomentum_decision_001.md
 
-# Run the backtest reproduction
-python3 src/backtest/engine.py --output-dir research/experiments
-
-# Check experiment report has required sections
-grep -c "Hypothesis" research/experiments/tsmomentum_baseline_001.md
-grep -c "Data Used" research/experiments/tsmomentum_baseline_001.md
-grep -c "Results" research/experiments/tsmomentum_baseline_001.md
-
-# Check hypothesis doc has required sections
-grep -c "Mechanism" research/hypotheses/tsmomentum_001.md
-grep -c "Falsification" research/hypotheses/tsmomentum_001.md
+# Check key sections
+grep -c "Heatmap" research/experiments/tsmomentum_robustness_001.md
+grep -c "Walk-Forward" research/experiments/tsmomentum_walkforward_001.md
+grep -c "Deflated Sharpe" research/experiments/tsmomentum_statistics_001.md
+grep -c "Alpha" research/experiments/tsmomentum_benchmark_001.md
+grep -c "Volatility Target" research/experiments/tsmomentum_risk_001.md
+grep -c "Decision" research/reports/tsmomentum_decision_001.md
 ```
+
+---
 
 ## Scope Boundaries
 
-- **Do not** attempt live trading or connect to broker APIs
-- **Do not** add new dependencies beyond those in requirements.txt (yfinance, ccxt, pandas, numpy, vectorbt may be used)
-- **Do not** claim statistical significance beyond what data supports
-- **Do not** tune parameters to maximize test-period returns (predefined 12-month lookback, top 50% selection, monthly rebalance)
-- **Do** implement the strategy as a transparent baseline before any parameter exploration or ML enhancement (per AGENTS.md: baseline before complexity)
-- **Do** document all results honestly, including negative outcomes
-- **Do** label results as exploratory signal or rejected even if positive, pending further validation
+- **Do not** add new data sources or asset classes
+- **Do not** tune parameters to maximize test-period returns (all configurations
+  must be pre-specified or systematically explored)
+- **Do** use the existing pipeline infrastructure (yfinance_fetcher, momentum,
+  backtest engine)
+- **Do** implement new analysis modules in `src/evaluation/` if needed
+- **Do** document all negative results honestly
+- **Do** track number of hypotheses/configurations tested for multiple-testing
+  correction
+- **Do** use chronological splits only; no random shuffling of time series
+
+---
+
+## Implementation Notes
+
+### Suggested Module Structure
+
+```
+src/evaluation/
+├── __init__.py
+├── robustness.py       # Parameter grid search, heatmaps
+├── walkforward.py      # Walk-forward splits with purge/embargo
+├── statistics.py       # DSR, PSR, PBO, bootstrap CIs
+├── benchmark.py        # Alpha/beta, correlation, attribution
+└── risk.py             # Vol targeting, DD control overlays
+```
+
+### Key Libraries
+
+- `arch` for block bootstrap
+- `statsmodels` for regression
+- `scipy` for statistical tests
+- Existing: `vectorbt` may be used for walk-forward if helpful
+
+### Cost Model
+
+Use existing settings.yaml values (1 bps commission, 2 bps slippage, 2% RF).
+Do not modify cost assumptions between experiments.
+
+---
+
+## Expected Timeline
+
+This is a bounded task. If any component is blocked (e.g., insufficient data
+for statistical power), document the blocker precisely and make the next task
+resolve it. Do not conceal failures or invent outputs.

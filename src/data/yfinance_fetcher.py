@@ -118,9 +118,9 @@ class YFinanceFetcher:
         if raw is None or raw.empty:
             return None
 
-        # yfinance returns a MultiIndex (field, ticker) when group_by='ticker'
+        # yfinance returns a MultiIndex (ticker, field) when group_by='ticker'
         if isinstance(raw.columns, pd.MultiIndex):
-            raw = raw.xs(symbol, level=1, axis=1)
+            raw = raw.xs(symbol, level=0, axis=1)
 
         raw = raw.rename(columns=str.title)
         for col in ("Open", "High", "Low", "Close", "Volume"):
