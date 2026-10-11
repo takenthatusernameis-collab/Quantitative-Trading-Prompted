@@ -29,7 +29,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: true
 
-      - env:
+      - id: kilo_controller
+        env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -407,3 +408,33 @@ jobs:
           fi
 
           echo "Kilo controller completed. Failed agent sessions: $failed_sessions. This controller does not fail solely because an agent session failed."
+
+      - name: Summarize controller outcome
+        if: always()
+        continue-on-error: true
+        env:
+          CONTROLLER_OUTCOME: ${{ steps.kilo_controller.outcome }}
+        shell: bash
+        run: |
+          {
+            echo "## Kilo controller health"
+            echo "- Controller step outcome: \`$CONTROLLER_OUTCOME\`"
+            echo "- Configured agent sessions: ${{ inputs.agents || '1000' }} (the one-shot marker, when present, overrides this to exactly 2)."
+            if [ "$CONTROLLER_OUTCOME" = "success" ]; then
+              echo "- Controller ended normally. Review the session receipts and verified checkpoint messages for task-level status."
+            else
+              echo "- Controller step failed early. This job is non-blocking; inspect the logs/artifacts and allow the next scheduled activation to recover."
+              echo "::warning::Kilo controller failure retained for diagnosis; it will not fail the whole workflow."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Kilo failure transcripts
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: kilo-failure-transcripts-${{ github.run_id }}
+          path: ${{ runner.temp }}/kilo-failure-logs/
+          if-no-files-found: ignore
+          retention-days: 7
+
