@@ -1,1 +1,5 @@
-One-shot marker: this file exists only to trigger exactly two sequential Kilo sessions for the requested reliability smoke run. Remove the marker and its trigger after the run is registered.
+Two-agent Kilo reliability run marker, refreshed after successful independent YAML/schema and embedded-Bash validation.
+
+Purpose: start exactly two sequential fresh Kilo sessions in .github/workflows/kilo-two-agent-once.yml.
+The ordinary scheduled workflow must skip while this marker exists.
+The one-shot controller removes this file during the second session's checkpoint.
