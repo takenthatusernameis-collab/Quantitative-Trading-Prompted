@@ -2,12 +2,6 @@ name: Kilo
 # Recovery controller syntax is checked by the dedicated Kilo workflow audit. Embedded Bash syntax is validated.
 
 on:
-  # A maintainer-controlled marker plus an exact commit message activates the
-  # one-shot path; marker deletion by the workflow cannot recursively relaunch Kilo.
-  push:
-    branches: [main]
-    paths:
-      - ".kilo/TWO_AGENT_ONCE"
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
