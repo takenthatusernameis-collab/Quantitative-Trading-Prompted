@@ -49,7 +49,17 @@ jobs:
           # smoke test from starting a 1000-session campaign immediately afterward.
           if [ -f ".kilo/SKIP_NEXT_ROUTINE_KILO" ]; then
             echo "::notice::Consuming the one-time post-smoke skip; this routine activation will exit successfully."
-            DEFAULT_BRANCH="$(git branch --show-current)"
+            # GitHub Actions checkout commonly uses detached HEAD, so
+            # git branch --show-current is empty; always prefer the event's
+            # authoritative repository default branch and use a remote-HEAD fallback.
+            DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
+            if [ -z "$DEFAULT_BRANCH" ]; then
+              DEFAULT_BRANCH="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##' || true)"
+            fi
+            if [ -z "$DEFAULT_BRANCH" ]; then
+              echo "::warning::Default branch could not be resolved; leaving the one-time skip marker in place for a later routine activation."
+              exit 0
+            fi
             git config user.name "kilo-autonomous"
             git config user.email "kilo-autonomous@users.noreply.github.com"
             if ! rm -f -- .kilo/SKIP_NEXT_ROUTINE_KILO || ! git add -A -- .kilo/SKIP_NEXT_ROUTINE_KILO || ! git commit -m "chore(kilo): consume post-smoke skip marker"; then
