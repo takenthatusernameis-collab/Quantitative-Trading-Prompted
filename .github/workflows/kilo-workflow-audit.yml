@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/main.yml"
+      - ".github/workflows/kilo-two-agent-once.yml"
   workflow_dispatch:
 
 permissions:
@@ -19,7 +20,7 @@ jobs:
       - name: Validate GitHub Actions workflow syntax and schema
         uses: rhysd/actionlint@v1.7.7
         with:
-          args: -color .github/workflows/main.yml
+          args: -color .github/workflows/main.yml .github/workflows/kilo-two-agent-once.yml
       - name: Independent YAML parse
         shell: bash
         run: |
