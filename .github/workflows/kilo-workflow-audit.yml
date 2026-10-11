@@ -6,6 +6,7 @@ on:
     paths:
       - ".github/workflows/main.yml"
       - ".github/workflows/kilo-two-agent-once.yml"
+      - ".github/workflows/kilo-workflow-audit.yml"
   workflow_dispatch:
 
 permissions:
@@ -24,9 +25,11 @@ jobs:
       - name: Independent YAML parse
         shell: bash
         run: |
-          ruby -e 'require "yaml"; YAML.load_file(".github/workflows/main.yml"); puts "Ruby YAML parser: OK"'
+          ruby -ryaml -e 'ARGV.each { |path| YAML.load_file(path); puts "#{path}: YAML OK" }' .github/workflows/main.yml .github/workflows/kilo-two-agent-once.yml
       - name: Validate embedded Kilo shell syntax
         shell: bash
         run: |
-          ruby -ryaml -e 'doc = YAML.load_file(".github/workflows/main.yml"); script = doc.fetch("jobs").fetch("kilo").fetch("steps").find { |step| step["run"] }.fetch("run"); script = script.gsub(/\$\{\{.*?\}\}/, "2"); File.write(File.join(ENV.fetch("RUNNER_TEMP"), "kilo-main.sh"), script)'
-          bash -n "$RUNNER_TEMP/kilo-main.sh"
+          ruby -ryaml -e 'ARGV.each do |path|; doc = YAML.load_file(path); script = doc.fetch("jobs").fetch("kilo").fetch("steps").find { |step| step["run"] }.fetch("run"); script = script.gsub(/\$\{\{.*?\}\}/, "2"); outdir = File.join(ENV.fetch("RUNNER_TEMP"), "kilo-shell-validation"); Dir.mkdir(outdir) unless Dir.exist?(outdir); File.write(File.join(outdir, File.basename(path, ".yml") + ".sh"), script); end' .github/workflows/main.yml .github/workflows/kilo-two-agent-once.yml
+          for script in "$RUNNER_TEMP"/kilo-shell-validation/*.sh; do
+            bash -n "$script" || exit 1
+          done
