@@ -11,6 +11,10 @@ on:
         required: false
         default: "1000"
         type: number
+  push:
+    branches: [main]
+    paths:
+      - ".kilo/TWO_AGENT_ONCE"
 
 permissions: write-all
 
