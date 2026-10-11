@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   kilo:
-    if: ${{ github.event_name != 'push' || github.event.head_commit.message == 'chore(workflow): harden recurring errors and run two-agent validation' }}
+    if: "${{ github.event_name != 'push' || github.event.head_commit.message == 'chore(workflow): harden recurring errors and run two-agent validation' }}"
     runs-on: ubuntu-latest
     timeout-minutes: 360
 
