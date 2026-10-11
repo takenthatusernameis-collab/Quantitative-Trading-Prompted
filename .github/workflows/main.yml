@@ -1,6 +1,10 @@
 name: Kilo 
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".kilo/TWO_AGENT_ONCE"
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
@@ -33,9 +37,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KILO_TRIGGER_EVENT: ${{ github.event_name }}
+          KILO_TRIGGER_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           set -Eeuo pipefail
           cutoff_epoch=$(($(date +%s) + 355 * 60))
+          # Marker-only push events must not accidentally start a routine campaign.
+          if [ "$KILO_TRIGGER_EVENT" = "push" ] && [ "$KILO_TRIGGER_COMMIT_MESSAGE" != "TRIGGER_TWO_AGENT_KILO_SMOKE" ]; then
+            echo "::notice::Non-activation marker push; exiting without starting Kilo."
+            exit 0
+          fi
           umask 077
           # Kilo uses only the repository-scoped GITHUB_TOKEN. Workflow definitions are maintainer-managed because this token cannot grant workflows permission.
           export HOME="$RUNNER_TEMP/kilo-home"
@@ -57,6 +68,10 @@ jobs:
           if [ -f ".kilo/TWO_AGENT_ONCE" ]; then
             one_shot_mode=1
             echo "::notice::One-shot marker detected; setting the sequential session count to exactly two."
+          fi
+          if [ "$KILO_TRIGGER_EVENT" = "push" ] && [ "$one_shot_mode" -ne 1 ]; then
+            echo "::notice::Activation message was present but the two-agent sentinel is absent; safe no-op."
+            exit 0
           fi
 
           if [ "$one_shot_mode" -eq 0 ] && [ -f ".kilo/SKIP_NEXT_ROUTINE_KILO" ]; then
