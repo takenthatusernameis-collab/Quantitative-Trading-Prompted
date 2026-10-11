@@ -10,10 +10,6 @@ on:
         required: false
         default: "1000"
         type: number
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/main.yml"
 
 permissions: write-all
 
@@ -23,7 +19,6 @@ concurrency:
 
 jobs:
   kilo:
-    if: "${{ github.event_name != 'push' || github.event.head_commit.message == 'chore(workflow): harden recurring errors and run two-agent validation' }}"
     runs-on: ubuntu-latest
     timeout-minutes: 360
 
@@ -95,11 +90,6 @@ jobs:
           git config user.name "kilo-autonomous"
           git config user.email "kilo-autonomous@users.noreply.github.com"
 
-          if [ "${GITHUB_EVENT_NAME:-}" = "push" ]; then
-            agents=2
-          else
-            agents="${{ inputs.agents || '1000' }}"
-          fi
           if ! [[ "$agents" =~ ^[0-9]+$ ]]; then
             echo "::error::The agents input must be an integer from 1 to 1000."
             exit 1
