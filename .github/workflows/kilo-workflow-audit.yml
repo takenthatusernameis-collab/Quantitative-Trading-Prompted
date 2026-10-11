@@ -6,6 +6,7 @@ on:
     paths:
       - ".github/workflows/main.yml"
       - ".github/workflows/kilo-workflow-audit.yml"
+      - ".github/workflows/kilo-two-agent-dispatch.yml"
       - ".kilo/TWO_AGENT_ONCE"
       - ".kilo/SKIP_NEXT_ROUTINE_KILO"
   workflow_dispatch:
@@ -22,12 +23,12 @@ jobs:
       - name: Validate workflow syntax and schema
         uses: rhysd/actionlint@v1.7.7
         with:
-          args: -color .github/workflows/main.yml .github/workflows/kilo-workflow-audit.yml
+          args: -color .github/workflows/main.yml .github/workflows/kilo-workflow-audit.yml .github/workflows/kilo-two-agent-dispatch.yml
       - name: Independently parse YAML and validate embedded Bash
         shell: bash
         run: |
           set -euo pipefail
-          ruby -ryaml -e 'ARGV.each do |path|; doc = YAML.load_file(path); puts "#{path}: YAML OK"; if ["main.yml"].include?(File.basename(path)); script = doc.fetch("jobs").fetch("kilo").fetch("steps").find { |step| step["run"] }.fetch("run"); outdir = File.join(ENV.fetch("RUNNER_TEMP"), "kilo-shell-validation"); Dir.mkdir(outdir) unless Dir.exist?(outdir); File.write(File.join(outdir, File.basename(path, ".yml") + ".sh"), script); end; end' .github/workflows/main.yml .github/workflows/kilo-workflow-audit.yml
+          ruby -ryaml -e 'ARGV.each do |path|; doc = YAML.load_file(path); puts "#{path}: YAML OK"; if ["main.yml", "kilo-two-agent-dispatch.yml"].include?(File.basename(path)); step = doc.fetch("jobs").values.flat_map { |job| job.fetch("steps", []) }.find { |item| item["run"] }; raise "No run script found in #{path}" unless step; outdir = File.join(ENV.fetch("RUNNER_TEMP"), "kilo-shell-validation"); Dir.mkdir(outdir) unless Dir.exist?(outdir); File.write(File.join(outdir, File.basename(path, ".yml") + ".sh"), step.fetch("run")); end; end' .github/workflows/main.yml .github/workflows/kilo-workflow-audit.yml .github/workflows/kilo-two-agent-dispatch.yml
           for script in "$RUNNER_TEMP"/kilo-shell-validation/*.sh; do
             bash -n "$script"
             echo "$script: Bash syntax OK"
