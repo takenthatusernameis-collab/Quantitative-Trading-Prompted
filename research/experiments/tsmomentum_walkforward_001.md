@@ -152,4 +152,4 @@ the mean OOS Sharpe is 0.679 with
 ---
 
 *Report generated: 2026-10-11*
-*Code revision: 92893b9*
+*Code revision: f7cbf05*

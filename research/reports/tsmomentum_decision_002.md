@@ -1,7 +1,7 @@
 # Decision: Time-Series Momentum Strategy (tsmomentum_decision_002)
 
 **Date**: 2026-10-11
-**Code revision**: 92893b9
+**Code revision**: f7cbf05
 
 ---
 
@@ -129,4 +129,4 @@ Mixed evidence — some criteria pass, some fail.
 ---
 
 *Decision document generated: 2026-10-11*
-*Code revision: 92893b9*
+*Code revision: f7cbf05*

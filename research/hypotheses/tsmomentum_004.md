@@ -8,7 +8,7 @@
 - v004 (tsmomentum_004, 2026-10-11): Updated with Cycle 5 regime & universe exploration
 
 **Parent hypothesis**: `research/hypotheses/tsmomentum_003.md`
-**Code revision**: 98fe0e3
+**Code revision**: f7cbf05
 
 ---
 
@@ -137,4 +137,4 @@ Same as tsmomentum_002/003, plus:
 ---
 
 *Updated: 2026-10-11*
-*Code revision: 98fe0e3*
+*Code revision: f7cbf05*

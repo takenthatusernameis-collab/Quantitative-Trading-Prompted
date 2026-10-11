@@ -141,4 +141,4 @@ behavior motivates the regime filters tested next in
 ---
 
 *Report generated: 2026-10-11*
-*Code revision: 98fe0e3*
+*Code revision: f7cbf05*

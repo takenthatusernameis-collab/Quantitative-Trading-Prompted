@@ -1,7 +1,7 @@
 # Decision: Time-Series Momentum Strategy (tsmomentum_decision_003)
 
 **Date**: 2026-10-11
-**Code revision**: 98fe0e3
+**Code revision**: f7cbf05
 
 ---
 
@@ -130,4 +130,4 @@ candidates = 1.4178 (target >= 0.90; gap = 0.0000).
 ---
 
 *Decision document generated: 2026-10-11*
-*Code revision: 98fe0e3*
+*Code revision: f7cbf05*

@@ -6,7 +6,7 @@
 - v002 (tsmomentum_002, 2026-10-11): Updated based on Cycle 3 robustness & validation
 
 **Parent hypothesis**: `research/hypotheses/tsmomentum_001.md`
-**Code revision**: 92893b9
+**Code revision**: f7cbf05
 
 ---
 
@@ -25,11 +25,11 @@ constraints, funding/carry) remain valid.
 |--------|--------------------------|----------------|
 | Annualized Return | 3-8% gross, 2-7% net | 7.7% net (Sharpe-based estimate) |
 | Net Sharpe | 0.5-1.0 | 0.64 (test period) |
-| DSR-adjusted confidence | Not assessed | 39.6% |
+| DSR-adjusted confidence | Not assessed | 38.2% |
 
 The test-period Sharpe is 0.645.
 After deflating for 100 configurations,
-the DSR probability is 39.6%, indicating
+the DSR probability is 38.2%, indicating
 questionable statistical significance.
 
 ---
@@ -93,8 +93,8 @@ Baseline not found in perturbation results.
 
 | Test | Result |
 |------|--------|
-| PSR vs 0 | 0.9868 |
-| DSR | -0.2637 (prob: 39.6%) |
+| PSR vs 0 | 0.9812 |
+| DSR | -0.2996 (prob: 38.2%) |
 | PBO | 0.0121 |
 | FDR significant configs | 100 / 100 |
 
@@ -137,4 +137,4 @@ Same as tsmomentum_001, plus:
 ---
 
 *Updated: 2026-10-11*
-*Code revision: 92893b9*
+*Code revision: f7cbf05*

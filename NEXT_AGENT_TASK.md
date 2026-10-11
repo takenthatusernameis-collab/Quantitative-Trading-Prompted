@@ -1,209 +1,216 @@
-# Next Agent Task: Cycle 6 - Validation of the Promoted SPY Trend Filter Candidate
+# Next Agent Task: Cycle 7 - Simulation Framework & Paper-Trading Preparation
 
 ## Context
 
-Cycle 5 applied two **pre-specified** regime filters on top of the Cycle 4 best
-configuration (226-day TSMOM + combined volatility-targeting 10% + drawdown
-control 15%), using the hypothesis-documented **3 bps round-trip** cost model.
+Cycle 6 validated the SPY Trend Filter candidate via two independent checks:
 
-### Cycle 5 Key Findings
+### Cycle 6 Key Findings
 
-| Candidate | Test Sharpe (2018-2026) | Max DD | Trades | Meets 0.9 gate? |
-|-----------|-------------------------|--------|--------|-----------------|
-| Unfiltered (Cycle 4 best) | 0.746 | -16.6% | 1,812 | No |
-| **SPY Trend Filter** (cash when SPY < 200d SMA) | **1.418** | -7.8% | 1,196 | **YES** |
-| VIX Filter (50% when VIX > 30) | 1.046 | -12.3% | 1,768 | YES |
-| Sector ETFs (alternative universe) | 0.442 | -15.1% | 1,964 | No |
-| Global Asset Classes (alternative universe) | 0.552 | -15.2% | 1,717 | No |
+| Validation Check | Result | Threshold | Status |
+|------------------|--------|-----------|--------|
+| Walk-Forward Mean OOS Sharpe | 0.9473 | >= 0.9 | **PASS** |
+| % Positive WF Folds | 91.7% | >= 50% | **PASS** |
+| SMA Plateau (windows >= 0.9) | 6/6 | >= 2/6 | **PASS** |
 
-**Classification: Credible Candidate (preliminary)** — the SPY Trend Filter
-promotes the strategy to the promotion gate.
+**Final Classification: Credible Candidate** — The SPY trend-filter candidate is confirmed for advancement to simulation/paper-trading.
 
-### Important caveat carried over from Cycle 5
+### Candidate Configuration (Validated)
 
-- The promotion gate is a **preliminary screening gate only** (per AGENTS.md).
-  The result rests on a **single 2018-2026 test block** and the **single 200-day**
-  SMA parameter — it has not been independently validated across time or
-  parameter neighbors.
-- Cycle 4's documented combined-overlay Sharpe (0.779) was computed with an
-  under-applied cost model in `src/evaluation/risk.py` (effective ~0 bps; the
-  report itself states "0.0 bps"). Cycle 5 corrected this to 3 bps and showed the
-  gate conclusion is robust to the cost correction (SPY filter 1.42 correct-cost).
-  A bounded non-blocking correction to `src/evaluation/risk.py` is recommended
-  (see Recommended Follow-up).
+- **Universe**: SPY, QQQ, IWM, TLT, GLD, EFA, EEM (7-asset baseline)
+- **Signal**: 226-day TSMOM (lookback=226, skip=21, top_fraction=0.5)
+- **Risk Overlay**: Combined vol-targeting (10%) + drawdown control (15%)
+- **Regime Filter**: SPY 200-day SMA trend filter (0% exposure when SPY < SMA)
+- **Cost Model**: 3 bps round-trip (1 bps commission + 2 bps slippage)
+- **Rebalancing**: Monthly (weights shifted 1 day for point-in-time)
 
-### Artifacts produced by Cycle 5
+### Evidence Artifacts Produced
 
-- `research/run_cycle5.py` (pipeline script)
-- `research/experiments/tsmomentum_regime_001.md`
-- `research/experiments/tsmomentum_regime_filter_001.md`
-- `research/experiments/tsmomentum_universe_001.md`
-- `research/reports/tsmomentum_decision_003.md`
-- `research/hypotheses/tsmomentum_004.md`
-
-### Evidence this task builds on
-
-- Regime analysis shows the strategy is strongly regime-conditional: in bear
-  regimes (SPY < 200d SMA) the unfiltered Sharpe is **-1.37**, while in bull
-  regimes it is **+1.67**. The 200d-SMA trend filter removes the bear-regime days
-  (≈20% of test days) where the strategy loses money — a well-documented effect
-  (TSMOM momentum crashes during bear markets; trend filters mitigate them).
+- `research/experiments/tsmomentum_regime_filter_wf_001.md` — Walk-forward + plateau validation
+- `research/run_cycle6.py` — Cycle 6 pipeline script
 
 ---
 
 ## Objective
 
-Validate that the Cycle 5 promoted candidate is **not** a single-period or
-single-parameter artifact before advancing to simulation/paper-trading.
+Build a **simulation framework** for the validated Credible Candidate and prepare for **paper-trading (prospective) validation**. The simulation must:
 
-The candidate under validation:
-- Universe: SPY, QQQ, IWM, TLT, GLD, EFA, EEM (baseline 7-asset)
-- Signal: 226-day TSMOM (lookback=226, skip=21, top_fraction=0.5)
-- Risk overlay: combined vol-targeting (10%) + drawdown control (15%)
-- Regime filter: SPY 200d-SMA trend filter (0% exposure when SPY < 200d SMA)
-- Cost model: 3 bps round-trip (correct, as in Cycle 5)
-
-Produce a **walk-forward test** of this candidate and a **parameter-plateau check**
-of the SMA trend-window, then decide whether to advance or downgrade.
+1. Reproduce the candidate strategy with exact same logic as backtest
+2. Support walk-forward re-optimization (if desired) and fixed-parameter execution
+3. Generate realistic position/time series for paper-trading tracking
+4. Include operational constraints: transaction costs, slippage, position limits, rebalancing schedule
+5. Produce daily P&L, positions, risk metrics, and trade logs suitable for prospective monitoring
 
 ---
 
 ## Acceptance Criteria
 
-The Cycle 6 work must produce:
+The Cycle 7 work must produce:
 
-1. **`research/experiments/tsmomentum_regime_filter_wf_001.md`** containing:
-   - A walk-forward evaluation of the SPY trend-filter candidate:
-     expanding or rolling 10-year training window, 1-year forward test,
-     6-month step, purge = 21 days, embargo = 21 days (reuse the design in
-     `src/evaluation/walkforward.py` and `tsmomentum_walkforward_001.md`).
-     Parameters are **fixed** (no per-fold re-optimization).
-   - Reported metrics per fold and in aggregate: train Sharpe, test Sharpe,
-     test annualized return, test max drawdown, test trade count.
-   - Aggregate: number of folds, **mean test Sharpe**, **% folds with Sharpe > 0**,
-     mean test max drawdown, total pooled OOS trades.
-2. **Parameter-plateau check** of the SMA trend window (same test-period
-   2018-2026, same candidate config, correct 3 bps costs) for SMA windows
-   `{150, 175, 200, 226, 250, 277}`:
-   - Table of (SMA window, test Sharpe, test max DD, trades).
-   - Plateau verdict: the 200d result is "robust" if **>= 2 of the 6 windows**
-     (including 200d) achieve Sharpe >= 0.9, i.e. the gate is not won or lost
-     on the single 200d value.
-3. **Promotion-gate verdict** (final):
-   - If mean walk-forward OOS Sharpe >= 0.9 **AND** >= 50% of folds positive
-     **AND** the SMA plateau check holds -> the candidate is confirmed
-     **Credible Candidate**; next cycle advances to simulation/paper-trading.
-   - Otherwise the candidate is **downgraded to Exploratory Signal** and the
-     next cycle must explore a **different structural mechanism** (do NOT
-     continue regime/universe variations on TSMOM).
+### 1. `src/simulation/engine.py` — Simulation Engine
+
+A new module with:
+- `SimulationConfig` dataclass: universe, signal params, risk overlay params, regime filter params, cost model, rebalancing schedule, position sizing
+- `run_simulation(config, start_date, end_date)` → returns `SimulationResult` with:
+  - Daily net returns, positions, weights, turnover, costs
+  - Trade log (date, symbol, side, quantity, price, cost)
+  - Risk metrics (daily vol, VaR, drawdown, exposure)
+  - Rebalancing events
+- Point-in-time execution: signal computed on T-1 close, executed T open (or T close for EOD)
+- Deterministic: same inputs → same outputs (seedable)
+
+### 2. `research/run_cycle7.py` — Simulation Pipeline
+
+Script that:
+- Instantiates the validated candidate config
+- Runs simulation on **full history** (1993-2026) for verification against backtest
+- Runs simulation on **OOS period only** (2018-2026) for paper-trading baseline
+- Exports daily position/return series to `data/processed/simulation_candidate_001.parquet`
+- Exports trade log to `data/processed/trades_candidate_001.parquet`
+- Verifies simulation matches backtest within tolerance (Sharpe diff < 0.02, DD diff < 0.5%)
+
+### 3. `research/reports/simulation_verification_001.md` — Verification Report
+
+| Metric | Backtest (Cycle 5/6) | Simulation | Diff | Status |
+|--------|---------------------|------------|------|--------|
+| Test Sharpe (2018-2026) | 1.4178 | — | — | PASS/FAIL |
+| Max DD (2018-2026) | -7.79% | — | — | PASS/FAIL |
+| Trades (2018-2026) | 1,196 | — | — | PASS/FAIL |
+| Ann. Return (2018-2026) | 14.46% | — | — | PASS/FAIL |
+| WF Mean OOS Sharpe | 0.9473 | — | — | PASS/FAIL |
+
+### 4. `config/simulation_candidate_001.yaml` — Frozen Candidate Config
+
+YAML file capturing all parameters for reproducible simulation/paper-trading:
+```yaml
+candidate_id: "tsmomentum_spytrend_001"
+universe: ["SPY", "QQQ", "IWM", "TLT", "GLD", "EFA", "EEM"]
+signal:
+  type: "tsmomentum"
+  lookback: 226
+  skip: 21
+  top_fraction: 0.5
+  rebalance_freq: "monthly"
+risk_overlay:
+  vol_target: 0.10
+  vol_lookback: 63
+  max_leverage: 1.0
+  dd_control:
+    threshold: 0.15
+    reduction: 0.5
+regime_filter:
+  type: "spy_sma"
+  window: 200
+  exposure_below: 0.0
+  exposure_above: 1.0
+cost_model:
+  commission_bps: 1.0
+  slippage_bps: 2.0
+  total_round_trip_bps: 3.0
+execution:
+  signal_lag_days: 1
+  price_field: "Open"  # or "Close" for EOD
+  timezone: "UTC"
+```
 
 ---
 
 ## Implementation Notes
 
-### Pre-specified validation design (no cherry-picking)
-- SMA trend windows are **fixed a priori**: `[150, 175, 200, 226, 250, 277]`.
-- Walk-forward windows reuse the Cycle 3 design exactly (10-year rolling train,
-  1-year test, 6-month step, purge=21, embargo=21) — only the candidate config
-  (added 200d SMA filter) changes from Cycle 3's unfiltered baseline.
-- The filter is applied as a 0/1 exposure multiplier on the 226-day momentum
-  test-period weights, **before** the combined vol+dd overlay (same as Cycle 5),
-  so walk-forward folds are directly comparable to the 0.746 / 1.418 figures.
+### Simulation vs Backtest Differences to Handle
 
-### Cost model
-- Use the **correct 3 bps round-trip** cost model throughout (commission 1 bps +
-  slippage 2 bps). Cycle 5's `_apply_overlay` in `research/run_cycle5.py` already
-  implements this correctly. Reuse or replicate it in Cycle 6.
-- Do NOT use `src/evaluation/risk.py::combined_risk_overlay` for the costed
-  overlay (that path has the under-costing defect); either reuse Cycle 5's
-  `_apply_overlay` or apply `cost_per_trade = commission_bps + slippage_bps`
-  (bps already returned as fractions by `get_cost_params`).
+| Aspect | Backtest (Current) | Simulation (New) |
+|--------|-------------------|------------------|
+| Execution price | Close-to-Close | Open-to-Close (or configurable) |
+| Signal lag | 1 day (shift) | Explicit T-1 → T |
+| Position sizing | Equal-weight top fraction | Equal-weight with vol/DD scaling |
+| Rebalancing | Monthly (implicit) | Explicit calendar schedule |
+| Costs | Weight-change * bps | Per-trade commission + slippage |
+| Output | Aggregate metrics | Full time-series + trade log |
 
-### Data
-- Baseline universe + SPY + ^VIX already cached in `data/raw/` (Yahoo Finance).
-- No new data dependencies; Binance/Bybit remain blocked, OKX is available if a
-  crypto mechanism is later needed.
+### Reuse Existing Infrastructure
 
-### Reuse existing infrastructure
-- Reuse `src/evaluation/walkforward.py` helpers (`build_walkforward_splits`,
-  `evaluate_walkforward`, `summarize_walkforward`) and `src/evaluation/utils.py`
-  (`run_backtest_for_config`, `split_by_periods`, `period_metrics`).
-- Add a thin `research/run_cycle6.py` that composes the filtered candidate with
-  the walk-forward + plateau logic and writes the report. Do not modify shared
-  evaluation modules beyond minimal, behavior-preserving additions.
+- `src/features/momentum.build_weights` — signal generation
+- `src/evaluation/utils.fetch_close_prices` — data loading
+- `src/backtest.engine.compute_metrics` — metrics computation
+- Cycle 5/6 `_apply_overlay` logic — risk overlay + regime filter
+
+### New Files to Create
+
+- `src/simulation/__init__.py`
+- `src/simulation/engine.py`
+- `config/simulation_candidate_001.yaml`
+- `research/run_cycle7.py`
 
 ---
 
 ## Scope Boundaries
 
-- **In scope**: walk-forward + SMA-window plateau validation of the SPY trend
-  filter candidate only.
-- **Do NOT** begin live or paper-trading execution.
-- **Do NOT** start additional agent sessions / workflows (no recursive dispatch).
-- **Do NOT** add dependencies or new data sources.
-- **Do** preserve all existing Cycle 1-5 artifacts.
-
-### Recommended bounded follow-up (non-blocking, separate task)
-Fix the overlay-path cost defect in `src/evaluation/risk.py`
-(`combined_risk_overlay`, `run_risk_overlays`, `run_combined_risk_overlays`):
-`cost_per_trade` should be `commission_bps + slippage_bps` (not divided by 10000
-again), matching `utils.run_backtest_for_config`. This would let Cycle 4's
-documented combined-overlay figures be recomputed at honest 3 bps costs. This is
-**out of scope** for Cycle 6 and should be tracked separately if pursued.
+- **In scope**: Simulation engine, verification against backtest, paper-trading config export
+- **Do NOT** place live trades or connect to broker APIs
+- **Do NOT** add new data dependencies (Yahoo Finance only)
+- **Do NOT** modify existing backtest/evaluation modules (only import from them)
+- **Do** preserve all Cycle 1-6 artifacts
 
 ---
 
 ## Validation Commands
 
 ```bash
-# Run Cycle 6 pipeline
-python3 research/run_cycle6.py
+# Run Cycle 7 simulation pipeline
+python3 research/run_cycle7.py
 
-# Reproduce prior cycles still run without error
-python3 research/run_cycle3.py
-python3 research/run_cycle4.py
-python3 research/run_cycle5.py
+# Verify simulation matches backtest
+python3 -c "
+import pandas as pd
+sim = pd.read_parquet('data/processed/simulation_candidate_001.parquet')
+print('Simulation rows:', len(sim))
+print('Date range:', sim.index.min(), 'to', sim.index.max())
+"
+
+# Verify prior cycles still run
+python3 research/run_cycle3.py 2>&1 | tail -3
+python3 research/run_cycle4.py 2>&1 | tail -3
+python3 research/run_cycle5.py 2>&1 | tail -3
+python3 research/run_cycle6.py 2>&1 | tail -5
 
 # Lint
-python3 -m ruff check research/run_cycle6.py src/evaluation/
+python3 -m ruff check research/run_cycle7.py src/simulation/
 
 # Compile check
-python3 -c "import ast; ast.parse(open('research/run_cycle5.py').read()); ast.parse(open('research/run_cycle6.py').read())"
+python3 -c "import ast; ast.parse(open('research/run_cycle7.py').read())"
 
-# Artifact existence + content
-test -f research/experiments/tsmomentum_regime_filter_wf_001.md
-grep -q "Walk-Forward" research/experiments/tsmomentum_regime_filter_wf_001.md
-grep -q "Plateau" research/experiments/tsmomentum_regime_filter_wf_001.md
-grep -q "Credible Candidate" research/experiments/tsmomentum_regime_filter_wf_001.md
-grep -Eq "Sharpe [0-9]" research/experiments/tsmomentum_regime_filter_wf_001.md
+# Artifact existence
+test -f src/simulation/engine.py
+test -f config/simulation_candidate_001.yaml
+test -f data/processed/simulation_candidate_001.parquet
+test -f data/processed/trades_candidate_001.parquet
+test -f research/reports/simulation_verification_001.md
+
+# Content checks
+grep -q "PASS" research/reports/simulation_verification_001.md
+grep -q "tsmomentum_spytrend_001" config/simulation_candidate_001.yaml
 ```
 
 ---
 
 ## Expected Outcome
 
-- **If** mean walk-forward OOS Sharpe >= 0.9, >= 50% of folds positive, and the
-  SMA-plateau check holds: keep the candidate as **Credible Candidate** and the
-  *following* task advances to simulation/parameter optimization + paper-trading.
-- **If not**: downgrade this candidate to **Exploratory Signal**; write
-  `research/reports/tsmomentum_decision_004.md` documenting the downgrade, and
-  the following task must explore a **different structural mechanism** —
-  preferably one with an independent, plausible inefficiency and net-capture
-  feasibility from available data, e.g. **crypto perpetual funding/carry** on OKX
-  (`src/data/yfinance_fetcher.py` + CCXT OKX), where funding-rate history, spot,
-  and swap data are all available (see `research/reports/data_inventory.md`).
+- Simulation engine produces results **within tolerance** of backtest (Sharpe diff < 0.02)
+- All artifacts created and verified
+- Next cycle (Cycle 8) can begin **paper-trading prospective validation**:
+  - Daily simulation runs with current market data
+  - Position/return tracking vs live market
+  - Drift monitoring (signal, risk, regime filter)
+  - Go/No-go decision after 3-6 months paper track record
 
 ---
 
 ## Evidence Reference
 
-- Cycle 5 promoted candidate: SPY Trend Filter, test Sharpe **1.4178** (correct 3 bps)
-  (source: `research/experiments/tsmomentum_regime_filter_001.md`,
-   `research/reports/tsmomentum_decision_003.md`)
-- Cycle 4 documented (under-costed) best combined Sharpe: 0.7794
-  (source: `research/experiments/tsmomentum_combined_risk_001.md`)
-- Cycle 3 walk-forward template: mean test Sharpe 0.679, 97.9% positive folds
-  (source: `research/experiments/tsmomentum_walkforward_001.md`)
-- Regime-conditional Sharpe: bear regime -1.37, bull regime +1.67
-  (source: `research/experiments/tsmomentum_regime_001.md`)
-- Code base: `98fe0e3` (HEAD includes Cycle 5 additions + `src/evaluation` lint fixes)
+- Cycle 6 walk-forward: mean OOS Sharpe 0.9473, 91.7% positive folds, 6013 trades
+- Cycle 6 plateau: 6/6 SMA windows (150, 175, 200, 226, 250, 277) achieve Sharpe >= 0.9
+- Cycle 5 promotion gate: SPY trend filter test Sharpe 1.4178, max DD -7.79%, 1196 trades
+- Cycle 4 best combined overlay (corrected 3 bps): Sharpe 0.7458
+- Cycle 3 walk-forward baseline: mean test Sharpe 0.679, 97.9% positive folds
+
+---

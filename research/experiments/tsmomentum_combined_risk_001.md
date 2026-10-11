@@ -137,4 +137,4 @@ The strategy remains an **Exploratory Signal**.
 ---
 
 *Report generated: 2026-10-11*
-*Code revision: 92893b9*
+*Code revision: f7cbf05*

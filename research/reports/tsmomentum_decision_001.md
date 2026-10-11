@@ -1,7 +1,7 @@
 # Decision: Time-Series Momentum Strategy (tsmomentum_decision_001)
 
 **Date**: 2026-10-11
-**Code revision**: 92893b9
+**Code revision**: f7cbf05
 
 ---
 
@@ -50,8 +50,8 @@ Mixed evidence — some criteria pass, some fail.
 
 | Test | Observed | Threshold | Status |
 |------|----------|-----------|--------|
-| PSR vs 0 | 0.9868 | > 0.50 | PASS |
-| DSR probability | 0.3960 | > 0.90 | FAIL |
+| PSR vs 0 | 0.9812 | > 0.50 | PASS |
+| DSR probability | 0.3822 | > 0.90 | FAIL |
 | PBO | 0.0121 | < 0.50 | PASS |
 | PBO configs tested | 560 | ≥ 500 | PASS |
 | FDR significant configs | 100/100 | > 0 | PASS |
@@ -99,8 +99,8 @@ Best risk overlay: **dd_control_0.15** (Sharpe = 0.818, Max DD = -20.89%)
 3. **Walk-forward**: 12692 pooled OOS trades, mean Sharpe 0.679,
    98% of folds positive.
 
-4. **Statistical tests**: PSR = 0.987,
-   DSR probability = 0.396,
+4. **Statistical tests**: PSR = 0.981,
+   DSR probability = 0.382,
    PBO = 0.012 (560 configs tested for PBO/CSCV).
 
 5. **Benchmark**: Strategy Sharpe 0.645 vs 1/N 0.472 and SPY 0.579.
@@ -146,4 +146,4 @@ promotion gate. Risk overlays offer the best path to improvement.
 ---
 
 *Decision document generated: 2026-10-11*
-*Code revision: 92893b9*
+*Code revision: f7cbf05*
