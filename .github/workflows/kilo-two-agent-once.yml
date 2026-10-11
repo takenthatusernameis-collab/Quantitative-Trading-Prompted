@@ -284,11 +284,15 @@ jobs:
               echo "::warning::Could not remove every agent-created workflow file; those paths remain excluded from checkpoint staging."
             fi
 
-            # Remove the one-shot sentinel only after session 2, so the normal
-            # scheduler is suppressed while this exact two-session campaign runs.
+            # After session 2, remove the one-shot trigger and leave a single-use
+            # pause marker. The next queued routine activation consumes that marker
+            # and exits successfully rather than accidentally starting 1000 sessions.
             if [ "$agent_index" -eq 2 ]; then
               if ! rm -f -- .kilo/TWO_AGENT_ONCE; then
                 echo "::warning::Could not remove the one-shot sentinel; routine activations remain suppressed."
+              fi
+              if ! printf '%s\n' 'Consume once to skip the first routine Kilo activation after the two-agent smoke run.' > .kilo/SKIP_NEXT_ROUTINE_KILO; then
+                echo "::warning::Could not create the one-shot routine-pause marker."
               fi
             fi
 
