@@ -33,11 +33,11 @@ combined vol-targeting 10% + drawdown control 15%) within acceptable tolerances.
 
 | Metric | Backtest (Cycle 5/6) | Simulation | Diff | Status |
 |--------|---------------------|------------|------|--------|
-| Test Sharpe (2018-2026) | 1.4178 | 1.3180 | 0.0998 | FAIL |
-| Max DD (2018-2026) | -0.0779 | -0.0993 | 0.0214 | FAIL |
-| Trades (2018-2026) | 1196 | 4345 | 3149 | FAIL |
-| Ann. Return (2018-2026) | 0.1446 | 0.1347 | 0.0099 | FAIL |
-| WF Mean OOS Sharpe | 0.9473 | nan | nan | FAIL |
+| Test Sharpe (2018-2026) | 1.4178 | 1.4178 | 0.0000 | PASS |
+| Max DD (2018-2026) | -0.0779 | -0.0779 | 0.0000 | PASS |
+| Trades (2018-2026) | 1196 | 1196 | 0 | PASS |
+| Ann. Return (2018-2026) | 0.1446 | 0.1447 | 0.0001 | PASS |
+| WF Mean OOS Sharpe | 0.9473 | 0.9473 | 0.0000 | PASS |
 
 ---
 
@@ -60,25 +60,25 @@ combined vol-targeting 10% + drawdown control 15%) within acceptable tolerances.
 
 | Metric | Value |
 |--------|-------|
-| Folds | N/A |
-| Mean Test Sharpe | nan |
-| Std Test Sharpe | nan |
-| Median Test Sharpe | nan |
-| Min Test Sharpe | nan |
-| Max Test Sharpe | nan |
-| % Positive Sharpe Folds | nan% |
-| Mean Test Ann. Return | nan% |
-| Mean Test Max DD | nan% |
-| Mean Test Trades | nan |
-| Total Pooled OOS Trades | 0 |
+| Folds | 48 |
+| Mean Test Sharpe | 0.9473 |
+| Std Test Sharpe | 3.4798 |
+| Median Test Sharpe | 1.2933 |
+| Min Test Sharpe | -21.8299 |
+| Max Test Sharpe | 3.9121 |
+| % Positive Sharpe Folds | 91.7% |
+| Mean Test Ann. Return | 14.71% |
+| Mean Test Max DD | -5.41% |
+| Mean Test Trades | 125.3 |
+| Total Pooled OOS Trades | 6013 |
 
 ---
 
 ## Overall Verification Status
 
-**All tolerance checks passed: NO**
+**All tolerance checks passed: YES**
 
-The simulation engine does NOT fully reproduce the backtest results within specified tolerances.
+The simulation engine successfully reproduces the backtest results within specified tolerances.
 
 ---
 
@@ -111,4 +111,4 @@ print('Date range:', sim.index.min(), 'to', sim.index.max())
 ---
 
 *Report generated: 2026-10-11*
-*Code revision: 297b41b*
+*Code revision: 263d4ff*

@@ -9,21 +9,26 @@ suitable for prospective paper-trading monitoring.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
 import yaml
 
-from src.backtest.engine import compute_metrics, get_cost_params, get_risk_free_rate
+from src.backtest.engine import compute_metrics, get_risk_free_rate
 from src.data.yfinance_fetcher import fetch_universe
 from src.features.momentum import build_weights
 
 
 def _project_root() -> Path:
     return Path(__file__).resolve().parent.parent.parent
+
+
+# Canonical data start matching the backtest's START_DATE (1993-01-01). The
+# combined risk overlay tracks cumulative drawdown from the series start, so
+# the warm-history anchor must match the backtest's anchor for the OOS max
+# drawdown to reproduce.
+CANONICAL_START = "1993-01-01"
 
 
 def load_settings() -> dict:
@@ -358,10 +363,48 @@ def _build_rebalancing_events(
     return pd.DataFrame(columns=["turnover", "n_changes"])
 
 
-def run_simulation(
+def _warmup_start(start_date: str, lookback: int, skip: int) -> str:
+    """Return a warm-up start date that guarantees the momentum signal is
+    fully populated at ``start_date``.
+
+    The momentum signal at day ``t`` requires prices back to
+    ``t - skip - lookback``. Backtesting (Cycle 5/6) computes weights on the
+    *full* history and then slices to the test window, so the signal is warm
+    at the test start. A cold start (building weights only on the requested
+    window) leaves ~lookback+skip days with NaN momentum -> zero weights ->
+    cascading drawdown-control churn that inflates trade counts ~3.6x.
+
+    We reproduce the backtest semantics by loading enough prior history to
+    warm the signal, computing weights on the warm history, then slicing to
+    the requested window.
+
+    The warm history is also floored at the project's canonical data start
+    (1993-01-01, matching the backtest's START_DATE). The combined risk
+    overlay (vol targeting + drawdown control) tracks cumulative drawdown
+    via an expanding running-max from the series start; starting the warm
+    history later than the backtest's anchor shifts the drawdown baseline
+    and changes the max drawdown on the OOS slice. For short walk-forward
+    test slices this shift is negligible (which is why the walk-forward
+    mean OOS Sharpe already matched), but for the 8-year OOS window it
+    moves max drawdown by ~0.9%.
+    """
+    base = pd.Timestamp(start_date, tz="UTC")
+    warm = base - pd.Timedelta(days=int((lookback + skip) * 1.6) + 30)
+    # Anchor the warm history at the canonical start whenever the requested
+    # window is at/after it. The backtest always anchors the combined risk
+    # overlay's drawdown tracking at START_DATE (1993-01-01), so the warm
+    # history must start there too for the OOS max drawdown to reproduce.
+    if base >= pd.Timestamp(CANONICAL_START, tz="UTC"):
+        return CANONICAL_START
+    return max(warm.strftime("%Y-%m-%d"), CANONICAL_START)
+
+
+def _simulate_core(
     config: SimulationConfig,
     start_date: str,
     end_date: str,
+    *,
+    warm_overlay: bool = False,
 ) -> SimulationResult:
     """Run the full simulation pipeline.
 
@@ -369,15 +412,24 @@ def run_simulation(
         config: Simulation configuration
         start_date: Inclusive start date (YYYY-MM-DD)
         end_date: Inclusive end date (YYYY-MM-DD)
+        warm_overlay: If True, apply the combined risk overlay on the warm
+            history and then slice to the requested window (matches the
+            backtest's walk-forward path, ``_eval_candidate_period``). If
+            False (default), slice first and apply the overlay on the window
+            only (matches the backtest's headline test-period path,
+            ``_eval_candidate``).
 
     Returns:
         SimulationResult with all time series and metrics
     """
-    # Load data
-    close = _load_close(config.universe, start_date, end_date)
-    open_prices = _load_open(config.universe, start_date, end_date)
+    # Load warm history so the momentum signal is fully populated at
+    # ``start_date`` (matches Cycle 5/6 backtest semantics: weights built on
+    # full history, then sliced to the test window).
+    warm_start = _warmup_start(start_date, config.signal.lookback, config.signal.skip)
+    close = _load_close(config.universe, warm_start, end_date)
+    open_prices = _load_open(config.universe, warm_start, end_date)
 
-    # Compute base momentum weights (point-in-time: signal at t-1, execute at t)
+    # Compute base momentum weights on the warm history
     base_weights = build_weights(
         close,
         lookback=config.signal.lookback,
@@ -385,16 +437,11 @@ def run_simulation(
         top_fraction=config.signal.top_fraction,
     )
 
-    # Align
-    common = close.index.intersection(base_weights.index)
-    close = close.loc[common]
-    open_prices = open_prices.loc[common]
-    base_weights = base_weights.loc[common]
-
-    # Daily returns (using close-to-close for consistency with backtest)
-    daily_ret = close.pct_change().fillna(0.0)
-
-    # Compute regime exposure factor
+    # Compute regime exposure factor on the WARM history. The SPY 200-day SMA
+    # needs ~200 prior observations; computing it on the sliced window would
+    # leave the first ~200 test days with a NaN SMA -> 0 exposure, which is not
+    # what the backtest does (it computes the SMA on the full aligned frame,
+    # then slices the exposure factor to the test window).
     exposure_factor = _compute_regime_exposure(close, config.regime_filter)
 
     # Get cost params
@@ -402,19 +449,66 @@ def run_simulation(
     slippage_bps = config.cost_model.slippage_bps / 10000.0
     rf_annual = get_risk_free_rate()
 
-    # Apply combined overlay
-    combined_weights, net_ret, metrics, weight_changes, costs = _apply_combined_overlay(
-        daily_ret=daily_ret,
-        base_weights=base_weights,
-        exposure_factor=exposure_factor,
-        vol_target=config.risk_overlay.vol_target,
-        vol_lookback=config.risk_overlay.vol_lookback,
-        dd_threshold=config.risk_overlay.dd_control_threshold,
-        dd_reduction=config.risk_overlay.dd_control_reduction,
-        commission_bps=commission_bps,
-        slippage_bps=slippage_bps,
-        rf_annual=rf_annual,
-    )
+    if warm_overlay:
+        # Walk-forward path: apply the combined overlay on the warm history,
+        # then slice to the requested window. Matches the backtest's
+        # ``_eval_candidate_period`` exactly (overlay tracked across the full
+        # history, then sliced to each test fold).
+        daily_ret = close.pct_change().fillna(0.0)
+        combined_weights, net_ret, metrics, weight_changes, costs = _apply_combined_overlay(
+            daily_ret=daily_ret,
+            base_weights=base_weights,
+            exposure_factor=exposure_factor,
+            vol_target=config.risk_overlay.vol_target,
+            vol_lookback=config.risk_overlay.vol_lookback,
+            dd_threshold=config.risk_overlay.dd_control_threshold,
+            dd_reduction=config.risk_overlay.dd_control_reduction,
+            commission_bps=commission_bps,
+            slippage_bps=slippage_bps,
+            rf_annual=rf_annual,
+        )
+        window_mask = (close.index >= pd.Timestamp(start_date, tz="UTC")) & (
+            close.index <= pd.Timestamp(end_date, tz="UTC")
+        )
+        close = close.loc[window_mask]
+        open_prices = open_prices.loc[window_mask]
+        combined_weights = combined_weights.loc[window_mask]
+        net_ret = net_ret.loc[window_mask]
+        weight_changes = weight_changes.loc[window_mask]
+        costs = costs.loc[window_mask]
+        daily_ret = daily_ret.loc[window_mask]
+        # Recompute metrics on the sliced window (the overlay computed them on
+        # the warm history; the backtest reports metrics on the test slice).
+        metrics = compute_metrics(
+            net_ret, combined_weights, commission_bps, slippage_bps, rf_annual,
+        )
+    else:
+        # Headline test-period path: slice first, then apply the overlay on the
+        # window. Matches the backtest's ``_eval_candidate`` exactly: the
+        # rolling realized-vol and drawdown trackers restart at the window
+        # start (the first ~63 days have zero exposure until the vol lookback
+        # fills), which is what reproduces the headline Test Sharpe / Max DD /
+        # trade-count figures within tolerance.
+        window_mask = (close.index >= pd.Timestamp(start_date, tz="UTC")) & (
+            close.index <= pd.Timestamp(end_date, tz="UTC")
+        )
+        close = close.loc[window_mask]
+        open_prices = open_prices.loc[window_mask]
+        base_weights = base_weights.loc[window_mask]
+        exposure_factor = exposure_factor.loc[window_mask]
+        daily_ret = close.pct_change().fillna(0.0)
+        combined_weights, net_ret, metrics, weight_changes, costs = _apply_combined_overlay(
+            daily_ret=daily_ret,
+            base_weights=base_weights,
+            exposure_factor=exposure_factor,
+            vol_target=config.risk_overlay.vol_target,
+            vol_lookback=config.risk_overlay.vol_lookback,
+            dd_threshold=config.risk_overlay.dd_control_threshold,
+            dd_reduction=config.risk_overlay.dd_control_reduction,
+            commission_bps=commission_bps,
+            slippage_bps=slippage_bps,
+            rf_annual=rf_annual,
+        )
 
     # Build trade log
     trade_log = _build_trade_log(
@@ -447,6 +541,24 @@ def run_simulation(
     )
 
 
+def run_simulation(
+    config: SimulationConfig,
+    start_date: str,
+    end_date: str,
+) -> SimulationResult:
+    """Run the full simulation pipeline.
+
+    Args:
+        config: Simulation configuration
+        start_date: Inclusive start date (YYYY-MM-DD)
+        end_date: Inclusive end date (YYYY-MM-DD)
+
+    Returns:
+        SimulationResult with all time series and metrics
+    """
+    return _simulate_core(config, start_date, end_date, warm_overlay=False)
+
+
 def run_simulation_fixed_params(
     symbols: list[str],
     start_date: str,
@@ -461,10 +573,11 @@ def run_simulation_fixed_params(
     spy_sma_window: int = 200,
     commission_bps: float = 1.0,
     slippage_bps: float = 2.0,
-) -> tuple[pd.Series, pd.DataFrame, dict]:
+) -> tuple[pd.Series, pd.DataFrame]:
     """Run simulation with fixed parameters (for walk-forward compatibility).
 
-    Returns (net_returns, combined_weights, metrics).
+    Returns (net_returns, combined_weights) to match the contract expected by
+    ``src.evaluation.walkforward.evaluate_walkforward``.
     """
     config = SimulationConfig(
         universe=symbols,
@@ -478,8 +591,11 @@ def run_simulation_fixed_params(
         regime_filter=RegimeFilterConfig(window=spy_sma_window),
         cost_model=CostModelConfig(commission_bps=commission_bps, slippage_bps=slippage_bps),
     )
-    result = run_simulation(config, start_date, end_date)
-    return result.daily_returns, result.daily_weights, result.metrics
+    # Walk-forward path: apply the combined overlay on the warm history then
+    # slice to the requested window (matches the backtest's
+    # ``_eval_candidate_period`` exactly).
+    result = _simulate_core(config, start_date, end_date, warm_overlay=True)
+    return result.daily_returns, result.daily_weights
 
 
 if __name__ == "__main__":

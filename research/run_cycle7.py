@@ -21,16 +21,15 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.backtest.engine import compute_metrics, get_cost_params, get_risk_free_rate
+from src.backtest.engine import get_cost_params, get_risk_free_rate
 from src.data.yfinance_fetcher import fetch_universe
-from src.features.momentum import build_weights
 from src.simulation.engine import (
-    SimulationConfig,
-    SignalConfig,
-    RiskOverlayConfig,
-    RegimeFilterConfig,
     CostModelConfig,
     ExecutionConfig,
+    RegimeFilterConfig,
+    RiskOverlayConfig,
+    SignalConfig,
+    SimulationConfig,
     run_simulation,
     run_simulation_fixed_params,
 )
@@ -379,7 +378,7 @@ def main():
     full_returns, full_weights, full_metrics = run_simulation_full_history()
 
     # 2. OOS period simulation (paper-trading baseline)
-    oos_returns, oos_weights, oos_metrics, oos_result = run_simulation_oos_only()
+    _, _, oos_metrics, oos_result = run_simulation_oos_only()
 
     # 3. Walk-forward simulation
     wf_results = run_walkforward_simulation()
