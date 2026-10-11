@@ -12,16 +12,20 @@ concurrency:
 
 jobs:
   kilo:
+    continue-on-error: true
     runs-on: ubuntu-latest
     timeout-minutes: 360
 
     steps:
       - uses: actions/checkout@v6
+        continue-on-error: true
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: true
 
-      - env:
+      - id: kilo_controller
+        continue-on-error: true
+        env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -515,6 +519,26 @@ jobs:
           done
 
           echo "Configured Kilo session loop completed. Failed sessions: $total_failed_sessions."
+
+      - name: Summarize controller outcome without blocking recovery
+        if: always()
+        continue-on-error: true
+        env:
+          CONTROLLER_OUTCOME: ${{ steps.kilo_controller.outcome }}
+        shell: bash
+        run: |
+          {
+            echo "## Two-agent Kilo controller health"
+            echo "- Controller step outcome: \`$CONTROLLER_OUTCOME\`"
+            if [ "$CONTROLLER_OUTCOME" = "success" ]; then
+              echo "- Controller completed. Confirm the two session receipts and verified checkpoint."
+            else
+              echo "- Controller ended early. Inspect the session transcript and checkpoint logs; the one-shot marker remains unless the second session or safety cutoff was reached."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$CONTROLLER_OUTCOME" != "success" ]; then
+            echo "::warning::The two-agent controller ended with outcome $CONTROLLER_OUTCOME; details are available in run logs/artifacts."
+          fi
 
       - name: Upload Kilo failure transcripts
         if: always()
