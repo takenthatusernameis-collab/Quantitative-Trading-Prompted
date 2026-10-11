@@ -144,6 +144,79 @@ def run_walkforward(
     return pd.DataFrame(rows)
 
 
+def evaluate_walkforward(
+    symbols: list[str],
+    start_date: str,
+    end_date: str,
+    config_fn,
+    train_years: float = 10.0,
+    test_months: float = 12.0,
+    step_months: float = 6.0,
+    purge_days: int = 21,
+    embargo_days: int = 21,
+) -> pd.DataFrame:
+    """Run a walk-forward evaluation where ``config_fn`` is a callable that
+    takes ``(symbols, start, end)`` and returns ``(net_returns, weights)``.
+
+    Parameters are **fixed** across folds: ``config_fn`` is called with the
+    same parameters on each train/test split. This is the point-in-time,
+    no-re-optimization walk-forward used to validate that a candidate
+    generalizes across time.
+
+    Returns a DataFrame with one row per fold containing train/test metrics.
+    """
+    splits = generate_walkforward_splits(
+        start_date, end_date, train_years, test_months, step_months,
+        purge_days, embargo_days,
+    )
+
+    rows = []
+    for i, sp in enumerate(splits):
+        print(f"  Fold {i+1}/{len(splits)}: train {sp['train_start']}->{sp['train_end']}, "
+              f"test {sp['test_start']}->{sp['test_end']}")
+        try:
+            train_ret, train_w = config_fn(symbols, sp["train_start"], sp["train_end"])
+            test_ret, test_w = config_fn(symbols, sp["test_start"], sp["test_end"])
+
+            train_m = period_metrics(train_ret, train_w)
+            test_m = period_metrics(test_ret, test_w)
+
+            rows.append({
+                "fold": i + 1,
+                "train_start": sp["train_start"],
+                "train_end": sp["train_end"],
+                "test_start": sp["test_start"],
+                "test_end": sp["test_end"],
+                "train_sharpe": train_m.get("sharpe_ratio", np.nan),
+                "train_ann_return": train_m.get("annualized_return", np.nan),
+                "test_sharpe": test_m.get("sharpe_ratio", np.nan),
+                "test_ann_return": test_m.get("annualized_return", np.nan),
+                "test_max_dd": test_m.get("max_drawdown", np.nan),
+                "test_turnover": test_m.get("annualized_turnover", np.nan),
+                "test_trades": test_m.get("trade_count", np.nan),
+                "test_profit_factor": test_m.get("profit_factor", np.nan),
+            })
+        except Exception as exc:  # noqa: BLE001  # intentional: walk-forward continues past any per-fold failure
+            print(f"    ERROR: {exc}")
+            rows.append({
+                "fold": i + 1,
+                "train_start": sp["train_start"],
+                "train_end": sp["train_end"],
+                "test_start": sp["test_start"],
+                "test_end": sp["test_end"],
+                "train_sharpe": np.nan,
+                "train_ann_return": np.nan,
+                "test_sharpe": np.nan,
+                "test_ann_return": np.nan,
+                "test_max_dd": np.nan,
+                "test_turnover": np.nan,
+                "test_trades": np.nan,
+                "test_profit_factor": np.nan,
+            })
+
+    return pd.DataFrame(rows)
+
+
 def summarize_walkforward(wf_df: pd.DataFrame) -> dict:
     """Compute aggregate statistics from walk-forward results."""
     test_sharpes = wf_df["test_sharpe"].dropna()
