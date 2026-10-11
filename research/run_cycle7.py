@@ -35,18 +35,16 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from research.run_cycle5 import _load_close
+from research.run_cycle6 import _eval_candidate, _eval_candidate_period
 from src.data.yfinance_fetcher import fetch_universe
 from src.evaluation.utils import period_metrics
 from src.evaluation.walkforward import generate_walkforward_splits
 from src.simulation.engine import SimulationConfig, SimulationResult, run_simulation
-
-from research.run_cycle5 import _load_close
-from research.run_cycle6 import _eval_candidate, _eval_candidate_period
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
@@ -327,7 +325,7 @@ def write_report(
     cfg_hash = _config_hash()
 
     checks = test_res["checks"]
-    ref_m = test_res["ref_metrics"]
+    test_res["ref_metrics"]
     sim_m = test_res["sim_metrics"]
     sim = test_res["sim_result"]
     risk = sim.risk_metrics
@@ -340,12 +338,7 @@ def write_report(
                 f"| {name} | {int(c['ref']):,} | {int(c['sim']):,} | "
                 f"{int(c['diff']):,} | 0 | {status} |"
             )
-        elif name == "Max Drawdown":
-            rows.append(
-                f"| {name} | {_fmt_pct(c['ref'])} | {_fmt_pct(c['sim'])} | "
-                f"{_fmt_pct(c['diff'])} | 0.5% | {status} |"
-            )
-        elif name == "Ann. Return":
+        elif name == "Max Drawdown" or name == "Ann. Return":
             rows.append(
                 f"| {name} | {_fmt_pct(c['ref'])} | {_fmt_pct(c['sim'])} | "
                 f"{_fmt_pct(c['diff'])} | 0.5% | {status} |"

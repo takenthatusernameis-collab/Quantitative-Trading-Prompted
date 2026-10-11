@@ -7,7 +7,7 @@
 - v003 (tsmomentum_003, 2026-10-11): Updated based on Cycle 4 combined risk overlay test
 
 **Parent hypothesis**: `research/hypotheses/tsmomentum_002.md`
-**Code revision**: f7cbf05
+**Code revision**: 412f292
 
 ---
 
@@ -150,4 +150,4 @@ Same as tsmomentum_002, plus:
 ---
 
 *Updated: 2026-10-11*
-*Code revision: f7cbf05*
+*Code revision: 412f292*

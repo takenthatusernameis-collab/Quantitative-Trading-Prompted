@@ -115,4 +115,4 @@ For reference, Cycle 4's *documented* (under-costed, ~0 bps effective) combined 
 ---
 
 *Report generated: 2026-10-11*
-*Code revision: f7cbf05*
+*Code revision: 412f292*

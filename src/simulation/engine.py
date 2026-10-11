@@ -25,9 +25,7 @@ The ``seed`` field is accepted for API compatibility only.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -86,10 +84,10 @@ class SimulationConfig:
 
     history_start: str = "1993-01-01"
     overlay_warmup: str = "slice"
-    seed: Optional[int] = None
+    seed: int | None = None
 
     @classmethod
-    def from_yaml(cls, path: str | Path) -> "SimulationConfig":
+    def from_yaml(cls, path: str | Path) -> SimulationConfig:
         """Load a SimulationConfig from a YAML file."""
         with open(path, "r") as fh:
             cfg = yaml.safe_load(fh) or {}
@@ -160,7 +158,7 @@ def _load_market_data(
     symbols: list[str],
     history_start: str,
     end_date: str,
-    data: Optional[pd.DataFrame] = None,
+    data: pd.DataFrame | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Return (close, open) price frames for the universe."""
     if data is None:
@@ -311,6 +309,8 @@ def _build_trade_log(
     )
     trade_log["cost"] = trade_log["weight_change"].abs() * cost_per_unit
     trade_log = trade_log.reset_index()
+    # Ensure index levels are named correctly
+    trade_log.columns = ["date", "symbol"] + list(trade_log.columns[2:])
     trade_log.insert(0, "trade_id", np.arange(1, len(trade_log) + 1))
     return trade_log[columns]
 
@@ -365,7 +365,7 @@ def _risk_metrics(
     cvar_95 = float(-tail.mean()) if len(tail) > 0 else 0.0
     exposure = scheduled.abs().sum(axis=1)
     return {
-        "n_days": int(len(clean)),
+        "n_days": len(clean),
         "ann_vol": float(clean.std() * np.sqrt(252)),
         "var_95_daily": float(-var_95),
         "cvar_95_daily": cvar_95,
@@ -382,7 +382,7 @@ def run_simulation(
     config: SimulationConfig,
     start_date: str,
     end_date: str,
-    data: Optional[pd.DataFrame] = None,
+    data: pd.DataFrame | None = None,
 ) -> SimulationResult:
     """Run a deterministic point-in-time simulation of the candidate.
 
@@ -441,6 +441,10 @@ def run_simulation(
         )
         finalized = _finalize(scheduled_full, asset_ret, config)
         scheduled = scheduled_full.loc[mask]
+        net_ret = finalized["net_return"].loc[mask]
+        gross_ret = finalized["gross_return"].loc[mask]
+        costs = finalized["costs"].loc[mask]
+        weight_changes = finalized["weight_changes"].loc[mask]
         vol_scale = targets["vol_scale"].loc[mask]
         dd_scale = targets["dd_scale"].loc[mask]
         overlay_drawdown = targets["overlay_drawdown"].loc[mask]
@@ -452,6 +456,10 @@ def run_simulation(
             targets["combined_weights"], config
         )
         finalized = _finalize(scheduled, sim_ret, config)
+        net_ret = finalized["net_return"]
+        gross_ret = finalized["gross_return"]
+        costs = finalized["costs"]
+        weight_changes = finalized["weight_changes"]
         vol_scale = targets["vol_scale"]
         dd_scale = targets["dd_scale"]
         overlay_drawdown = targets["overlay_drawdown"]
@@ -460,10 +468,6 @@ def run_simulation(
             f"Unsupported overlay_warmup: {config.overlay_warmup!r}"
         )
 
-    net_ret = finalized["net_return"]
-    gross_ret = finalized["gross_return"]
-    costs = finalized["costs"]
-    weight_changes = finalized["weight_changes"]
     cost_per_unit = finalized["cost_per_unit"]
 
     cum_net = (1 + net_ret).cumprod()
@@ -500,7 +504,7 @@ def run_simulation(
         "history_start": config.history_start,
         "data_start": str(close.index.min()),
         "data_end": str(close.index.max()),
-        "n_price_rows": int(len(close)),
+        "n_price_rows": len(close),
         "price_field": config.price_field,
         "cost_model_round_trip_bps": config.commission_bps + config.slippage_bps,
         "overlay_warmup": config.overlay_warmup,
