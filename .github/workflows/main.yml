@@ -127,7 +127,7 @@ jobs:
           git config user.name "kilo-autonomous"
           git config user.email "kilo-autonomous@users.noreply.github.com"
 
-          agents="${{ inputs.agents || '1000' }}"
+          agents="${{ inputs.agents || '2' }}"
           if ! [[ "$agents" =~ ^[0-9]+$ ]]; then
             echo "::warning::Invalid agents input; using the safe default of 1000 instead of failing the workflow."
             agents=1000
