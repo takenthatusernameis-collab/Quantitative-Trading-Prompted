@@ -1,5 +1,4 @@
-Two-agent Kilo reliability run marker, refreshed after successful independent YAML/schema and embedded-Bash validation.
+Two-agent Kilo reliability run marker.
 
-Purpose: start exactly two sequential fresh Kilo sessions in .github/workflows/kilo-two-agent-once.yml.
-The ordinary scheduled workflow must skip while this marker exists.
-The one-shot controller removes this file during the second session's checkpoint.
+Purpose: start exactly two sequential fresh Kilo sessions in the scheduled Kilo workflow.
+The routine workflow sets agents=2 while this marker exists. It removes this marker and writes SKIP_NEXT_ROUTINE_KILO after the second session or the 355-minute cutoff.
