@@ -1,0 +1,14 @@
+name: Kilo marker dispatcher
+
+on:
+  workflow_run:
+    workflows: ["Kilo workflow validation"]
+    types: [completed]
+    branches: [main]
+
+permissions: write-all
+
+jobs:
+  two-agent:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_commit.message == 'TRIGGER_TWO_AGENT_KILO_SMOKE' }}
+    uses: ./.github/workflows/kilo-two-agent-once.yml
