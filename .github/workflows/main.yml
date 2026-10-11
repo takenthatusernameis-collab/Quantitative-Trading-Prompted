@@ -1,5 +1,5 @@
-# temporary validation trigger; remove after diagnostics
-name: Kilo 
+name: Kilo
+# Recoverable Kilo errors are handled by the session controller; CI audits YAML and Bash syntax.
 
 on:
   schedule:
