@@ -1,5 +1,5 @@
 name: Kilo
-# Recoverable Kilo errors are handled by the session controller; CI audits YAML and Bash syntax.
+# Recovery controller syntax is checked by the dedicated Kilo workflow audit.
 
 on:
   schedule:
