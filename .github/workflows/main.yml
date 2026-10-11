@@ -1,5 +1,5 @@
 name: Kilo
-# Recovery controller syntax is checked by the dedicated Kilo workflow audit.
+# Recovery controller syntax is checked by the dedicated Kilo workflow audit. Embedded Bash syntax is validated.
 
 on:
   schedule:
