@@ -32,6 +32,18 @@ def load_settings() -> dict:
         return yaml.safe_load(fh) or {}
 
 
+def _ensure_utc(index: pd.DatetimeIndex) -> pd.DatetimeIndex:
+    """Normalize an index to tz-aware UTC, handling naive and aware input."""
+    index = pd.to_datetime(index)
+    if isinstance(index, pd.DatetimeIndex):
+        if index.tz is None:
+            return index.tz_localize("UTC", ambiguous="infer", nonexistent="shift_forward")
+        return index.tz_convert("UTC")
+    return pd.DatetimeIndex(index).tz_localize(
+        "UTC", ambiguous="infer", nonexistent="shift_forward"
+    )
+
+
 class YFinanceFetcher:
     """Fetch and cache daily OHLCV from Yahoo Finance.
 
@@ -128,9 +140,7 @@ class YFinanceFetcher:
                 raw[col] = np.nan
         raw = raw[["Open", "High", "Low", "Close", "Volume"]]
 
-        raw.index = pd.to_datetime(raw.index).tz_localize(
-            "UTC", ambiguous="infer", nonexistent="shift_forward"
-        )
+        raw.index = _ensure_utc(raw.index)
         raw = raw[~raw.index.duplicated(keep="last")].sort_index()
         return raw
 
@@ -148,7 +158,7 @@ class YFinanceFetcher:
             return None
         if df.empty:
             return None
-        df.index = pd.to_datetime(df.index).tz_localize("UTC", ambiguous="infer", nonexistent="shift_forward")
+        df.index = _ensure_utc(df.index)
         return df.sort_index()
 
     def _save_cached(self, symbol: str, df: pd.DataFrame) -> None:
