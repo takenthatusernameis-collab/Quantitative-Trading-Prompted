@@ -5,10 +5,9 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/main.yml"
-      - ".github/workflows/kilo-two-agent-once.yml"
       - ".github/workflows/kilo-workflow-audit.yml"
-      - ".github/workflows/kilo-marker-dispatcher.yml"
       - ".kilo/TWO_AGENT_ONCE"
+      - ".kilo/SKIP_NEXT_ROUTINE_KILO"
   workflow_dispatch:
 
 permissions:
@@ -23,12 +22,12 @@ jobs:
       - name: Validate workflow syntax and schema
         uses: rhysd/actionlint@v1.7.7
         with:
-          args: -color .github/workflows/main.yml .github/workflows/kilo-two-agent-once.yml .github/workflows/kilo-workflow-audit.yml .github/workflows/kilo-marker-dispatcher.yml
+          args: -color .github/workflows/main.yml .github/workflows/kilo-workflow-audit.yml
       - name: Independently parse YAML and validate embedded Bash
         shell: bash
         run: |
           set -euo pipefail
-          ruby -ryaml -e 'ARGV.each do |path|; doc = YAML.load_file(path); puts "#{path}: YAML OK"; if ["main.yml", "kilo-two-agent-once.yml", "kilo-marker-dispatcher.yml"].include?(File.basename(path)); script = doc.fetch("jobs").fetch("kilo").fetch("steps").find { |step| step["run"] }.fetch("run"); outdir = File.join(ENV.fetch("RUNNER_TEMP"), "kilo-shell-validation"); Dir.mkdir(outdir) unless Dir.exist?(outdir); File.write(File.join(outdir, File.basename(path, ".yml") + ".sh"), script); end; end' .github/workflows/main.yml .github/workflows/kilo-two-agent-once.yml .github/workflows/kilo-workflow-audit.yml .github/workflows/kilo-marker-dispatcher.yml
+          ruby -ryaml -e 'ARGV.each do |path|; doc = YAML.load_file(path); puts "#{path}: YAML OK"; if ["main.yml"].include?(File.basename(path)); script = doc.fetch("jobs").fetch("kilo").fetch("steps").find { |step| step["run"] }.fetch("run"); outdir = File.join(ENV.fetch("RUNNER_TEMP"), "kilo-shell-validation"); Dir.mkdir(outdir) unless Dir.exist?(outdir); File.write(File.join(outdir, File.basename(path, ".yml") + ".sh"), script); end; end' .github/workflows/main.yml .github/workflows/kilo-workflow-audit.yml
           for script in "$RUNNER_TEMP"/kilo-shell-validation/*.sh; do
             bash -n "$script"
             echo "$script: Bash syntax OK"
