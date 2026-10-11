@@ -1,0 +1,32 @@
+# Paper-Trading Configuration for tsmomentum_spytrend_001
+#
+# This configuration controls the daily paper-trading prospective
+# validation run. It references the frozen simulation candidate config
+# and adds operational parameters for paper-trading monitoring.
+#
+# Generated: Cycle 8
+
+candidate_id: "tsmomentum_spytrend_001"
+simulation_config: "config/simulation_candidate_001.yaml"
+notional_capital: 100000  # USD for position sizing display
+
+data_refresh:
+  schedule: "daily"  # or "weekdays"
+  timezone: "America/New_York"
+  market_close_hour: 16  # 4 PM ET
+
+alert_thresholds:
+  regime_flip: true
+  vol_scale_max: 2.0
+  dd_scale_min: 0.25
+  signal_turnover_pct: 0.5  # alert if daily turnover > 50%
+  max_drawdown_pct: 0.10  # alert if paper DD exceeds 10%
+
+output_dir: "data/processed/paper_trading"
+report_path: "research/reports/paper_trading_rolling.md"
+state_path: "data/processed/paper_trading_state.yaml"
+
+go_no_go:
+  min_days: 63  # minimum paper track record (3 months)
+  target_sharpe: 0.9
+  max_dd_threshold: 0.15
