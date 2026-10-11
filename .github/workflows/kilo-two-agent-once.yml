@@ -2,10 +2,7 @@ name: Kilo two-agent one-shot
 
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".kilo/TWO_AGENT_ONCE"
+  workflow_call:
 
 permissions: write-all
 
