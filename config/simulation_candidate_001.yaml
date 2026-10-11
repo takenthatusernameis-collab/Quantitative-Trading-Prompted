@@ -1,0 +1,28 @@
+candidate_id: "tsmomentum_spytrend_001"
+universe: ["SPY", "QQQ", "IWM", "TLT", "GLD", "EFA", "EEM"]
+signal:
+  type: "tsmomentum"
+  lookback: 226
+  skip: 21
+  top_fraction: 0.5
+  rebalance_freq: "monthly"
+risk_overlay:
+  vol_target: 0.10
+  vol_lookback: 63
+  max_leverage: 1.0
+  dd_control:
+    threshold: 0.15
+    reduction: 0.5
+regime_filter:
+  type: "spy_sma"
+  window: 200
+  exposure_below: 0.0
+  exposure_above: 1.0
+cost_model:
+  commission_bps: 1.0
+  slippage_bps: 2.0
+  total_round_trip_bps: 3.0
+execution:
+  signal_lag_days: 1
+  price_field: "Open"
+  timezone: "UTC"
