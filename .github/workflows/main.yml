@@ -26,7 +26,7 @@ concurrency:
 
 jobs:
   kilo:
-    if: ${{ github.event_name != 'push' || github.event.head_commit.message == 'TRIGGER_TWO_AGENT_KILO_SMOKE' }}
+    continue-on-error: true
     runs-on: ubuntu-latest
     timeout-minutes: 360
 
@@ -42,10 +42,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KILO_TRIGGER_EVENT: ${{ github.event_name }}
+          KILO_TRIGGER_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           set -Eeuo pipefail
           # Start the single overall work deadline before installing Kilo.
           cutoff_epoch=$(($(date +%s) + 355 * 60))
+
+          # Keep marker-removal pushes harmless: only the exact marker commit may
+          # enter the one-shot path. Other marker-path pushes exit cleanly.
+          if [ "$KILO_TRIGGER_EVENT" = "push" ] && [ "$KILO_TRIGGER_COMMIT_MESSAGE" != "TRIGGER_TWO_AGENT_KILO_SMOKE" ]; then
+            echo "::notice::Non-activation marker push; safely exiting without starting Kilo."
+            exit 0
+          fi
 
           # A durable one-shot marker converts this scheduled activation to
           # exactly two sequential sessions; it never starts the 1000-session default.
