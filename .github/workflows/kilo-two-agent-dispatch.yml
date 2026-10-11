@@ -4,63 +4,96 @@ on:
   workflow_run:
     workflows: ["Kilo workflow validation"]
     types: [completed]
+  schedule:
+    - cron: "*/5 * * * *"
 
 permissions:
   contents: read
   actions: write
 
+# Serialize timer-based recovery and validation-completion triggers. The main
+# Kilo workflow has its own repository-level concurrency lock as a second guard.
 concurrency:
-  group: kilo-two-agent-dispatch-${{ github.event.workflow_run.head_sha }}
+  group: kilo-two-agent-dispatch
   cancel-in-progress: false
 
 jobs:
   dispatch:
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == github.event.repository.default_branch }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Checkout exact commit that passed validation
+      - name: Checkout validated commit or current scheduled branch
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Verify activation and dispatch exactly two sessions
+      - name: Verify validation, marker, and active-run state before dispatch
         env:
           GH_TOKEN: ${{ github.token }}
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
-          ACTIVATION_MESSAGE: ${{ github.event.workflow_run.head_commit.message }}
+          EVENT_NAME: ${{ github.event_name }}
+          VALIDATION_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          VALIDATION_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          VALIDATION_SHA: ${{ github.event.workflow_run.head_sha }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         shell: bash
         run: |
           set -Eeuo pipefail
 
-          # Only the deliberately named marker commit may activate the Kilo run.
-          if [ "$HEAD_BRANCH" != "$DEFAULT_BRANCH" ]; then
-            echo "::notice::Validation ran on a non-default branch; no dispatch."
-            exit 0
-          fi
-          if [ "$ACTIVATION_MESSAGE" != "TRIGGER_TWO_AGENT_KILO_SMOKE" ]; then
-            echo "::notice::Commit is not the one-shot activation commit; no dispatch."
-            exit 0
-          fi
-
-          # Do not dispatch an old validation result if main advanced meanwhile.
-          if ! git fetch origin "$DEFAULT_BRANCH"; then
-            echo "::error::Could not fetch the current default branch; keeping the marker for retry."
+          if [ -z "$DEFAULT_BRANCH" ]; then
+            echo "::error::Default branch is missing; refusing dispatch."
             exit 1
           fi
-          tested_sha="$(git rev-parse HEAD)"
-          live_sha="$(git rev-parse "origin/$DEFAULT_BRANCH")"
-          if [ "$tested_sha" != "$HEAD_SHA" ] || [ "$live_sha" != "$HEAD_SHA" ]; then
-            echo "::notice::The validated commit is no longer the live default-branch head; refusing stale dispatch."
+
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            if [ "$VALIDATION_CONCLUSION" != "success" ] || [ "$VALIDATION_BRANCH" != "$DEFAULT_BRANCH" ]; then
+              echo "::notice::Validator did not succeed on the default branch; refusing dispatch."
+              exit 0
+            fi
+            if [ -z "$VALIDATION_SHA" ] || [ "$(git rev-parse HEAD)" != "$VALIDATION_SHA" ]; then
+              echo "::notice::Checkout does not match the commit whose validation completed; refusing dispatch."
+              exit 0
+            fi
+          elif [ "$EVENT_NAME" != "schedule" ]; then
+            echo "::notice::Unsupported event $EVENT_NAME; refusing dispatch."
             exit 0
           fi
 
-          if ! git cat-file -e "$HEAD_SHA:.kilo/TWO_AGENT_ONCE" 2>/dev/null; then
-            echo "::notice::One-shot marker is absent from the validated commit; no dispatch."
+          if ! git fetch origin "$DEFAULT_BRANCH"; then
+            echo "::error::Could not fetch the current default branch; marker remains for retry."
+            exit 1
+          fi
+          live_sha="$(git rev-parse "origin/$DEFAULT_BRANCH")"
+
+          # Never dispatch a stale validator result. Scheduled recovery must find
+          # a successful validator run for this exact current default-branch SHA.
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            if [ "$VALIDATION_SHA" != "$live_sha" ]; then
+              echo "::notice::Default branch advanced after validation; refusing stale dispatch."
+              exit 0
+            fi
+          else
+            validation_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/kilo-workflow-audit.yml/runs?branch=$DEFAULT_BRANCH&per_page=100")"
+            if ! jq -e --arg sha "$live_sha" '[.workflow_runs[] | select(.head_sha == $sha and .conclusion == "success")] | length > 0' <<< "$validation_json" >/dev/null; then
+              echo "::notice::Current default-branch SHA has no successful validator run; waiting for validation."
+              exit 0
+            fi
+          fi
+
+          # A marker on origin/main authorizes exactly one two-session campaign.
+          # The current controller removes it after session two or the safety cutoff.
+          if ! git cat-file -e "origin/$DEFAULT_BRANCH:.kilo/TWO_AGENT_ONCE" 2>/dev/null; then
+            echo "::notice::No one-shot marker is present on the live default branch; nothing to dispatch."
+            exit 0
+          fi
+
+          # Avoid duplicate dispatches and recover automatically after a run that
+          # stalls or fails before consuming the marker. GitHub's main-workflow
+          # concurrency lock is the final race-condition guard.
+          runs_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?per_page=100")"
+          if jq -e '[.workflow_runs[] | select(.name == "Kilo" and (.status == "in_progress" or .status == "queued"))] | length > 0' <<< "$runs_json" >/dev/null; then
+            echo "::notice::A Kilo run is already queued or in progress; scheduled recovery will re-check later."
             exit 0
           fi
 
@@ -69,7 +102,7 @@ jobs:
           while [ "$attempt" -lt 3 ]; do
             attempt=$((attempt + 1))
             if timeout --signal=TERM --kill-after=5s 20s gh workflow run main.yml --ref "$DEFAULT_BRANCH" --field agents=2; then
-              echo "Dispatched the gated two-agent Kilo run after successful validation."
+              echo "Dispatched exactly two sequential Kilo sessions after successful validation."
               exit 0
             fi
             if [ "$attempt" -lt 3 ]; then
@@ -79,5 +112,5 @@ jobs:
             fi
           done
 
-          echo "::error::Could not dispatch after three bounded attempts. Marker remains for explicit recovery."
+          echo "::error::Could not dispatch after three bounded attempts. The durable marker remains for the next scheduled recovery check."
           exit 1
