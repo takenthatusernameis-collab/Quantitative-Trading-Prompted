@@ -45,6 +45,70 @@ jobs:
             exit 0
           fi
 
+          # A single-use marker prevents a routine schedule queued behind the
+          # smoke test from starting a 1000-session campaign immediately afterward.
+          if [ -f ".kilo/SKIP_NEXT_ROUTINE_KILO" ]; then
+            echo "::notice::Consuming the one-time post-smoke skip; this routine activation will exit successfully."
+            DEFAULT_BRANCH="$(git branch --show-current)"
+            git config user.name "kilo-autonomous"
+            git config user.email "kilo-autonomous@users.noreply.github.com"
+            if ! rm -f -- .kilo/SKIP_NEXT_ROUTINE_KILO || ! git add -A -- .kilo/SKIP_NEXT_ROUTINE_KILO || ! git commit -m "chore(kilo): consume post-smoke skip marker"; then
+              echo "::warning::Could not prepare the one-time skip-marker removal; a later routine activation will retry."
+              exit 0
+            fi
+
+            skip_marker_persisted=0
+            skip_marker_attempt=0
+            while [ "$skip_marker_persisted" -ne 1 ]; do
+              remaining=$((cutoff_epoch - $(date +%s)))
+              if [ "$remaining" -le 0 ]; then
+                echo "::warning::Could not persist the one-time skip-marker removal before the 355-minute cutoff; routine activations will safely retry later."
+                break
+              fi
+              skip_marker_attempt=$((skip_marker_attempt + 1))
+              if ! git fetch origin "$DEFAULT_BRANCH"; then
+                echo "::warning::Could not fetch origin/$DEFAULT_BRANCH while consuming the skip marker; retrying."
+                delay=10
+              else
+                delay=0
+                if ! git merge-base --is-ancestor "origin/$DEFAULT_BRANCH" HEAD; then
+                  if ! git rebase "origin/$DEFAULT_BRANCH"; then
+                    git rebase --abort >/dev/null 2>&1 || true
+                    echo "::warning::Could not reconcile the skip-marker removal with the remote; retrying."
+                    delay=10
+                  fi
+                fi
+                if [ "$delay" -eq 0 ]; then
+                  if ! git push origin "HEAD:$DEFAULT_BRANCH"; then
+                    echo "::warning::Could not push the skip-marker removal on attempt $skip_marker_attempt; retrying."
+                    delay=10
+                  elif ! git fetch origin "$DEFAULT_BRANCH"; then
+                    echo "::warning::Could not verify the skip-marker removal; retrying."
+                    delay=10
+                  elif git cat-file -e "origin/$DEFAULT_BRANCH:.kilo/SKIP_NEXT_ROUTINE_KILO" 2>/dev/null; then
+                    echo "::warning::The skip marker still exists remotely; retrying."
+                    delay=10
+                  elif ! git merge-base --is-ancestor HEAD "origin/$DEFAULT_BRANCH"; then
+                    echo "::warning::The removal commit is not yet included in the remote branch; retrying."
+                    delay=10
+                  else
+                    skip_marker_persisted=1
+                    echo "Verified the one-time skip-marker removal on origin/$DEFAULT_BRANCH."
+                  fi
+                fi
+              fi
+              if [ "$skip_marker_persisted" -ne 1 ]; then
+                remaining=$((cutoff_epoch - $(date +%s)))
+                if [ "$remaining" -le 0 ]; then break; fi
+                if [ "$delay" -gt "$remaining" ]; then delay="$remaining"; fi
+                if [ "$delay" -gt 0 ]; then sleep "$delay"; fi
+              fi
+            done
+            # Intentionally return success whether persistence recovered or not.
+            # If it did not, the remote marker keeps future activations safely paused.
+            exit 0
+          fi
+
           # Kilo uses only the repository-scoped GITHUB_TOKEN. Workflow definitions are maintainer-managed because this token cannot grant workflows permission.
 
           # Give Kilo explicit, writable state and temp roots. This also pre-creates
