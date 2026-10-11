@@ -7,25 +7,25 @@ on:
       - ".github/workflows/main.yml"
       - ".github/workflows/kilo-two-agent-once.yml"
       - ".github/workflows/kilo-workflow-audit.yml"
+      - ".kilo/TWO_AGENT_ONCE"
   workflow_dispatch:
-
-permissions:
-  contents: read
 
 jobs:
   validate:
+    permissions:
+      contents: read
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
-      - name: Validate GitHub Actions workflow syntax and schema
+      - name: Validate Kilo workflow syntax and schema
         uses: rhysd/actionlint@v1.7.7
         with:
-          args: -color .github/workflows/main.yml .github/workflows/kilo-two-agent-once.yml
+          args: -color .github/workflows/main.yml .github/workflows/kilo-two-agent-once.yml .github/workflows/kilo-workflow-audit.yml
       - name: Independent YAML parse
         shell: bash
         run: |
-          ruby -ryaml -e 'ARGV.each { |path| YAML.load_file(path); puts "#{path}: YAML OK" }' .github/workflows/main.yml .github/workflows/kilo-two-agent-once.yml
+          ruby -ryaml -e 'ARGV.each { |path| YAML.load_file(path); puts "#{path}: YAML OK" }' .github/workflows/main.yml .github/workflows/kilo-two-agent-once.yml .github/workflows/kilo-workflow-audit.yml
       - name: Validate embedded Kilo shell syntax
         shell: bash
         run: |
@@ -33,3 +33,9 @@ jobs:
           for script in "$RUNNER_TEMP"/kilo-shell-validation/*.sh; do
             bash -n "$script" || exit 1
           done
+
+  two-agent-smoke:
+    needs: validate
+    if: ${{ github.event_name == 'push' && (contains(toJSON(github.event.commits.*.added), '.kilo/TWO_AGENT_ONCE') || contains(toJSON(github.event.commits.*.modified), '.kilo/TWO_AGENT_ONCE')) }}
+    permissions: write-all
+    uses: ./.github/workflows/kilo-two-agent-once.yml
