@@ -126,12 +126,17 @@ def format_risk_summary(results: dict, baseline_metrics: dict) -> str:
 
     for name, data in results.items():
         m = data["metrics"]
+        pf = m.get("profit_factor", 0)
+        if isinstance(pf, str) or not np.isfinite(pf):
+            pf_str = str(pf)
+        else:
+            pf_str = f"{pf:.2f}"
         lines.append(
             f"| {name} | {m.get('sharpe_ratio', 0):.4f} | "
             f"{m.get('annualized_return', 0):.4f} | "
             f"{m.get('max_drawdown', 0):.4f} | "
             f"{m.get('sortino_ratio', 0):.4f} | "
-            f"{m.get('profit_factor', 0):.2f} | "
+            f"{pf_str} | "
             f"{m.get('trade_count', 0)} |"
         )
 

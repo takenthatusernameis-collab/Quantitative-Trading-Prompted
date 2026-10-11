@@ -1,1 +1,1 @@
-Evaluation modules for quantitative trading research.
+"""Evaluation modules for quantitative trading research."""
