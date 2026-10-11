@@ -1,3 +1,3 @@
-Two-agent Kilo reliability run marker (revalidated).
+Two-agent Kilo reliability run marker (final validated activation).
 
-The next exact marker commit must start two fresh sequential Kilo sessions only in Quantitative-Trading-Prompted. This marker overrides the 1000-session default. The controller removes it after session two or the 355-minute safety cutoff, writes the one-time routine skip marker first, and preserves recoverable failures for diagnosis.
+Required run: exactly two fresh sequential Kilo sessions, only in Quantitative-Trading-Prompted. The dispatcher may invoke Kilo only after the Kilo workflow validator succeeds for the commit whose message is exactly TRIGGER_TWO_AGENT_KILO_SMOKE. The controller preserves error evidence and checkpoints and stops at the 355-minute safety cutoff. The routine scheduler must not start a duplicate run while this marker exists.
