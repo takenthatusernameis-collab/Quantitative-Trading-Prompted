@@ -1,0 +1,1 @@
+One-shot marker: this file exists only to trigger exactly two sequential Kilo sessions for the requested reliability smoke run. Remove the marker and its trigger after the run is registered.
