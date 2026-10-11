@@ -36,31 +36,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          KILO_TRIGGER_EVENT: ${{ github.event_name }}
-          KILO_TRIGGER_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           set -Eeuo pipefail
           # Start the single overall work deadline before installing Kilo.
           cutoff_epoch=$(($(date +%s) + 355 * 60))
 
-          # Keep marker-removal pushes harmless: only the exact marker commit may
-          # enter the one-shot path. Other marker-path pushes exit cleanly.
-          if [ "$KILO_TRIGGER_EVENT" = "push" ] && [ "$KILO_TRIGGER_COMMIT_MESSAGE" != "TRIGGER_TWO_AGENT_KILO_SMOKE" ]; then
-            echo "::notice::Non-activation marker push; safely exiting without starting Kilo."
-            exit 0
-          fi
-
-          # A durable one-shot marker converts this scheduled activation to
-          # exactly two sequential sessions; it never starts the 1000-session default.
-          one_shot_mode=0
+          # The validated marker dispatcher owns the one-shot run. Routine
+          # schedule/manual activations exit here while the marker is present so
+          # they cannot start a duplicate or the 1000-session default.
           if [ -f ".kilo/TWO_AGENT_ONCE" ]; then
-            one_shot_mode=1
-            echo "::notice::One-shot two-agent run requested; this activation will run at most two sequential sessions."
+            echo "::notice::One-shot marker is active; routine activation is held for the validated two-agent dispatcher."
+            exit 0
           fi
 
           # A single-use marker prevents a routine schedule queued behind the
           # smoke test from starting a 1000-session campaign immediately afterward.
-          if [ "$one_shot_mode" -ne 1 ] && [ -f ".kilo/SKIP_NEXT_ROUTINE_KILO" ]; then
+          if [ -f ".kilo/SKIP_NEXT_ROUTINE_KILO" ]; then
             echo "::notice::Consuming the one-time post-smoke skip; this routine activation will exit successfully."
             # GitHub Actions checkout commonly uses detached HEAD, so
             # git branch --show-current is empty; always prefer the event's
@@ -234,10 +225,7 @@ jobs:
             echo "::warning::Agents input was above 1000; clamping to 1000."
             agents=1000
           fi
-          if [ "$one_shot_mode" -eq 1 ]; then
-            agents=2
-          fi
-          echo "Configured sequential Kilo sessions: $agents (one-shot mode: $one_shot_mode)."
+          echo "Configured sequential Kilo sessions: $agents."
 
           command=$(cat <<'PROMPT'
           Execute the task assigned by the previous agent and prepare a task for the next agent !
@@ -390,20 +378,6 @@ jobs:
             fi
             if ! git clean -fd -- .github/workflows; then
               echo "::warning::Could not remove every agent-created workflow file; those paths remain excluded from checkpoint staging."
-            fi
-
-            # End the one-shot campaign after its second session, or at the global
-            # safety cutoff if only one session could finish. Write the pause marker
-            # first so an ordinary queued activation cannot jump to 1000 sessions.
-            if [ "$(date +%s)" -ge "$cutoff_epoch" ]; then cutoff=1; fi
-            if [ "$one_shot_mode" -eq 1 ] && { [ "$agent_index" -eq 2 ] || [ "$cutoff" -eq 1 ]; }; then
-              if printf '%s\n' 'Consume once to skip the first routine Kilo activation after a two-agent one-shot run.' > .kilo/SKIP_NEXT_ROUTINE_KILO; then
-                if ! rm -f -- .kilo/TWO_AGENT_ONCE; then
-                  echo "::warning::Could not remove the one-shot marker; it remains to prevent a default 1000-session activation."
-                fi
-              else
-                echo "::warning::Could not write the post-smoke pause marker; preserving the one-shot marker for a safe retry."
-              fi
             fi
 
           stage_repository_changes() {
