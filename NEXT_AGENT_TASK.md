@@ -1,144 +1,146 @@
-# Next Agent Task: Cycle 4 - Risk-Adjusted Promotion Test
+# Next Agent Task: Cycle 5 - Regime-Aware Filter Exploration
 
 ## Context
 
-Cycle 3 completed rigorous robustness and statistical validation of the US Equity
-Time-Series Momentum baseline strategy.
+Cycle 4 completed the combined risk overlay promotion test for the US Equity
+Time-Series Momentum strategy.
 
-### Cycle 3 Key Findings
+### Cycle 4 Key Findings
 
 | Criterion | Result | Threshold | Status |
 |-----------|--------|-----------|--------|
-| Net OOS Sharpe (test) | 0.645 | ≥ 0.9 | FAIL |
-| PSR vs 0 | 0.983 | > 0.50 | PASS |
-| DSR probability | 0.416 | > 0.90 | FAIL |
-| PBO | 0.012 | < 0.50 | PASS |
-| Walk-forward mean Sharpe (48 folds) | 0.679 | > 0.3 | PASS |
-| % Positive WF folds | 97.9% | > 50% | PASS |
-| Parameter plateau | No | Yes | FAIL |
-| IS-OOS rank correlation | -0.14 | > 0 | FAIL |
+| Best Combined Sharpe (test) | 0.7794 | ≥ 0.9 | FAIL |
+| Best Config | combined_vol_0.1_dd_0.15 (lookback=226) | — | — |
+| Max DD (best) | -16.25% | > -30% | PASS |
+| Trades (best) | 1,812 | > 100 | PASS |
+| Gap to promotion | 0.1206 Sharpe points | — | — |
 
-### Classification: Exploratory Signal
+### Classification: Exploratory Signal (Retained)
 
-The baseline does not meet the 0.9 Sharpe promotion gate. However, risk overlays
-show promise for closing the gap:
+The combined risk overlay **does not meet** the 0.9 Sharpe promotion gate.
+The best configuration (`combined_vol_0.1_dd_0.15` with 226-day lookback)
+achieves test Sharpe = 0.779, an improvement over baseline (0.645) and
+single overlays (best single: dd_control_0.15 at 0.818), but falls short
+of the promotion threshold.
 
-| Overlay | Test Sharpe | Max DD | Below -30%? |
-|---------|-------------|--------|-------------|
-| Baseline | 0.645 | -30.41% | No (fails) |
-| dd_control_0.15 | 0.818 | -20.89% | Yes |
-| dd_control_0.20 | 0.785 | -19.86% | Yes |
-| vol_target_0.10 | 0.707 | -18.51% | Yes |
-| vol_target_0.15 | 0.627 | -25.95% | Yes |
-
-Additionally, the ±10% parameter perturbation found that a **226-day lookback**
-(10% less than baseline 252) achieves test Sharpe = 0.705 vs baseline 0.645.
+**Risk overlay progression summary:**
+- Baseline (252): Sharpe 0.645, DD -30.4%
+- dd_control_0.15: Sharpe 0.818, DD -20.9%
+- vol_target_0.10: Sharpe 0.707, DD -18.5%
+- 226-day lookback: Sharpe 0.705
+- Best combined (226, vol=0.10, dd=0.15): Sharpe 0.779, DD -16.3%
 
 ### Evidence Summary
 
-All 7 Cycle 3 artifacts are complete and validated:
-- `research/experiments/tsmomentum_robustness_001.md`
-- `research/experiments/tsmomentum_walkforward_001.md`
-- `research/experiments/tsmomentum_statistics_001.md`
-- `research/experiments/tsmomentum_benchmark_001.md`
-- `research/experiments/tsmomentum_risk_001.md`
-- `research/hypotheses/tsmomentum_002.md`
-- `research/reports/tsmomentum_decision_001.md`
+All 3 Cycle 4 artifacts are complete and validated:
+- `research/experiments/tsmomentum_combined_risk_001.md`
+- `research/reports/tsmomentum_decision_002.md`
+- `research/hypotheses/tsmomentum_003.md`
+
+Cycle 3 artifacts remain reproducible (verified via `python3 research/run_cycle3.py`).
 
 ---
 
 ## Objective
 
-Determine whether **combining risk overlays** (volatility targeting + drawdown
-control) and the **perturbed 226-day lookback** can elevate the strategy's test-
-period net Sharpe ratio to >= 0.9, promoting it from "Exploratory Signal" to
-"Credible Candidate."
+Explore **regime-aware filters** or **alternative universe selection** to
+improve the strategy's risk-adjusted returns, as risk overlay tuning has been
+exhausted (pre-specified grid of 8 combinations tested).
 
-The hypothesis is evidence-based: individual risk overlays and the 226-day
-perturbation each independently improve Sharpe, suggesting a combination may be
-sufficient to cross the 0.9 threshold.
+The hypothesis: Time-series momentum performs differently across market regimes
+(e.g., equity bull/bear, high/low volatility, inflation regimes). Filtering or
+adapting to regimes may improve net Sharpe toward the 0.9 promotion gate.
 
 ---
 
 ## Acceptance Criteria
 
-1. **Combined Risk Overlay Analysis** at
-   `research/experiments/tsmomentum_combined_risk_001.md`:
-   - Test all 4 combinations of {vol_target: 0.10, 0.15} × {dd_control: 0.15, 0.20}
-   - Apply each combination to both baseline (252-day) and perturbed (226-day)
-     lookback parameters
-   - Report per-combination: test Sharpe, annualized return, max DD, sortino,
-     profit factor, trade count
-   - Identify the best combination by Sharpe, and test if it achieves Sharpe >= 0.9
+1. **Regime Analysis** at `research/experiments/tsmomentum_regime_001.md`:
+   - Define 2-3 regime classification methods (e.g., SPY trend, VIX level,
+     inflation proxy, moving average regimes)
+   - Segment the test period (2018-2026) by regime
+   - Report per-regime strategy performance (Sharpe, return, DD, trades)
+   - Identify regimes where strategy underperforms/outperforms
 
-2. **Updated Decision** at `research/reports/tsmomentum_decision_002.md`:
-   - Recalculate promotion gates with the best combined overlay
-   - If Sharpe >= 0.9 AND > 100 OOS trades AND max DD > -30%: label as
-     **Credible Candidate**
-   - Otherwise: retain **Exploratory Signal** with updated rationale
+2. **Regime Filter Test** at `research/experiments/tsmomentum_regime_filter_001.md`:
+   - Test 1-2 regime filters (e.g., "go to cash when SPY < 200-day MA",
+     "reduce exposure when VIX > 30")
+   - Apply filters to the best Cycle 4 config (226-day, vol=0.10, dd=0.15)
+   - Report test-period metrics for filtered vs unfiltered
+   - Test if any filter achieves Sharpe >= 0.9
 
-3. **Updated Hypothesis** at `research/hypotheses/tsmomentum_003.md`:
-   - Incorporate the combined overlay finding
-   - Update expected Sharpe range to include the risk-adjusted estimate
-   - Document the new parameter + overlay combination
+3. **Alternative Universe Test** at `research/experiments/tsmomentum_universe_001.md`:
+   - Test 1-2 alternative universes (e.g., sector ETFs, factor ETFs,
+     global asset classes)
+   - Use same best config parameters (226-day, vol=0.10, dd=0.15)
+   - Report test-period metrics
+   - Compare to baseline 7-asset universe
 
-4. **Reproduce existing results** (unchanged from Cycle 3):
-   - Verify all 7 Cycle 3 artifacts still pass their validation checks
-   - Verify `research/run_cycle3.py` still runs end-to-end without errors
+4. **Updated Decision** at `research/reports/tsmomentum_decision_003.md`:
+   - Incorporate regime/universe findings
+   - If Sharpe >= 0.9 with any filter/universe: **Credible Candidate**
+   - Otherwise: **Exploratory Signal** with updated rationale
+
+5. **Updated Hypothesis** at `research/hypotheses/tsmomentum_004.md`:
+   - Incorporate regime/universe findings
+   - Document new conditional entry/exit rules if applicable
+
+6. **Reproduce existing results**:
+   - Verify `python3 research/run_cycle3.py` still runs without errors
+   - Verify `python3 research/run_cycle4.py` still runs without errors
 
 ---
 
 ## Implementation Notes
 
-### Pre-specified configurations (no cherry-picking)
+### Pre-specified regime filters (no cherry-picking)
 
-The 226-day lookback is NOT a new parameter selection — it was discovered via
-the ±10% perturbation analysis in Cycle 3 and is now pre-specified based on
-that evidence. The combinations to test:
+Test ONLY these regime filters (defined before seeing results):
 
-- (lookback=252, skip=21, top_frac=0.5) + {vol=0.10, dd=0.15}
-- (lookback=252, skip=21, top_frac=0.5) + {vol=0.10, dd=0.20}
-- (lookback=252, skip=21, top_frac=0.5) + {vol=0.15, dd=0.15}
-- (lookback=252, skip=21, top_frac=0.5) + {vol=0.15, dd=0.20}
-- (lookback=226, skip=21, top_frac=0.5) + {vol=0.10, dd=0.15}
-- (lookback=226, skip=21, top_frac=0.5) + {vol=0.10, dd=0.20}
-- (lookback=226, skip=21, top_frac=0.5) + {vol=0.15, dd=0.15}
-- (lookback=226, skip=21, top_frac=0.5) + {vol=0.15, dd=0.20}
+1. **SPY Trend Filter**: Go to cash (0% exposure) when SPY < 200-day SMA.
+   Re-enter when SPY > 200-day SMA.
 
-**Total: 8 configurations** (2 lookbacks × 4 overlay combos).
+2. **VIX Volatility Filter**: Reduce exposure to 50% when VIX > 30.
+   Full exposure when VIX ≤ 30. (Use ^VIX from Yahoo Finance)
 
-### Suggested implementation
+### Pre-specified alternative universes
 
-Extend `src/evaluation/risk.py` with a `combined_risk_overlay()` function that
-applies volatility targeting first, then drawdown control on the already-
-vol-targeted weights. The combination should be additive: vol targeting scales
-the weights, then DD control further reduces them when drawdown exceeds threshold.
+Test ONLY these universes:
+
+1. **Sector ETFs**: XLB, XLE, XLF, XLI, XLK, XLP, XLU, XLV, XLY (9 sectors)
+2. **Global Asset Classes**: SPY, EFA, EEM, TLT, GLD, DBC, VNQ (7 assets,
+   similar to baseline but adds commodities + REITs)
+
+### Scope Boundaries
+
+- **Do not** add new risk overlay parameters (pre-specified grid exhausted)
+- **Do not** tune filter parameters beyond the pre-specified definitions above
+- **Do** use existing pipeline infrastructure
+- **Do** document all negative results honestly
+- **Do** use chronological splits only (train/val/test unchanged)
+- **Do** preserve all existing artifacts (do not overwrite or delete)
 
 ---
 
 ## Validation Commands
 
 ```bash
-# Verify new artifact exists
-test -f research/experiments/tsmomentum_combined_risk_001.md
-test -f research/reports/tsmomentum_decision_002.md
-test -f research/hypotheses/tsmomentum_003.md
+# Verify new artifacts exist
+test -f research/experiments/tsmomentum_regime_001.md
+test -f research/experiments/tsmomentum_regime_filter_001.md
+test -f research/experiments/tsmomentum_universe_001.md
+test -f research/reports/tsmomentum_decision_003.md
+test -f research/hypotheses/tsmomentum_004.md
 
-# Verify combined overlay section
-grep -c "Combined" research/experiments/tsmomentum_combined_risk_001.md
+# Verify content
+grep -c "Regime" research/experiments/tsmomentum_regime_001.md
+grep -c "Filter" research/experiments/tsmomentum_regime_filter_001.md
+grep -c "Universe" research/experiments/tsmomentum_universe_001.md
+grep -c "Decision" research/reports/tsmomentum_decision_003.md
 
-# Verify decision
-grep -c "Decision" research/reports/tsmomentum_decision_002.md
-
-# Re-verify Cycle 3 artifacts still pass
-grep -c "Heatmap" research/experiments/tsmomentum_robustness_001.md
-grep -c "Deflated Sharpe" research/experiments/tsmomentum_statistics_001.md
-grep -c "Probability of Backtest" research/experiments/tsmomentum_walkforward_001.md
-grep -c "Alpha" research/experiments/tsmomentum_benchmark_001.md
-grep -c "Volatility Target" research/experiments/tsmomentum_risk_001.md
-
-# Run Cycle 3 script (reproducibility check)
+# Re-verify Cycle 3 & 4 scripts
 python3 research/run_cycle3.py
+python3 research/run_cycle4.py
 
 # Lint check
 python3 -m ruff check src/evaluation/ --fix
@@ -146,33 +148,23 @@ python3 -m ruff check src/evaluation/ --fix
 
 ---
 
-## Scope Boundaries
-
-- **Do not** add new asset classes or data sources
-- **Do not** tune parameters beyond the pre-specified 226-day lookback and
-  the 8 configurations listed above
-- **Do** use existing pipeline infrastructure (yfinance_fetcher, momentum,
-  backtest engine, evaluation modules)
-- **Do** document all negative results honestly
-- **Do** use chronological splits only
-- **Do** preserve all existing Cycle 3 artifacts (do not overwrite or delete)
-
----
-
 ## Expected Outcome
 
-If the best combined overlay achieves Sharpe >= 0.9 with max DD > -30% and
-> 100 OOS trades, the strategy is promoted to **Credible Candidate** and the
-next cycle advances to simulation/parameter optimization. If not, the strategy
-remains **Exploratory Signal** and the next cycle should explore regime-
-aware filters or alternative universe selection, not further risk overlay
-tuning.
+If any regime filter or alternative universe achieves test Sharpe >= 0.9 with
+max DD > -30% and >100 OOS trades, the strategy is promoted to **Credible
+Candidate** and the next cycle advances to simulation/parameter optimization.
+
+If not, the strategy remains **Exploratory Signal** and the next cycle should
+explore different structural mechanisms (funding/carry, session effects,
+rebalancing flows, cross-asset momentum) rather than further regime/universe
+variations on time-series momentum.
 
 ---
 
 ## Evidence Reference
 
-- Cycle 3 baseline test Sharpe: 0.645 (source: `tsmomentum_baseline_001.md`)
-- Cycle 3 best single overlay Sharpe: 0.818 (dd_control_0.15, source: `tsmomentum_risk_001.md`)
-- Cycle 3 perturbation finding: 226-day lookback → Sharpe 0.705 (source: `tsmomentum_statistics_001.md`)
-- Code base: `8950948`
+- Cycle 4 best combined Sharpe: 0.7794 (source: `tsmomentum_combined_risk_001.md`)
+- Cycle 4 best config: lookback=226, vol_target=0.10, dd_control=0.15
+- Cycle 3 baseline test Sharpe: 0.645
+- Cycle 3 best single overlay: dd_control_0.15 → Sharpe 0.818
+- Code base: `92893b9`

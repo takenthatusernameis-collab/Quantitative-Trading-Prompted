@@ -28,18 +28,18 @@ Compares the observed test-period Sharpe ratio against a target of 0 (no edge).
 | Metric | Value |
 |--------|-------|
 | Observed Sharpe | 0.6445 |
-| Sharpe Standard Error (1000 block bootstrap) | 0.3041 |
-| Bootstrap Mean Sharpe | 0.6682 |
-| Bootstrap Std Sharpe | 0.3041 |
-| 95% CI Lower | 0.0835 |
-| 95% CI Upper | 1.2934 |
-| PSR (normal approx.) vs 0 | 0.9830 |
-| PSR (empirical) vs 0 | 0.9840 |
+| Sharpe Standard Error (1000 block bootstrap) | 0.2903 |
+| Bootstrap Mean Sharpe | 0.6602 |
+| Bootstrap Std Sharpe | 0.2903 |
+| 95% CI Lower | 0.1227 |
+| 95% CI Upper | 1.2736 |
+| PSR (normal approx.) vs 0 | 0.9868 |
+| PSR (empirical) vs 0 | 0.9920 |
 
-**Interpretation**: PSR = 98.3% means there is a 98.3%
+**Interpretation**: PSR = 98.7% means there is a 98.7%
 probability that the observed Sharpe ratio of 0.645 represents a
 genuine positive edge rather than random chance. The 95% bootstrap confidence
-interval [0.083, 1.293] excludes 0, supporting a genuine edge.
+interval [0.123, 1.274] excludes 0, supporting a genuine edge.
 
 ---
 
@@ -52,14 +52,14 @@ Adjusts the Sharpe ratio for the multiple-comparisons bias of testing
 |--------|-------|
 | Observed Sharpe | 0.6445 |
 | Number of configs tested | 100 |
-| Sharpe SE (bootstrap) | 0.2992 |
+| Sharpe SE (bootstrap) | 0.3065 |
 | E[max of 100 iid normals] | 2.3663 |
-| Deflated Sharpe Threshold | 0.7079 |
-| DSR z-score | -0.2120 |
-| DSR probability | 0.4160 |
+| Deflated Sharpe Threshold | 0.7253 |
+| DSR z-score | -0.2637 |
+| DSR probability | 0.3960 |
 
 **Interpretation**: After accounting for 100 configurations, the
-deflated Sharpe ratio z-score is -0.212 (41.60%
+deflated Sharpe ratio z-score is -0.264 (39.60%
 probability of genuine edge). This does NOT meet the 90% confidence threshold — the edge is not statistically significant after multiple-testing correction.
 
 ---
@@ -148,8 +148,8 @@ statistically significant positive Sharpe even after controlling for multiple te
 
 | Test | Result | Threshold | Status |
 |------|--------|-----------|--------|
-| PSR vs 0 | 0.9830 | > 0.50 | PASS |
-| DSR Probability | 0.4160 | > 0.90 | FAIL |
+| PSR vs 0 | 0.9868 | > 0.50 | PASS |
+| DSR Probability | 0.3960 | > 0.90 | FAIL |
 | PBO | 0.0121 | < 0.50 | PASS |
 | FDR (significant configs) | 100 / 100 | > 0 | PASS |
 | Plateau analysis | See above | Baseline stable | PASS |
@@ -158,4 +158,4 @@ statistically significant positive Sharpe even after controlling for multiple te
 ---
 
 *Report generated: 2026-10-11*
-*Code revision: 8950948*
+*Code revision: 92893b9*

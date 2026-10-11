@@ -9,17 +9,14 @@ sits on a performance plateau or an isolated peak.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
 
 from src.evaluation.utils import (
-    _project_root,
-    fetch_close_prices,
+    period_metrics,
     run_backtest_for_config,
     split_by_periods,
-    period_metrics,
 )
 
 
@@ -30,7 +27,7 @@ def run_parameter_sensitivity(
     lookbacks: list[int],
     skips: list[int],
     top_fractions: list[float],
-    output_path: Optional[Path] = None,
+    output_path: Path | None = None,
 ) -> pd.DataFrame:
     """Run a grid search over momentum parameters.
 

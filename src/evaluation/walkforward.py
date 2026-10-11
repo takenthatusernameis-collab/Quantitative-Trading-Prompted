@@ -2,19 +2,12 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Optional
-
 import numpy as np
 import pandas as pd
 
 from src.evaluation.utils import (
-    fetch_close_prices,
-    run_backtest_for_config,
     period_metrics,
-    sharpe_ratio,
-    max_drawdown,
-    annualize_return,
+    run_backtest_for_config,
 )
 
 
