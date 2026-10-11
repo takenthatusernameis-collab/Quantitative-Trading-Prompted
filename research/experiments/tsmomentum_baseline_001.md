@@ -18,7 +18,7 @@ test Sharpe < train Sharpe - 1 standard deviation of train Sharpe estimates.
 ## Data Used
 
 - **Source**: Yahoo Finance (via yfinance library v1.7.0)
-- **Date Range**: 1993-01-01 to 2026-10-10
+- **Date Range**: 1993-01-01 to 2026-10-11
 - **Frequency**: Daily (end-of-day OHLCV)
 - **Universe**: SPY, QQQ, IWM, TLT, GLD, EFA, EEM
 - **Records**: 8482 trading days total
@@ -40,7 +40,7 @@ test Sharpe < train Sharpe - 1 standard deviation of train Sharpe estimates.
 - **Commission**: 1.0 bps per trade (round-trip)
 - **Slippage**: 2.0 bps per trade
 - **Risk-Free Rate**: 2.0% annual (for Sharpe calculation)
-- **Code Revision**: 25dcef9
+- **Code Revision**: 6c74024
 
 ---
 
@@ -50,7 +50,7 @@ test Sharpe < train Sharpe - 1 standard deviation of train Sharpe estimates.
 |--------|------------|----------|--------------|
 | Train | 1993-01-01 | 2009-12-31 | 4264 |
 | Validation | 2010-01-01 | 2017-12-31 | 2013 |
-| Test | 2018-01-01 | 2026-10-10 | 2205 |
+| Test | 2018-01-01 | 2026-10-11 | 2205 |
 
 ---
 
@@ -76,7 +76,7 @@ test Sharpe < train Sharpe - 1 standard deviation of train Sharpe estimates.
 - **Trades**: 194
 - **Avg Positions**: 4.0
 
-#### Test Period (2018-01-01 to 2026-10-10)
+#### Test Period (2018-01-01 to 2026-10-11)
 - **Observations**: 2205 daily returns
 - **Trades**: 190
 - **Avg Positions**: 4.0
@@ -117,5 +117,5 @@ out-of-sample walk-forward testing.
 
 ---
 
-*Report generated: 2026-10-10*
+*Report generated: 2026-10-11*
 *Pipeline: data ingestion → feature engineering → backtest → evaluation*

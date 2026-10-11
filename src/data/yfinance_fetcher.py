@@ -148,7 +148,12 @@ class YFinanceFetcher:
             return None
         if df.empty:
             return None
-        df.index = pd.to_datetime(df.index).tz_localize("UTC", ambiguous="infer", nonexistent="shift_forward")
+        idx = pd.to_datetime(df.index)
+        if idx.tz is None:
+            idx = idx.tz_localize("UTC", ambiguous="infer", nonexistent="shift_forward")
+        else:
+            idx = idx.tz_convert("UTC")
+        df.index = idx
         return df.sort_index()
 
     def _save_cached(self, symbol: str, df: pd.DataFrame) -> None:
