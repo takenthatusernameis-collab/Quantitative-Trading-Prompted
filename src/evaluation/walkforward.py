@@ -33,7 +33,6 @@ def generate_walkforward_splits(
     test_window = int(test_months * 21)
     step = int(step_months * 21)
 
-    current_train_start = all_dates[0]
     idx = 0
     while idx + train_window + test_window <= len(all_dates):
         train_start = all_dates[idx]
@@ -124,7 +123,7 @@ def run_walkforward(
                 "test_trades": test_m.get("trade_count", np.nan),
                 "test_profit_factor": test_m.get("profit_factor", np.nan),
             })
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001  # intentional: walk-forward continues past any per-fold failure
             print(f"    ERROR: {exc}")
             rows.append({
                 "fold": i + 1,

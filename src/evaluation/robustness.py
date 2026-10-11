@@ -64,7 +64,7 @@ def run_parameter_sensitivity(
                         "test_turnover": test_m.get("annualized_turnover", np.nan),
                         "test_profit_factor": test_m.get("profit_factor", np.nan),
                     })
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001  # intentional: grid continues past any per-config failure
                     print(f"    ERROR: {exc}")
                     rows.append({
                         "lookback": lb,
