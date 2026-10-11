@@ -10,6 +10,8 @@ on:
       - ".kilo/TWO_AGENT_ONCE"
   workflow_dispatch:
 
+permissions: write-all
+
 jobs:
   validate:
     permissions:
@@ -36,6 +38,5 @@ jobs:
 
   two-agent-smoke:
     needs: validate
-    if: ${{ github.event_name == 'push' && (contains(toJSON(github.event.commits.*.added), '.kilo/TWO_AGENT_ONCE') || contains(toJSON(github.event.commits.*.modified), '.kilo/TWO_AGENT_ONCE')) }}
-    permissions: write-all
+    if: ${{ github.event_name == 'push' && github.event.head_commit.message == 'TRIGGER_TWO_AGENT_KILO_SMOKE' }}
     uses: ./.github/workflows/kilo-two-agent-once.yml
