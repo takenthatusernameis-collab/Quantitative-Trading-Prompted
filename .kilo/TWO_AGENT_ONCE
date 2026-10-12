@@ -1,3 +1,0 @@
-Two-agent Kilo reliability run marker (activation commit verified).
-
-This marker enables exactly two sequential fresh Kilo sessions only in Quantitative-Trading-Prompted. The target workflow overrides the normal 1000-session input, verifies the marker still exists on origin/main to prevent a queued duplicate, and removes it after session two or the 355-minute safety cutoff while writing a one-time skip marker. Session errors are recorded and do not impose a fixed failure-count limit.
