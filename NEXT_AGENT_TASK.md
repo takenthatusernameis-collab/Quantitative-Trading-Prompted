@@ -1,151 +1,191 @@
-# Next Agent Task: Cycle 13 - Baseline Backtest & Walk-Forward for Cross-Sectional Momentum (csmomentum_001)
+# Next Agent Task: Cycle 14 - Pre-Registration for Sector Rotation (sectorrotation_001)
 
 ## Context
 
-Cycle 12 completed the pre-registration for Candidate C3 (Long-only cross-sectional momentum, broad 18-ETF universe):
-- Hypothesis documented: `research/hypotheses/csmomentum_001.md` (all AGENTS.md fields, falsification condition pre-stated)
-- Frozen configuration committed: `config/csmomentum_candidate_001.yaml` (27-config robustness grid, baseline = 252/21/0.5)
-- Evaluation plan pre-registered: chronological splits (train ≤2009, val 2010-2017, test 2018-2026), walk-forward (10yr/1yr/6mo, 21d purge/embargo), promotion gates (WF mean OOS Sharpe ≥0.9, ≥50% positive folds, >100 pooled OOS trades, parameter plateau ≥2/3 lookbacks within 10%)
+Cycle 13 executed the pre-registered evaluation of Candidate C3
+(`csmomentum_001`, long-only cross-sectional momentum, broad 18-ETF
+universe). The **pre-registered falsification condition was met**:
+walk-forward mean OOS Sharpe 0.6868 < 0.9 gate (79.2% positive folds,
+313 pooled OOS trades, plateau 2/3 all passed, but gate 1 failed).
+Verdict: **Rejected/Failed** (`research/experiments/csmomentum_baseline_wf_001.md`).
 
-**No backtest has been executed.** Cycle 13 executes the pre-registered evaluation.
+Key evidence from Cycle 13 that Cycle 14 must respect:
+- Baseline (252/21/0.5, monthly rebalance) test Sharpe 0.4101, rank 17/18
+  on the pre-specified grid; DSR negative at both N=27 (pre-registered)
+  and N=18 (evaluated).
+- CS momentum was dominated by both benchmarks: 1/N equal-weight
+  (test Sharpe 0.4617) and the incumbent TSMOM (test Sharpe 1.4178,
+  WF mean 0.9473 — both reproduced exactly, verifying the Cycle 13
+  benchmark implementation against the Cycle 6/7 records).
+- The broad 18-ETF universe (which CONTAINS the 9 sector ETFs) failed
+  the walk-forward gate. This is direct prior evidence against the
+  cross-sectional rank signal in this dataset and must lower the C4 prior.
+
+**No new backtest is executed in Cycle 14.** Cycle 14 pre-registers the
+next shortlist candidate (C4 Sector rotation) following the Cycle 12
+pre-registration structure.
 
 ---
 
 ## Objective
 
-Execute the **baseline backtest and walk-forward evaluation** for `csmomentum_001` using the frozen configuration. Produce evidence artifacts and a go/no-go decision per the pre-registered promotion gates.
+Pre-register Candidate C4 (sector rotation: cross-sectional momentum
+across the 9 GICS sector ETFs) with a complete hypothesis document,
+frozen configuration, and pre-registered evaluation plan. Mirror the
+Cycle 12 → Cycle 13 structure: Cycle 14 = pre-registration, Cycle 15 =
+evaluation.
 
 ---
 
 ## Acceptance Criteria
 
-### 1. Baseline Backtest (Test Period: 2018-01-01 to 2026-10-09)
+### 1. Hypothesis Document
 
-Run the baseline configuration (lookback=252, skip=21, top_fraction=0.5, no risk overlay, 3bps costs, 1-day lag, monthly rebalance) on the test period. Output:
-- `data/processed/simulation_csmomentum_001.parquet` — daily net/gross returns, costs, turnover, exposure, positions, weights
-- `data/processed/trades_csmomentum_001.parquet` — trade log
-- `data/processed/weights_csmomentum_001.parquet` — point-in-time weights
+Create `research/hypotheses/sectorrotation_001.md` with ALL AGENTS.md
+fields:
+- Mechanism description (sector leadership persistence with the business
+  cycle; staggered information diffusion across sectors)
+- Expected direction and magnitude (pre-specified prior, explicitly
+  conditioned on C3's rejection — the prior must be LOWER than C3's
+  was, since the broad universe containing these sectors failed)
+- Holding horizon (~21 trading days, monthly)
+- Asset universe: XLB, XLE, XLF, XLI, XLK, XLP, XLU, XLV, XLY
+  (all cached in `data/raw/*.parquet`, inception 1998-12-22, ~28
+  years common history)
+- Features and data sources (Close prices, `compute_momentum`,
+  `rank_assets`, `select_top_decile`, `build_weights`)
+- Entry/exit rules (long-only top fraction, equal-weight, 1-day lag,
+  monthly month-end rebalance, 3bps round-trip costs)
+- Benchmark (1/N equal-weight over the 9 sector ETFs; incumbent
+  TSMOM `tsmomentum_spytrend_001` on its core 7)
+- Known confounders (narrow 9-asset universe limits cross-sectional
+  breadth; C3 rejection on the superset universe; ETF-level only;
+  flat cost model; no risk overlay in baseline)
+- **Falsification condition pre-stated BEFORE any backtest**:
+  WF mean OOS Sharpe < 0.9 OR < 50% positive folds → Rejected/Failed
+  (same gate structure as C3)
+- Cost model assumptions (identical to C3: 1bps commission + 2bps
+  slippage, rf 2%)
+- Pre-registered evaluation plan (chronological splits, walk-forward
+  design, promotion gates, multiple-testing control)
 
-Report: Net Sharpe, Sortino, CAGR, max DD, profit factor, annualized turnover, avg exposure, trade count, tail metrics (95% VaR, CVaR).
+### 2. Frozen Configuration
 
-### 2. Walk-Forward Evaluation (48 Folds, Fixed Parameters)
+Create `config/sectorrotation_candidate_001.yaml` mirroring
+`config/csmomentum_candidate_001.yaml`:
+- candidate_id, universe (9 sector ETFs), signal defaults, cost model,
+  execution (signal_lag_days: 1, price_field: Close,
+  rebalance_schedule: monthly), history_start: "1998-12-22",
+  evaluation metadata (splits, walk-forward, promotion gates,
+  multiple-testing)
 
-Match Cycle 6 design exactly (`research/experiments/tsmomentum_regime_filter_wf_001.md`):
-- 10-year train, 1-year test, 6-month step, 21-day purge, 21-day embargo
-- Fixed parameters across all folds (NO re-optimization)
-- Per-fold metrics: test Sharpe, ann. return, max DD, trades
-- Aggregate: mean OOS Sharpe, std, median, % positive folds, total pooled OOS trades
+### 3. Robustness Grid — Correct Arithmetic (MANDATORY)
 
-### 3. Robustness Grid Evaluation (27 Pre-Specified Configs)
+The grid label MUST equal the actual product of the parameter values.
+Cycle 13 disclosed a pre-registration defect: C3's documents labeled
+the grid "27 configurations" while the specified values
+(3 x 2 x 3) yield **18** unique combinations. For C4, state the
+grid as "lookback {189, 252, 315} x skip {21, 42} x top_fraction
+{0.3, 0.5, 0.7} = **18 unique configurations**" (or choose a grid
+whose label equals its product) and verify the count with an explicit
+assertion in the Cycle 15 evaluation script.
 
-Evaluate all 27 combinations from the frozen config on the **test period** (2018-2026):
-- lookback ∈ {189, 252, 315}
-- skip ∈ {21, 42}
-- top_fraction ∈ {0.3, 0.5, 0.7}
+### 4. Evaluation Plan (pre-registered, executed in Cycle 15)
 
-Output: heatmap table (test Sharpe per config), baseline rank, plateau check (≥2 of 3 lookbacks within 10% of baseline test Sharpe at skip=21, top_fraction=0.5).
+- Chronological splits: train ≤2009 (1998-2009), validation
+  2010-2017, test 2018-01-01 to 2026-10-09
+- Walk-forward: 10-year train / 1-year test / 6-month step / 21-day
+  purge / 21-day embargo, fixed parameters, no re-optimization
+  (note: the 1998 start yields ~35 folds, not 48 — document the
+  actual fold count; do NOT force 48)
+- Promotion gates: WF mean OOS Sharpe >= 0.9; >= 50% positive folds;
+  > 100 pooled OOS trades; plateau >= 2 of 3 lookbacks within 10% of
+  baseline test Sharpe at skip=21, top_fraction=0.5
+- Multiple-testing control: DSR via `src/evaluation/statistics.py:compute_dsr`
+  at the grid's true count; PSR; PBO via `compute_pbo`
+- Benchmarks on identical periods/folds: 1/N (9 ETFs) and incumbent
+  TSMOM (validated overlay-warmup conventions: "slice" for test
+  period, "full" for WF folds — see Cycle 13's verified implementation)
 
-### 4. Benchmark Comparison
+### 5. Next Task
 
-Evaluate both benchmarks on the identical test period and walk-forward folds:
-- **1/N Equal-Weight (18 ETFs)**: monthly rebalance, 1-day lag, 3bps costs
-- **Incumbent TSMOM (tsmomentum_spytrend_001)**: core 7, vol-target 10%, DD control 15%, SPY 200d SMA, 3bps costs
-
-Report: net excess Sharpe, excess return, correlation, benchmark-relative drawdowns.
-
-### 5. Multiple-Testing Control
-
-- Compute Deflated Sharpe Ratio via `src/evaluation/statistics.py:compute_dsr` (N=27 trials)
-- Compute PBO/CSCV if available
-- Document: no configuration selected on test-period results
-
-### 6. Experiment Record
-
-Create `research/experiments/csmomentum_baseline_wf_001.md` with:
-- Hypothesis reference (`csmomentum_001`)
-- Data used (source, range, universe, point-in-time)
-- Configuration (baseline + full 27-grid)
-- Train/val/test splits, walk-forward design
-- All results (baseline, WF folds, grid, benchmarks, DSR)
-- Promotion-gate verdict (PASS/FAIL per gate)
-- Reproduction command: `python3 research/run_cycle13.py`
-- Code revision
-
-### 7. Decision & Next Task
-
-Label result per AGENTS.md:
-- **Credible candidate** → Cycle 14: risk overlay exploration (vol-target, DD control, regime filter)
-- **Exploratory signal** → Cycle 14: limited follow-up (e.g., test alternative grid configs)
-- **Rejected/Failed** → Document falsification, Cycle 14: next shortlist candidate (C4 Sector rotation)
-- **Blocked** → Document blocker
-
-Prepare `NEXT_AGENT_TASK.md` for Cycle 14.
+Write `NEXT_AGENT_TASK.md` for Cycle 15 (evaluation execution,
+mirroring the Cycle 13 task structure).
 
 ---
 
 ## Validation Commands
 
 ```bash
-# Baseline artifacts exist
-test -f data/processed/simulation_csmomentum_001.parquet
-test -f data/processed/trades_csmomentum_001.parquet
-test -f data/processed/weights_csmomentum_001.parquet
+# Hypothesis document exists with all required sections
+test -f research/hypotheses/sectorrotation_001.md
+grep -q "Falsification Condition" research/hypotheses/sectorrotation_001.md
+grep -q "Promotion Gates" research/hypotheses/sectorrotation_001.md
+grep -q "Known Confounders" research/hypotheses/sectorrotation_001.md
 
-# Experiment record exists with required sections
-test -f research/experiments/csmomentum_baseline_wf_001.md
-grep -q "Walk-Forward" research/experiments/csmomentum_baseline_wf_001.md
-grep -q "Robustness Grid" research/experiments/csmomentum_baseline_wf_001.md
-grep -q "Promotion" research/experiments/csmomentum_baseline_wf_001.md
-grep -q "Deflated Sharpe" research/experiments/csmomentum_baseline_wf_001.md
-grep -q "Benchmark" research/experiments/csmomentum_baseline_wf_001.md
+# Frozen config parses
+python3 -c "import yaml; yaml.safe_load(open('config/sectorrotation_candidate_001.yaml'))"
 
-# Reproduction command works
-python3 research/run_cycle13.py 2>&1 | tail -5
+# Grid arithmetic: label equals product of parameter values
+python3 - <<'PY'
+import yaml
+cfg = yaml.safe_load(open('config/sectorrotation_candidate_001.yaml'))
+# extract grid values and assert the stated count equals the product
+print("config OK")
+PY
 
 # Prior cycles still run
+python3 research/run_cycle13.py 2>&1 | tail -3
 python3 research/run_cycle7.py 2>&1 | tail -3
-python3 research/run_cycle11.py 2>&1 | tail -3
-
-# Lint
-python3 -m ruff check research/ config/ 2>/dev/null || true
 ```
 
 ---
 
 ## Scope Boundaries
 
-- **DO NOT** modify `config/csmomentum_candidate_001.yaml` or `research/hypotheses/csmomentum_001.md` (frozen pre-registration)
-- **DO NOT** add risk overlays (vol-target, DD control, regime filter) — reserved for Cycle 14+ ONLY if baseline clears gates
-- **DO NOT** test configurations outside the pre-specified 27-grid
-- **DO NOT** select configurations based on test-period results
-- **DO NOT** fetch new data or add dependencies
-- Use existing infrastructure: `src/features/momentum.py` (rank_assets, select_top_decile, build_weights), `src/backtest/engine.py`, `src/evaluation/statistics.py`
+- **DO NOT** run any backtest or simulation in Cycle 14 (evaluation is
+  Cycle 15's job; pre-registration must precede execution)
+- **DO NOT** modify `config/csmomentum_candidate_001.yaml`,
+  `research/hypotheses/csmomentum_001.md`, or
+  `research/experiments/csmomentum_baseline_wf_001.md` (frozen
+  pre-registration and completed experiment record)
+- **DO NOT** add risk overlays, fetch new data, or add dependencies
+- **DO NOT** invent grid counts: the grid label must equal the product
+  of the parameter value counts
+- **DO NOT** weaken the promotion gates (WF mean OOS Sharpe >= 0.9
+  stays; it is the AGENTS.md screening gate)
 
 ---
 
 ## Evidence Reference
 
-- Pre-registered hypothesis: `research/hypotheses/csmomentum_001.md`
-- Frozen config: `config/csmomentum_candidate_001.yaml`
-- Cycle 11 shortlist (C3=29/35): `research/reports/opportunity_shortlist.md`
+- Cycle 13 experiment record (C3 rejection):
+  `research/experiments/csmomentum_baseline_wf_001.md`
+- Cycle 12 pre-registration template (C3):
+  `research/hypotheses/csmomentum_001.md`,
+  `config/csmomentum_candidate_001.yaml`
+- Cycle 11 shortlist (C4 = 25/35, Exploratory signal):
+  `research/reports/opportunity_shortlist.md`
 - Cycle 6 WF design: `research/experiments/tsmomentum_regime_filter_wf_001.md`
-- Cycle 3 robustness caveat: `research/experiments/tsmomentum_robustness_001.md`
 - Ranking machinery: `src/features/momentum.py`
 - Backtest engine: `src/backtest/engine.py`
-- Evaluation stats: `src/evaluation/statistics.py`
-- AGENTS.md: "Baseline before complexity", "Independent evaluation", "Honest accounting", "Promotion gate"
+- Evaluation stats: `src/evaluation/statistics.py` (seeded bootstrap,
+  see Cycle 13's `seed=42` convention)
+- AGENTS.md: "Hypothesis first", "Baseline before complexity",
+  "Independent evaluation", "Multiple-testing control"
 
 ---
 
 ## Implementation Notes
 
-The baseline signal is long-only cross-sectional momentum:
-1. Load 18 ETF Close prices from `data/raw/*.parquet`
-2. Compute momentum via `compute_momentum(prices, lookback=252, skip=21)`
-3. Rank cross-sectionally via `rank_assets(momentum)`
-4. Select top 50% via `select_top_decile(momentum, top_fraction=0.5)`
-5. Build equal-weight weights via `build_weights(...)` (includes 1-day shift)
-6. Run simulation via `src/backtest/engine.py` with 3bps costs, monthly rebalance
-7. Evaluate via `src/evaluation/statistics.py`
-
-Walk-forward: use the same engine with rolling windows, fixed params, purge/embargo.
+- The C4 universe (9 sector ETFs) is a subset of C3's 18-ETF universe.
+  The hypothesis document must explicitly address why a sector-restricted
+  cross-sectional signal can succeed where the broad-universe signal
+  failed (e.g., purer business-cycle leadership signal without
+  cross-asset-class rank noise), or acknowledge that C4 is a
+  lower-prior variant of the same mechanism.
+- Data integrity: verify all 9 sector parquet files have 100% Close
+  completeness over the common 1998-12-22 to 2026-10-09 range before
+  freezing the config.
+- Uncertainty discipline: the falsification condition and promotion
+  gates are fixed; no post-hoc gate adjustments are permitted.

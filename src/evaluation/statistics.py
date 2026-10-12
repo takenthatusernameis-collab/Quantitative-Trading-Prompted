@@ -32,16 +32,18 @@ def block_bootstrap_sharpe(
     returns: pd.Series,
     n_samples: int = 1000,
     block_size: int = 22,
+    seed: int | None = None,
 ) -> np.ndarray:
     """Estimate the Sharpe ratio distribution via moving block bootstrap.
 
     Returns an array of ``n_samples`` annualized Sharpe ratios computed on
-    block-bootstrapped resamples of *returns*.
+    block-bootstrapped resamples of *returns*. Pass ``seed`` for a
+    reproducible bootstrap distribution.
     """
     arr = np.asarray(returns.values, dtype=float)
     n = len(arr)
     effective_block = min(block_size, max(1, n // 10))
-    mbb = MovingBlockBootstrap(effective_block, arr)
+    mbb = MovingBlockBootstrap(effective_block, arr, seed=seed)
 
     results: list[float] = []
     for posdata, _ in mbb.bootstrap(n_samples):
@@ -85,13 +87,14 @@ def compute_psr(
     sr_target: float = 0.0,
     n_bootstrap: int = 1000,
     block_size: int = 22,
+    seed: int | None = None,
 ) -> dict:
     """Probabilistic Sharpe Ratio (PSR) against *sr_target*.
 
     Uses the block bootstrap to estimate the Sharpe ratio standard error,
     then computes PSR = Φ((SR − SR_target) / SE) and an empirical PSR.
     """
-    sharpes = block_bootstrap_sharpe(returns, n_bootstrap, block_size)
+    sharpes = block_bootstrap_sharpe(returns, n_bootstrap, block_size, seed=seed)
     se = float(np.std(sharpes, ddof=1)) if len(sharpes) > 1 else 0.0
     sr_obs = sharpe_ratio(returns)
 
@@ -124,6 +127,7 @@ def compute_dsr(
     sr_target: float = 0.0,
     n_bootstrap: int = 1000,
     block_size: int = 22,
+    seed: int | None = None,
 ) -> dict:
     """Deflated Sharpe Ratio (DSR).
 
@@ -133,7 +137,7 @@ def compute_dsr(
     DSR = (SR − SR_threshold) / SE
     where  SR_threshold = SR_target + SE × E[max of N iid N(0,1)].
     """
-    bs = compute_psr(returns, sr_target, n_bootstrap, block_size)
+    bs = compute_psr(returns, sr_target, n_bootstrap, block_size, seed=seed)
     se = bs["sharpe_se"]
     sr = bs["sharpe_observed"]
 

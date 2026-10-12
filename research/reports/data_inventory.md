@@ -1,7 +1,7 @@
 # Data & Cost Inventory
 
-**Generated:** 2026-10-12 07:16:25 UTC
-**Code revision:** 7e4062e
+**Generated:** 2026-10-12 07:52:57 UTC
+**Code revision:** a5d5971
 **Method:** Programmatic scan of `data/raw/` and `data/processed/` by `research/run_cycle11.py` (Cycle 11). No backtests run; all statistics are descriptive properties of cached artifacts.
 
 ## Overview

@@ -234,7 +234,7 @@ python3 research/run_cycle7.py
 ```
 
 Configuration: `config/simulation_candidate_001.yaml`
-(sha256[:12]=3c8f5b899f1f). Code revision: 7e4062e.
+(sha256[:12]=3c8f5b899f1f). Code revision: a5d5971.
 
 ---
 
@@ -255,5 +255,5 @@ go/no-go decision after a 3-6 month paper track record.
 ---
 
 *Report generated: 2026-10-12*
-*Code revision: 7e4062e*
+*Code revision: a5d5971*
 *Config hash: 3c8f5b899f1f*
