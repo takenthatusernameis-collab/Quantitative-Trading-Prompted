@@ -76,3 +76,12 @@ run_history:
   regime_exposure: 1.0
   n_positions: 4
 previous_regime_exposure: 1.0
+rolling_sharpe_63d: 0.0
+rolling_max_dd_63d: 0.0
+regime_persistence_days: 0
+vol_scale_min: 1.0
+vol_scale_max: 1.0
+dd_scale_min: 1.0
+dd_scale_max: 1.0
+turnover_median: 0.0
+turnover_p95: 0.0

@@ -82,4 +82,4 @@ alternative universe is **Baseline (SPY,QQQ,IWM,TLT,GLD,EFA,EEM)** with Sharpe =
 ---
 
 *Report generated: 2026-10-12*
-*Code revision: 97e4b91*
+*Code revision: 8d573a4*

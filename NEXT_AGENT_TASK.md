@@ -1,84 +1,79 @@
-# Next Agent Task: Cycle 9 - Paper-Trading Go/No-Go Evaluation & Drift Enhancement
+# Next Agent Task: Cycle 10 - Go/No-Go Framework Historical Validation
 
 ## Context
 
-Cycle 8 successfully built and verified the paper-trading (prospective) validation framework. All verification checks passed:
+Cycle 9 successfully built and verified the go/no-go evaluation framework. All verification checks passed:
 
-- `src/simulation/paper_trading.py` — Paper-trading engine with `PaperTradingConfig`, `PaperTradingState`, `run_daily_paper_update`, `generate_paper_report`
-- `config/paper_trading_config.yaml` — Operational configuration (alert thresholds, go/no-go criteria, output paths)
-- `research/run_cycle8.py` — Daily pipeline script (idempotent, restart-safe)
-- Daily artifacts produced in `data/processed/paper_trading/`:
-  - `positions_YYYYMMDD.parquet` — target weights per symbol
-  - `regime_YYYYMMDD.parquet` — SPY price, regime exposure
-  - `risk_state_YYYYMMDD.parquet` — vol_scale, dd_scale, drawdown, exposure
-  - `daily_pnl_YYYYMMDD.parquet` — mark-to-market P&L
-- `research/reports/paper_trading_rolling.md` — Rolling report with Current State, Positions Table, Drift Monitoring, Performance Tracking
-- State persisted in `data/processed/paper_trading_state.yaml` for restart capability
+- `src/simulation/evaluation.py` — Go/No-Go evaluation module with `GoNoGoConfig`, `GoNoGoResult`, `evaluate_go_no_go`, `generate_evaluation_report`
+- `research/run_cycle9.py` — Daily evaluation pipeline
+- `research/reports/go_no_go_evaluation_001.md` — Evaluation report with all required sections (Backtest Baseline, Paper Performance, Statistical Comparison, Drift Assessment, Decision)
+- Enhanced drift monitoring in `src/simulation/paper_trading.py`:
+  - Rolling 63-day Sharpe calculation in state (`rolling_sharpe_63d`)
+  - Rolling 63-day max DD in state (`rolling_max_dd_63d`)
+  - Regime persistence counter (`regime_persistence_days`)
+  - Signal turnover distribution tracking (`turnover_median`, `turnover_p95`)
+  - Risk parameter bounds tracking (`vol_scale_min/max`, `dd_scale_min/max`)
+  - Drift alerts for: rolling Sharpe < 0.5, regime persistence < 5 days after flip, vol_scale > 2.5, dd_scale < 0.2
 
-**Candidate Status**: The SPY trend-filter candidate (226-day TSMOM + combined risk overlay + SPY 200-day SMA regime filter) is now running in prospective paper-trading mode. After 63+ days (3 months), go/no-go criteria can be evaluated.
+**Current Status**: The paper-trading track record has only 5 days (all from 2026-10-09 due to test data). Go/no-go decision is INCONCLUSIVE as expected (minimum 63 days required).
 
 ---
 
 ## Objective
 
-Build a **go/no-go evaluation framework** that:
-1. Implements automated evaluation of paper-trading track record against go/no-go criteria
-2. Enhances drift monitoring with statistical tests (parameter stability, regime persistence)
-3. Adds comparison against backtest baseline (Cycle 5/6 verified metrics)
-4. Produces a formal go/no-go recommendation artifact
+Build a **historical validation** of the go/no-go framework by simulating paper-trading day-by-day over the full backtest period (2018-2026), producing a time series of go/no-go evaluations. This validates that:
 
-This is **NOT live trading** — it is an evaluation layer on top of the paper-trading framework.
+1. The framework correctly identifies GO decisions when paper performance matches backtest
+2. The framework correctly identifies NO-GO when performance degrades
+3. Drift monitoring detects regime flips and risk parameter excursions
+4. The statistical comparison (PSR vs backtest Sharpe) behaves as expected
+
+This is a **one-time historical validation** — not a new paper-trading run. It uses the verified simulation engine (Cycle 7) to replay daily paper updates and evaluate go/no-go at each step.
 
 ---
 
 ## Acceptance Criteria
 
-The Cycle 9 work must produce:
+The Cycle 10 work must produce:
 
-### 1. `src/simulation/evaluation.py` — Go/No-Go Evaluation Module
-
-A new module with:
-- `GoNoGoConfig` dataclass: evaluation parameters (min_days, target_sharpe, max_dd, statistical confidence)
-- `GoNoGoResult` dataclass: evaluation outcome (decision, metrics, confidence intervals, rationale)
-- `evaluate_go_no_go(state: PaperTradingState, config: PaperTradingConfig, backtest_baseline: dict) -> GoNoGoResult`
-  - Computes rolling 63-day Sharpe, max DD, trade count from `state.cumulative_returns`
-  - Compares paper Sharpe vs. backtest Sharpe (1.4178) with statistical test
-  - Checks regime stability (no unexpected flips)
-  - Checks risk overlay parameter stability (vol_scale, dd_scale within historical ranges)
-  - Checks signal turnover vs. backtest distribution
-  - Returns `decision: "GO" | "NO-GO" | "INCONCLUSIVE"` with rationale
-- `generate_evaluation_report(result: GoNoGoResult, config: GoNoGoConfig) -> str` — Markdown evaluation report
-
-### 2. `research/run_cycle9.py` — Go/No-Go Evaluation Pipeline
+### 1. `research/run_cycle10.py` — Historical Go/No-Go Validation Script
 
 Script that:
-- Loads frozen candidate config from `config/simulation_candidate_001.yaml`
-- Loads paper-trading state from `data/processed/paper_trading_state.yaml`
-- Loads backtest baseline metrics from Cycle 7 verification (hardcoded or loaded from report)
-- Runs `evaluate_go_no_go`
-- Exports evaluation artifact to `research/reports/go_no_go_evaluation_001.md`
-- Prints decision and key metrics to console
+- Loads the frozen candidate config from `config/simulation_candidate_001.yaml`
+- Loads the verified simulation daily series from `data/processed/simulation_candidate_001.parquet` (8,482 days, 1993-2026)
+- Simulates day-by-day paper-trading from 2018-01-01 to 2026-10-09 (OOS period matching Cycle 7)
+- At each day, runs `evaluate_go_no_go` with accumulating track record
+- Records: date, track record length, paper Sharpe, PSR, decision, drift flags
+- Outputs time-series CSV: `data/processed/go_no_go_history.parquet`
+- Outputs summary markdown: `research/reports/go_no_go_historical_validation.md`
 
-### 3. `research/reports/go_no_go_evaluation_001.md` — Go/No-Go Evaluation Report
+### 2. `data/processed/go_no_go_history.parquet` — Time Series of Evaluations
 
-Living document with:
-- **Header**: candidate ID, config hash, evaluation date, paper track record length
-- **Backtest Baseline**: documented Cycle 5/6 metrics (Sharpe, max DD, trades, turnover, etc.)
-- **Paper Performance**: rolling 63-day Sharpe, total return, max DD, trade count, annualized turnover
-- **Statistical Comparison**: paper vs. backtest Sharpe with confidence interval, p-value
-- **Drift Assessment**: regime stability, risk parameter stability, turnover distribution comparison
-- **Decision**: GO / NO-GO / INCONCLUSIVE with explicit rationale
-- **Conditions for Re-evaluation**: what would change the decision
+Columns:
+- `date`: evaluation date
+- `track_record_days`: cumulative paper trading days
+- `paper_sharpe`: rolling paper Sharpe
+- `paper_max_dd`: rolling paper max DD
+- `psr_normal`: probabilistic Sharpe ratio (normal)
+- `psr_empirical`: probabilistic Sharpe ratio (empirical)
+- `decision`: GO / NO-GO / INCONCLUSIVE
+- `regime_stable`: boolean
+- `regime_persistence_days`: integer
+- `vol_scale_min`, `vol_scale_max`: bounds
+- `dd_scale_min`, `dd_scale_max`: bounds
+- `turnover_median`, `turnover_p95`: distribution
+- `drift_flags_count`: integer
 
-### 4. Enhanced Drift Monitoring in `src/simulation/paper_trading.py`
+### 3. `research/reports/go_no_go_historical_validation.md` — Validation Report
 
-Add to `run_daily_paper_update`:
-- Rolling 63-day Sharpe calculation in state
-- Rolling max DD in state
-- Regime persistence counter (days since last flip)
-- Signal turnover distribution tracking (rolling median, p95)
-- Risk parameter bounds tracking (historical min/max of vol_scale, dd_scale)
-- Drift alert for: rolling Sharpe < 0.5, regime persistence < 5 days after flip, vol_scale > 2.5, dd_scale < 0.2
+Sections:
+- **Overview**: methodology, data period, candidate
+- **Decision Timeline**: table showing first GO date, any NO-GO dates, final decision
+- **PSR Evolution**: chart/table of PSR over time, crossing thresholds
+- **Drift Events**: all regime flips, risk parameter breaches, low Sharpe alerts
+- **Statistical Properties**: fraction of days INCONCLUSIVE/GO/NO-GO, median days to GO
+- **Comparison to Backtest**: does framework correctly validate the known-good candidate?
+- **Conclusion**: framework validated / issues found
 
 ---
 
@@ -86,89 +81,85 @@ Add to `run_daily_paper_update`:
 
 ### Reuse Existing Infrastructure
 
-- `src/simulation/paper_trading.PaperTradingState` — paper-trading state
-- `src/simulation/paper_trading.PaperTradingConfig` — paper-trading config
-- `src/evaluation/statistics.py` — statistical utilities (probabilistic Sharpe, Deflated Sharpe)
-- `src/evaluation/robustness.py` — parameter stability tests
-- `config/paper_trading_config.yaml` — go/no-go thresholds
-- Cycle 7 documented baseline: test Sharpe 1.4178, max DD -7.79%, 1196 trades
+- `src/simulation/evaluation.evaluate_go_no_go` — core evaluation function
+- `src/simulation/paper_trading.PaperTradingState` — state management (adapt for historical replay)
+- `src/simulation/engine.run_simulation` — verified simulation engine (Cycle 7)
+- `data/processed/simulation_candidate_001.parquet` — verified daily series (8,482 rows)
+- Cycle 7 baseline metrics: test Sharpe 1.4178, max DD -7.79%, 1196 trades
 
-### New Files to Create
+### Historical Replay Approach
 
-- `src/simulation/evaluation.py`
-- `research/run_cycle9.py`
-- `research/reports/go_no_go_evaluation_001.md` (created on first run)
+The simulation daily series already contains all daily net returns, weights, risk state, regime exposure.
+Instead of re-running the engine daily (slow), extract the OOS period (2018-2026) from the parquet and feed daily returns into a lightweight PaperTradingState accumulator, then call `evaluate_go_no_go` at each step.
 
-### Statistical Approach
+### Scope Boundaries
 
-- Use block-bootstrap for confidence intervals (account for autocorrelation)
-- Probabilistic Sharpe Ratio (PSR) vs. backtest Sharpe
-- Deflated Sharpe Ratio for multiple testing control
-- Minimum track record: 63 days (configurable)
-- Decision threshold: PSR > 0.95 for GO, PSR < 0.5 for NO-GO, else INCONCLUSIVE
-
----
-
-## Scope Boundaries
-
-- **In scope**: Go/no-go evaluation logic, statistical comparison, enhanced drift monitoring, evaluation report
-- **Do NOT** place live trades or connect to broker APIs
-- **Do NOT** add new data dependencies beyond Yahoo Finance
-- **Do NOT** modify existing simulation/backtest modules (engine.py, run_cycle5-7.py)
-- **Do** preserve all Cycle 1-8 artifacts
+- **In scope**: Historical replay script, time-series output, validation report
+- **Do NOT** modify `src/simulation/evaluation.py` or `src/simulation/paper_trading.py` unless bug found
+- **Do NOT** add new data dependencies
+- **Do** preserve all Cycle 1-9 artifacts
 
 ---
 
 ## Validation Commands
 
 ```bash
-# Run Cycle 9 go/no-go evaluation
-python3 research/run_cycle9.py
+# Run Cycle 10 historical validation
+python3 research/run_cycle10.py
 
-# Verify evaluation report created
-test -f research/reports/go_no_go_evaluation_001.md
+# Verify outputs created
+test -f data/processed/go_no_go_history.parquet
+test -f research/reports/go_no_go_historical_validation.md
+
+# Verify parquet has expected columns
+python3 -c "
+import pandas as pd
+df = pd.read_parquet('data/processed/go_no_go_history.parquet')
+print('Rows:', len(df))
+print('Cols:', list(df.columns))
+print('Date range:', df['date'].min(), 'to', df['date'].max())
+print('Decisions:', df['decision'].value_counts().to_dict())
+"
 
 # Verify report has expected sections
-grep -q "Backtest Baseline" research/reports/go_no_go_evaluation_001.md
-grep -q "Paper Performance" research/reports/go_no_go_evaluation_001.md
-grep -q "Statistical Comparison" research/reports/go_no_go_evaluation_001.md
-grep -q "Drift Assessment" research/reports/go_no_go_evaluation_001.md
-grep -q "Decision" research/reports/go_no_go_evaluation_001.md
+grep -q "Decision Timeline" research/reports/go_no_go_historical_validation.md
+grep -q "PSR Evolution" research/reports/go_no_go_historical_validation.md
+grep -q "Drift Events" research/reports/go_no_go_historical_validation.md
+grep -q "Comparison to Backtest" research/reports/go_no_go_historical_validation.md
+grep -q "Conclusion" research/reports/go_no_go_historical_validation.md
 
 # Lint
-python3 -m ruff check research/run_cycle9.py src/simulation/evaluation.py src/simulation/paper_trading.py
+python3 -m ruff check research/run_cycle10.py
 
 # Compile check
-python3 -c "import ast; ast.parse(open('research/run_cycle9.py').read())"
-python3 -c "import ast; ast.parse(open('src/simulation/evaluation.py').read())"
-python3 -c "import ast; ast.parse(open('src/simulation/paper_trading.py').read())"
+python3 -c "import ast; ast.parse(open('research/run_cycle10.py').read())"
 
 # Verify prior cycles still run
-python3 research/run_cycle5.py 2>&1 | tail -1
-python3 research/run_cycle6.py 2>&1 | tail -1
 python3 research/run_cycle7.py 2>&1 | tail -3
 python3 research/run_cycle8.py 2>&1 | tail -3
+python3 research/run_cycle9.py 2>&1 | tail -3
 ```
 
 ---
 
 ## Expected Outcome
 
-- Go/no-go evaluation runs without errors on current paper-trading state
-- Evaluation report produced with all required sections
-- Decision is INCONCLUSIVE (since < 63 days of paper track record)
-- Enhanced drift monitoring active in paper-trading engine
-- Framework ready for automatic evaluation once 63+ days accumulated
-- All prior cycles (1-8) continue to pass
+- Historical validation runs without errors on full OOS period (2018-2026)
+- Time-series parquet produced with ~2,200 daily evaluations
+- Framework correctly transitions from INCONCLUSIVE to GO after ~63 days and stays GO
+- Drift events match known regime flips (SPY SMA crosses) and risk overlay behavior
+- PSR converges toward 1.0 as track record lengthens
+- Validation report documents all findings
+- All prior cycles (1-9) continue to pass
 
 ---
 
 ## Evidence Reference
 
-- Cycle 7 verification: all checks PASS, zero diff vs. backtest
-- Cycle 6 walk-forward: mean OOS Sharpe 0.9473, 91.7% positive folds, 6013 trades
-- Cycle 6 plateau: 6/6 SMA windows (150, 175, 200, 226, 250, 277) achieve Sharpe >= 0.9
-- Cycle 5 promotion gate: SPY trend filter test Sharpe 1.4178, max DD -7.79%, 1196 trades
-- Cycle 8: Paper-trading engine operational, daily artifacts produced, state persisted
+- Cycle 7: Simulation verified, test Sharpe 1.4178, OOS period 2018-2026
+- Cycle 8: Paper-trading engine operational, daily artifacts produced
+- Cycle 9: Go/no-go evaluation framework built, INCONCLUSIVE with 5 days
+- `data/processed/simulation_candidate_001.parquet`: 8,482 daily rows, 1993-2026
+- Backtest baseline: Sharpe 1.4178, max DD -7.79%, 1196 trades, turnover 13.32
 
 ---

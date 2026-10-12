@@ -1,6 +1,6 @@
 # Paper-Trading Rolling Report
 
-**Generated:** 2026-10-12 03:06:13 UTC
+**Generated:** 2026-10-12 03:16:44 UTC
 **Last Run Date:** 2026-10-09
 **Days Tracked:** 5
 
@@ -26,6 +26,15 @@
 ## Drift Monitoring
 
 - None detected
+
+## Enhanced Drift Monitoring
+
+- **Rolling 63-day Sharpe:** 0.0000
+- **Rolling 63-day Max DD:** 0.00%
+- **Regime Persistence:** 0 days in current regime
+- **vol_scale range:** [1.000, 1.000]
+- **dd_scale range:** [1.000, 1.000]
+- **Turnover (median/p95):** 0.00% / 0.00%
 
 ## Performance Tracking
 

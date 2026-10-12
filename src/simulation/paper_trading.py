@@ -143,6 +143,17 @@ class PaperTradingState:
     run_history: list[dict[str, Any]] = field(default_factory=list)
     previous_regime_exposure: float | None = None
 
+    # Enhanced drift monitoring fields
+    rolling_sharpe_63d: float = 0.0
+    rolling_max_dd_63d: float = 0.0
+    regime_persistence_days: int = 0
+    vol_scale_min: float = 1.0
+    vol_scale_max: float = 1.0
+    dd_scale_min: float = 1.0
+    dd_scale_max: float = 1.0
+    turnover_median: float = 0.0
+    turnover_p95: float = 0.0
+
     @classmethod
     def from_yaml(cls, path: str | Path) -> PaperTradingState:
         p = _ensure_path(path)
@@ -162,6 +173,15 @@ class PaperTradingState:
             drift_flags=dict(data.get("drift_flags") or {}),
             run_history=[dict(x) for x in (data.get("run_history") or [])],
             previous_regime_exposure=data.get("previous_regime_exposure"),
+            rolling_sharpe_63d=float(data.get("rolling_sharpe_63d", 0.0)),
+            rolling_max_dd_63d=float(data.get("rolling_max_dd_63d", 0.0)),
+            regime_persistence_days=int(data.get("regime_persistence_days", 0)),
+            vol_scale_min=float(data.get("vol_scale_min", 1.0)),
+            vol_scale_max=float(data.get("vol_scale_max", 1.0)),
+            dd_scale_min=float(data.get("dd_scale_min", 1.0)),
+            dd_scale_max=float(data.get("dd_scale_max", 1.0)),
+            turnover_median=float(data.get("turnover_median", 0.0)),
+            turnover_p95=float(data.get("turnover_p95", 0.0)),
         )
 
     def to_yaml(self, path: str | Path) -> None:
@@ -210,6 +230,12 @@ def run_daily_paper_update(
     if state.last_run_date == latest_date:
         return state, {}
 
+    # Extract latest values from simulation output
+    turnover = float(latest["turnover"]) if pd.notna(latest["turnover"]) else 0.0
+    vol_scale = float(latest["vol_scale"]) if pd.notna(latest["vol_scale"]) else 1.0
+    dd_scale = float(latest["dd_scale"]) if pd.notna(latest["dd_scale"]) else 1.0
+    regime_exp = float(latest["regime_exposure"]) if pd.notna(latest["regime_exposure"]) else 1.0
+
     # Build positions info for latest
     positions_dict = {}
     for symbol in config.universe:
@@ -230,9 +256,49 @@ def run_daily_paper_update(
     new_dd = (new_nav / state.peak_nav - 1.0) if state.peak_nav > 0 else 0.0
     state.max_drawdown = min(state.max_drawdown, new_dd)
 
+    # Enhanced drift monitoring calculations
+    # Rolling 63-day Sharpe and max DD
+    returns_arr = np.array(state.cumulative_returns + [float(latest["net_return"]) if pd.notna(latest["net_return"]) else 0.0])
+    if len(returns_arr) >= 63:
+        recent_returns = returns_arr[-63:]
+    else:
+        recent_returns = returns_arr
+
+    if len(recent_returns) > 1:
+        recent_vol = np.std(recent_returns, ddof=1) * np.sqrt(252)
+        recent_ann_ret = np.mean(recent_returns) * 252
+        rolling_sharpe = recent_ann_ret / recent_vol if recent_vol > 0 else 0.0
+    else:
+        rolling_sharpe = 0.0
+
+    # Rolling max DD
+    cum = np.cumprod(1.0 + returns_arr)
+    peak = np.maximum.accumulate(cum)
+    rolling_max_dd = float((cum / peak - 1.0).min())
+
+    # Regime persistence
+    if state.previous_regime_exposure is not None and state.previous_regime_exposure != regime_exp:
+        regime_persistence = 1  # Reset on flip
+    else:
+        regime_persistence = state.regime_persistence_days + 1
+
+    # Risk parameter bounds
+    vol_scale_min = min(state.vol_scale_min, vol_scale) if state.vol_scale_min > 0 else vol_scale
+    vol_scale_max = max(state.vol_scale_max, vol_scale)
+    dd_scale_min = min(state.dd_scale_min, dd_scale) if state.dd_scale_min > 0 else dd_scale
+    dd_scale_max = max(state.dd_scale_max, dd_scale)
+
+    # Turnover distribution (rolling median and p95 from run_history)
+    all_turnovers = [r.get("turnover", 0.0) for r in state.run_history] + [turnover]
+    if all_turnovers:
+        turnover_median = float(np.median(all_turnovers))
+        turnover_p95 = float(np.percentile(all_turnovers, 95))
+    else:
+        turnover_median = 0.0
+        turnover_p95 = 0.0
+
     # Drift monitoring
     drift_flags = {}
-    turnover = float(latest["turnover"]) if pd.notna(latest["turnover"]) else 0.0
     if turnover > config.alert_signal_turnover_pct:
         drift_flags["high_turnover"] = {
             "value": turnover,
@@ -240,7 +306,6 @@ def run_daily_paper_update(
             "date": latest_date,
         }
 
-    vol_scale = float(latest["vol_scale"]) if pd.notna(latest["vol_scale"]) else 1.0
     if vol_scale > config.alert_vol_scale_max:
         drift_flags["high_vol_scale"] = {
             "value": vol_scale,
@@ -248,7 +313,6 @@ def run_daily_paper_update(
             "date": latest_date,
         }
 
-    dd_scale = float(latest["dd_scale"]) if pd.notna(latest["dd_scale"]) else 1.0
     if dd_scale < config.alert_dd_scale_min:
         drift_flags["low_dd_scale"] = {
             "value": dd_scale,
@@ -265,7 +329,6 @@ def run_daily_paper_update(
         }
 
     # Regime change detection
-    regime_exp = float(latest["regime_exposure"]) if pd.notna(latest["regime_exposure"]) else 1.0
     if (
         state.previous_regime_exposure is not None
         and state.previous_regime_exposure != regime_exp
@@ -274,6 +337,35 @@ def run_daily_paper_update(
         drift_flags["regime_flip"] = {
             "from": state.previous_regime_exposure,
             "to": regime_exp,
+            "date": latest_date,
+        }
+
+    # Enhanced drift alerts
+    if rolling_sharpe < 0.5 and len(returns_arr) >= 20:
+        drift_flags["low_rolling_sharpe"] = {
+            "value": rolling_sharpe,
+            "threshold": 0.5,
+            "date": latest_date,
+        }
+
+    if regime_persistence < 5 and state.previous_regime_exposure is not None and state.previous_regime_exposure != regime_exp:
+        drift_flags["regime_persistence_low"] = {
+            "value": regime_persistence,
+            "threshold": 5,
+            "date": latest_date,
+        }
+
+    if vol_scale > 2.5:
+        drift_flags["vol_scale_extreme"] = {
+            "value": vol_scale,
+            "threshold": 2.5,
+            "date": latest_date,
+        }
+
+    if dd_scale < 0.2:
+        drift_flags["dd_scale_extreme"] = {
+            "value": dd_scale,
+            "threshold": 0.2,
             "date": latest_date,
         }
 
@@ -287,6 +379,16 @@ def run_daily_paper_update(
     state.max_drawdown = new_dd
     state.drift_flags = drift_flags
     state.previous_regime_exposure = regime_exp
+    # Enhanced drift monitoring state
+    state.rolling_sharpe_63d = rolling_sharpe
+    state.rolling_max_dd_63d = rolling_max_dd
+    state.regime_persistence_days = regime_persistence
+    state.vol_scale_min = vol_scale_min
+    state.vol_scale_max = vol_scale_max
+    state.dd_scale_min = dd_scale_min
+    state.dd_scale_max = dd_scale_max
+    state.turnover_median = turnover_median
+    state.turnover_p95 = turnover_p95
     state.run_history.append(
         {
             "date": latest_date,
@@ -394,6 +496,15 @@ def generate_paper_report(state: PaperTradingState, config: PaperTradingConfig) 
     else:
         drift_lines.append("- None detected")
 
+    # Enhanced drift monitoring
+    enhanced_lines = []
+    enhanced_lines.append(f"- **Rolling 63-day Sharpe:** {state.rolling_sharpe_63d:.4f}")
+    enhanced_lines.append(f"- **Rolling 63-day Max DD:** {state.rolling_max_dd_63d:.2%}")
+    enhanced_lines.append(f"- **Regime Persistence:** {state.regime_persistence_days} days in current regime")
+    enhanced_lines.append(f"- **vol_scale range:** [{state.vol_scale_min:.3f}, {state.vol_scale_max:.3f}]")
+    enhanced_lines.append(f"- **dd_scale range:** [{state.dd_scale_min:.3f}, {state.dd_scale_max:.3f}]")
+    enhanced_lines.append(f"- **Turnover (median/p95):** {state.turnover_median:.2%} / {state.turnover_p95:.2%}")
+
     positions_lines = []
     if state.current_positions:
         for sym, w in sorted(state.current_positions.items(), key=lambda x: abs(x[1]), reverse=True):
@@ -427,6 +538,10 @@ def generate_paper_report(state: PaperTradingState, config: PaperTradingConfig) 
 ## Drift Monitoring
 
 {chr(10).join(drift_lines)}
+
+## Enhanced Drift Monitoring
+
+{chr(10).join(enhanced_lines)}
 
 ## Performance Tracking
 
