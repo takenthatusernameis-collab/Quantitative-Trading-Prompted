@@ -205,7 +205,7 @@ python3 research/run_cycle6.py
 
 ### Code Revision
 
-8d573a4
+7e4062e
 
 ### Configuration Hash
 
@@ -228,4 +228,4 @@ Plateau SMA windows: [150, 175, 200, 226, 250, 277]
 ---
 
 *Report generated: 2026-10-12*
-*Code revision: 8d573a4*
+*Code revision: 7e4062e*

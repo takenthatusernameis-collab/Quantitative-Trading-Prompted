@@ -240,7 +240,9 @@ def _apply_rebalance_schedule(
     """Apply the rebalancing calendar to target weights."""
     if config.rebalance_freq == "M":
         is_month_end = combined.index.is_month_end
-        return combined.where(is_month_end).ffill().fillna(0.0)
+        return combined.where(
+            pd.Series(is_month_end, index=combined.index), axis=0
+        ).ffill().fillna(0.0)
     if config.rebalance_freq != "daily":
         raise ValueError(
             f"Unsupported rebalance_freq: {config.rebalance_freq!r}"
