@@ -7,6 +7,7 @@ on:
       - ".github/workflows/main.yml"
       - ".github/workflows/kilo-workflow-audit.yml"
       - ".github/workflows/kilo-two-agent-dispatch.yml"
+      - ".github/scripts/kilo-controller.sh"
       - ".kilo/TWO_AGENT_ONCE"
       - ".kilo/SKIP_NEXT_ROUTINE_KILO"
   workflow_dispatch:
@@ -33,3 +34,5 @@ jobs:
             bash -n "$script"
             echo "$script: Bash syntax OK"
           done
+          bash -n .github/scripts/kilo-controller.sh
+          echo ".github/scripts/kilo-controller.sh: Bash syntax OK"
