@@ -1,291 +1,341 @@
-# Opportunity Shortlist
+# Opportunity Shortlist — Scored Candidates
 
-## Overview
+**Generated:** 2026-10-12 04:49:17 UTC
+**Code revision:** 8604ed1
+**Method:** Phase 1 of the AGENTS.md Market Opportunity Search. Each Candidate is scored 1-5 against the seven criteria ((a)-(g)) using only evidence available in this repository (cached data, config files, prior experiment records). Scores are pre-test structural assessments — NOT backtest results. No new backtests were run to produce this shortlist.
 
-This document presents an evidence-based shortlist of candidate trading opportunities, scored against the seven criteria defined in AGENTS.md. Each opportunity is evaluated based on verified data availability and realistic cost assumptions from `research/reports/data_inventory.md`. Scores use a 1-5 scale where 1 = poor/infeasible and 5 = excellent/feasible.
+**Scoring legend:** 1 = poor/infeasible, 2 = weak, 3 = adequate, 4 = strong, 5 = excellent/feasible. Overall = sum of (a)-(g), max 35.
 
-**Scoring Legend:**
-- (a) Data quality/access
-- (b) Plausible structural explanation
-- (c) Expected return after costs
-- (d) Robustness and statistical power
-- (e) Liquidity/capacity
-- (f) Automation and operating burden
-- (g) Diversification from existing research (existing exposure is large-cap crypto)
+**Verdict categories:** Credible candidate (promotion gates passed) / Exploratory signal (valid test possible, untested) / Blocked by data (cannot form a valid test with available data) / Rejected (evidence shows no viable edge or infeasible execution).
+
+## Candidate Scoring Summary
+
+| Rank | Candidate | (a) Data Quality | (b) Structural Mech | (c) Net Return | (d) Robustness | (e) Liquidity | (f) Automation | (g) Diversification | Overall | Verdict |
+|------|-----------|------------------|---------------------|----------------|----------------|---------------|----------------|---------------------|---------|---------|
+| 1 | TSMOM incumbent | 5 | 4 | 4 | 4 | 5 | 5 | 5 | **32/35** | Credible candidate |
+| 2 | Long-only cross-sectional momentum, broad 18-ETF universe | 5 | 5 | 3 | 3 | 5 | 4 | 4 | **29/35** | Exploratory signal |
+| 3 | Sector rotation | 5 | 4 | 3 | 3 | 5 | 4 | 4 | **28/35** | Exploratory signal |
+| 4 | Calendar / rebalancing effects | 5 | 3 | 2 | 3 | 5 | 4 | 4 | **26/35** | Exploratory signal |
+| 5 | TSMOM parameter variants | 5 | 4 | 2 | 2 | 5 | 5 | 2 | **25/35** | Rejected |
+| 6 | Macro regime overlay extension | 4 | 4 | 3 | 3 | 3 | 4 | 3 | **24/35** | Exploratory signal |
+| 7 | Commodity/rate futures basis and roll yield | 2 | 4 | 3 | 2 | 3 | 2 | 5 | **21/35** | Blocked by data |
+| 8 | Crypto perpetual funding-rate carry | 2 | 4 | 3 | 2 | 5 | 3 | 1 | **20/35** | Blocked by data |
+| 9 | Volatility risk premium | 2 | 4 | 2 | 2 | 2 | 2 | 4 | **18/35** | Blocked by data |
+| 10 | Intraday session / time-of-day effects | 1 | 3 | 2 | 1 | 4 | 2 | 4 | **17/35** | Rejected |
+
+**Data availability driving the scores (computed from the live cache):**
+
+| Data Class | Cached | Consequence |
+|------------|--------|-------------|
+| Daily ETF OHLCV (18 ETFs + ^VIX) | YES | TSMOM, cross-sectional, sector, calendar, and regime strategies are all testable offline |
+| Crypto spot/perp + funding | NO | Funding-carry candidates blocked from offline testing |
+| Futures (commodity/rate) | NO | Basis/roll-yield candidates blocked |
+| Forex spot | NO | Forex carry blocked (no rate differentials regardless) |
+| Intraday history | NO | Session-effect candidates rejected |
+| Tradeable vol instrument | NO (^VIX index only) | Vol-risk-premium candidates blocked |
+| Options/funding/basis/borrow history | NO | Derivatives and short-side strategies blocked |
 
 ---
 
-## Opportunity 1: US Equity Time-Series Momentum
+## Candidate C1: TSMOM incumbent — tsmomentum_spytrend_001 (226d lookback, 21d skip, top-50%, vol-target 10%, DD control 15%, SPY 200d SMA filter)
 
-**Mechanism:** Time-series momentum exploits the tendency for recently strong-performing assets to continue outperforming in the short-to-medium term. This is driven by behavioral underreaction, investor herding, and slow information diffusion. A simple strategy buys assets with positive recent returns and sells (or stays flat on) assets with negative recent returns.
+**Category:** TSMOM variants
+**Universe:** SPY, QQQ, IWM, TLT, GLD, EFA, EEM
+**Mechanism:** Time-series momentum: assets with strong 12-month risk-adjusted performance continue to outperform; regime filter removes equity exposure in SPY downtrends.
 
-**Asset Universe:** Liquid US equity ETFs (SPY, QQQ, IWM, VXX for volatility, TLT for bonds, GLD for gold)
-
-**Holding Horizon:** 20-120 trading days (monthly rebalancing typical)
-
-**Entry/Exit:** Rank assets by 3-12 month momentum; go long top decile, rebalance monthly.
-
-**Benchmark:** Equal-weighted portfolio of same ETFs or risk-free rate.
-
-**Cost Model:** 1.0 bps commission + 2.0 bps slippage per trade (from settings.yaml).
+**Evidence base:**
+- Cycle 6 walk-forward (48 folds, fixed params): mean OOS Sharpe 0.9473, 91.7% positive folds, 6,013 pooled OOS trades
+- SMA-window plateau: 6/6 windows (150-277d) >= 0.9 Sharpe
+- Cycle 7 test period (2018-2026): Sharpe 1.4178, max DD -7.79%, 1,196 trades, 13.3x annualized turnover
+- Cycle 8-10: paper-trading engine operational; 5-day track record (gate: 63 days)
 
 ### Scores
 
 | Criterion | Score | Rationale |
 |-----------|-------|-----------|
-| (a) Data quality/access | 5 | yfinance provides 25-30+ years of clean daily data for SPY (1993), QQQ (1999), IWM (2000), GLD (2004), TLF (2002). Data is survivorship-bias-controlled at the ETF level. |
-| (b) Structural explanation | 4 | Well-documented anomaly with behavioral and institutional explanations. Persistence is debated due to competition, but structural mechanism is sound. |
-| (c) Expected return after costs | 4 | Gross momentum premia are typically 3-8% annualized; net of 3bps round-trip costs, still 3-7% for liquid ETFs. Modest but real. |
-| (d) Robustness/statistical power | 5 | Decades of data provide thousands of independent monthly observations. Extensive academic literature confirms robustness across markets and time periods. |
-| (e) Liquidity/capacity | 5 | SPY and QQQ have daily volumes of $20-50B; strategy capacity easily exceeds $100M with negligible market impact. |
-| (f) Automation burden | 5 | Daily data, monthly rebalancing. Simple ranking algorithm. No special infrastructure required. |
-| (g) Diversification | 5 | Equity-based strategy; substantially different from existing large-cap crypto exposure. |
+| (a) Data quality/access | 5 (excellent / feasible) | All 7 universe ETFs cached with 8,482+ days of clean daily OHLCV (1993/1999-2026); 100% close completeness |
+| (b) Structural mechanism | 4 (strong) | Well-documented anomaly with behavioral (underreaction) and institutional (slow diffusion) explanations; persistence debated due to competition |
+| (c) Expected net return | 4 (strong) | Net of 3bps round-trip: walk-forward mean OOS Sharpe 0.9473 exceeds the 0.9 promotion gate; mean fold ann. return ~14.7% |
+| (d) Robustness/statistical power | 4 (strong) | Plateau robust (6/6 windows) and 48-fold WF consistent; caveat: Cycle 3's 100-config grid shows the baseline on a parameter peak (5% within 0.05 Sharpe), so exact-parameter fragility is a documented risk |
+| (e) Liquidity/capacity | 5 (excellent / feasible) | SPY/QQQ/IWM are among the most liquid ETFs globally; capacity far exceeds any realistic fund size |
+| (f) Automation/operating burden | 5 (excellent / feasible) | Daily data, ~monthly signal horizon; engine, simulation, and paper-trading infrastructure all operational in-repo |
+| (g) Diversification from existing research | 5 (excellent / feasible) | US equity multi-asset; uncorrelated with the existing large-cap crypto exposure |
+| **Overall** | **32/35** | |
 
-**Total: 28/35**
-
-**Assessment:** Strong candidate for Cycle 2 baseline test. Longest data history, lowest costs, simplest implementation, and diversifies existing crypto exposure. Not an alpha claim; a baseline to validate the research pipeline.
+**Verdict: Credible candidate** — All promotion gates passed (WF mean OOS Sharpe >= 0.9, >= 50% positive folds, SMA plateau). Currently in prospective paper-trading validation.
 
 ---
 
-## Opportunity 2: Multi-Asset Cross-Sectional Momentum
+## Candidate C3: Long-only cross-sectional momentum, broad 18-ETF universe
 
-**Mechanism:** Cross-sectional momentum ranks assets by recent performance and goes long winners while shorting losers within a universe. Exploits underreaction to firm-specific information and slow price adjustment.
+**Category:** Cross-sectional momentum
+**Universe:** SPY, QQQ, IWM, TLT, GLD, DBC, VNQ, EFA, EEM, 9 sector ETFs (XLB-XLY)
+**Mechanism:** Cross-sectional momentum: rank assets by intermediate-term return, hold the top fraction; leadership persistence across asset classes and sectors.
 
-**Asset Universe:** Broad set of liquid ETFs across equities (SPY, QQQ, IWM), sectors (XLK, XLF, XLE), commodities (GLD, SLV), bonds (TLT, IEF), and international (EFA, EEM).
-
-**Holding Horizon:** 60-90 trading days (monthly rebalancing).
-
-**Entry/Exit:** Rank all assets by 12-month return (excluding most recent month); go long top 30%, short bottom 30%; equal-weight.
-
-**Benchmark:** Market-neutral zero-investment portfolio; compare Sharpe to 1/N benchmark.
-
-**Cost Model:** 1.0 bps commission + 2.0 bps slippage per leg. Short interest borrow costs not modeled (gap).
+**Evidence base:**
+- Full 18-ETF cache available (8,482 SPY days; sector ETFs 1998-2026)
+- Untested in this repository — no prior backtest, no prior hypothesis doc
+- Machinery exists: src/features/momentum.py rank_assets/select_top_decile
 
 ### Scores
 
 | Criterion | Score | Rationale |
 |-----------|-------|-----------|
-| (a) Data quality/access | 5 | yfinance provides daily data for 20+ ETFs spanning 1993-2026. |
-| (b) Structural explanation | 5 | Well-established in academic literature (Asness et al. 2013). Clear behavioral and institutional mechanism. |
-| (c) Expected return after costs | 3 | Gross Sharpe typically 0.4-0.6; net of costs, bid-ask on shorts, and borrow fees, may drop to 0.3-0.5. Competitive space with many providers. |
-| (d) Robustness/statistical power | 4 | Strong historical evidence, but cross-sectional signal is weaker than time-series. Multiple decades of data available. |
-| (e) Liquidity/capacity | 4 | Very liquid ETFs; capacity moderate due to short-side constraints and borrow costs. |
-| (f) Automation burden | 4 | Requires both long and short execution; more complex than time-series momentum. |
-| (g) Diversification | 4 | Equity-focused multi-asset; different from large-cap crypto exposure. |
+| (a) Data quality/access | 5 (excellent / feasible) | All 18 ETFs cached with 1993/1998-2026 daily history; no missing data; no fetch required |
+| (b) Structural mechanism | 5 (excellent / feasible) | Cross-sectional momentum is a first-order, globally documented anomaly (Asness et al. 2013) with structural underreaction explanation |
+| (c) Expected net return | 3 (adequate) | Untested — expected gross premia modest (low-to-mid single digits annualized for long-only form); net of 3bps costs plausible but unproven |
+| (d) Robustness/statistical power | 3 (adequate) | Untested; ~28-33 years of daily data implies ~330-400 monthly rebalance observations, adequate but not yet validated; multiple-testing discipline required |
+| (e) Liquidity/capacity | 5 (excellent / feasible) | All members are large, highly liquid ETFs |
+| (f) Automation/operating burden | 4 (strong) | Ranking machinery already exists in-repo; monthly rebalancing; no short-side execution needed in long-only form |
+| (g) Diversification from existing research | 4 (strong) | Different signal formation (cross-sectional rank vs incumbent's time-series-then-rank hybrid) and 2.5x broader universe; moderate diversification from incumbent research |
+| **Overall** | **29/35** | |
 
-**Total: 25/35**
-
-**Assessment:** Solid candidate, but less attractive than pure time-series momentum due to short-side complexity, borrow costs, and increased commission burden. Consider for later cycle if baseline TSMOM proves viable.
+**Verdict: Exploratory signal** — Data fully supports a valid chronological test; no prior evidence in-repo. Highest-ranked untested candidate — hypothesis formation and pre-registration is the natural next cycle.
 
 ---
 
-## Opportunity 3: Crypto Perpetual Funding Rate Carry
+## Candidate C4: Sector rotation (cross-sectional momentum across 9 GICS sector ETFs)
 
-**Mechanism:** Perpetual swap futures include a periodic funding rate paid by shorts to longs (or vice versa) to anchor the swap price to the spot index. When funding rates are persistently positive (contango), a strategy of buying spot and shorting perpetual swaps captures the funding rate as yield.
+**Category:** Cross-sectional momentum
+**Universe:** XLB, XLE, XLF, XLI, XLK, XLP, XLU, XLV, XLY
+**Mechanism:** Sector leadership persists with the business cycle; rotating into leading sectors captures cyclical momentum and sector-specific underreaction.
 
-**Asset Universe:** BTC/USDT, ETH/USDT perpetual swaps on OKX.
-
-**Holding Horizon:** 8-hour funding intervals; strategy holds positions through funding payments.
-
-**Entry/Exit:** Go long spot, short perpetual swap, hold for funding rate collection. Exit when rate turns negative or basis becomes excessive.
-
-**Benchmark:** Spot buy-and-hold return.
-
-**Cost Model:** 0.10% OKX spot taker fee + 0.02% swap taker fee + 2.0 bps slippage per entry/exit + basis risk.
+**Evidence base:**
+- 9 sector ETFs cached (1998-2026, 6,991 days each)
+- Untested in this repository
 
 ### Scores
 
 | Criterion | Score | Rationale |
 |-----------|-------|-----------|
-| (a) Data quality/access | 4 | OKX CCXT verified accessible. Funding rate history available (8-hour intervals) but only 66 days verified (200 records). Spot and swap OHLCV available at 1m-1d. Binance and Bybit are blocked. |
-| (b) Structural explanation | 4 | Funding rate is a mechanical feature of perpetual swaps. Positive funding is driven by market structure (long demand from leverage traders). Mechanism is structural, not data-mined. |
-| (c) Expected return after costs | 3 | Verified average annualized funding rate: ~5.85% for BTC, ~5.34% for ETH. Net of fees (~0.12%) and basis risk, still positive. But rates are volatile and can turn negative. |
-| (d) Robustness/statistical power | 3 | Only 66 days of verified funding data available; insufficient for statistical significance. Requires implementation of deeper pagination to access longer history. |
-| (e) Liquidity/capacity | 5 | BTC and ETH have deep liquidity on OKX. Verified sub-1bps spreads and high volumes. Capacity well above $100M. |
-| (f) Automation burden | 3 | Requires real-time API connection, margin management, position sizing across spot and swap accounts. More infrastructure than daily strategies. |
-| (g) Diversification | 2 | This is crypto exposure; existing research already covers large-cap crypto. Low diversification value. |
+| (a) Data quality/access | 5 (excellent / feasible) | All 9 sector ETFs cached, 1998-2026, complete daily OHLCV |
+| (b) Structural mechanism | 4 (strong) | Sector rotation is a documented, structurally motivated effect (business-cycle leadership, staggered information diffusion across sectors) |
+| (c) Expected net return | 3 (adequate) | Untested; concentrated 9-asset universe raises idiosyncratic risk; net-of-cost premia unproven |
+| (d) Robustness/statistical power | 3 (adequate) | Untested; only 9 cross-sectional members limits rank signal richness; ~330 monthly observations |
+| (e) Liquidity/capacity | 5 (excellent / feasible) | Sector ETFs are highly liquid |
+| (f) Automation/operating burden | 4 (strong) | Same machinery as C3; slightly more monitoring (sector-specific event risk) |
+| (g) Diversification from existing research | 4 (strong) | Sector-concentrated equity exposure; partially overlapping the incumbent's equity beta |
+| **Overall** | **28/35** | |
 
-**Total: 19/35**
-
-**Assessment:** Interesting opportunity with a clear structural mechanism, but constrained by: (1) only one exchange accessible (Binance/Bybit blocked), (2) insufficient verified funding rate history for statistical confidence, (3) low diversification from existing crypto exposure. Deprioritize until multi-exchange data or deeper history is available.
+**Verdict: Exploratory signal** — Valid test possible with cached data; subsumed by C3 if C3's broad universe is validated first (sector rotation is C3 restricted to 9 assets).
 
 ---
 
-## Opportunity 4: Crypto Spot-Perpetual Basis Mean Reversion
+## Candidate C6: Calendar / rebalancing effects (month-end, quarter-end, index reconstitution flows)
 
-**Mechanism:** The basis between spot price and perpetual swap price should converge to fair value determined by the funding rate. Temporary deviations from fair basis can be exploited by taking positions that profit from convergence. This is a high-frequency version of funding rate arbitrage.
+**Category:** Rebalancing/calendar effects
+**Universe:** Any cached ETF (SPY, QQQ, IWM primary)
+**Mechanism:** Recurring institutional flows at month-end, quarter-end, and index reconstitution dates create predictable short-horizon price pressure.
 
-**Asset Universe:** BTC, ETH, SOL, ADA spot vs perpetual swaps on OKX.
-
-**Holding Horizon:** Minutes to hours (intraday).
-
-**Entry/Exit:** Enter when basis deviates 2+ standard deviations from historical mean; exit at convergence.
-
-**Benchmark:** Buy-and-hold spot return.
-
-**Cost Model:** Spot taker fee 0.10% + swap taker fee 0.02% + slippage per entry/exit. Basis is typically <0.1%, requiring high precision.
+**Evidence base:**
+- Full daily history cached (8,482 SPY days) — calendar effects are directly computable
+- Untested in this repository
 
 ### Scores
 
 | Criterion | Score | Rationale |
 |-----------|-------|-----------|
-| (a) Data quality/access | 3 | OKX spot and swap data available at 1m resolution. Only recent data verified; no long historical basis series confirmed. |
-| (b) Structural explanation | 4 | Basis should converge due to arbitrage; mechanism is sound. Requires fast execution to capture small differentials. |
-| (c) Expected return after costs | 2 | Basis deviations are small (typically <0.1%); after fees (0.12%) and slippage, net returns may be negative. Requires high frequency and low-latency execution. |
-| (d) Robustness/statistical power | 3 | Need long 1-minute basis series for statistical analysis; not yet verified. Convergence can be slow during stressed markets. |
-| (e) Liquidity/capacity | 4 | BTC/ETH highly liquid on OKX. But high turnover erodes capacity due to fee accumulation. |
-| (f) Automation burden | 2 | Requires real-time monitoring, fast execution, latency optimization, and risk management. High operational complexity. |
-| (g) Diversification | 2 | Crypto exposure; no diversification from existing research. |
+| (a) Data quality/access | 5 (excellent / feasible) | Complete daily cache; calendar is deterministic and point-in-time safe |
+| (b) Structural mechanism | 3 (adequate) | Documented in academic literature but effects are small, short-lived, and competed |
+| (c) Expected net return | 2 (weak) | Expected effect is typically below the 3bps round-trip hurdle for daily-frequency capture; likely negative net edge without very low turnover design |
+| (d) Robustness/statistical power | 3 (adequate) | Many observations available, but effect size is small relative to noise; high multiple-testing risk across calendar definitions |
+| (e) Liquidity/capacity | 5 (excellent / feasible) | Large ETFs, no capacity constraint |
+| (f) Automation/operating burden | 4 (strong) | Simple to implement; calendar rules deterministic |
+| (g) Diversification from existing research | 4 (strong) | Equity-based, different mechanism from momentum; moderate diversification |
+| **Overall** | **26/35** | |
 
-**Total: 16/35**
-
-**Assessment:** Mechanism is sound but the profit opportunity is very small relative to transaction costs. Not viable without sub-bps fee tiers and low-latency infrastructure. Relegate to later research stage after baseline strategies are validated.
+**Verdict: Exploratory signal** — Valid test possible, but expected net edge is small relative to transaction costs; low priority. Must clear the cost hurdle to be credible.
 
 ---
 
-## Opportunity 5: Commodity Futures Roll Yield (Contango/Backwardation)
+## Candidate C2: TSMOM parameter variants (alternative lookback/skip/top-fraction combinations)
 
-**Mechanism:** Futures contracts in contango (future price > expected spot) create negative roll yield for long positions, while backwardation creates positive roll yield. A strategy can exploit structural contango or backwardation patterns in specific commodity sectors to capture roll returns.
+**Category:** TSMOM variants
+**Universe:** SPY, QQQ, IWM, TLT, GLD, EFA, EEM
+**Mechanism:** Same time-series momentum mechanism as C1 with different parameterizations.
 
-**Asset Universe:** Energy (CL=F crude oil, NG=F natural gas), metals (GC=F gold, SI=F silver), agriculture (HE=F lean hogs), bonds (ZB=F 10-year note).
-
-**Holding Horizon:** Varies by contract maturity; roll occurs at contract expiration.
-
-**Entry/Exit:** Long front-month futures; roll to next month at expiry. Profit from positive roll yield in backwardation markets.
-
-**Benchmark:** Spot commodity return (where available) or buy-and-hold futures return.
-
-**Cost Model:** 1.0 bps commission + 2.0 bps slippage per roll. Roll timing and execution costs not explicitly modeled.
+**Evidence base:**
+- Cycle 3 robustness grid (100 configurations): 0/100 beat the baseline test Sharpe (0.6445); 99 scored worse
+- Only 5% of configurations within +/-0.05 Sharpe of baseline — baseline sits on a peak, not a plateau
 
 ### Scores
 
 | Criterion | Score | Rationale |
 |-----------|-------|-----------|
-| (a) Data quality/access | 4 | yfinance provides continuous futures contracts (CL=F, NG=F, GC=F, etc.) with ~25 years of daily data. Continuous contracts have implicit roll logic but exact methodology is undocumented. No separate spot price series for most commodities. |
-| (b) Structural explanation | 5 | Roll yield is a structural feature driven by storage costs, convenience yields, and supply-demand fundamentals. Well-documented in academic and practitioner literature. |
-| (c) Expected return after costs | 3 | Roll yield varies by commodity and market regime. Oil and gas can have significant negative carry (contango) making long positions unprofitable. Positive roll opportunities (backwardation) are intermittent. High volatility. |
-| (d) Robustness/statistical power | 3 | 25+ years of data available, but roll yield is regime-dependent and can persist in losing states for years. Need careful implementation of roll timing. |
-| (e) Liquidity/capacity | 3 | Varies significantly. Crude oil and gold have excellent liquidity; agriculture and livestock futures can be illiquid. No spot-futures arbitrage possible without separate spot data. |
-| (f) Automation burden | 2 | Requires futures account, margin management, and careful roll timing. Continuous contracts from yfinance mask real execution costs and roll timing decisions. |
-| (g) Diversification | 5 | Commodity futures are structurally different from large-cap crypto exposure. Strong diversification value. |
+| (a) Data quality/access | 5 (excellent / feasible) | Same cached data as C1 |
+| (b) Structural mechanism | 4 (strong) | Same structural mechanism as C1 |
+| (c) Expected net return | 2 (weak) | Empirically worse: every alternative configuration tested below baseline on the same period |
+| (d) Robustness/statistical power | 2 (weak) | The 100-config grid shows the validated parameters are a local peak, not a plateau — variants are fragile by the repository's own evidence |
+| (e) Liquidity/capacity | 5 (excellent / feasible) | Same liquid ETFs as C1 |
+| (f) Automation/operating burden | 5 (excellent / feasible) | Same infrastructure as C1 |
+| (g) Diversification from existing research | 2 (weak) | Zero incremental diversification — same strategy family, same assets |
+| **Overall** | **25/35** | |
 
-**Total: 20/35**
-
-**Assessment:** Structural mechanism is strong and well-documented. Data is available but quality is degraded by continuous-futures roll methodology. Requires futures account infrastructure and careful cost modeling. Medium priority for later cycles.
+**Verdict: Rejected** — Variants tested strictly worse than the incumbent on identical data; no diversification value. The parameter-peak caveat is logged as a risk for the incumbent, not a reason to test variants.
 
 ---
 
-## Opportunity 6: VIX Index Time-Series Momentum
+## Candidate C5: Macro regime overlay extension (SPY 200d SMA + ^VIX regime indicators)
 
-**Mechanism:** VIX (CBOE Volatility Index) exhibits mean-reverting behavior over intermediate horizons and trending behavior during regime shifts. Time-series momentum or mean-reversion strategies on VIX-related instruments can capture volatility risk premium.
+**Category:** Macro regime strategies
+**Universe:** SPY, QQQ, IWM, TLT, GLD, EFA, EEM + ^VIX (regime input only)
+**Mechanism:** Combine the incumbent's SPY trend filter with volatility-regime indicators (VIX level/trend) to reduce equity exposure in high-volatility regimes.
 
-**Asset Universe:** ^VIX (CBOE VIX Index), VXX (volatility ETN), UVXY (ultra VIX ETN).
-
-**Holding Horizon:** 5-60 trading days.
-
-**Entry/Exit:** Buy volatility exposure during low-volatility regimes; sell during high-volatility spikes. Or trend-follow volatility during regime shifts.
-
-**Benchmark:** S&P 500 (SPY) total return.
-
-**Cost Model:** 1.0 bps commission + 2.0 bps slippage per trade. ETN-specific risks (credit risk, tracking error) not modeled.
+**Evidence base:**
+- ^VIX cached: 8,502 days (1993-01-04 to 2026-10-08)
+- SPY SMA regime filter already validated within the incumbent (Cycle 5)
+- Untested as a multi-indicator overlay
 
 ### Scores
 
 | Criterion | Score | Rationale |
 |-----------|-------|-----------|
-| (a) Data quality/access | 3 | ^VIX index data available 1990-2026 (9,263 days). But VIX futures (VX=F) are NOT available from yfinance. VXX/UVXY data available but these are ETNs with complex dynamics. No reliable futures curve data. |
-| (b) Structural explanation | 4 | Volatility risk premium is well-documented (variance risk premium). VIX mean-reversion is structural due to options pricing mechanics. |
-| (c) Expected return after costs | 2 | VIX strategies have high turnover and compounding decay (especially for leveraged ETNs like UVXY). Volatility clustering reduces edge. Risk premium exists but timing is difficult. |
-| (d) Robustness/statistical power | 2 | VIX is non-stationary and regime-dependent. Mean-reversion can fail for extended periods during crises. Limited independent observations in calm vs. crisis regimes. |
-| (e) Liquidity/capacity | 3 | VIX itself is not directly tradeable; must use VXX/UVXY which have significant tracking error and decay. Options on VIX available but not modeled. |
-| (f) Automation burden | 3 | Daily data, moderate complexity. But ETN-specific risks (decay, credit) add operational burden. |
-| (g) Diversification | 4 | Volatility strategies are largely uncorrelated with equity directions; different from crypto exposure. |
+| (a) Data quality/access | 4 (strong) | ^VIX index cached 1993-2026; but ^VIX is not tradeable, so only usable as a regime input, not a return series |
+| (b) Structural mechanism | 4 (strong) | Volatility regimes are persistent (vol clustering) and VIX spikes lead equity drawdowns; structurally motivated |
+| (c) Expected net return | 3 (adequate) | Untested; regime overlays typically improve consistency (Sharpe/DD) more than raw return; net effect unproven |
+| (d) Robustness/statistical power | 3 (adequate) | Untested; high multiple-testing risk when adding regime indicators (regime definitions are researcher degrees of freedom) |
+| (e) Liquidity/capacity | 3 (adequate) | As an overlay on the incumbent, capacity is unchanged; direct vol expression is impossible without a tradeable instrument |
+| (f) Automation/operating burden | 4 (strong) | Daily data; overlay logic simple to implement on the existing engine |
+| (g) Diversification from existing research | 3 (adequate) | Extends the incumbent strategy family — limited incremental diversification |
+| **Overall** | **24/35** | |
 
-**Total: 19/35**
-
-**Assessment:** Structural mechanism exists but implementation is severely constrained by lack of VIX futures data and complex ETN dynamics. Not viable without futures curve data. Low priority.
+**Verdict: Exploratory signal** — Testable only as an overlay on the incumbent (not standalone); ^VIX is an index, so no direct volatility exposure is executable from cache.
 
 ---
 
-## Opportunity 7: US Equity Open/Close Session Effect
+## Candidate C9: Commodity/rate futures basis and roll yield
 
-**Mechanism:** Stocks and ETFs exhibit systematic price patterns around market open and close. The closing auction attracts liquidity and institutional order flow. Strategies can exploit predictable patterns in opening-to-closing or closing-to-opening returns.
+**Category:** Basis/calendar spread
+**Universe:** CL=F, NG=F, GC=F, ZB=F (not cached)
+**Mechanism:** Roll yield from backwardation/contango and spot-futures basis convergence provide structural carry compensation.
 
-**Asset Universe:** SPY, QQQ, IWM, and constituent stocks.
-
-**Holding Horizon:** Intraday (minutes to hours) or hold cash overnight to capture next-day open effect.
-
-**Entry/Exit:** Enter at/near close; exit at/near open. Or reverse.
-
-**Benchmark:** SPY total return.
-
-**Cost Model:** 1.0 bps commission + 2.0 bps slippage per trade. No intraday spread model.
+**Evidence base:**
+- No futures data cached in the repository
+- yfinance continuous futures have undocumented roll logic (Cycle 1 verification)
+- No separate spot series for basis calculation
 
 ### Scores
 
 | Criterion | Score | Rationale |
 |-----------|-------|-----------|
-| (a) Data quality/access | 2 | yfinance provides intraday data only for recent periods (1-day at 1m, 7-day at 5m). No multi-year intraday history available. End-of-day data available for 25-30 years. |
-| (b) Structural explanation | 3 | Closing auction liquidity and overnight gaps have some structural basis, but the effect is debated and often arbitraged away by institutional algorithms. |
-| (c) Expected return after costs | 2 | Overnight gap effects are typically <2% annualized; intraday patterns are weak and easily arbitraged. Costs (commission + slippage + spread) eat most of the edge. |
-| (d) Robustness/statistical power | 1 | Insufficient intraday data for statistical analysis. Daily proxies available but may not capture true intraday effect. |
-| (e) Liquidity/capacity | 4 | SPY/QQQ extremely liquid. No capacity constraints for moderate trade sizes. |
-| (f) Automation burden | 2 | Requires intraday data and precise timing. But no intraday data available for meaningful backtesting period. |
-| (g) Diversification | 4 | Equity-based, different from large-cap crypto exposure. |
+| (a) Data quality/access | 2 (weak) | No futures cached; continuous-contract roll methodology is undocumented, making reproducible backtests unreliable |
+| (b) Structural mechanism | 4 (strong) | Roll yield and basis are structural features driven by storage, convenience yield, and hedging pressure |
+| (c) Expected net return | 3 (adequate) | Roll yield is regime-dependent and can be negative for years (contango); net-of-roll-cost returns unproven |
+| (d) Robustness/statistical power | 2 (weak) | Roll-timing ambiguity undermines any statistical test; no term-structure data cached |
+| (e) Liquidity/capacity | 3 (adequate) | Front-month energy/metals futures are liquid; agriculture less so |
+| (f) Automation/operating burden | 2 (weak) | Requires futures account, margin, and roll management — not supported by the daily-ETF engine |
+| (g) Diversification from existing research | 5 (excellent / feasible) | Commodity/rate exposure would be strongly diversifying vs. existing crypto/equity research |
+| **Overall** | **21/35** | |
 
-**Total: 16/35**
-
-**Assessment:** Insufficient data for valid testing. Intraday data only available for very recent periods. No multi-year history. Rejected for now.
-
----
-
-## Considered-But-Excluded Opportunities
-
-### Excluded: Binance Funding Rate Arbitrage
-**Reason:** Binance API returns HTTP 451 ("Service unavailable from a restricted location") from this environment. No data can be accessed. Even if accessible, geographic restrictions may make it unreliable. Binance has historically provided rich funding rate data spanning years, which would be ideal for this strategy. Blocked by infrastructure limitation.
-
-**Score if accessible:** (a)=5, (b)=4, (c)=4, (d)=4, (e)=5, (f)=3, (g)=2 — Total 27/35
-
-### Excluded: Bybit Funding Rate Arbitrage
-**Reason:** Bybit API returns HTTP 403 ("block access from your country") from this environment. No data accessible. Same structural opportunity as Binance funding rates but blocked.
-
-### Excluded: Historical Options Trading Strategies
-**Reason:** yfinance provides live options chains (SPY: 27 expiries, call/put bids/asks/IV) but no historical options price or IV data. Cannot backtest volatility strategies (straddles, condors, IV crushing) without years of historical options data. The available data is only for near-term expiries (next 27 dates through 2029-01-19), but bid/ask values are NaN for unstarted expiries. No historical IV time series.
-
-### Excluded: Forex Carry Trade (Interest Rate Differentials)
-**Reason:** yfinance provides spot Forex rates (EURUSD=X, GBPJPY=X, etc.) with 20+ years of daily data, but does NOT provide interest rate differentials or forward rates needed for carry trade implementation. No deposit rates, no forward curves. Spot Forex data alone cannot support a carry trade strategy.
-
-### Excluded: High-Frequency Statistical Arbitrage
-**Reason:** Only 1-minute resolution data available for recent periods (1-day window for crypto, 1-day for equities). No tick-level or order-book data. Insufficient for HFT strategies. Transaction costs would dominate any signal.
-
-### Excluded: News-Based or Sentiment Strategies
-**Reason:** No news data feed, social media data, or sentiment data source configured in the repository. yfinance does not provide news sentiment. No alternative data source available.
-
-### Excluded: Cross-Exchange Crypto Arbitrage
-**Reason:** Only one exchange (OKX) is accessible. Binance and Bybit are blocked. Cross-exchange arbitrage requires multiple venues simultaneously. Per AGENTS.md: avoid cross-venue arbitrage unless explicitly authorized and operationally justified.
+**Verdict: Blocked by data** — No futures or spot series cached; continuous-contract roll methodology undocumented; no basis computable. Would need a verified futures data source first.
 
 ---
 
-## Ranking and Recommendation for Cycle 2
+## Candidate C8: Crypto perpetual funding-rate carry (spot long + perp short)
 
-| Rank | Opportunity | Total Score | Key Strength | Key Constraint |
-|------|-------------|-------------|--------------|----------------|
-| 1 | US Equity Time-Series Momentum | 28/35 | Decades of clean data, lowest costs, simplest implementation, best diversification from crypto | Competitive space, modest returns |
-| 2 | Multi-Asset Cross-Sectional Momentum | 25/35 | Strong academic backing, diversified | Short-side borrow costs, complexity |
-| 3 | Commodity Futures Roll Yield | 20/35 | Strong structural mechanism, good diversification | Continuous contract quality, futures account needed |
-| 4 | Crypto Perpetual Funding Rate Carry | 19/35 | Clear structural mechanism, verified data | Only 1 exchange, limited funding history, low diversification |
-| 5 | VIX Index Time-Series | 19/35 | Volatility risk premium is structural | No VIX futures data, ETN complexity |
-| 6 | Spot-Perpetual Basis MR | 16/35 | Strong mechanism | High costs, low-frequency data |
-| 7 | Open/Close Session Effect | 16/35 | Equity-based | No intraday history |
+**Category:** Carry/funding strategies
+**Universe:** BTC/USDT, ETH/USDT perpetuals on OKX (not cached)
+**Mechanism:** Perpetual swaps pay funding to anchor price to spot; persistently positive funding can be harvested via spot-long/perp-short.
 
-### Recommendation
+**Evidence base:**
+- Cycle 1 live verification: OKX accessible, ~66 days of 8h funding history, avg funding ~5.85% annualized (BTC)
+- No crypto data cached in the repository
+- Binance/Bybit geo-blocked (HTTP 451/403)
 
-**Cycle 2 should implement a baseline US Equity Time-Series Momentum strategy** using yfinance daily data for SPY, QQQ, and IWM. This opportunity was selected because:
+### Scores
 
-1. **Longest verified data history** (SPY: 1993-2026, 8,482 days)
-2. **Lowest implementation complexity** — single asset class, daily rebalancing
-3. **Realistic cost model** — commission and slippage from settings.yaml are reasonable for ETF trading
-4. **Best diversification** from existing large-cap crypto exposure
-5. **Well-documented structural mechanism** — time-series momentum is a first-order market anomaly
+| Criterion | Score | Rationale |
+|-----------|-------|-----------|
+| (a) Data quality/access | 2 (weak) | Nothing cached; single accessible exchange (OKX); only ~66 days of verified funding history — insufficient for statistical power |
+| (b) Structural mechanism | 4 (strong) | Funding is a mechanical perpetual-swap feature driven by leveraged long demand — structural, not data-mined |
+| (c) Expected net return | 3 (adequate) | Verified ~5.85% annualized funding for BTC over 66 days, but rates are volatile and can turn negative; net of fees unproven |
+| (d) Robustness/statistical power | 2 (weak) | 66 days is far below the 100-trade / multi-regime evidence bar; deep pagination would be required |
+| (e) Liquidity/capacity | 5 (excellent / feasible) | BTC/ETH perp liquidity is deep (sub-1bps verified spreads) |
+| (f) Automation/operating burden | 3 (adequate) | Requires real-time API, margin management across spot and swap accounts — heavier operational burden |
+| (g) Diversification from existing research | 1 (poor / infeasible) | Existing research exposure is already large-cap crypto — zero diversification value |
+| **Overall** | **20/35** | |
 
-The strategy should be implemented as a transparent baseline before testing more complex or crypto-based opportunities. Results will validate the research pipeline (data → features → backtest → evaluation) and inform Cycle 3.
+**Verdict: Blocked by data** — Insufficient verified funding-rate history (~66 days vs. multi-year requirement), single exchange, and zero diversification from existing crypto exposure.
+
+---
+
+## Candidate C7: Volatility risk premium (short volatility / variance premium capture)
+
+**Category:** Volatility risk premium
+**Universe:** Requires tradeable vol instrument (VIX futures, VXX/UVXY) — none cached
+**Mechanism:** Option sellers earn a premium for bearing tail risk; short-vol strategies harvest the variance risk premium.
+
+**Evidence base:**
+- ^VIX index cached but NOT tradeable
+- No VIX futures, VIX ETNs, or options history cached
+
+### Scores
+
+| Criterion | Score | Rationale |
+|-----------|-------|-----------|
+| (a) Data quality/access | 2 (weak) | Only the ^VIX index is cached; no tradeable volatility instrument exists in the repository |
+| (b) Structural mechanism | 4 (strong) | Variance risk premium is a structural, well-documented feature of options markets |
+| (c) Expected net return | 2 (weak) | Not expressible with cached data; short-vol strategies carry severe negative skew |
+| (d) Robustness/statistical power | 2 (weak) | No tradeable return series to test; any backtest would require synthetic or fetched data |
+| (e) Liquidity/capacity | 2 (weak) | Tradeable vol instruments (when available) have capacity limits and decay risk |
+| (f) Automation/operating burden | 2 (weak) | Requires futures/options infrastructure not present |
+| (g) Diversification from existing research | 4 (strong) | Volatility exposure is largely uncorrelated with directional equity/crypto — good diversification in principle |
+| **Overall** | **18/35** | |
+
+**Verdict: Blocked by data** — No tradeable volatility instrument is cached or fetchable with history in this environment (^VIX is an index; VX=F not available from yfinance).
+
+---
+
+## Candidate C10: Intraday session / time-of-day effects (open-close patterns)
+
+**Category:** Session/time-of-day effects
+**Universe:** SPY, QQQ, IWM (requires intraday data)
+**Mechanism:** Systematic patterns around the open and close auctions (overnight gaps, closing-auction liquidity).
+
+**Evidence base:**
+- No intraday history cached (all 19 raw files are daily)
+- Cycle 1 live verification: only recent 1-day (1m) / 7-day (5m) windows available
+
+### Scores
+
+| Criterion | Score | Rationale |
+|-----------|-------|-----------|
+| (a) Data quality/access | 1 (poor / infeasible) | No multi-year intraday data cached or fetchable; recent 1-7 day windows cannot support any statistical test |
+| (b) Structural mechanism | 3 (adequate) | Auction-microstructure effects have some structural basis but are heavily arbitraged |
+| (c) Expected net return | 2 (weak) | Typical overnight/intraday premia are small relative to 3bps+ round-trip costs including spread |
+| (d) Robustness/statistical power | 1 (poor / infeasible) | Insufficient observations — statistically untestable with available data |
+| (e) Liquidity/capacity | 4 (strong) | Large ETFs are liquid |
+| (f) Automation/operating burden | 2 (weak) | Requires intraday data feeds and precise execution timing |
+| (g) Diversification from existing research | 4 (strong) | Equity-based; moderate diversification in principle |
+| **Overall** | **17/35** | |
+
+**Verdict: Rejected** — Insufficient data for a valid test (no intraday history). Rejected per AGENTS.md: reject opportunities explained by bad data / infeasible execution.
+
+---
+
+## Price Predictability vs Executable Net Edge
+
+The scoring explicitly separates *price predictability* (does a signal forecast returns in cached data?) from *executable net edge* (does the forecast survive costs, borrow, and operational friction?). Candidates C7-C10 fail on executability or data readiness regardless of any predictive content: no tradeable instrument (C7), insufficient history (C8), undocumented roll methodology (C9), or no intraday data (C10). C2 fails on evidence: its own parameter grid shows the incumbent's parameters are a local peak, so variants are not independently supported. C1 is the only candidate with passed promotion gates; C3-C6 are untested but formable with cached data.
+
+## Ranking & Recommendation
+
+| Rank | Candidate | Overall | Verdict | Key Constraint |
+|------|-----------|---------|---------|----------------|
+| 1 | TSMOM incumbent | 32/35 | Credible candidate | Paper track record 5/63 days; parameter-peak caveat logged |
+| 2 | Long-only cross-sectional momentum, broad 18-ETF universe | 29/35 | Exploratory signal | Untested — needs hypothesis pre-registration before any backtest |
+| 3 | Sector rotation | 28/35 | Exploratory signal | Untested; subsumed by C3 if C3 validates first |
+| 4 | Calendar / rebalancing effects | 26/35 | Exploratory signal | Expected effect below cost hurdle |
+| 5 | TSMOM parameter variants | 25/35 | Rejected | Tested worse than incumbent on identical data |
+| 6 | Macro regime overlay extension | 24/35 | Exploratory signal | Overlay only; ^VIX not tradeable; regime overfitting risk |
+| 7 | Commodity/rate futures basis and roll yield | 21/35 | Blocked by data | No futures/spot data; undocumented roll logic |
+| 8 | Crypto perpetual funding-rate carry | 20/35 | Blocked by data | ~66 days funding history; single exchange; no diversification |
+| 9 | Volatility risk premium | 18/35 | Blocked by data | No tradeable volatility instrument |
+| 10 | Intraday session / time-of-day effects | 17/35 | Rejected | No intraday history |
+
+**Counts:** 1 credible candidate, 4 exploratory signals, 3 blocked by data, 2 rejected (10 total).
+
+**Recommendation for Cycle 12:** Continue prospective paper-trading validation of C1 (incumbent; gate is 63 days of track record). The highest-ranked untested candidate is **C3 (long-only cross-sectional momentum on the broad 18-ETF cache)** at 29/35: data quality is maximal (fully cached, point-in-time safe), the structural mechanism is first-order, and it diversifies the incumbent's signal formation. Per AGENTS.md 'hypothesis first', Cycle 12 should document the C3 hypothesis and pre-register its evaluation plan (splits, benchmarks, promotion gates, multiple-testing controls) BEFORE any backtest execution.
+
+---
+
+*Report generated by `research/run_cycle11.py` (Cycle 11). Scores are structural pre-test assessments grounded in cached data and prior experiment records; they are not backtest results.*
