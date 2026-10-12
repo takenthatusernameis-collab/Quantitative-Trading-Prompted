@@ -20,7 +20,6 @@ concurrency:
 
 jobs:
   kilo:
-    continue-on-error: true
     runs-on: ubuntu-latest
     timeout-minutes: 360
 
@@ -43,17 +42,23 @@ jobs:
         continue-on-error: true
         env:
           CONTROLLER_OUTCOME: ${{ steps.kilo_controller.outcome }}
+          PROJECT_PROGRESS: ${{ steps.kilo_controller.outputs.project_progress }}
+          FAILED_SESSIONS: ${{ steps.kilo_controller.outputs.failed_sessions }}
+          IDLE_TIMEOUT_RETRIES: ${{ steps.kilo_controller.outputs.idle_timeout_retries }}
         shell: bash
         run: |
           {
             echo "## Kilo controller health"
             echo "- Controller step outcome: \`$CONTROLLER_OUTCOME\`"
             echo "- Configured agent sessions: ${{ inputs.agents || '1000' }} (the one-shot marker, when present, overrides this to exactly 2)."
-            if [ "$CONTROLLER_OUTCOME" = "success" ]; then
-              echo "- Controller ended normally. Review the session receipts and verified checkpoint messages for task-level status."
+            echo "- Verified meaningful project progress: ${PROJECT_PROGRESS:-unknown}"
+            echo "- Failed Kilo sessions: ${FAILED_SESSIONS:-unknown}"
+            echo "- Upstream idle/network retries: ${IDLE_TIMEOUT_RETRIES:-unknown}"
+            if [ "$CONTROLLER_OUTCOME" = "success" ] && [ "$PROJECT_PROGRESS" = "1" ]; then
+              echo "- Controller completed with verified, durable project progress."
             else
-              echo "- Controller step failed early. This job is non-blocking; inspect the logs/artifacts and allow the next scheduled activation to recover."
-              echo "::warning::Kilo controller failure retained for diagnosis; it will not fail the whole workflow."
+              echo "- No verified project progress was confirmed in this activation. The run is marked failed so the next scheduled activation can recover."
+              echo "::warning::Do not treat a successful cleanup or marker commit as task completion."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 

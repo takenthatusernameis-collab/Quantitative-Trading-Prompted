@@ -132,6 +132,8 @@ echo "Configured sequential Kilo sessions: $agents (one-shot mode: $one_shot_mod
 command=$(cat <<'PROMPT'
 Execute the task assigned by the previous agent and prepare a task for the next agent!
 
+If no prior agent assignment or handoff exists, inspect the repository and select one bounded, high-value task that can be implemented and verified in this session. Do not wait passively for an assignment that does not exist. Do not count control-marker-only commits as project progress.
+
 GENERAL RELIABILITY AND PROGRESS RULES
 
 1. PRESERVE THE WORKING BASELINE
@@ -219,6 +221,8 @@ trap 'kill "$heartbeat_pid" 2>/dev/null || true' EXIT
 
 failed_sessions=0
 consecutive_failures=0
+idle_timeout_retry_count=0
+project_progress=0
 provider_pressure_streak=0
 cutoff=0
 
@@ -243,20 +247,33 @@ for agent_index in $(seq 1 "$agents"); do
   fi
   WORKFLOW_BASE_SHA="$(git rev-parse HEAD)"
   session_log="$RUNNER_TEMP/kilo-session-${agent_index}.log"
+  : > "$session_log"
   provider_pressure=0
+  session_deadline=$(($(date +%s) + session_timeout))
+  session_attempt=0
   echo "Starting sequential Kilo session ${agent_index}/${agents}; remaining safety budget ${remaining}s."
-
-  set +e
-  timeout \
-    --signal=TERM \
-    --kill-after=10s \
-    "${session_timeout}s" \
-    kilo run \
-      --model kilo/kilo-auto/free \
-      --auto \
-      "$command" 2>&1 | tee "$session_log"
-  rc=${PIPESTATUS[0]}
-  set -e
+  while true; do
+    session_attempt=$((session_attempt + 1))
+    attempt_log="$RUNNER_TEMP/kilo-session-${agent_index}-attempt-${session_attempt}.log"
+    remaining_session=$((session_deadline - $(date +%s)))
+    if [ "$remaining_session" -le 0 ]; then rc=124; echo "::warning::Session time budget exhausted before attempt ${session_attempt}."; break; fi
+    echo "Kilo invocation attempt ${session_attempt}/3 for session ${agent_index}."
+    set +e
+    timeout --signal=TERM --kill-after=10s "${remaining_session}s" kilo run --model kilo/kilo-auto/free --auto "$command" 2>&1 | tee "$attempt_log" | tee -a "$session_log"
+    rc=${PIPESTATUS[0]}
+    set -e
+    if [ "$rc" -eq 0 ]; then break; fi
+    if [ "$rc" -ne 124 ] && [ "$rc" -ne 137 ] && [ "$session_attempt" -lt 3 ] && grep -Eiq 'Upstream idle timeout exceeded|upstream.{0,40}idle.{0,40}timeout|ECONNRESET|socket hang up|fetch failed' "$attempt_log"; then
+      idle_timeout_retry_count=$((idle_timeout_retry_count + 1))
+      retry_delay=$((15 * session_attempt))
+      remaining_global=$((cutoff_epoch - $(date +%s)))
+      if [ "$remaining_global" -le "$retry_delay" ] || [ "$remaining_session" -le "$retry_delay" ]; then echo "::warning::Transient upstream/network failure detected, but insufficient budget remains for another attempt."; break; fi
+      echo "::warning::Transient upstream idle/network failure in session ${agent_index}; retrying after ${retry_delay}s (attempt ${session_attempt}/3)."
+      sleep "$retry_delay"
+      continue
+    fi
+    break
+  done
   if [ "$rc" -ne 0 ]; then
     mkdir -p "$RUNNER_TEMP/kilo-failure-logs"
     tail -n 2000 "$session_log" > "$RUNNER_TEMP/kilo-failure-logs/session-${agent_index}.log" || true
@@ -377,6 +394,15 @@ PY
     checkpoint_ready=0
   fi
 
+  checkpoint_has_project_changes=0
+  if [ "$checkpoint_ready" -eq 1 ] && ! git diff --cached --quiet; then
+    while IFS= read -r -d '' changed_path; do
+      case "$changed_path" in
+        .kilo/TWO_AGENT_ONCE|.kilo/SKIP_NEXT_ROUTINE_KILO) ;;
+        *) checkpoint_has_project_changes=1 ;;
+      esac
+    done < <(git diff --cached --name-only -z)
+  fi
   committed_this_iteration=0
   if [ "$checkpoint_ready" -eq 1 ] && ! git diff --cached --quiet; then
     if git commit --allow-empty-message -m ""; then
@@ -406,7 +432,7 @@ PY
       if ! git fetch origin "$DEFAULT_BRANCH"; then
         echo "::warning::Fetch failed on persistence attempt $push_attempt; retrying."
       elif ! git merge-base --is-ancestor "origin/$DEFAULT_BRANCH" HEAD; then
-        if ! git rebase "origin/$DEFAULT_BRANCH"; then
+        if ! git rebase --autostash "origin/$DEFAULT_BRANCH"; then
           git rebase --abort >/dev/null 2>&1 || true
           echo "::warning::Rebase conflict during persistence attempt $push_attempt; preserving worktree and retrying with fresh remote state."
         fi
@@ -433,7 +459,10 @@ PY
     echo "::warning::Checkpoint persistence was not confirmed. No success claim is made; stopping edits and preserving diagnostics before the cutoff."
     cutoff=1
   fi
-
+  if [ "$persisted" -eq 1 ] && [ "$committed_this_iteration" -eq 1 ] && [ "$checkpoint_has_project_changes" -eq 1 ]; then
+    project_progress=1
+    echo "Meaningful repository progress checkpoint verified at $(git rev-parse HEAD)."
+  fi
   if [ "$cutoff" -eq 1 ]; then
     break
   fi
@@ -465,7 +494,14 @@ PY
 done
 
 if [ "$cutoff" -eq 1 ]; then
-  echo "355-minute cutoff reached; progress checkpointed."
+  echo "::warning::The 355-minute safety cutoff was reached; see checkpoint verification messages above."
 fi
-
-echo "Kilo controller completed. Failed agent sessions: $failed_sessions. This controller does not fail solely because an agent session failed."
+printf 'project_progress=%s\n' "$project_progress" >> "$GITHUB_OUTPUT"
+printf 'failed_sessions=%s\n' "$failed_sessions" >> "$GITHUB_OUTPUT"
+printf 'idle_timeout_retries=%s\n' "$idle_timeout_retry_count" >> "$GITHUB_OUTPUT"
+if [ "$project_progress" -ne 1 ]; then
+  echo "::error::No meaningful repository change or durable handoff was committed and verified in this activation. Control-marker-only commits do not count as progress."
+  exit 1
+fi
+if [ "$failed_sessions" -gt 0 ]; then echo "::warning::Useful progress was persisted, but $failed_sessions Kilo session(s) failed. Upstream idle/network retries: $idle_timeout_retry_count."; fi
+echo "Kilo controller completed with verified repository progress. Failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
