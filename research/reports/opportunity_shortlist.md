@@ -1,7 +1,7 @@
 # Opportunity Shortlist — Scored Candidates
 
-**Generated:** 2026-10-12 04:49:17 UTC
-**Code revision:** 8604ed1
+**Generated:** 2026-10-12 05:25:36 UTC
+**Code revision:** 4103c2b
 **Method:** Phase 1 of the AGENTS.md Market Opportunity Search. Each Candidate is scored 1-5 against the seven criteria ((a)-(g)) using only evidence available in this repository (cached data, config files, prior experiment records). Scores are pre-test structural assessments — NOT backtest results. No new backtests were run to produce this shortlist.
 
 **Scoring legend:** 1 = poor/infeasible, 2 = weak, 3 = adequate, 4 = strong, 5 = excellent/feasible. Overall = sum of (a)-(g), max 35.

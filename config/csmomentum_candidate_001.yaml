@@ -1,0 +1,92 @@
+# Frozen pre-registered configuration for cross-sectional momentum candidate (C3).
+#
+# Candidate identified in Cycle 11 Opportunity Shortlist (C3: 29/35 — Exploratory signal).
+# This configuration is FROZEN before any backtest execution (Cycle 12 pre-registration).
+# Cycle 13 will execute the baseline backtest and walk-forward evaluation.
+# See research/hypotheses/csmomentum_001.md for full hypothesis and evaluation plan.
+#
+# Code revision: 8604ed1
+
+candidate_id: "csmomentum_001"
+
+universe:
+  - "SPY"
+  - "QQQ"
+  - "IWM"
+  - "TLT"
+  - "GLD"
+  - "DBC"
+  - "VNQ"
+  - "EFA"
+  - "EEM"
+  - "XLB"
+  - "XLE"
+  - "XLF"
+  - "XLI"
+  - "XLK"
+  - "XLP"
+  - "XLU"
+  - "XLV"
+  - "XLY"
+
+signal:
+  type: "csmomentum"          # cross-sectional momentum (rank-based)
+  lookback: 252               # trading days (~12 months) — DEFAULT, pre-specified
+  skip: 21                    # trading days (~1 month, short-term reversal skip) — DEFAULT
+  top_fraction: 0.5           # equal-weight top 50% by momentum rank — DEFAULT
+  rebalance_freq: "monthly"   # signal horizon (~21 trading days)
+
+# Pre-specified robustness grid (27 configs total, fixed for multiple-testing control):
+# lookback in {189, 252, 315}
+# skip in {21, 42}
+# top_fraction in {0.3, 0.5, 0.7}
+# Baseline is the center: (252, 21, 0.5)
+# All 27 combinations will be evaluated in Cycle 13; NO additional configs post-hoc.
+
+risk_overlay:
+  # BASELINE BEFORE COMPLEXITY (per AGENTS.md): NO risk overlay initially.
+  # Vol-targeting, drawdown control, and regime filters are reserved for
+  # Cycle 14+ ONLY IF the baseline clears all promotion gates.
+  none: true
+
+cost_model:
+  commission_bps: 1.0
+  slippage_bps: 2.0
+  total_round_trip_bps: 3.0
+
+execution:
+  signal_lag_days: 1          # signal computed on T-1 close
+  price_field: "Close"        # "Close" (EOD) reproduces the backtest exactly
+  timezone: "UTC"
+  rebalance_schedule: "monthly"  # month-end calendar rebalancing
+
+history_start: "1993-01-01"   # earliest price data loaded for signals
+                              # (SPY starts 1993-01-29; sector ETFs start 1998-12-22;
+                              # DBC starts 2006-02-06 — engine handles inception)
+overlay_warmup: "slice"       # "slice": overlay state initializes at start_date
+                              # (Cycle 5 test-period convention; N/A for baseline)
+seed: 42                      # engine is deterministic; seed reserved
+
+# Pre-registered evaluation metadata (for traceability, not used by engine)
+evaluation:
+  splits:
+    train_end: "2009-12-31"
+    validation_end: "2017-12-31"
+    test_end: "2026-10-09"
+  walk_forward:
+    train_years: 10
+    test_months: 12
+    step_months: 6
+    purge_days: 21
+    embargo_days: 21
+  promotion_gates:
+    wf_mean_oos_sharpe_min: 0.9
+    positive_fold_rate_min: 0.5
+    pooled_oos_trades_min: 100
+    plateau_fraction_min: 0.667  # >= 2 of 3 lookbacks within 10% of baseline
+  multiple_testing:
+    total_configs: 27
+    dsr_method: "compute_dsr"
+  benchmarks:
+    - "equal_weight_18"        # 1/N over the 18-ETF universe
+    - "tsmomentum_spytrend_001"  # incumbent on core 7
