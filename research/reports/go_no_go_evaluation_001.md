@@ -107,5 +107,5 @@ Re-evaluate after 58 more trading days of paper track record.
 
 ---
 
-*Report generated: 2026-10-12 03:16:44 UTC*
-*Code revision: 8d573a4*
+*Report generated: 2026-10-12 04:21:16 UTC*
+*Code revision: c92f30a*
