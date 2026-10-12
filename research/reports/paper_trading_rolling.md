@@ -1,17 +1,17 @@
 # Paper-Trading Rolling Report
 
-**Generated:** 2026-10-12 02:17:48 UTC
+**Generated:** 2026-10-12 03:06:13 UTC
 **Last Run Date:** 2026-10-09
-**Days Tracked:** 2
+**Days Tracked:** 5
 
 ## Current State
 
 | Metric | Value |
 |---|---|
-| Current NAV | $100,838.37 |
-| Peak NAV | $100,838.37 |
+| Current NAV | $102,109.13 |
+| Peak NAV | $102,109.13 |
 | Paper Drawdown | 0.00% |
-| Total Return | 0.84% |
+| Total Return | 2.11% |
 | Annualized Return | 186.32% |
 | Volatility (ann.) | 0.00% |
 | Sharpe Ratio (ann.) | 0.0000 |
@@ -37,3 +37,6 @@
 
 - 2026-10-09: NAV=$100,418.31, Ret=0.42%, Turnover=33.65%
 - 2026-10-09: NAV=$100,838.37, Ret=0.42%, Turnover=33.65%
+- 2026-10-09: NAV=$101,260.19, Ret=0.42%, Turnover=33.65%
+- 2026-10-09: NAV=$101,683.78, Ret=0.42%, Turnover=33.65%
+- 2026-10-09: NAV=$102,109.13, Ret=0.42%, Turnover=33.65%

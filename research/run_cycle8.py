@@ -14,7 +14,6 @@ Artifacts produced:
 from __future__ import annotations
 
 import sys
-from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -22,8 +21,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.simulation.paper_trading import (
     PaperTradingConfig,
     PaperTradingState,
-    run_daily_paper_update,
     generate_paper_report,
+    run_daily_paper_update,
 )
 
 
@@ -63,7 +62,7 @@ def main() -> None:
     print(f"\nState saved to {state_path}")
 
     # Generate report
-    report = generate_paper_report(state, config)
+    generate_paper_report(state, config)
     print(f"Report saved to {config.report_path}")
 
     print("\n=== Cycle 8 Complete ===")

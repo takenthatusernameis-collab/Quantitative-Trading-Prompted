@@ -9,10 +9,10 @@ available without lookahead bias.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, date
+from dataclasses import asdict, dataclass, field
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -20,8 +20,8 @@ import yaml
 
 from src.simulation.engine import (
     SimulationConfig,
-    run_simulation,
     _project_root,
+    run_simulation,
 )
 
 
@@ -64,7 +64,7 @@ class PaperTradingConfig(SimulationConfig):
     go_no_go_max_dd_threshold: float = 0.15
 
     @classmethod
-    def from_paper_config_yaml(cls, path: str | Path) -> "PaperTradingConfig":
+    def from_paper_config_yaml(cls, path: str | Path) -> PaperTradingConfig:
         """Load PaperTradingConfig from paper trading YAML file."""
         with open(path, "r") as fh:
             cfg = yaml.safe_load(fh) or {}
@@ -144,7 +144,7 @@ class PaperTradingState:
     previous_regime_exposure: float | None = None
 
     @classmethod
-    def from_yaml(cls, path: str | Path) -> "PaperTradingState":
+    def from_yaml(cls, path: str | Path) -> PaperTradingState:
         p = _ensure_path(path)
         if not p.exists():
             return cls()
@@ -173,7 +173,7 @@ class PaperTradingState:
 def run_daily_paper_update(
     config: PaperTradingConfig,
     state: PaperTradingState,
-    market_data: Optional[pd.DataFrame] = None,
+    market_data: pd.DataFrame | None = None,
 ) -> tuple[PaperTradingState, dict[str, Any]]:
     """
     Run a daily paper-trading update.
@@ -181,7 +181,6 @@ def run_daily_paper_update(
     Returns (updated_state, daily_artifacts)
     """
     from src.data.yfinance_fetcher import fetch_universe
-    from src.simulation.engine import run_simulation
 
     # Determine end date (today's date or last available trading day)
     if market_data is not None and len(market_data) > 0:
@@ -207,6 +206,10 @@ def run_daily_paper_update(
     latest = daily.iloc[-1]
     latest_date = daily.index[-1].strftime("%Y-%m-%d")
 
+    # Idempotency: if already processed this date, return current state
+    if state.last_run_date == latest_date:
+        return state, {}
+
     # Build positions info for latest
     positions_dict = {}
     for symbol in config.universe:
@@ -223,11 +226,9 @@ def run_daily_paper_update(
 
     # Update NAV
     new_nav = state.current_nav + daily_pnl
-    if new_nav > state.peak_nav:
-        state.peak_nav = new_nav
+    state.peak_nav = max(state.peak_nav, new_nav)
     new_dd = (new_nav / state.peak_nav - 1.0) if state.peak_nav > 0 else 0.0
-    if new_dd < state.max_drawdown:
-        state.max_drawdown = new_dd
+    state.max_drawdown = min(state.max_drawdown, new_dd)
 
     # Drift monitoring
     drift_flags = {}
@@ -265,13 +266,16 @@ def run_daily_paper_update(
 
     # Regime change detection
     regime_exp = float(latest["regime_exposure"]) if pd.notna(latest["regime_exposure"]) else 1.0
-    if state.previous_regime_exposure is not None and state.previous_regime_exposure != regime_exp:
-        if config.alert_regime_flip:
-            drift_flags["regime_flip"] = {
-                "from": state.previous_regime_exposure,
-                "to": regime_exp,
-                "date": latest_date,
-            }
+    if (
+        state.previous_regime_exposure is not None
+        and state.previous_regime_exposure != regime_exp
+        and config.alert_regime_flip
+    ):
+        drift_flags["regime_flip"] = {
+            "from": state.previous_regime_exposure,
+            "to": regime_exp,
+            "date": latest_date,
+        }
 
     # Update state
     state.last_run_date = latest_date
@@ -369,7 +373,7 @@ def generate_paper_report(state: PaperTradingState, config: PaperTradingConfig) 
     # Calculate performance metrics if we have history
     if len(state.cumulative_returns) > 0:
         returns = np.array(state.cumulative_returns)
-        total_ret = state.current_nav / 100000.0 - 1.0 if 100000.0 > 0 else 0.0
+        total_ret = state.current_nav / 100000.0 - 1.0
         ann_ret = (1.0 + total_ret) ** (252.0 / max(days_tracked, 1)) - 1.0 if days_tracked > 0 else 0.0
         if days_tracked > 1:
             vol = np.std(returns) * np.sqrt(252.0)
