@@ -114,5 +114,5 @@ figures used for the promotion-gate assessment below.
 For reference, Cycle 4's *documented* (under-costed, ~0 bps effective) combined overlay reported an unfiltered Sharpe of 0.7794; under the correct 3 bps model used here the unfiltered baseline is 0.7458. The regime filters clear the 0.9 gate under **both** cost treatments, so the promotion-gate conclusion is robust.
 ---
 
-*Report generated: 2026-10-11*
-*Code revision: 412f292*
+*Report generated: 2026-10-12*
+*Code revision: 11a3056*

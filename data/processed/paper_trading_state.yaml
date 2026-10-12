@@ -1,0 +1,42 @@
+last_run_date: '2026-10-09'
+current_positions:
+  SPY: 0.16192529616759282
+  QQQ: 0.16192529616759282
+  IWM: 0.16192529616759282
+  TLT: 0.0
+  GLD: 0.0
+  EFA: 0.0
+  EEM: 0.16192529616759282
+cumulative_returns:
+- 0.004183121975679133
+- 0.004183121975679133
+cumulative_pnl:
+- 418.31219756791324
+- 420.06204851425423
+cumulative_dates:
+- '2026-10-09'
+- '2026-10-09'
+peak_nav: 100838.37424608217
+current_nav: 100838.37424608217
+max_drawdown: 0.0
+drift_flags: {}
+run_history:
+- date: '2026-10-09'
+  nav: 100418.31219756791
+  daily_return: 0.004183121975679133
+  daily_pnl: 418.31219756791324
+  turnover: 0.33649609509247835
+  vol_scale: 0.6477011846703713
+  dd_scale: 1.0
+  regime_exposure: 1.0
+  n_positions: 4
+- date: '2026-10-09'
+  nav: 100838.37424608217
+  daily_return: 0.004183121975679133
+  daily_pnl: 420.06204851425423
+  turnover: 0.33649609509247835
+  vol_scale: 0.6477011846703713
+  dd_scale: 1.0
+  regime_exposure: 1.0
+  n_positions: 4
+previous_regime_exposure: 1.0

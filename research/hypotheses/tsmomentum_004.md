@@ -5,10 +5,10 @@
 - v001 (tsmomentum_001, 2026-10-10): Initial baseline hypothesis
 - v002 (tsmomentum_002, 2026-10-11): Updated with Cycle 3 robustness & stats
 - v003 (tsmomentum_003, 2026-10-11): Updated with Cycle 4 combined risk overlay
-- v004 (tsmomentum_004, 2026-10-11): Updated with Cycle 5 regime & universe exploration
+- v004 (tsmomentum_004, 2026-10-12): Updated with Cycle 5 regime & universe exploration
 
 **Parent hypothesis**: `research/hypotheses/tsmomentum_003.md`
-**Code revision**: 412f292
+**Code revision**: 11a3056
 
 ---
 
@@ -136,5 +136,5 @@ Same as tsmomentum_002/003, plus:
 
 ---
 
-*Updated: 2026-10-11*
-*Code revision: 412f292*
+*Updated: 2026-10-12*
+*Code revision: 11a3056*
