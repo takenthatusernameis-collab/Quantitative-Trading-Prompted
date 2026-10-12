@@ -419,7 +419,7 @@ python3 -c "import yaml; yaml.safe_load(open('config/csmomentum_candidate_001.ya
 
 ### Code Revision
 
-`a5d5971`
+`47c531e`
 
 ### Configuration
 
@@ -456,4 +456,4 @@ seed=42 for reproducibility.
 ---
 
 *Report generated: 2026-10-12 by `research/run_cycle13.py` (Cycle 13)*
-*Code revision: a5d5971*
+*Code revision: 47c531e*

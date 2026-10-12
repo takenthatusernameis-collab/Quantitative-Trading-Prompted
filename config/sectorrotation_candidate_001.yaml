@@ -1,0 +1,113 @@
+# Frozen pre-registered configuration for sector rotation candidate (C4).
+#
+# Candidate identified in Cycle 11 Opportunity Shortlist (C4: 28/35 —
+# Exploratory signal, rank 3 of 10). This configuration is FROZEN
+# before any backtest execution (Cycle 14 pre-registration).
+# Cycle 15 will execute the baseline backtest and walk-forward
+# evaluation.
+# See research/hypotheses/sectorrotation_001.md for the full
+# hypothesis and evaluation plan.
+#
+# Code revision: 47c531e
+
+candidate_id: "sectorrotation_001"
+
+universe:
+  - "XLB"   # Materials
+  - "XLE"   # Energy
+  - "XLF"   # Financials
+  - "XLI"   # Industrials
+  - "XLK"   # Technology
+  - "XLP"   # Consumer Staples
+  - "XLU"   # Utilities
+  - "XLV"   # Health Care
+  - "XLY"   # Consumer Discretionary
+
+signal:
+  type: "csmomentum"          # cross-sectional momentum (rank-based)
+                               # applied to the 9 GICS sector ETFs
+  lookback: 252               # trading days (~12 months) — DEFAULT, pre-specified
+  skip: 21                    # trading days (~1 month, short-term reversal skip) — DEFAULT
+  top_fraction: 0.5           # equal-weight top 50% by momentum rank — DEFAULT
+  rebalance_freq: "monthly"   # signal horizon (~21 trading days)
+
+# Pre-specified robustness grid (18 unique configurations, fixed for
+# multiple-testing control):
+# lookback in {189, 252, 315}  -> 3 values
+# skip in {21, 42}             -> 2 values
+# top_fraction in {0.3, 0.5, 0.7} -> 3 values
+# GRID ARITHMETIC: 3 x 2 x 3 = 18 unique configurations.
+# The grid label MUST equal the product of the parameter value counts
+# (correcting the Cycle 13 pre-registration defect, which mislabeled
+# the identical parameter values as "27 configurations").
+# Baseline is the center: (252, 21, 0.5).
+# All 18 combinations will be evaluated in Cycle 15; the evaluation
+# script MUST assert len(lookbacks) * len(skips) * len(top_fractions) == 18.
+# NO additional configs post-hoc.
+
+risk_overlay:
+  # BASELINE BEFORE COMPLEXITY (per AGENTS.md): NO risk overlay initially.
+  # Vol-targeting, drawdown control, and regime filters are reserved for
+  # later cycles ONLY IF the baseline clears all promotion gates.
+  none: true
+
+cost_model:
+  commission_bps: 1.0
+  slippage_bps: 2.0
+  total_round_trip_bps: 3.0
+
+execution:
+  signal_lag_days: 1          # signal computed on T-1 close
+  price_field: "Close"        # "Close" (EOD)
+  timezone: "UTC"
+  rebalance_schedule: "monthly"  # month-end calendar rebalancing
+
+history_start: "1998-12-22"   # sector ETF inception (all 9 incept together)
+                               # (6,991 common trading days through 2026-10-08)
+overlay_warmup: "slice"       # "slice": overlay state initializes at start_date
+                               # (Cycle 5 test-period convention; N/A for baseline)
+seed: 42                      # engine is deterministic; bootstrap seed
+
+# Data integrity verified at freeze time (2026-10-12):
+#   9/9 parquet files, 6,991 rows each, 100% Close completeness,
+#   0 NaN, 0 duplicate dates, common range 1998-12-22..2026-10-08,
+#   aligned Close frame content hash 5e2d48e6579a53cd.
+data:
+  source: "yahoo_finance"
+  cached: true
+  fetch_new: false
+  frequency: "daily"
+  common_start: "1998-12-22"
+  common_end: "2026-10-08"
+  close_completeness: 1.0
+
+# Pre-registered evaluation metadata (for traceability, not used by engine)
+evaluation:
+  splits:
+    train_start: "1998-12-22"
+    train_end: "2009-12-31"
+    validation_end: "2017-12-31"
+    test_start: "2018-01-01"
+    test_end: "2026-10-09"   # repo convention; 9-sector union calendar ends 2026-10-08
+  walk_forward:
+    train_years: 10
+    test_months: 12
+    step_months: 6
+    purge_days: 21
+    embargo_days: 21
+    expected_folds: 36        # actual count from generate_walkforward_splits
+                               # with the 1998-12-22 start (NOT 48 — the C3
+                               # count does not apply to this universe)
+  promotion_gates:
+    wf_mean_oos_sharpe_min: 0.9
+    positive_fold_rate_min: 0.5
+    pooled_oos_trades_min: 100
+    plateau_fraction_min: 0.667  # >= 2 of 3 lookbacks within 10% of baseline
+  multiple_testing:
+    total_configs: 18          # 3 x 2 x 3 — label equals the product
+    dsr_method: "compute_dsr"
+    bootstrap_seed: 42
+    n_bootstrap: 1000
+  benchmarks:
+    - "equal_weight_9"        # 1/N over the 9 sector ETFs
+    - "tsmomentum_spytrend_001"  # incumbent on core 7
