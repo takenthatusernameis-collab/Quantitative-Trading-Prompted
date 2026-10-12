@@ -169,18 +169,71 @@ jobs:
           if [ "$one_shot_mode" -eq 1 ]; then agents=2; fi
           echo "Configured sequential Kilo sessions: $agents (one-shot mode: $one_shot_mode)."
           command=$(cat <<'PROMPT'
-          Execute the task assigned by the previous agent and prepare a task for the next agent !
+          Execute the task assigned by the previous agent and prepare a task for the next agent!
 
-          Reliability rules:
-          - Before every tool call, check the exact schema, required arguments, and value types. After a rejection, inspect the actual error/schema, change the invalid argument, and never repeat an identical malformed call.
-          - For network, provider, EOF, rate-limit, idle-timeout, and tool errors, preserve partial progress, classify the error, honor Retry-After/reset hints, use appropriate backoff, and change the approach before retrying. Do not amplify provider outages with parallel calls.
-          - Do not claim a test or log review passed without evidence. Reproduce the smallest failure, fix its root cause, rerun the focused check, then broader checks when useful.
-          - For SQLite, explicitly create and verify writable parent directories; do not delete existing databases to "fix" open errors. Keep runtime data out of commits.
-          - Validate exchange symbols/market-data availability before candle requests; do not retry deterministic invalid-symbol 400s unchanged. Distinguish permissions (401/403), quotas (429/402), transient 5xx, empty data, and malformed data.
-          - Backtests must reset positions, cash, pending orders, equity, and model state per fold; zero-trade folds inherit nothing. Prevent lookahead/universe leakage and include fees, spread, slippage, depth, and fill assumptions.
-          - Before checkpointing inspect status/diff; exclude environments, caches, databases, SQLite sidecars, and runtime logs; run git diff --check; protect .github/workflows and verify the remote commit after push.
-          - Do not modify .github/workflows, permissions, checkpoint controls, or safety policy. If a task is not recoverable, leave a compact evidenced handoff and let the next fresh session continue.
-          - At session end state what changed, verification performed, blockers, and a precise next task.
+          GENERAL RELIABILITY AND PROGRESS RULES
+
+          1. PRESERVE THE WORKING BASELINE
+          - Keep the existing project and workflow architecture stable.
+          - Prefer the smallest reversible change that solves a demonstrated problem.
+          - Do not introduce parallel execution, redesign orchestration, or weaken permissions and safety controls merely because a task failed.
+          - Prioritize useful, durable progress over infrastructure perfection.
+
+          2. CHANGE APPROACH AFTER REPEATED FAILURE
+          - Track consecutive failures caused by the same underlying problem and approach.
+          - After five consecutive failures, do not repeat that same approach unchanged a sixth time.
+          - Record the observed failures and evidence, then choose a materially different approach.
+          - Changing wording, waiting, or retrying an identical operation with unchanged assumptions is not a materially different approach.
+          - Do not make speculative changes merely to satisfy this rule. If no safe, evidence-based alternative exists, stop that line of work and prepare a clear handoff.
+          - Distinguish a recurring deterministic blocker from unrelated transient errors.
+
+          3. HANDLE ERRORS PROPORTIONATELY
+          - For transient network, provider, rate-limit, timeout, and service errors, preserve progress, use bounded backoff, and honor available retry instructions.
+          - Avoid amplifying service outages with unnecessary parallel requests.
+          - For reproducible errors, investigate and fix the root cause with the smallest verifiable change.
+          - Do not repeatedly retry an operation when its prerequisites are known to be missing.
+
+          4. INSPECT AND VERIFY
+          - Inspect relevant error messages, logs, configuration, dependencies, and project conventions before changing things.
+          - Reproduce the smallest failure when practical and verify prerequisites before relying on them.
+          - Never claim a test, deployment, log review, or other check passed without evidence.
+          - After a change, rerun the focused check; run broader checks when useful.
+          - Never delete user data, disable validation, or weaken safety controls simply to make an error disappear.
+
+          5. PRESERVE DURABLE PROGRESS
+          - Inspect repository status and diffs before checkpointing.
+          - Preserve useful partial work and avoid unrelated modifications.
+          - Exclude secrets, credentials, caches, generated runtime data, and environment directories as appropriate.
+          - Use available formatting and whitespace checks.
+          - Respect repository boundaries and collaboration conventions.
+          - Reconcile remote changes instead of blindly overwriting them. When committing or pushing is part of the task, verify persistence.
+
+          6. PRIORITIZE RESULTS OVER ACTIVITY
+          - An unsuccessful session can still produce useful findings if they are recorded durably.
+          - A successful process exit does not prove the task was completed correctly.
+          - Fix cheap, deterministic blockers; tolerate isolated recoverable failures.
+          - Do not turn every operational imperfection into an infrastructure project.
+          - Prefer accumulated, verified improvements over optimizing solely for successful session exits.
+
+          7. USE SAFEGUARDS PROPORTIONATELY
+          - Encode critical, repeatable invariants in executable checks when practical.
+          - Use agent instructions for judgment and decisions that cannot reliably be reduced to deterministic checks.
+          - Preserve existing automation, permissions, checkpoint controls, and safety policies unless the assigned task explicitly requires a change and the change is justified.
+          - Avoid elaborate machinery for hypothetical failures without evidence that its benefits justify the complexity.
+          - Do not treat a prompt instruction as an independently enforced guarantee.
+
+          8. END EVERY SESSION WITH A USEFUL HANDOFF
+          State:
+          - What changed.
+          - What was actually verified.
+          - What remains unresolved.
+          - Which approaches have already failed and why.
+          - One precise next task, with relevant evidence and constraints.
+
+          If blocked, preserve useful progress and leave an evidence-based handoff. The next session must inspect that evidence rather than blindly repeating failed attempts.
+
+          DEFAULT OPERATING PRINCIPLE
+          Make progress despite imperfection. Fix cheap, deterministic blockers. Tolerate isolated recoverable failures. Protect durable progress and critical invariants. Change approach when evidence shows the current one is not working.
           PROMPT
           )
           DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
