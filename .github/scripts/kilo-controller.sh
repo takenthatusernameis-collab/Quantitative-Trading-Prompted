@@ -226,9 +226,9 @@ GENERAL RELIABILITY AND PROGRESS RULES
 MANDATORY LOOP-SUPERVISOR PROTOCOL
 
 A. CONTINUOUS SUPERVISION FROM WORKER START
-- The controller starts a separate read/write-restricted `loop-supervisor` review process immediately before the first worker invocation. It reviews the current task and the latest worker/repository evidence immediately, then on a 60-second cadence.
+- The controller starts a separate read/write-restricted `loop-supervisor` review process immediately before the first worker invocation. It reviews the current task and the latest worker/repository evidence immediately, then on a 150-second cadence.
 - New or materially changed supervisor feedback is injected into the next worker tool result by the `loop-supervisor-feedback` plugin. Read it, assess it against current evidence, and either take the smallest safe verified action or explicitly explain why it is unsuitable.
-- A one-minute review is not a promise that the model can interrupt a tool call or active generation. Feedback arrives at the next tool-result boundary. The monitor still records its scheduled review and status every minute.
+- A scheduled review is not a promise that the model can interrupt a tool call or active generation. Feedback arrives at the next tool-result boundary. The monitor still records its scheduled review and status; the controller heartbeat reports status every 30 seconds.
 - Do not spawn an additional background startup review; the controller-managed continuous monitor is authoritative. You may still invoke a targeted foreground supervisor task for a failure loop, using a unique report path.
 - If the plugin, monitor, or supervisor is unavailable, continue the assigned task using the best available evidence. No supervisor failure may terminate or restart the worker.
 
@@ -340,8 +340,8 @@ python3 .github/scripts/kilo-supervisor-loop.py \
   --report-dir .kilo/supervisor-reports \
   --kilo "$RUNNER_TEMP/kilo/node_modules/.bin/kilo" \
   --model kilo/kilo-auto/free \
-  --interval-seconds 60 \
-  --review-timeout-seconds 45 \
+  --interval-seconds 150 \
+  --review-timeout-seconds 120 \
   --run-id "${GITHUB_RUN_ID:-local}" \
   --run-attempt "${GITHUB_RUN_ATTEMPT:-1}" \
   > >(tee -a "$SUPERVISOR_LOOP_LOG") 2>&1 &
@@ -402,11 +402,21 @@ PY
     fi
     if [ -f "$SUPERVISOR_LOOP_LOG" ]; then
       review_started="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ started' "$SUPERVISOR_LOOP_LOG" || true)"
-      supervisor_event="$(grep -E '\[loop-supervisor\].*(review [0-9]+ started|appended cumulative advice|complete;|timed out|returned exit|feedback append failed|stopped;|unexpected monitor failure)' "$SUPERVISOR_LOOP_LOG" | tail -n 1 | cut -c1-220 || true)"
+      review_completed="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ completed with usable report' "$SUPERVISOR_LOOP_LOG" || true)"
+      review_timeouts="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ timed out;' "$SUPERVISOR_LOOP_LOG" || true)"
+      review_failures="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ (returned exit|returned without writing|wrote an empty report|report could not be sanitized|failed to launch or complete)' "$SUPERVISOR_LOOP_LOG" || true)"
+      supervisor_event="$(grep -E '\[loop-supervisor\].*(review [0-9]+ started|review [0-9]+ completed with usable report|appended cumulative advice|complete;|timed out|returned exit|feedback append failed|stopped;|unexpected monitor failure)' "$SUPERVISOR_LOOP_LOG" | tail -n 1 | cut -c1-220 || true)"
     else
       review_started=0
+      review_completed=0
+      review_timeouts=0
+      review_failures=0
       supervisor_event="no supervisor log yet"
     fi
+    delivery_transcripts="$(find "$SUPERVISOR_TRANSCRIPT_DIR" -maxdepth 1 -type f -name 'worker-delivery-*.md' 2>/dev/null | wc -l | tr -d '[:space:]')"
+    dialogue_transcripts="$(find "$SUPERVISOR_TRANSCRIPT_DIR" -maxdepth 1 -type f -name 'review-*-agent-dialogue.md' 2>/dev/null | wc -l | tr -d '[:space:]')"
+    delivery_transcripts="${delivery_transcripts:-0}"
+    dialogue_transcripts="${dialogue_transcripts:-0}"
     read -r journal_units cursor_offset advice_entries < <(python3 - "$SUPERVISOR_FEEDBACK_FILE" "$SUPERVISOR_FEEDBACK_CURSOR_FILE" <<'PY'
 import json
 import sys
@@ -430,8 +440,8 @@ PY
     pending_units=$((journal_units - cursor_offset))
     if [ "$pending_units" -lt 0 ]; then pending_units=0; fi
     latest_transcript="$(find "$SUPERVISOR_TRANSCRIPT_DIR" -maxdepth 1 -type f -printf '%f\n' 2>/dev/null | sort | tail -n 1)"
-    printf '[supervisor-status] reviews_started=%s advice_entries=%s journal_units=%s injected_cursor_units=%s queued_not_yet_injected_units=%s latest_event="%s" latest_transcript="%s"\n' \
-      "${review_started:-0}" "${advice_entries:-0}" "$journal_units" "$cursor_offset" "$pending_units" "${supervisor_event:-unknown}" "${latest_transcript:-none}"
+    printf '[supervisor-status] reviews_started=%s reviews_completed=%s review_timeouts=%s review_failures=%s advice_entries=%s delivery_transcripts=%s dialogue_transcripts=%s journal_units=%s injected_cursor_units=%s queued_not_yet_injected_units=%s latest_event="%s" latest_transcript="%s"\n' \
+      "${review_started:-0}" "${review_completed:-0}" "${review_timeouts:-0}" "${review_failures:-0}" "${advice_entries:-0}" "$delivery_transcripts" "$dialogue_transcripts" "$journal_units" "$cursor_offset" "$pending_units" "${supervisor_event:-unknown}" "${latest_transcript:-none}"
     sleep 30
   done
 }
@@ -896,7 +906,14 @@ PY
 )
 final_pending_units=$((final_journal_units - final_cursor_offset))
 if [ "$final_pending_units" -lt 0 ]; then final_pending_units=0; fi
-final_review_count="$(grep -Ec '[loop-supervisor].*review [0-9]+ started' "$SUPERVISOR_LOOP_LOG" || true)"
+final_review_count="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ started' "$SUPERVISOR_LOOP_LOG" || true)"
+final_completed_review_count="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ completed with usable report' "$SUPERVISOR_LOOP_LOG" || true)"
+final_timeout_count="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ timed out;' "$SUPERVISOR_LOOP_LOG" || true)"
+final_review_failure_count="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ (returned exit|returned without writing|wrote an empty report|report could not be sanitized|failed to launch or complete)' "$SUPERVISOR_LOOP_LOG" || true)"
+final_delivery_count="$(find "$SUPERVISOR_TRANSCRIPT_DIR" -maxdepth 1 -type f -name 'worker-delivery-*.md' 2>/dev/null | wc -l | tr -d '[:space:]')"
+final_dialogue_count="$(find "$SUPERVISOR_TRANSCRIPT_DIR" -maxdepth 1 -type f -name 'review-*-agent-dialogue.md' 2>/dev/null | wc -l | tr -d '[:space:]')"
+final_delivery_count="${final_delivery_count:-0}"
+final_dialogue_count="${final_dialogue_count:-0}"
 printf 'project_progress=%s\n' "$project_progress" >> "$GITHUB_OUTPUT"
 printf 'failed_sessions=%s\n' "$failed_sessions" >> "$GITHUB_OUTPUT"
 printf 'idle_timeout_retries=%s\n' "$idle_timeout_retry_count" >> "$GITHUB_OUTPUT"
@@ -906,6 +923,11 @@ printf 'sessions_completed=%s\n' "$sessions_completed" >> "$GITHUB_OUTPUT"
 printf 'persisted_checkpoints=%s\n' "$persisted_checkpoints" >> "$GITHUB_OUTPUT"
 printf 'last_verified_checkpoint_sha=%s\n' "$last_verified_checkpoint_sha" >> "$GITHUB_OUTPUT"
 printf 'supervisor_review_count=%s\n' "$final_review_count" >> "$GITHUB_OUTPUT"
+printf 'supervisor_reviews_completed=%s\n' "$final_completed_review_count" >> "$GITHUB_OUTPUT"
+printf 'supervisor_review_timeouts=%s\n' "$final_timeout_count" >> "$GITHUB_OUTPUT"
+printf 'supervisor_review_failures=%s\n' "$final_review_failure_count" >> "$GITHUB_OUTPUT"
+printf 'supervisor_delivery_transcripts=%s\n' "$final_delivery_count" >> "$GITHUB_OUTPUT"
+printf 'supervisor_dialogue_transcripts=%s\n' "$final_dialogue_count" >> "$GITHUB_OUTPUT"
 printf 'supervisor_advice_entries=%s\n' "$final_advice_entries" >> "$GITHUB_OUTPUT"
 printf 'supervisor_pending_units=%s\n' "$final_pending_units" >> "$GITHUB_OUTPUT"
 printf 'final_phase=%s\n' "$(progress_field phase)" >> "$GITHUB_OUTPUT"
