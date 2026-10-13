@@ -200,5 +200,6 @@ Cycle 11 shortlist is **C6 calendar/rebalancing effects**
 
 ---
 
-*Report generated: 2026-10-13 (Cycle 16); updated 2026-10-13 (Cycle 17 corrected C4 re-execution)*
+*Report generated: 2026-10-13 (Cycle 16); updated 2026-10-13 (Cycle 17 corrected C4 re-execution, Cycle 18 C6 result)*
 *Code revision: bd18164*
+**Update (Cycle 18):** C6 (calendar_effects_001) executed as a distinct mechanism — Rejected/Failed (WF mean OOS Sharpe -0.0254, positive-fold rate 42.4%). See `research/experiments/calendar_effects_baseline_wf_001.md`.

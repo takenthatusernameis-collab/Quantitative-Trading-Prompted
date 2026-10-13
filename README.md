@@ -86,4 +86,4 @@ All hypotheses and experiments follow strict documentation requirements defined 
 
 This is a research/backtesting system only. It never places live trades, accesses credentials, or modifies account settings.
 
-**Current Status:** Cycle 17 complete — C4 corrected re-execution validly Rejected/Failed (cross-sectional momentum family archived on two valid tests); C6 calendar-effects pre-registration validated for Cycle 18 evaluation. See `research/reports/cross_momentum_consolidation.md`.
+**Current Status:** Cycle 18 complete — C6 (calendar_effects_001, TOM window on SPY/QQQ/IWM, 33 folds, 18-config grid) evaluated; WF mean OOS Sharpe -0.0254 < 0.9, positive-fold rate 42.4% < 50%, plateau 1/3 → **Rejected/Failed** (gates 1,2,4 fail). Artifacts: `research/experiments/calendar_effects_baseline_wf_001.md`, `data/processed/*_calendar_effects_001.parquet`. See `research/reports/cross_momentum_consolidation.md` (C6 noted as distinct).
