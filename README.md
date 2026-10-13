@@ -77,3 +77,5 @@ All hypotheses and experiments follow strict documentation requirements defined 
 ## Safety
 
 This is a research/backtesting system only. It never places live trades, accesses credentials, or modifies account settings.
+
+**Current Status:** Cycle 15 complete — C4 sector rotation rejected/failed (WF mean 0.6868 < 0.9). Cycle 16: consolidating C3/C4 cross-sectional momentum family as rejected; advancing to Candidate C6 (calendar/rebalancing effects) with pre-registration for Cycle 17. See `research/experiments/sectorrotation_baseline_wf_001.md`.
