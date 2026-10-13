@@ -1,0 +1,10 @@
+# Kilo agent runtime and generated caches
+.venv/
+venv/
+env/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+node_modules/
