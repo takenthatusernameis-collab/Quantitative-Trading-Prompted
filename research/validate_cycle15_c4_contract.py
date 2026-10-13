@@ -101,6 +101,7 @@ def main() -> None:
     for function_name in (
         "_validate_preregistered_contract",
         "_require_cached_inputs",
+        "_load_cached_close_prices",
         "_validate_sector_close",
         "_validate_core_benchmark_close",
         "_validate_generated_outputs",
@@ -117,21 +118,22 @@ def main() -> None:
 
     contract_line = min(call_lines.get("_validate_preregistered_contract", [10**9]))
     cache_line = min(call_lines.get("_require_cached_inputs", [10**9]))
-    fetch_lines = call_lines.get("fetch_close_prices", [])
+    load_lines = call_lines.get("_load_cached_close_prices", [])
     output_line = min(call_lines.get("_validate_generated_outputs", [10**9]))
-    require(contract_line < cache_line < min(fetch_lines, default=10**9) < output_line,
-            "pre-registration and cache guards must run before fetches; output verification must run last")
+    require(contract_line < cache_line < min(load_lines, default=10**9) < output_line,
+            "pre-registration and cache guards must run before local loads; output verification must run last")
 
     # Confirm the benchmark is loaded independently rather than selected from the candidate universe.
     has_separate_benchmark_load = False
     for node in ast.walk(main_function):
-        if isinstance(node, ast.Call) and call_name(node) == "fetch_close_prices" and len(node.args) >= 2:
+        if isinstance(node, ast.Call) and call_name(node) == "_load_cached_close_prices" and node.args:
             if isinstance(node.args[0], ast.Name) and node.args[0].id == "CORE7":
-                if isinstance(node.args[1], ast.Name) and node.args[1].id == "CORE7_START_DATE":
                     has_separate_benchmark_load = True
     require(has_separate_benchmark_load, "CORE7 benchmark must be loaded separately")
     require("close_core = close[CORE7]" not in source,
             "benchmark KeyError risk remains: CORE7 is not a subset of the sector universe")
+    require("    fetch_close_prices," not in source and "    fetch_universe," not in source,
+            "cache-only runner must not import a network-capable data loader")
 
     for token in (
         "EXPECTED_CLOSE_ROWS = 6991",

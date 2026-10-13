@@ -29,7 +29,6 @@ from src.backtest.engine import (
 from src.evaluation.statistics import compute_dsr, compute_pbo, compute_psr
 from src.evaluation.utils import (
     annualize_return,
-    fetch_close_prices,
     max_drawdown,
     sharpe_ratio,
 )
@@ -220,6 +219,28 @@ def _require_cached_inputs() -> None:
             if in_window.isna().any() or (in_window <= 0).any():
                 raise RuntimeError(f"Frozen sector cache has missing/non-positive Close values for {symbol}.")
     print(f"Cache-only data preflight: PASS ({len(symbols)} symbol caches; no downloads allowed).")
+
+
+def _load_cached_close_prices(symbols: list[str]) -> pd.DataFrame:
+    """Load and align Close prices from local parquet files only.
+
+    This deliberately does not call ``fetch_universe`` or ``fetch_close_prices``:
+    their cache-miss behavior downloads from Yahoo Finance.  The preflight above
+    validates every required cache first; this loader then has no network-capable
+    code path.
+    """
+    raw_dir = REPO_ROOT / "data" / "raw"
+    closes: dict[str, pd.Series] = {}
+    for symbol in symbols:
+        path = raw_dir / f"{symbol.replace('/', '-').replace('=', '-')}.parquet"
+        frame = pd.read_parquet(path)
+        index = pd.DatetimeIndex(pd.to_datetime(frame.index, utc=True))
+        close = pd.Series(pd.to_numeric(frame["Close"], errors="coerce").to_numpy(), index=index)
+        closes[symbol] = close[~close.index.duplicated(keep="last")].sort_index()
+
+    all_dates = pd.DatetimeIndex(sorted(set().union(*(series.index for series in closes.values()))))
+    all_dates = all_dates[all_dates.weekday < 5]
+    return pd.DataFrame({symbol: closes[symbol].reindex(all_dates).ffill() for symbol in symbols}, index=all_dates)
 
 
 def _slice_prices(frame: pd.DataFrame, start_date: str, end_date: str) -> pd.DataFrame:
@@ -1437,11 +1458,11 @@ def main() -> None:
     splits = _validate_preregistered_contract()
     _require_cached_inputs()
 
-    close = _slice_prices(fetch_close_prices(UNIVERSE, START_DATE, END_DATE), START_DATE, END_DATE)
+    close = _slice_prices(_load_cached_close_prices(UNIVERSE), START_DATE, END_DATE)
     _validate_sector_close(close)
     # The incumbent benchmark uses its own seven-symbol universe.
     close_core = _slice_prices(
-        fetch_close_prices(CORE7, CORE7_START_DATE, END_DATE),
+        _load_cached_close_prices(CORE7),
         CORE7_START_DATE,
         END_DATE,
     )
