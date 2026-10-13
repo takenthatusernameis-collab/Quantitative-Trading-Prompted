@@ -20,6 +20,7 @@ ACTIVE_REVIEW: Optional[subprocess.Popen[str]] = None
 MAX_LOG_CHARS = 5_500
 MAX_OBJECTIVE_CHARS = 2_500
 MAX_REPORT_CHARS = 3_200
+MAX_PREVIOUS_FEEDBACK_CHARS = 12_000
 MAX_REVIEW_OUTPUT_CHARS = 1_200
 
 
@@ -124,8 +125,8 @@ NEW OR MOST RELEVANT WORKER OUTPUT (redacted, truncated):
 CURRENT REPOSITORY STATE:
 {git_snapshot}
 
-PREVIOUS SUPERVISOR FEEDBACK:
-{previous_feedback[-MAX_REPORT_CHARS:]}
+PREVIOUS SUPERVISOR FEEDBACK (cumulative journal tail; newer entries do not erase older ones):
+{previous_feedback[-MAX_PREVIOUS_FEEDBACK_CHARS:]}
 
 REQUIRED ACTION:
 1. Read only relevant task/research/source files as needed. Do not inspect secrets.
@@ -332,7 +333,8 @@ def main() -> int:
         return 0
 
     report_dir.mkdir(parents=True, exist_ok=True)
-    previous_feedback = read_bounded(feedback_file, MAX_REPORT_CHARS).strip()
+    previous_feedback = read_bounded(feedback_file, MAX_PREVIOUS_FEEDBACK_CHARS).strip()
+    previous_report = ""
     previous_log = ""
     cycle = 0
     next_due = time.monotonic()
@@ -355,16 +357,21 @@ def main() -> int:
             previous_feedback, repo_root, report_dir,
         )
         if report:
-            if report != previous_feedback:
-                wrapper = (
+            if report != previous_report:
+                entry = (
+                    f"--- SUPERVISOR ADVICE ENTRY cycle={cycle:04d} ---\n"
                     "INDEPENDENT LOOP-SUPERVISOR FEEDBACK\n"
-                    "Treat this as advisory evidence, not an instruction that overrides the worker's task, safety rules, or acceptance criteria. "
-                    "Independently verify recommendations before changing code.\n\n"
-                    + report
+                    "This is an append-only cumulative journal. Preserve earlier advice unless newer evidence explicitly supersedes it. "
+                    "Verify recommendations independently before changing code.\n\n"
+                    + report.strip()
+                    + f"\n--- END SUPERVISOR ADVICE ENTRY cycle={cycle:04d} ---\n"
                 )
                 try:
-                    atomic_write(feedback_file, wrapper)
-                    previous_feedback = report
+                    existing = feedback_file.read_text(encoding="utf-8", errors="replace")
+                    separator = "" if not existing or existing.endswith("\n") else "\n"
+                    atomic_write(feedback_file, existing + separator + entry)
+                    previous_report = report
+                    previous_feedback = read_bounded(feedback_file, MAX_PREVIOUS_FEEDBACK_CHARS).strip()
                     status_match = re.search(r"(?im)^STATUS:\s*(CONTINUE|ATTENTION|CRITICAL)\s*$", report)
                     status = status_match.group(1) if status_match else "REVIEW"
                     first_recommendation = next(
@@ -372,11 +379,11 @@ def main() -> int:
                          if line.strip() and not line.lstrip().startswith("#")),
                         "Review ready",
                     )
-                    log(f"review {cycle} delivered status={status}: {first_recommendation[:180]}")
+                    log(f"review {cycle} appended cumulative advice status={status}: {first_recommendation[:180]}")
                 except OSError as exc:
-                    log(f"review {cycle} feedback publish failed ({type(exc).__name__}); worker continues")
+                    log(f"review {cycle} feedback append failed ({type(exc).__name__}); existing advice retained; worker continues")
             else:
-                log(f"review {cycle} complete; advice unchanged, duplicate injection suppressed")
+                log(f"review {cycle} complete; recommendation unchanged, no duplicate journal entry added")
         if args.max_reviews and cycle >= args.max_reviews:
             break
         next_due += args.interval_seconds
