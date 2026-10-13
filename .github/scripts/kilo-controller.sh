@@ -128,6 +128,17 @@ export PATH="$RUNNER_TEMP/kilo/node_modules/.bin:$PATH"
 git config user.name "kilo-autonomous"
 git config user.email "kilo-autonomous@users.noreply.github.com"
 
+# Capture runtime context alongside any future timeout process snapshots.
+# Do not print environment variables, tokens, command-line arguments, or prompts.
+echo "::group::Kilo runtime baseline diagnostics"
+printf 'checked_out_commit=%s\n' "$(git rev-parse HEAD)"
+printf 'runner_kernel=%s\n' "$(uname -srmo 2>&1)"
+printf 'node_version=%s\n' "$(node --version 2>&1)"
+printf 'npm_version=%s\n' "$(npm --version 2>&1)"
+printf 'python_version=%s\n' "$(python3 --version 2>&1)"
+printf 'kilo_cli_package=%s\n' "$(npm list --prefix "$RUNNER_TEMP/kilo" @kilocode/cli --depth=0 2>&1 | tail -n 1)"
+echo "::endgroup::"
+
 agents="${KILO_INPUT_AGENTS:-1000}"
 if ! [[ "$agents" =~ ^[0-9]+$ ]]; then
   echo "::warning::Invalid agent count; using a safe value."
