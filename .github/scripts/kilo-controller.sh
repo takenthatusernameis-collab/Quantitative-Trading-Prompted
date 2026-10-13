@@ -293,7 +293,11 @@ while true; do
   no_progress_block=0
   transient_retry_backoff=15
   session_attempt=0
-  echo "Starting sequential Kilo session ${agent_index}/${agents}; remaining safety budget ${remaining}s."
+  if [ "$one_shot_mode" -eq 1 ]; then
+    echo "Starting sequential Kilo session ${agent_index}/${agents}; remaining safety budget ${remaining}s."
+  else
+    echo "Starting sequential Kilo session ${agent_index}; remaining safety budget ${remaining}s."
+  fi
   while true; do
     session_attempt=$((session_attempt + 1))
     attempt_log="$RUNNER_TEMP/kilo-session-${agent_index}-attempt-${session_attempt}.log"
