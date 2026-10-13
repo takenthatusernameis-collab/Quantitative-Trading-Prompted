@@ -90,25 +90,42 @@ jobs:
               echo "::warning::Session failures and no-progress outcomes are recorded, but do not terminate the routine action early."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
-          latest_dialogue="$(find "$SUPERVISOR_TRANSCRIPT_DIR" -maxdepth 1 -type f -name 'review-*-agent-dialogue.md' 2>/dev/null | sort | tail -n 1)"
-          if [ -n "$latest_dialogue" ] && [ -f "$latest_dialogue" ]; then
-            python3 - "$latest_dialogue" >> "$GITHUB_STEP_SUMMARY" <<'PY'
+          python3 - "$SUPERVISOR_TRANSCRIPT_DIR" >> "$GITHUB_STEP_SUMMARY" <<'PY'
           import html
           import sys
           from pathlib import Path
-          dialogue = Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace")
+
+          directory = Path(sys.argv[1])
+          dialogues = sorted(directory.glob("review-*-agent-dialogue.md"))
+          deliveries = sorted(directory.glob("worker-delivery-*.md"))
           print()
-          print("<details open>")
-          print("<summary>Agent dialogue box — latest worker/controller ↔ loop-supervisor exchange</summary>")
-          print("<pre style=\"white-space: pre-wrap; overflow-wrap: anywhere;\">")
-          print(html.escape(dialogue))
-          print("</pre>")
-          print("</details>")
+          print("## Agent dialogue box")
+          print("The exchanges below show the redacted request/evidence sent to the loop-supervisor, its CLI trace and returned advice, plus the exact advice delivered to the worker. Supervisor reviews cannot interrupt an in-flight worker operation; delivery occurs at the next tool-result boundary.")
+          if not dialogues and not deliveries:
+              print()
+              print("No supervisor dialogue or worker-delivery transcript was produced in this run. Check the supervisor timeout/failure counts above and download the trace artifact for diagnostics.")
+          for path in dialogues[-5:]:
+              content = path.read_text(encoding="utf-8", errors="replace")
+              print()
+              print("<details open>")
+              print("<summary>" + html.escape(path.name) + "</summary>")
+              print("<pre style=\"white-space: pre-wrap; overflow-wrap: anywhere;\">")
+              print(html.escape(content))
+              print("</pre>")
+              print("</details>")
+          for path in deliveries:
+              content = path.read_text(encoding="utf-8", errors="replace")
+              print()
+              print("<details>")
+              print("<summary>Exact worker delivery — " + html.escape(path.name) + "</summary>")
+              print("<pre style=\"white-space: pre-wrap; overflow-wrap: anywhere;\">")
+              print(html.escape(content))
+              print("</pre>")
+              print("</details>")
+          if len(dialogues) > 5:
+              print()
+              print(f"Showing the latest 5 of {len(dialogues)} supervisor exchanges here; the trace artifact contains every exchange.")
           PY
-          else
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "No supervisor dialogue transcript was produced in this run." >> "$GITHUB_STEP_SUMMARY"
-          fi
 
       - name: Upload Kilo progress and supervisor trace
         if: always()
