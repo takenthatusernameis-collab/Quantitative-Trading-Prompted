@@ -181,7 +181,7 @@ jobs:
           controller=.github/scripts/kilo-controller.sh
           grep -Fq -- "--interval-seconds 150" "$controller"
           grep -Fq -- "--review-timeout-seconds 120" "$controller"
-          grep -Fq -- "kilo run --agent loop-supervisor" "$controller"
+          grep -Fq -- '"--agent", "loop-supervisor"' .github/scripts/kilo-supervisor-loop.py
           grep -Fq -- "mode: all" .kilo/agents/loop-supervisor.md
           for marker in \
             "MANDATORY LOOP-SUPERVISOR PROTOCOL" \
