@@ -115,10 +115,10 @@ jobs:
           echo "Kilo bounded recovery, configurable session count, and 355-minute cutoff guardrails: OK"
           for marker in \
             "write_progress()" \
-            'phase=invocation-start' \
-            'phase=checkpoint-push' \
-            'phase=checkpoint-result' \
-            'phase=session-complete' \
+            'write_progress "invocation-start"' \
+            'write_progress "checkpoint-push"' \
+            'write_progress "checkpoint-result"' \
+            'write_progress "session-complete"' \
             'queued_not_yet_injected_units' \
             'worker-tail' \
             'sleep 30' \
