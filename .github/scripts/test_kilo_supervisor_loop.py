@@ -2,7 +2,9 @@
 """Deterministic tests for the continuous Kilo supervisor monitor; no model calls."""
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import os
 import sys
 import tempfile
@@ -75,9 +77,11 @@ class SupervisorLoopTests(unittest.TestCase):
             )
             fake_kilo.chmod(0o755)
             old_env = os.environ.copy()
+            live_output = io.StringIO()
             try:
                 os.environ["SUPERVISOR_TEST_CAPTURE"] = str(capture)
-                code = monitor.main_with_args([
+                with contextlib.redirect_stdout(live_output):
+                    code = monitor.main_with_args([
                     "--repo-root", str(repo),
                     "--runtime-root", str(runtime),
                     "--active-log-pointer", str(pointer),
@@ -98,6 +102,12 @@ class SupervisorLoopTests(unittest.TestCase):
                 os.environ.update(old_env)
 
             self.assertEqual(code, 0)
+            live_text = live_output.getvalue()
+            self.assertIn("::group::LIVE AGENT DIALOGUE BOX — review 0001", live_text)
+            self.assertIn("Worker/controller → supervisor: actual request and evidence", live_text)
+            self.assertIn("Supervisor → worker: advice returned by the reviewer", live_text)
+            self.assertIn("Recommended next action: verify changed evidence 1", live_text)
+            self.assertIn("::endgroup::", live_text)
             published = feedback.read_text(encoding="utf-8")
             self.assertIn("worker review 1", published)
             self.assertIn("worker review 2", published)
@@ -227,6 +237,9 @@ class SupervisorLoopTests(unittest.TestCase):
             self.assertEqual(code, 0)
             output = captured.getvalue()
             self.assertIn("SUPERVISOR_CIRCUIT_BREAKER_OPEN", output)
+            self.assertIn("::group::LIVE AGENT DIALOGUE BOX — review 0001", output)
+            self.assertIn("TIMED OUT", output)
+            self.assertIn("No usable advice returned", output)
             self.assertIn("worker remains unaffected", output)
             self.assertEqual(output.count("(consecutive unusable reviews:"), 3)
             dialogues = list(transcripts.glob("review-*-agent-dialogue.md"))
