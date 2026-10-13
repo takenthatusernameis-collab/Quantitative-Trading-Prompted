@@ -405,14 +405,9 @@ def run_baseline(close: pd.DataFrame, vix: pd.Series) -> dict:
 
     return {
         "res": res,
-        "net_ret": net_ret,
-        "weights": weights,
         "test_ret": test_ret,
-        "test_w": test_w,
-        "test_metrics": test_metrics,
-        "tail": tail,
-        "daily": daily,
-        "trades_df": trades_df,
+        "test_start": TEST_START,
+        "test_end": END_DATE,
     }
 
 
@@ -475,4 +470,6 @@ def run_walkforward(close: pd.DataFrame, vix: pd.Series, splits: list[dict]) -> 
                 "test_sortino": np.nan,
             })
 
-    return pd.DataFrame(rows)
+    df = pd.DataFrame(rows)
+    summary = summarize_walkforward(df)
+    return {"fold_df": df, "summary": summary}
