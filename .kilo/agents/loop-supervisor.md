@@ -1,9 +1,8 @@
 ---
 description: Independently diagnose repeated, alternating, or stalled worker failures; return one evidence-based recovery recommendation and write only a diagnostic report under .kilo/supervisor-reports/.
-mode: subagent
+mode: all
 steps: 8
 temperature: 0.1
-hidden: true
 permission:
   "*": deny
   read: allow
