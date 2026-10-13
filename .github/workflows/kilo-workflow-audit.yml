@@ -176,36 +176,54 @@ jobs:
           const runtime = await mkdtemp(join(tmpdir(), "kilo-feedback-plugin-"));
           try {
             const feedbackPath = join(runtime, "feedback.md");
-            const source = await readFile(".kilo/plugin/loop-supervisor-feedback.js", "utf8");
-            const pluginModule = await import("data:text/javascript;base64," + Buffer.from(source).toString("base64"));
-            process.env.RUNNER_TEMP = runtime;
-            process.env.KILO_SUPERVISOR_FEEDBACK_FILE = feedbackPath;
-            delete process.env.KILO_SUPERVISOR_MODE;
-            await writeFile(feedbackPath, "STATUS: ATTENTION\nCheck the new failing assertion.\n", "utf8");
-            const hooks = await pluginModule.default.server();
-            const after = hooks["tool.execute.after"];
-            const first = { output: "original tool output" };
-            await after({ tool: "read" }, first);
-            assert.match(first.output, /Check the new failing assertion/);
-            const firstOutput = first.output;
-            await after({ tool: "read" }, first);
-            assert.equal(first.output, firstOutput, "duplicate advice must not be appended twice");
+          const cursorPath = join(runtime, "feedback-cursor.json");
+          const source = await readFile(".kilo/plugin/loop-supervisor-feedback.js", "utf8");
+          const pluginModule = await import("data:text/javascript;base64," + Buffer.from(source).toString("base64"));
+          process.env.RUNNER_TEMP = runtime;
+          process.env.KILO_SUPERVISOR_FEEDBACK_FILE = feedbackPath;
+          process.env.KILO_SUPERVISOR_FEEDBACK_CURSOR_FILE = cursorPath;
+          delete process.env.KILO_SUPERVISOR_MODE;
+          const firstMinute = "--- SUPERVISOR ADVICE ENTRY cycle=0001 ---\\nSTATUS: ATTENTION\\nCheck the first failing assertion.\\n--- END SUPERVISOR ADVICE ENTRY cycle=0001 ---\\n";
+          const secondMinute = "--- SUPERVISOR ADVICE ENTRY cycle=0002 ---\\nSTATUS: CRITICAL\\nThe error pattern changed; verify input parsing.\\n--- END SUPERVISOR ADVICE ENTRY cycle=0002 ---\\n";
+          await writeFile(feedbackPath, firstMinute, "utf8");
+          const hooks = await pluginModule.default.server();
+          const after = hooks["tool.execute.after"];
+          const first = { output: "original tool output" };
+          await after({ tool: "read" }, first);
+          assert.match(first.output, /Check the first failing assertion/);
+          const firstOutput = first.output;
+          await after({ tool: "read" }, first);
+          assert.equal(first.output, firstOutput, "delivered advice must not be appended twice");
+          assert.ok((await readFile(cursorPath, "utf8")).includes(String(firstMinute.length)),
+            "successfully injected advice should advance the durable cursor");
 
-            await writeFile(feedbackPath, "STATUS: CRITICAL\nThe error pattern has changed; verify input parsing.\n", "utf8");
-            const second = { output: "next tool output" };
-            await after({ tool: "bash" }, second);
-            assert.match(second.output, /verify input parsing/);
+          await writeFile(feedbackPath, firstMinute + secondMinute, "utf8");
+          const second = { output: "next tool output" };
+          await after({ tool: "bash" }, second);
+          assert.match(second.output, /verify input parsing/);
+          assert.doesNotMatch(second.output, /Check the first failing assertion/,
+            "only new journal entries should be injected during the same worker process");
 
-            process.env.KILO_SUPERVISOR_FEEDBACK_FILE = join(tmpdir(), "outside-feedback.md");
-            const outsideHooks = await pluginModule.default.server();
-            const outside = { output: "leave unchanged" };
-            await outsideHooks["tool.execute.after"]({ tool: "read" }, outside);
-            assert.equal(outside.output, "leave unchanged", "files outside RUNNER_TEMP must be ignored");
+          // A fresh worker CLI/plugin process resumes from its cursor and can retrieve newly queued advice.
+          const thirdMinute = "--- SUPERVISOR ADVICE ENTRY cycle=0003 ---\\nSTATUS: ATTENTION\\nConfirm the fix using the regression test.\\n--- END SUPERVISOR ADVICE ENTRY cycle=0003 ---\\n";
+          await writeFile(feedbackPath, firstMinute + secondMinute + thirdMinute, "utf8");
+          const reloadedHooks = await pluginModule.default.server();
+          const reloaded = { output: "output after worker session rollover" };
+          await reloadedHooks["tool.execute.after"]({ tool: "read" }, reloaded);
+          assert.match(reloaded.output, /Confirm the fix using the regression test/);
+          assert.doesNotMatch(reloaded.output, /Check the first failing assertion/,
+            "a restarted session should resume the persisted cursor, not replay already delivered entries");
 
-            process.env.KILO_SUPERVISOR_MODE = "1";
-            const reviewerHooks = await pluginModule.default.server();
-            assert.equal(Object.keys(reviewerHooks).length, 0, "reviewer CLI sessions must not receive worker feedback");
-            console.log("Feedback plugin delivery, deduplication, path boundary, and reviewer isolation: OK");
+          process.env.KILO_SUPERVISOR_FEEDBACK_FILE = join(tmpdir(), "outside-feedback.md");
+          const outsideHooks = await pluginModule.default.server();
+          const outside = { output: "leave unchanged" };
+          await outsideHooks["tool.execute.after"]({ tool: "read" }, outside);
+          assert.equal(outside.output, "leave unchanged", "files outside RUNNER_TEMP must be ignored");
+
+          process.env.KILO_SUPERVISOR_MODE = "1";
+          const reviewerHooks = await pluginModule.default.server();
+          assert.equal(Object.keys(reviewerHooks).length, 0, "reviewer CLI sessions must not receive worker feedback");
+          console.log("Cumulative feedback journal delivery, durable cursor resume, path boundary, and reviewer isolation: OK");
           } finally {
             await rm(runtime, { recursive: true, force: true });
           }
@@ -215,6 +233,7 @@ jobs:
             "kilo-supervisor-loop.py" \
             "SUPERVISOR_ACTIVE_LOG_POINTER" \
             "KILO_SUPERVISOR_FEEDBACK_FILE" \
+            "KILO_SUPERVISOR_FEEDBACK_CURSOR_FILE" \
             "Started alongside the Kilo worker" \
             "supervisor_loop_pid" \
             "kill -TERM"; do
