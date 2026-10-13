@@ -2,11 +2,7 @@
 
 **Cycle:** 16 (2026-10-13)
 **Code revision:** 1d540f8
-**Purpose:** Consolidate the cross-sectional momentum family
-(Candidate C3, broad 18-ETF universe; Candidate C4, 9 GICS sector
-ETFs) after Cycles 13 and 15, per the Cycle 15 decision tree.
-This report supersedes the family-level conclusion stated in the
-Cycle 15 handoff, which treated both candidates as validly rejected.
+**Purpose:** Preserve the Cycle 16 root-cause analysis for C3/C4 and record the corrected family conclusion after the valid Cycle 17 C4 re-execution. Sections 2–5 describe the Cycle 16 state before the corrected C4 run; the current disposition is in Section 6.
 
 ---
 
@@ -41,7 +37,10 @@ Cycle 15 handoff, which treated both candidates as validly rejected.
   the aggregate statistics all correspond to the 18-ETF universe and
   the pre-registered design.
 
-## 2. Candidate C4 (sectorrotation_001) — INVALID EXECUTION → re-execution required
+## 2. Candidate C4 (sectorrotation_001) — Cycle 16 historical diagnosis (superseded by Section 6)
+
+*Historical status at the end of Cycle 16: the old Cycle 15 execution was invalid. The corrected Cycle 17 execution and its final rejection are recorded in Section 6 below.*
+
 
 The Cycle 15 record (`research/experiments/sectorrotation_baseline_wf_001.md`)
 does **not** document a valid evaluation of the pre-registered C4
@@ -90,7 +89,10 @@ The pre-registered C4 test (9 sector ETFs, 36 folds, 18-config grid)
 has never been run. The Cycle 15 claim that C4 "failed the 0.9 gate"
 is unsupported; the numbers cited for C4 are C3's numbers.
 
-## 3. Family verdict (corrected)
+## 3. Family verdict (Cycle 16 snapshot; superseded by Section 6)
+
+*This was the conclusion before the corrected C4 backtest. See Section 6 for the current result.*
+
 
 - **Broad-universe cross-sectional momentum (C3): rejected** on valid
   evidence. The 18-ETF rank signal does not produce a net-of-cost,
@@ -125,7 +127,10 @@ calendar with a 36-row fold table that is NOT identical to C3's.
 The defective Cycle 15 artifacts remain preserved in git history
 (commit 1d540f8) as the record of the defect.
 
-## 5. Decision-tree consequence
+## 5. Decision-tree consequence (Cycle 16 snapshot; superseded by Section 6)
+
+*This decision tree was written before C4 was validly executed. The next step is now Cycle 18 C6 evaluation, as recorded in Section 6.*
+
 
 The Cycle 15 handoff's premise ("both C3 and C4 failed → advance to
 C6") is only half supported. The corrected decision tree:
@@ -158,3 +163,27 @@ C6") is only half supported. The corrected decision tree:
 
 *Report generated: 2026-10-13 (Cycle 16)*
 *Code revision: 1d540f8*
+
+
+## 6. Cycle 17 result — corrected C4 evaluation completed
+
+The corrected cache-only C4 run completed successfully on 2026-10-13. The exact corrected runner commit was `fa9cd1593a190fcfa2523dd02bd3697fa2ccd1af`; see [GitHub Actions run #38418474184](https://github.com/takenthatusernameis-collab/Quantitative-Trading-Prompted/actions/runs/38418474184).
+
+- **Universe and dates:** the nine frozen GICS sector ETFs, 6,991 common daily observations from 1998-12-22 through 2026-10-08.
+- **Cache-only preflight:** all 16 required tracked parquet inputs (the nine candidate ETFs plus CORE7 incumbent inputs) were present and readable; no market-data downloads were made.
+- **Structural validation:** exactly 18 frozen grid configurations and 36 walk-forward folds; all required train/OOS metrics were finite; generated weights, simulation, trade log and report provenance passed the runner's persisted-output contract.
+- **Baseline test-period Sharpe:** 0.4679; grid rank 5/18.
+- **Mean OOS walk-forward Sharpe:** **0.6944**, below the frozen 0.90 threshold (**FAIL**).
+- **Positive-fold rate:** 83.3% (PASS); pooled OOS trades: 158 (PASS); parameter plateau: 3/3 lookbacks (PASS).
+- **Deflated Sharpe Ratio:** -0.2742; reported probability 0.3920.
+- **Benchmark context:** test-period Sharpe 0.4430 for 1/N sector equal weight and 1.4122 for incumbent TSMOM; mean OOS walk-forward Sharpe 0.7817 and 1.2799 respectively.
+
+**Current C4 verdict: Rejected/Failed.** The pre-registered falsification rule is conjunctive at the candidate level: the mean OOS Sharpe gate alone is enough to reject because it is below 0.9. No tuning or threshold changes were made after seeing the results. The full corrected report, 36-fold table and three generated parquet outputs are preserved in the [validated artifact bundle](https://github.com/takenthatusernameis-collab/Quantitative-Trading-Prompted/actions/runs/38418474184/artifacts/11825760496); [cache manifest and diagnostics](https://github.com/takenthatusernameis-collab/Quantitative-Trading-Prompted/actions/runs/38418474184/artifacts/11825481124).
+
+### Current family and pipeline decision
+
+- **C3:** Rejected/Failed on its valid 18-ETF, 48-fold evidence.
+- **C4:** Rejected/Failed on the corrected 9-ETF, 36-fold evidence. The former report is preserved as `research/experiments/sectorrotation_baseline_wf_001_pre-correction.md`; the canonical C4 report has been corrected.
+- **Cross-sectional momentum family:** two valid pre-registered variants have now failed their promotion gate. Archive these outcomes; do not reopen C3/C4 to tune against the holdout.
+- **Next independent candidate:** proceed to **Cycle 18, C6 calendar/rebalancing effects**, using the already frozen `research/hypotheses/calendar_effects_001.md` and `config/calendar_effects_001.yaml`. The exact next-agent handoff is in `NEXT_AGENT_TASK.md`. C6 is a distinct, calendar-based mechanism, not a repair or extension of C4.
+- **Scope:** frozen C3/C4/C6 hypotheses and configs remain unchanged. The corrected backtest workflow did not invoke Kilo or commit binary research outputs; the result bundle remains linked in GitHub Actions.
