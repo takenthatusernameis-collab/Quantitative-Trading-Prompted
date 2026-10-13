@@ -1,140 +1,118 @@
-# Next Agent Task: Cycle 17 — Re-Execute C4 Correctly (execution-defect correction), Validate C6 Pre-Registration
+# Next Agent Task: Cycle 18 — Execute the Frozen C6 Calendar-Effects Evaluation
 
-## Context
+## Current research state — read first
 
-Cycle 16 discovered a material execution defect in Cycle 15 (see
-`research/reports/cross_momentum_consolidation.md`):
-`research/run_cycle15.py` evaluated the **C3 18-ETF universe**
-(`UNIVERSE` at run_cycle15.py:68-71), from **1993-01-01**
-(`START_DATE` at line 74), hashing **`config/csmomentum_candidate_001.yaml`**
-(`_config_hash` at lines 140-141) — not the pre-registered C4 design.
-Consequently the C4 artifacts contain 18 weight columns over
-1993-01-29→2026-10-09, the C4 fold table is byte-identical to C3's
-(48 folds), and every C4 "result" (WF mean 0.6868, 79.2%, 313 trades,
-"1/N 9-sector" benchmark 0.4617) is C3's result. The pre-registered C4
-test (9 sector ETFs, 1998-12-22 start, 36 folds, 18-config grid) has
-**never been executed**. The C4 hypothesis and config are sound and
-frozen; only the execution was wrong.
+Cycle 17 has completed the corrected, cache-only C4 evaluation. Do **not** repeat or tune C4.
 
-Cycle 16 also completed the C6 (calendar/rebalancing effects)
-pre-registration: `research/hypotheses/calendar_effects_001.md` and
-`config/calendar_effects_001.yaml` (turn-of-month window exposure on
-SPY/QQQ/IWM, 18-config grid, 33 verified folds from the 2000-05-26
-common-calendar start).
+- C3 (broad 18-ETF cross-sectional momentum): Rejected/Failed on its valid pre-registered test.
+- C4 (9 GICS sector ETFs): Rejected/Failed on its first valid execution. Mean OOS walk-forward Sharpe = **0.6944** vs the frozen 0.90 gate; 83.3% positive folds, 158 pooled OOS trades, and 3/3 lookbacks on the plateau check.
+- C4's corrected full run: [GitHub Actions run #38418474184](https://github.com/takenthatusernameis-collab/Quantitative-Trading-Prompted/actions/runs/38418474184). The [validated output bundle](https://github.com/takenthatusernameis-collab/Quantitative-Trading-Prompted/actions/runs/38418474184/artifacts/11825760496) includes the full report and generated parquet files.
+- The C4 canonical report and cross-momentum consolidation were updated. The defective pre-correction report remains preserved at `research/experiments/sectorrotation_baseline_wf_001_pre-correction.md`.
+- Do not optimize C3/C4 against their holdout. Their hypotheses/configs and historical scripts remain unchanged.
 
 ## Objective
 
-1. **PRIMARY — C4 re-execution correction**: re-run the pre-registered
-   C4 evaluation with the correct constants, regenerate the C4 experiment
-   record with correct provenance, and verify the corrected artifacts.
-2. **SECONDARY — C6 pre-registration validation**: verify the frozen C6
-   config and hypothesis are internally consistent (parses, grid
-   arithmetic, fold count) so Cycle 18 can execute the C6 evaluation.
+Execute **Cycle 18 — C6 calendar/rebalancing effects** using the already frozen pre-registration. C6 is an independent, deterministic calendar-timing hypothesis: turn-of-month (TOM) exposure in SPY/QQQ/IWM. Implement, test, run, validate, report the result honestly, and prepare the next task based on the pre-registered decision discipline.
 
-## Required Actions
+Frozen specification:
+- Hypothesis: `research/hypotheses/calendar_effects_001.md`
+- Config: `config/calendar_effects_001.yaml`
+- Required runner to create: `research/run_cycle18.py`
+- Required experiment record: `research/experiments/calendar_effects_baseline_wf_001.md`
+- Required strategy-specific artifacts: `data/processed/simulation_calendar_effects_001.parquet`, `data/processed/trades_calendar_effects_001.parquet`, and `data/processed/weights_calendar_effects_001.parquet`.
 
-### Part 1 (primary): C4 re-execution
+## Part 1 — validate the frozen design before backtesting
 
-1. Create `research/run_cycle15_c4_corrected.py` as a corrected copy of
-   `research/run_cycle15.py` with these changes (nothing else changes):
-   - `UNIVERSE` = the 9 GICS sector ETFs
-     `["XLB","XLE","XLF","XLI","XLK","XLP","XLU","XLV","XLY"]`
-   - `START_DATE = "1998-12-22"` (sector inception; repo-convention
-     `END_DATE = "2026-10-09"` stays — the engine aligns to the
-     universe calendar whose last trading day is 2026-10-08)
-   - `_config_hash()` reads `config/sectorrotation_candidate_001.yaml`
-   - Add a pre-execution assertion that
-     `len(generate_walkforward_splits(START_DATE, END_DATE, 10, 12, 6, 21, 21)) == 36`
-     and that fold 1 / fold 36 dates match the frozen hypothesis
-     (fold 1: train 1998-12-22→2008-08-18, test 2008-09-17→2009-09-03;
-     fold 36: train 2015-11-17→2025-07-14, test 2025-08-13→2026-07-30)
-   - Keep the existing 18-config grid assertion
-     (`len(LOOKBACKS) * len(SKIPS) * len(TOP_FRACTIONS) == 18`)
-   - Keep all evaluation machinery, cost model, benchmark conventions
-     (1/N monthly with 1-day lag; incumbent "slice" test-period /
-     "full" fold warmup), multiple-testing (DSR N=18, PSR, PBO), and
-     report generation identical to the pre-registered C4 plan.
-   - Artifacts: overwrite `data/processed/{simulation,trades,weights}_sectorrotation_001.parquet`
-     and regenerate `research/experiments/sectorrotation_baseline_wf_001.md`
-     with correct provenance (the defective originals remain preserved in
-     git history, commit 1d540f8).
-2. Execute: `python3 research/run_cycle15_c4_corrected.py`
-3. Verify (all must hold):
-   - `weights_sectorrotation_001.parquet` has exactly **9 columns**
-     (XLB..XLY) and **6,991 rows** (1998-12-22 → 2026-10-08)
-   - The regenerated record's fold table has **36 rows** with train
-     starts at 1998-12-22 and is **NOT identical** to C3's fold table
-   - The record's data-integrity table lists exactly the 9 sector ETFs
-     with 6,991 rows each, 100% Close completeness, and the config
-     SHA-256[:12] equals `sha256sum config/sectorrotation_candidate_001.yaml`
-   - Promotion-gate verdict is computed from the corrected results
-     (report whatever it is — do not tune anything to change it)
-4. Update the "Decision & Next Steps" section of the regenerated record
-   with the honest label (Rejected/Failed, Exploratory signal, or
-   Credible candidate) per the pre-registered gates.
-
-### Part 2 (secondary): C6 pre-registration validation
-
-Run and confirm (no backtest execution — that is Cycle 18):
+Run these checks first; do not change the pre-registration to make them pass:
 
 ```bash
 python3 -c "import yaml; yaml.safe_load(open('config/calendar_effects_001.yaml'))"
-python3 - <<'EOF'
-import sys; sys.path.insert(0, '.')
+python3 - <<'PY'
+import sys
+sys.path.insert(0, '.')
 from src.evaluation.walkforward import generate_walkforward_splits
-pre_days, post_days = [1,2,3], [1,2,3,5,7,10]
-assert len(pre_days) * len(post_days) == 18, "grid arithmetic"
-splits = generate_walkforward_splits("2000-05-26", "2026-10-09", 10, 12, 6, 21, 21)
+
+pre_days, post_days = [1, 2, 3], [1, 2, 3, 5, 7, 10]
+assert len(pre_days) * len(post_days) == 18
+splits = generate_walkforward_splits(
+    "2000-05-26", "2026-10-09", 10, 12, 6, 21, 21
+)
 assert len(splits) == 33, f"expected 33 folds, got {len(splits)}"
-assert splits[0]["train_start"] == "2000-05-26" and splits[0]["test_start"] == "2010-02-22"
+assert splits[0] == {
+    **splits[0],
+    "train_start": "2000-05-26",
+    "train_end": "2010-01-21",
+    "test_start": "2010-02-22",
+    "test_end": "2011-02-08",
+}
+assert splits[-1]["train_start"] == "2015-11-10"
+assert splits[-1]["train_end"] == "2025-07-07"
+assert splits[-1]["test_start"] == "2025-08-06"
 assert splits[-1]["test_end"] == "2026-07-23"
-print("C6 pre-registration checks: PASS (18 configs, 33 folds)")
-EOF
+print("C6 pre-registration checks: PASS (18 configurations, 33 folds)")
+PY
 ```
 
-## Acceptance Criteria
+If any check fails, stop and investigate the mismatch. Do not edit `research/hypotheses/calendar_effects_001.md` or `config/calendar_effects_001.yaml`.
 
-- `research/run_cycle15_c4_corrected.py` exists, runs to completion,
-  and produces corrected C4 artifacts and record.
-- Corrected C4 record: 36 folds, 9-ETF universe, correct config hash,
-  honest promotion-gate verdict; fold table differs from C3's.
-- C6 pre-registration validation commands pass (18 configs, 33 folds).
-- No modification to frozen C3/C4 pre-registration artifacts
-  (`research/hypotheses/sectorrotation_001.md`,
-  `config/sectorrotation_candidate_001.yaml`) — only the experiment
-  record and data artifacts are regenerated by the corrected execution.
-- `research/reports/cross_momentum_consolidation.md` updated with the
-  corrected C4 outcome (one short section; do not rewrite the defect
-  documentation).
-- `NEXT_AGENT_TASK.md` written for Cycle 18 (execute the C6 evaluation
-  via `research/run_cycle18.py` per the frozen
-  `config/calendar_effects_001.yaml`, mirroring the C3/C4 evaluation
-  discipline: baseline backtest, 33-fold walk-forward, 18-config grid,
-  1/N + incumbent benchmarks, DSR at N=18, plateau check on the
-  `pre_days` axis at `post_days=3`).
+## Part 2 — implement a deterministic, cache-only runner
 
-## Scope Boundaries
+Create `research/run_cycle18.py`. Read the C6 hypothesis and config line-by-line before coding. Follow established runner/report discipline in the C3/C4 research code, but do not call the network-capable shared data fetcher.
 
-- Do NOT modify `research/hypotheses/sectorrotation_001.md`,
-  `config/sectorrotation_candidate_001.yaml`,
-  `research/hypotheses/calendar_effects_001.md`, or
-  `config/calendar_effects_001.yaml` (frozen pre-registrations).
-- Do NOT modify `research/run_cycle13.py`, `research/run_cycle15.py`
-  (frozen history of the defect), or any C3 artifacts
-  (`*_csmomentum_001.parquet`,
-  `research/experiments/csmomentum_baseline_wf_001.md`).
-- Do NOT execute the C6 backtest in this cycle (that is Cycle 18).
-- Do NOT add data fetching, new dependencies, overlays, or gate
-  weakening. Research/backtesting only.
+### Data and execution invariants
 
-## Evidence References
+- Candidate inputs are the tracked caches `data/raw/SPY.parquet`, `data/raw/QQQ.parquet`, and `data/raw/IWM.parquet`; the incumbent TSMOM context benchmark uses its own CORE7 inputs (`SPY, QQQ, IWM, TLT, GLD, EFA, EEM`). Read parquet files locally only.
+- Enforce cache preflight **before** evaluation: all expected files exist, are tracked/non-empty/readable, contain `Close`, have unique timestamps, and cover the frozen expected dates. Fail closed on missing/inadequate inputs; no downloads, fallback data, or cache healing.
+- C6 candidate history starts on the common calendar, **2000-05-26 through 2026-10-09**. Respect each symbol's pre-inception NaNs. The three-asset candidate calendar has 6,632 trading days.
+- Universe: exactly SPY, QQQ, IWM. Exposure is equal-weight 1/3 per ETF during TOM windows and 0 otherwise.
+- Baseline is `pre_days=1`, `post_days=3`. The fixed grid is `pre_days=[1,2,3]`, `post_days=[1,2,3,5,7,10]` — exactly 18 combinations. Do not add configurations or select a winner based on test-period performance.
+- Build monthly boundary windows on **trading-day positions**, not calendar `is_month_end`/`is_month_start` flags. For each boundary, mark the last `pre_days` trading days of that month and the first `post_days` trading days of the following month. Construct the calendar mask on the full common history and then slice it into train/test folds; do not reset window boundaries within folds.
+- The exposure mask is deliberately **not shifted by one day**: the calendar is exogenous and known in advance; it marks the close-to-close returns captured by positions entered at the prior close. Document this convention exactly as the frozen hypothesis specifies.
+- Costs are 1 bp commission + 2 bps slippage = 3 bps per unit of absolute weight change; apply them at window boundaries. Cash return is 0%; use the repository's 2% annualized risk-free rate for reported risk-adjusted metrics. No overlay, leverage, borrowing, or added funding assumptions.
+- Keep C6 training/validation/test periods and all 33 walk-forward splits exactly as frozen. Fixed parameters across folds; no per-fold re-optimization and no portfolio/cash state carryover from a previous fold.
 
-- `research/reports/cross_momentum_consolidation.md` (Cycle 16 — defect
-  documentation and corrected family verdict)
-- `research/run_cycle15.py` (defective constants: lines 68-71, 74, 140-141)
-- `research/hypotheses/sectorrotation_001.md` (frozen C4 design: 36-fold
-  dates, 18-config grid, promotion gates)
-- `config/sectorrotation_candidate_001.yaml` (frozen C4 config)
-- `research/hypotheses/calendar_effects_001.md` +
-  `config/calendar_effects_001.yaml` (frozen C6 pre-registration)
-- `research/experiments/csmomentum_baseline_wf_001.md` (valid C3 rejection)
+### Evaluation and diagnostics required
+
+1. Baseline test-period report with annualized return, Sharpe, Sortino, drawdown, trade count, turnover, exposure and tail metrics.
+2. Walk-forward baseline with all 33 train/test fold rows and a 33-fold summary. Validate fold/date integrity and fail closed on any missing/non-finite required train/OOS metric.
+3. Full 18-configuration grid, baseline rank, and pre-registered plateau check across `pre_days=1,2,3` at `post_days=3`. Use the repository plateau convention: tolerance `max(0.1, 0.10 * abs(baseline test Sharpe))`; at least 2/3 pre-day values must lie within that tolerance of baseline.
+4. Benchmarks on the same declared test range and folds: always-invested 1/N basket over SPY/QQQ/IWM using the frozen C3/C4-style convention, and the incumbent TSMOM candidate on CORE7 using its established “slice” test-period and “full” walk-forward warmup conventions. Clearly state that the incumbent is context and its historical 48-fold results are not directly comparable to C6's 33-fold test design.
+5. Multiple-testing diagnostics at the true frozen count **N=18**: DSR, PSR vs SR=0 and vs the 0.9 gate, bootstrap Sharpe interval (1,000 samples, 22-day blocks, seed 42), and PBO/CSCV where computable. Report degeneracy explicitly; do not fabricate a missing statistic.
+6. Promotion gates, exactly as frozen: mean OOS walk-forward Sharpe >= 0.9; positive-fold rate >= 50%; pooled OOS trades > 100; and >= 2/3 `pre_days` values within the plateau tolerance at `post_days=3`. The research conclusion follows the observed metrics, even if rejected.
+
+### Artifact/report validation
+
+- Write the markdown report with source commit, config SHA-256 prefix, input-cache integrity counts and hashes, execution conventions, metrics, all grid/fold results, limitations, promotion-gate decision, and reproduction commands.
+- Persist the three C6-specific parquet outputs above. Re-read each saved artifact and check schemas, expected dates/rows/columns, finite values, and agreement with in-memory calculations; verify report provenance and the exact frozen config hash before finalizing the report.
+- Do not overwrite C3/C4 artifacts or their reports.
+- Add focused tests (e.g. trading-day mask across weekends/market holidays, baseline mask and grid arithmetic, cache-missing fail-closed behavior, cost boundary behavior, fold/date/finite-metric checks). Reuse installed dependencies; add no dependency just for convenience.
+
+## Part 3 — isolated Actions execution (must not invoke Kilo)
+
+Create `.github/workflows/cycle18-c6-full-backtest.yml` as a dedicated non-Kilo `workflow_dispatch`/pilot-branch push workflow. It should:
+- checkout the exact triggering revision and verify `git rev-parse HEAD == github.sha`;
+- have read-only repository permissions unless strictly needed otherwise;
+- perform the cache-only preflight before running the script;
+- run the C6 script and its output/report contract;
+- publish report, three C6 parquet outputs, cache manifest, hashes and provenance as a named Actions artifact;
+- always upload useful diagnostics when preflight or evaluation fails;
+- never call `main.yml`, `gh workflow run main.yml`, Kilo, or any agent-dispatch endpoint; never download market data; never commit generated outputs automatically to the repository.
+Validate workflow/YAML/shell syntax and add the workflow path to the existing workflow syntax validation where appropriate.
+
+## Acceptance criteria
+
+- Frozen C6 config/hypothesis are unchanged and the pre-registration checks pass.
+- Cache-only runner completes against current tracked data or fails closed before computation if data validation fails.
+- Exactly 18 grid configurations and 33 chronological folds; all required metrics finite; persisted artifacts/report pass their own assertions.
+- Full report and all required outputs are published in the dedicated C6 Actions artifact; execution provenance identifies the precise code SHA.
+- Research result follows the unchanged promotion rules. No threshold weakening, post-hoc tuning, downloaded replacement data, or selective reporting.
+- Update `research/reports/cross_momentum_consolidation.md` only if needed to reference the final C4 rejection and current C6 status; do not rewrite its root-cause history.
+- Update `NEXT_AGENT_TASK.md` after completion according to the observed C6 decision and the frozen shortlist/decision tree; the subsequent task must not assume a passing result.
+
+## Scope boundaries
+
+- Do not modify `research/hypotheses/calendar_effects_001.md` or `config/calendar_effects_001.yaml`.
+- Do not modify historical `research/run_cycle13.py`, `research/run_cycle15.py`, frozen C3/C4 configs, or C3/C4 artifacts.
+- Do not reopen C3/C4 for holdout-driven optimization; C4 is conclusively rejected on the first valid execution.
+- No new data fetches, overlays, leverage, or extra configurations.
+- Keep the validated `.github/workflows/cycle15-c4-full-backtest.yml` isolated from Kilo; do not change its behavior to dispatch agents.
