@@ -8,6 +8,15 @@ if ! [[ "$KILO_IDLE_TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]]; then
   exit 1
 fi
 
+# Manual runs can cap worker sessions; scheduled/automatically dispatched runs
+# use the backward-compatible high cap and still obey the global hard cutoff.
+KILO_MAX_SESSIONS="${KILO_MAX_SESSIONS:-1000}"
+if ! [[ "$KILO_MAX_SESSIONS" =~ ^[1-9][0-9]{0,3}$ ]] || [ "$KILO_MAX_SESSIONS" -gt 1000 ]; then
+  echo "::error::KILO_MAX_SESSIONS must be an integer from 1 through 1000."
+  exit 1
+fi
+echo "::notice::Configured maximum sequential Kilo worker sessions: $KILO_MAX_SESSIONS (355-minute hard cutoff also applies)."
+
 # While the one-shot marker awaits its independent validation gate,
 # scheduled invocations must not consume it or start a duplicate run.
 if [ "$KILO_TRIGGER_EVENT" = "schedule" ]; then
@@ -140,9 +149,9 @@ printf 'kilo_cli_package=%s\n' "$(npm list --prefix "$RUNNER_TEMP/kilo" @kilocod
 echo "::endgroup::"
 
 if [ "$one_shot_mode" -eq 1 ]; then
-  echo "One-shot marker accepted; sequential Kilo sessions continue until the global 355-minute cutoff."
+  echo "One-shot marker accepted; sequential Kilo sessions run up to the configured cap or global 355-minute cutoff."
 else
-  echo "Routine Kilo sessions continue until the global 355-minute cutoff."
+  echo "Routine Kilo sessions run up to the configured cap or global 355-minute cutoff."
 fi
 command=$(cat <<'PROMPT'
 Execute the task assigned by the previous agent and prepare a task for the next agent!
@@ -332,15 +341,16 @@ correction_failure_block=0
 no_progress_block=0
 MAX_TRANSIENT_ATTEMPTS=5
 cutoff=0
+session_limit_reached=0
 
 agent_index=0
 while true; do
-  agent_index=$((agent_index + 1))
   remaining=$((cutoff_epoch - $(date +%s)))
   if [ "$remaining" -le 0 ]; then
     cutoff=1
     break
   fi
+  agent_index=$((agent_index + 1))
   WORKFLOW_BASE_SHA="$(git rev-parse HEAD)"
   session_log="$RUNNER_TEMP/kilo-session-${agent_index}.log"
   : > "$session_log"
@@ -518,9 +528,9 @@ RECOVERY_PROMPT
   fi
   git clean -fd -- .github/workflows || true
 
-  # Consume the one-shot trigger after session two (or at the global cutoff).
-  # This does not end the active run; only the cutoff terminates the routine loop.
-  if [ "$one_shot_mode" -eq 1 ] && { [ "$agent_index" -eq 2 ] || [ "$(date +%s)" -ge "$cutoff_epoch" ]; }; then
+  # Consume the one-shot trigger after session two, if a smaller configured
+  # cap ends the activation earlier, or at the global cutoff.
+  if [ "$one_shot_mode" -eq 1 ] && { [ "$agent_index" -ge 2 ] || [ "$agent_index" -ge "$KILO_MAX_SESSIONS" ] || [ "$(date +%s)" -ge "$cutoff_epoch" ]; }; then
     mkdir -p .kilo
     if printf '%s\n' 'Skip one routine Kilo activation after the one-shot validation-gated activation.' > .kilo/SKIP_NEXT_ROUTINE_KILO; then
       rm -f -- .kilo/TWO_AGENT_ONCE || echo "::warning::Could not remove the one-shot marker; routine activations remain safely gated."
@@ -677,6 +687,11 @@ PY
   if [ "$cutoff" -eq 1 ]; then
     break
   fi
+  if [ "$agent_index" -ge "$KILO_MAX_SESSIONS" ]; then
+    session_limit_reached=1
+    echo "::notice::Configured session limit of ${KILO_MAX_SESSIONS} reached after the session checkpoint."
+    break
+  fi
 
   if [ "$provider_pressure" -eq 1 ]; then
     case "$provider_pressure_streak" in
@@ -710,10 +725,18 @@ fi
 printf 'project_progress=%s\n' "$project_progress" >> "$GITHUB_OUTPUT"
 printf 'failed_sessions=%s\n' "$failed_sessions" >> "$GITHUB_OUTPUT"
 printf 'idle_timeout_retries=%s\n' "$idle_timeout_retry_count" >> "$GITHUB_OUTPUT"
+printf 'session_limit=%s\n' "$KILO_MAX_SESSIONS" >> "$GITHUB_OUTPUT"
+printf 'sessions_started=%s\n' "$agent_index" >> "$GITHUB_OUTPUT"
 if [ "$failed_sessions" -gt 0 ]; then
   echo "::warning::$failed_sessions Kilo session(s) failed during this activation. Session-level failures did not stop the action; upstream idle/network retries: $idle_timeout_retry_count."
 fi
 if [ "$project_progress" -ne 1 ]; then
   echo "::warning::No meaningful repository change was confirmed before the action ended. Review the preserved session logs and checkpoints."
 fi
-echo "Kilo controller reached the global 355-minute safety cutoff. Failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
+if [ "$session_limit_reached" -eq 1 ]; then
+  echo "Kilo controller reached the configured session limit ($KILO_MAX_SESSIONS). Sessions started: $agent_index; failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
+elif [ "$cutoff" -eq 1 ]; then
+  echo "Kilo controller reached the global 355-minute safety cutoff. Sessions started: $agent_index; failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
+else
+  echo "Kilo controller finished after $agent_index session(s). Configured maximum: $KILO_MAX_SESSIONS; failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
+fi
