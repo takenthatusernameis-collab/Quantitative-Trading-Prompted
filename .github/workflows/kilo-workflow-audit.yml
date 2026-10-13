@@ -126,7 +126,7 @@ jobs:
             abort("#{tool} must allow the report directory") unless rules.fetch(".kilo/supervisor-reports/*") == "allow"
             abort("#{tool} has an unexpected permission exception") unless rules.keys.sort == ["*", ".kilo/supervisor-reports/*"].sort
           end
-          %w[bash webfetch websearch].each do |tool|
+          %w[bash webfetch websearch external_directory].each do |tool|
             abort("#{tool} must be denied") unless permission[tool] == "deny"
           end
           abort("Subagent delegation must be denied") unless permission.fetch("task").fetch("*") == "deny"
@@ -170,4 +170,21 @@ jobs:
             echo "::error::Pinned Kilo CLI did not discover loop-supervisor."
             exit 1
           fi
-          echo "Pinned Kilo CLI discovered loop-supervisor."
+          python3 - "$agent_list" <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+
+          output = Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace")
+          actions = re.findall(
+              r'\{\s*"permission":\s*"external_directory",\s*"pattern":\s*"[^"]*",\s*"action":\s*"(allow|deny|ask)"\s*\}',
+              output,
+              flags=re.DOTALL,
+          )
+          if not actions:
+              raise SystemExit("Could not verify resolved external_directory permission in Kilo CLI output")
+          if actions[-1] != "deny":
+              raise SystemExit(f"External-directory permission is not finally denied: {actions}")
+          print("Resolved Kilo CLI external-directory permission ends in deny.")
+          PY
+          echo "Pinned Kilo CLI discovered loop-supervisor with external-directory access denied."

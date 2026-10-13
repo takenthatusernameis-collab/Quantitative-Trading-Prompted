@@ -20,6 +20,7 @@ permission:
     "*": deny
   webfetch: deny
   websearch: deny
+  external_directory: deny
 ---
 
 # Loop Supervisor
