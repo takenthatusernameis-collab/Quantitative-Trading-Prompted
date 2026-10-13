@@ -40,11 +40,13 @@ This repository implements a disciplined quantitative research process focused o
 
 ## Current Status
 
-**Cycle 16**: Cross-sectional momentum family consolidation + C6 pre-registration.
-- **Execution-defect disclosure**: Cycle 15's "sectorrotation_001" evaluation was defective — `research/run_cycle15.py` ran the C3 18-ETF universe from 1993-01-01 (wrong `UNIVERSE`/`START_DATE`/`_config_hash` constants), so the C4 artifacts contain 18 weight columns, the C4 fold table is byte-identical to C3's (48 folds), and every C4 "result" is C3's. The pre-registered C4 test (9 sector ETFs, 36 folds from 1998-12-22) was never executed. Full evidence: `research/reports/cross_momentum_consolidation.md`
-- **Corrected family verdict**: C3 (broad 18-ETF cross-sectional momentum) is validly Rejected/Failed (WF mean OOS Sharpe 0.6868 < 0.9, DSR negative, baseline rank 17/18). C4 is "Blocked by execution defect" — re-execution is the Cycle 17 primary task, not a rejection.
-- C6 (calendar/rebalancing effects, turn-of-month window exposure on SPY/QQQ/IWM) pre-registered: `research/hypotheses/calendar_effects_001.md`, frozen `config/calendar_effects_001.yaml` — 18-config grid (pre_days {1,2,3} × post_days {1,2,3,5,7,10}), 33 verified walk-forward folds from the 2000-05-26 common-calendar start, 3 bps costs, promotion gates per AGENTS.md. No backtest executed.
-- Next: Cycle 17 — re-execute C4 correctly (`research/run_cycle15_c4_corrected.py`, 36 folds, 9 ETFs, verify artifacts/record) and validate the C6 pre-registration; Cycle 18 executes the C6 evaluation.
+**Cycle 17**: Corrected C4 re-execution (execution-defect correction) + C6 pre-registration validation.
+- **C4 (sectorrotation_001) validly evaluated → Rejected/Failed**: the pre-registered C4 test was executed correctly for the first time via `research/run_cycle15_c4_corrected.py` (9 sector ETFs, 1998-12-22 start, 36 folds, 18-config grid, config SHA-256[:12] `4f186de79db3`). Results: baseline (252,21,0.5) test Sharpe 0.4679 (rank 5/18, plateau 3/3); walk-forward mean OOS Sharpe **0.6944** (83.3% positive folds, 158 pooled trades); 1/N 9-sector benchmark 0.4430 (baseline excess IR +0.0665); incumbent TSMOM 1.4122 common-index (standalone 1.4178, reproduces Cycle 6/7); DSR **-0.2742** (p=0.3920) at N=18. Pre-registered falsification condition met (WF mean OOS Sharpe 0.6944 < 0.9) → **Rejected/Failed**. Artifacts verified: 9 weight columns, 6,991 rows (1998-12-22 → 2026-10-08), 36-fold table ≠ C3's 48-fold table. Record: `research/experiments/sectorrotation_baseline_wf_001.md` (regenerated; defective Cycle 15 original preserved in git history, commit 1d540f8).
+- **Family verdict complete**: cross-sectional momentum is rejected on two valid pre-registered tests (C3 broad universe, C4 sector universe) and archived. Full evidence: `research/reports/cross_momentum_consolidation.md` (section 6).
+- C6 pre-registration validated: `config/calendar_effects_001.yaml` parses; grid arithmetic 3×6=18; `generate_walkforward_splits("2000-05-26", "2026-10-09", 10, 12, 6, 21, 21)` = 33 folds (fold 1 test 2010-02-22→2011-02-08; fold 33 test 2025-08-06→2026-07-23). No backtest executed.
+- Next: Cycle 18 — execute the C6 evaluation (`research/run_cycle18.py`): baseline backtest, 33-fold walk-forward, 18-config grid, 1/N + incumbent benchmarks, DSR at N=18, plateau check on the `pre_days` axis at `post_days=3`.
+
+**Cycle 14** (prior): Pre-Registration for Sector Rotation (sectorrotation_001) complete.
 
 **Cycle 14** (prior): Pre-Registration for Sector Rotation (sectorrotation_001) complete.
 - Candidate C4 (long-only cross-sectional momentum, 9 GICS sector ETFs XLB–XLY) pre-registered: full hypothesis (`research/hypotheses/sectorrotation_001.md`), frozen config (`config/sectorrotation_candidate_001.yaml`), evaluation plan — **no backtest executed** (evaluation is Cycle 15)
@@ -84,4 +86,4 @@ All hypotheses and experiments follow strict documentation requirements defined 
 
 This is a research/backtesting system only. It never places live trades, accesses credentials, or modifies account settings.
 
-**Current Status:** Cycle 16 complete — cross-sectional momentum consolidated (C3 validly rejected; C4 execution defect disclosed, re-execution assigned to Cycle 17); C6 calendar effects pre-registered for Cycle 18 evaluation. See `research/reports/cross_momentum_consolidation.md`.
+**Current Status:** Cycle 17 complete — C4 corrected re-execution validly Rejected/Failed (cross-sectional momentum family archived on two valid tests); C6 calendar-effects pre-registration validated for Cycle 18 evaluation. See `research/reports/cross_momentum_consolidation.md`.

@@ -1,140 +1,224 @@
-# Next Agent Task: Cycle 17 — Re-Execute C4 Correctly (execution-defect correction), Validate C6 Pre-Registration
+# Next Agent Task: Cycle 18 — Execute the C6 Calendar/Rebalancing Effects Evaluation (calendar_effects_001)
 
 ## Context
 
-Cycle 16 discovered a material execution defect in Cycle 15 (see
-`research/reports/cross_momentum_consolidation.md`):
-`research/run_cycle15.py` evaluated the **C3 18-ETF universe**
-(`UNIVERSE` at run_cycle15.py:68-71), from **1993-01-01**
-(`START_DATE` at line 74), hashing **`config/csmomentum_candidate_001.yaml`**
-(`_config_hash` at lines 140-141) — not the pre-registered C4 design.
-Consequently the C4 artifacts contain 18 weight columns over
-1993-01-29→2026-10-09, the C4 fold table is byte-identical to C3's
-(48 folds), and every C4 "result" (WF mean 0.6868, 79.2%, 313 trades,
-"1/N 9-sector" benchmark 0.4617) is C3's result. The pre-registered C4
-test (9 sector ETFs, 1998-12-22 start, 36 folds, 18-config grid) has
-**never been executed**. The C4 hypothesis and config are sound and
-frozen; only the execution was wrong.
+Cycle 17 completed the primary correction: the pre-registered
+C4 (sectorrotation_001) evaluation was executed correctly for
+the first time via `research/run_cycle15_c4_corrected.py`
+(9 sector ETFs, 1998-12-22 start, 36 folds, 18-config grid)
+and was **Rejected/Failed** (WF mean OOS Sharpe 0.6944 < 0.9;
+DSR -0.2742 at N=18). The cross-sectional momentum family
+(C3 broad universe + C4 sector universe) is now rejected on
+two valid pre-registered tests and archived. Evidence:
+`research/reports/cross_momentum_consolidation.md` (section 6)
+and `research/experiments/sectorrotation_baseline_wf_001.md`.
 
-Cycle 16 also completed the C6 (calendar/rebalancing effects)
-pre-registration: `research/hypotheses/calendar_effects_001.md` and
-`config/calendar_effects_001.yaml` (turn-of-month window exposure on
-SPY/QQQ/IWM, 18-config grid, 33 verified folds from the 2000-05-26
-common-calendar start).
+The C6 (calendar/rebalancing effects) pre-registration is
+frozen and validated (Cycle 17 Part 2):
+`research/hypotheses/calendar_effects_001.md` and
+`config/calendar_effects_001.yaml` parse; the grid arithmetic
+(3 pre_days × 6 post_days = 18) holds; `generate_walkforward_splits("2000-05-26", "2026-10-09", 10, 12, 6, 21, 21)`
+yields exactly 33 folds with the pre-registered fold 1 /
+fold 33 dates. **No C6 backtest has been executed.** This
+cycle executes it.
 
 ## Objective
 
-1. **PRIMARY — C4 re-execution correction**: re-run the pre-registered
-   C4 evaluation with the correct constants, regenerate the C4 experiment
-   record with correct provenance, and verify the corrected artifacts.
-2. **SECONDARY — C6 pre-registration validation**: verify the frozen C6
-   config and hypothesis are internally consistent (parses, grid
-   arithmetic, fold count) so Cycle 18 can execute the C6 evaluation.
+Execute the pre-registered C6 evaluation — turn-of-month (TOM)
+window exposure on SPY/QQQ/IWM — via a new
+`research/run_cycle18.py`, mirroring the C3/C4 evaluation
+discipline: baseline backtest, 33-fold walk-forward, 18-config
+grid, always-invested 1/N + incumbent benchmarks, DSR at N=18,
+plateau check on the `pre_days` axis at `post_days=3`, and an
+honest promotion-gate verdict (report whatever it is — do not
+tune anything to change it).
 
 ## Required Actions
 
-### Part 1 (primary): C4 re-execution
-
-1. Create `research/run_cycle15_c4_corrected.py` as a corrected copy of
-   `research/run_cycle15.py` with these changes (nothing else changes):
-   - `UNIVERSE` = the 9 GICS sector ETFs
-     `["XLB","XLE","XLF","XLI","XLK","XLP","XLU","XLV","XLY"]`
-   - `START_DATE = "1998-12-22"` (sector inception; repo-convention
-     `END_DATE = "2026-10-09"` stays — the engine aligns to the
-     universe calendar whose last trading day is 2026-10-08)
-   - `_config_hash()` reads `config/sectorrotation_candidate_001.yaml`
-   - Add a pre-execution assertion that
-     `len(generate_walkforward_splits(START_DATE, END_DATE, 10, 12, 6, 21, 21)) == 36`
-     and that fold 1 / fold 36 dates match the frozen hypothesis
-     (fold 1: train 1998-12-22→2008-08-18, test 2008-09-17→2009-09-03;
-     fold 36: train 2015-11-17→2025-07-14, test 2025-08-13→2026-07-30)
-   - Keep the existing 18-config grid assertion
-     (`len(LOOKBACKS) * len(SKIPS) * len(TOP_FRACTIONS) == 18`)
-   - Keep all evaluation machinery, cost model, benchmark conventions
-     (1/N monthly with 1-day lag; incumbent "slice" test-period /
-     "full" fold warmup), multiple-testing (DSR N=18, PSR, PBO), and
-     report generation identical to the pre-registered C4 plan.
-   - Artifacts: overwrite `data/processed/{simulation,trades,weights}_sectorrotation_001.parquet`
-     and regenerate `research/experiments/sectorrotation_baseline_wf_001.md`
-     with correct provenance (the defective originals remain preserved in
-     git history, commit 1d540f8).
-2. Execute: `python3 research/run_cycle15_c4_corrected.py`
-3. Verify (all must hold):
-   - `weights_sectorrotation_001.parquet` has exactly **9 columns**
-     (XLB..XLY) and **6,991 rows** (1998-12-22 → 2026-10-08)
-   - The regenerated record's fold table has **36 rows** with train
-     starts at 1998-12-22 and is **NOT identical** to C3's fold table
-   - The record's data-integrity table lists exactly the 9 sector ETFs
-     with 6,991 rows each, 100% Close completeness, and the config
-     SHA-256[:12] equals `sha256sum config/sectorrotation_candidate_001.yaml`
-   - Promotion-gate verdict is computed from the corrected results
-     (report whatever it is — do not tune anything to change it)
-4. Update the "Decision & Next Steps" section of the regenerated record
-   with the honest label (Rejected/Failed, Exploratory signal, or
-   Credible candidate) per the pre-registered gates.
-
-### Part 2 (secondary): C6 pre-registration validation
-
-Run and confirm (no backtest execution — that is Cycle 18):
-
-```bash
-python3 -c "import yaml; yaml.safe_load(open('config/calendar_effects_001.yaml'))"
-python3 - <<'EOF'
-import sys; sys.path.insert(0, '.')
-from src.evaluation.walkforward import generate_walkforward_splits
-pre_days, post_days = [1,2,3], [1,2,3,5,7,10]
-assert len(pre_days) * len(post_days) == 18, "grid arithmetic"
-splits = generate_walkforward_splits("2000-05-26", "2026-10-09", 10, 12, 6, 21, 21)
-assert len(splits) == 33, f"expected 33 folds, got {len(splits)}"
-assert splits[0]["train_start"] == "2000-05-26" and splits[0]["test_start"] == "2010-02-22"
-assert splits[-1]["test_end"] == "2026-07-23"
-print("C6 pre-registration checks: PASS (18 configs, 33 folds)")
-EOF
-```
+1. Create `research/run_cycle18.py` implementing the frozen
+   C6 design (nothing may be added post-hoc):
+   - `UNIVERSE = ["SPY", "QQQ", "IWM"]`
+   - `START_DATE = "2000-05-26"` (IWM inception bounds the
+     common calendar; 6,632 trading days through 2026-10-09).
+     Repo-convention `END_DATE = "2026-10-09"` stays.
+     `TRAIN_END = "2009-12-31"`, `VAL_END = "2017-12-31"`,
+     `TEST_START = "2018-01-01"`.
+   - Baseline: `PRE_DAYS = 1`, `POST_DAYS = 3` (the classic
+     TOM window). Grid: `PRE_DAYS_GRID = [1, 2, 3]`,
+     `POST_DAYS_GRID = [1, 2, 3, 5, 7, 10]`; assert
+     `len(PRE_DAYS_GRID) * len(POST_DAYS_GRID) == 18` and
+     that the baseline (1, 3) is a grid member.
+   - **Calendar mask (critical, pre-registered)**: month
+     boundaries MUST be computed on TRADING days (the last
+     `pre_days` trading days of each month and the first
+     `post_days` trading days of the following month), NOT on
+     calendar `is_month_end` / `is_month_start` flags (which
+     are False whenever a month's boundary day is a non-trading
+     day).
+   - **No 1-day shift on the mask** (pre-registered): the
+     calendar is exogenous public information known indefinitely
+     in advance, so there is no price-signal lookahead channel;
+     positions are established at the prior trading day's close
+     (`port_ret[t] = weights[t] * ret[t]`). Document this
+     deliberate difference from the momentum `build_weights`
+     shift(1) convention in the record.
+   - Exposure: equal-weight 1/3 per asset when the mask is
+     True, cash (0 exposure) otherwise. Long-only, gross
+     exposure ∈ {0.0, 1.0}. Trades occur only at window
+     boundaries (~24.1 trade days/yr at baseline).
+   - Costs: 3 bps per unit of weight change (1 bps commission
+     + 2 bps slippage, `get_cost_params()`); cash return 0%;
+     risk-free rate 2% flat (`get_risk_free_rate()`).
+   - Strategy history starts at the common-calendar start
+     2000-05-26 (pre-inception cells are NaN, not back-filled;
+     the strategy holds no positions before 2000-05-26).
+   - Walk-forward: `generate_walkforward_splits("2000-05-26",
+     "2026-10-09", 10, 12, 6, 21, 21)` — assert
+     `len(splits) == 33` and the pre-registered fold dates
+     (fold 1: train 2000-05-26→2010-01-21, test
+     2010-02-22→2011-02-08; fold 33: train 2015-11-10→
+     2025-07-07, test 2025-08-06→2026-07-23). Fixed
+     parameters across folds (no per-fold re-optimization).
+   - Benchmarks (identical periods and folds, identical 3 bps
+     cost model):
+     (a) **Always-invested 1/N equal-weight basket**: constant
+     1/3 target weights in SPY/QQQ/IWM with a 1-day lag
+     (`shift(1)`) and the monthly month-end schedule (the
+     C3/C4 1/N convention — zero observed turnover / zero cost
+     drag within the engine's exogenous-weights framework; note
+     the mild upward bias as a limitation).
+     (b) **Incumbent TSMOM (tsmomentum_spytrend_001)** on its
+     core-7 universe (fetch CORE7 separately via
+     `fetch_close_prices`, cache-only), with its validated
+     overlay-warmup conventions: "slice" for the test period,
+     "full" for the walk-forward folds. It is a CONTEXT
+     benchmark (its validated WF statistics are on the 1993-start
+     48-fold design; not directly comparable to the 33-fold
+     design) — report it, not a gate.
+   - Multiple-testing control: DSR via `compute_dsr` at the
+     true trial count N=18 (1000 block-bootstrap samples,
+     22-day block, seed=42), PSR vs SR=0 and vs the 0.9 gate,
+     block-bootstrap Sharpe 95% CI, PBO/CSCV via `compute_pbo`
+     over the 18-config grid (train=2000-2009 vs test=2018-2026).
+   - Plateau check (pre-registered gate 4): >= 2 of the 3
+     `pre_days` values (1, 2, 3) achieve test Sharpe within 10%
+     of the baseline (1, 3) test Sharpe, evaluated at
+     `post_days=3` (threshold = max(0.1, 10% × |baseline test
+     Sharpe|), the repository plateau convention).
+   - Promotion gates: WF mean OOS Sharpe >= 0.9; positive-fold
+     rate >= 50%; pooled OOS trades > 100 (expected ~790 at
+     baseline); plateau >= 2 of 3. Pre-registered falsification:
+     WF mean OOS Sharpe < 0.9 OR < 50% positive folds →
+     Rejected/Failed.
+   - Reuse the existing machinery (`src/features/momentum.py`,
+     `src/backtest/engine.py:compute_metrics`,
+     `src/evaluation/statistics.py`,
+     `src/evaluation/walkforward.py`,
+     `src/evaluation/utils.py:fetch_close_prices`); do NOT add
+     dependencies, data fetching (`force=False`, cache-only),
+     overlays, or gate weakening.
+2. Execute: `python3 research/run_cycle18.py`
+3. Artifacts: `data/processed/{simulation,trades,weights}_calendar_effects_001.parquet`
+   and the experiment record
+   `research/experiments/calendar_effects_baseline_wf_001.md`
+   with full provenance (data-integrity table per symbol:
+   SPY 8,482 rows 1993-01-29→2026-10-09; QQQ 6,940 rows
+   1999-03-10→2026-10-09; IWM 6,632 rows 2000-05-26→2026-10-09;
+   common calendar 6,632 days; aligned-frame content hash;
+   config SHA-256[:12] equal to
+   `sha256sum config/calendar_effects_001.yaml`; code revision;
+   all 18 grid configs with train/val/test metrics; 33-fold
+   table; benchmark comparison; multiple-testing results;
+   promotion-gate verdict; honest final classification per the
+   pre-committed decision discipline).
+4. Verify (all must hold):
+   - `weights_calendar_effects_001.parquet` covers the strategy
+     history (2000-05-26 → 2026-10-09, 6,632 rows) with
+     exactly 3 columns (SPY, QQQ, IWM); weights are either
+     1/3-per-asset (in-window) or 0 (cash); trades occur only
+     at window boundaries.
+   - The record's fold table has 33 rows with train starts
+     2000-05-26 and fold dates matching the frozen hypothesis.
+   - The promotion-gate verdict is computed from the actual
+     corrected results; the "Decision & Next Steps" section
+     carries the honest label (Rejected/Failed, Exploratory
+     signal, or Credible candidate).
+5. Update `research/reports/cross_momentum_consolidation.md`
+   only if the C6 outcome changes the family conclusion (it
+   does not — C6 is a distinct mechanism; a one-line pointer
+   suffices), and update `README.md`'s Current Status.
 
 ## Acceptance Criteria
 
-- `research/run_cycle15_c4_corrected.py` exists, runs to completion,
-  and produces corrected C4 artifacts and record.
-- Corrected C4 record: 36 folds, 9-ETF universe, correct config hash,
-  honest promotion-gate verdict; fold table differs from C3's.
-- C6 pre-registration validation commands pass (18 configs, 33 folds).
-- No modification to frozen C3/C4 pre-registration artifacts
-  (`research/hypotheses/sectorrotation_001.md`,
-  `config/sectorrotation_candidate_001.yaml`) — only the experiment
-  record and data artifacts are regenerated by the corrected execution.
-- `research/reports/cross_momentum_consolidation.md` updated with the
-  corrected C4 outcome (one short section; do not rewrite the defect
-  documentation).
-- `NEXT_AGENT_TASK.md` written for Cycle 18 (execute the C6 evaluation
-  via `research/run_cycle18.py` per the frozen
-  `config/calendar_effects_001.yaml`, mirroring the C3/C4 evaluation
-  discipline: baseline backtest, 33-fold walk-forward, 18-config grid,
-  1/N + incumbent benchmarks, DSR at N=18, plateau check on the
-  `pre_days` axis at `post_days=3`).
+- `research/run_cycle18.py` exists, runs to completion, and
+  produces the C6 artifacts and record with correct provenance.
+- C6 record: 33 folds, 3-ETF universe, correct config hash,
+  18-config grid, honest promotion-gate verdict.
+- Pre-execution assertions present and enforced: 18-config
+  grid arithmetic, 33-fold count with fold 1/fold 33 dates.
+- No modification to frozen pre-registrations
+  (`research/hypotheses/calendar_effects_001.md`,
+  `config/calendar_effects_001.yaml`) or to any C3/C4
+  artifact, hypothesis, config, or evaluation script
+  (`research/run_cycle13.py`, `research/run_cycle15.py`,
+  `research/run_cycle15_c4_corrected.py`,
+  `research/hypotheses/sectorrotation_001.md`,
+  `config/sectorrotation_candidate_001.yaml`,
+  `config/csmomentum_candidate_001.yaml`,
+  `research/experiments/csmomentum_baseline_wf_001.md`,
+  `research/experiments/sectorrotation_baseline_wf_001.md`).
+- `NEXT_AGENT_TASK.md` written for Cycle 19 (per the
+  pre-registered decision tree: if C6 is rejected, the next
+  untested Cycle 11 shortlist candidate is C5 macro regime
+  overlay extension, 24/35 — noting its overlay-only
+  constraint; if C6 passes, risk-overlay exploration on the
+  C6 baseline).
 
 ## Scope Boundaries
 
-- Do NOT modify `research/hypotheses/sectorrotation_001.md`,
-  `config/sectorrotation_candidate_001.yaml`,
-  `research/hypotheses/calendar_effects_001.md`, or
-  `config/calendar_effects_001.yaml` (frozen pre-registrations).
-- Do NOT modify `research/run_cycle13.py`, `research/run_cycle15.py`
-  (frozen history of the defect), or any C3 artifacts
-  (`*_csmomentum_001.parquet`,
-  `research/experiments/csmomentum_baseline_wf_001.md`).
-- Do NOT execute the C6 backtest in this cycle (that is Cycle 18).
-- Do NOT add data fetching, new dependencies, overlays, or gate
-  weakening. Research/backtesting only.
+- Do NOT modify the frozen C6 pre-registration
+  (`research/hypotheses/calendar_effects_001.md`,
+  `config/calendar_effects_001.yaml`).
+- Do NOT modify any C3/C4 artifact or the corrected C4 script
+  (Cycle 17's work is complete and verified).
+- Do NOT add data fetching (cache-only), new dependencies,
+  overlays, post-hoc calendar variants (quarter-end /
+  index-reconstitution refinements are explicitly reserved for
+  post-gate cycles), or gate weakening. Research/backtesting
+  only. No live trading, no credentials, no scheduled jobs.
+- Do NOT select configurations on test-period results: the
+  baseline is pre-specified; the grid is diagnostic
+  (plateau + multiple-testing control) only.
 
 ## Evidence References
 
-- `research/reports/cross_momentum_consolidation.md` (Cycle 16 — defect
-  documentation and corrected family verdict)
-- `research/run_cycle15.py` (defective constants: lines 68-71, 74, 140-141)
-- `research/hypotheses/sectorrotation_001.md` (frozen C4 design: 36-fold
-  dates, 18-config grid, promotion gates)
-- `config/sectorrotation_candidate_001.yaml` (frozen C4 config)
-- `research/hypotheses/calendar_effects_001.md` +
-  `config/calendar_effects_001.yaml` (frozen C6 pre-registration)
-- `research/experiments/csmomentum_baseline_wf_001.md` (valid C3 rejection)
+- `research/hypotheses/calendar_effects_001.md` (frozen C6
+  design: mechanism, trading-day month boundaries, no-shift
+  mask convention, 18-config grid, 33-fold dates, promotion
+  gates, falsification condition)
+- `config/calendar_effects_001.yaml` (frozen C6 config)
+- `research/reports/cross_momentum_consolidation.md` (Cycle 17
+  corrected C4 outcome; family archived)
+- `research/experiments/sectorrotation_baseline_wf_001.md`
+  (Cycle 17 corrected C4 record — the evaluation-record
+  template to mirror)
+- `research/run_cycle15_c4_corrected.py` (the corrected C4
+  execution script — the structural template for
+  `run_cycle18.py`)
+- `research/experiments/tsmomentum_regime_filter_wf_001.md`
+  (Cycle 6 walk-forward design; incumbent benchmark
+  conventions)
+- `research/reports/opportunity_shortlist.md` (C6 = 26/35,
+  rank 4 of 10; C5 = 24/35)
+
+## Environment Note
+
+The Python environment used for Cycle 17 execution had these
+packages installed into the user site-packages (system
+`python3`, Python 3.12.3):
+`pip install "numpy==1.26.4" "pandas==2.2.3" "scipy==1.13.1" "statsmodels==0.14.2" "arch==7.2.0" "pyarrow==16.1.0" pyyaml yfinance pytest`.
+If modules are missing at session start, install exactly these
+versions before running (the repo's code targets the pandas
+2.x / numpy 1.x API era). All data is cached in `data/raw/`
+(cache-only execution; no network fetch occurs with
+`force=False`).

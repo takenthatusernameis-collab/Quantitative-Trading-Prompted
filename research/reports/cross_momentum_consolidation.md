@@ -1,7 +1,7 @@
 # Consolidation: Cross-Sectional Momentum Family (C3 / C4)
 
-**Cycle:** 16 (2026-10-13)
-**Code revision:** 1d540f8
+**Cycle:** 16 (2026-10-13); updated Cycle 17 (2026-10-13)
+**Code revision:** 1d540f8 (Cycle 16); bd18164 (Cycle 17 update)
 **Purpose:** Consolidate the cross-sectional momentum family
 (Candidate C3, broad 18-ETF universe; Candidate C4, 9 GICS sector
 ETFs) after Cycles 13 and 15, per the Cycle 15 decision tree.
@@ -96,15 +96,13 @@ is unsupported; the numbers cited for C4 are C3's numbers.
   evidence. The 18-ETF rank signal does not produce a net-of-cost,
   walk-forward-valid edge at the pre-registered configuration, and
   the result survives multiple-testing disclosure (negative DSR).
-- **Sector-restricted cross-sectional momentum (C4): untested.** C3's
-  rejection is strong prior evidence against the family — the 9
-  sectors are a subset of the failed 18-asset rank, and restricting
-  the universe reduces cross-sectional breadth — but the
-  pre-registered sector test must be executed before the family can
-  be declared fully rejected. The prior for C4 is explicitly lower
-  than C3's was (per the frozen hypothesis).
+- **Sector-restricted cross-sectional momentum (C4): tested in
+  Cycle 17 (corrected re-execution) — Rejected/Failed.** See
+  section 6 below.
 - The family is therefore **not** "rejected twice"; it is rejected
-  once (C3) with a second, lower-prior test (C4) outstanding.
+  once (C3) with a second, lower-prior test (C4) subsequently
+  executed in Cycle 17 (section 6), completing the family
+  verdict.
 
 ## 4. Root cause and correction
 
@@ -143,6 +141,50 @@ C6") is only half supported. The corrected decision tree:
 3. **Then** (Cycle 18), execute the C6 evaluation
    (`research/run_cycle18.py`).
 
+## 6. Cycle 17 corrected C4 re-execution — outcome (2026-10-13)
+
+The pre-registered C4 test was executed correctly for the first
+time via `research/run_cycle15_c4_corrected.py` (9 sector ETFs,
+1998-12-22 start, 36 folds, 18-config grid; config SHA-256[:12]
+`4f186de79db3`; record `research/experiments/sectorrotation_baseline_wf_001.md`,
+regenerated). Artifacts verified: 9 weight columns (XLB–XLY),
+6,991 rows (1998-12-22 → 2026-10-08), 36-fold table with train
+starts 1998-12-22 (fold 1 test 2008-09-17→2009-09-03; fold 36
+test 2025-08-13→2026-07-30) — NOT identical to C3's 48-fold
+table.
+
+**Corrected C4 results** (net of 3 bps, monthly rebalance, 1-day
+lag, fixed pre-registered parameters):
+
+- Baseline (252, 21, 0.5) test-period (2018-2026) net Sharpe
+  **0.4679**, max DD -35.25%, 39 trades, 2.24x turnover.
+- Walk-forward (36 folds): mean OOS Sharpe **0.6944**, 83.3%
+  positive folds, **158** pooled OOS trades.
+- Robustness grid (18 configs): baseline rank **5/18**; plateau
+  3/3 lookbacks within 10% (pass).
+- Benchmarks: 1/N equal-weight (9 sectors) test Sharpe 0.4430
+  (baseline excess IR +0.0665, corr 0.954); incumbent TSMOM
+  1.4122 on the common index (its standalone evaluation
+  reproduces the Cycle 6/7 value 1.4178 exactly — the small
+  difference is the common-index alignment to the 2026-10-08
+  sector calendar), WF mean 1.2799.
+- Multiple testing: DSR **-0.2742** (p=0.3920) at the true
+  N=18; PSR vs the 0.9 gate 0.1008; PBO degenerate (all 18
+  configs have positive OOS Sharpe); IS-OOS rank correlation
+  -0.323.
+
+**Verdict: Rejected/Failed.** The pre-registered falsification
+condition is met (WF mean OOS Sharpe 0.6944 < 0.9). The sector
+restriction did not rescue the cross-sectional rank signal: the
+WF mean is marginally above C3's 0.6868 but still far below the
+0.9 gate, the 1/N benchmark beats the baseline in the
+walk-forward (0.7817 vs 0.6944), and DSR does not survive
+deflation. The cross-sectional momentum family is now **rejected
+on two valid, pre-registered tests** (C3 broad universe, C4
+sector universe) and is archived. The next mechanism on the
+Cycle 11 shortlist is **C6 calendar/rebalancing effects**
+(pre-registered; Cycle 18 executes the evaluation).
+
 ---
 
 ## Evidence References
@@ -150,11 +192,13 @@ C6") is only half supported. The corrected decision tree:
 - `research/experiments/csmomentum_baseline_wf_001.md` (Cycle 13 — valid C3 rejection)
 - `research/experiments/sectorrotation_baseline_wf_001.md` (Cycle 15 — defective C4 record)
 - `research/run_cycle15.py` (defective constants: lines 68-71, 74, 140-141)
+- `research/run_cycle15_c4_corrected.py` (Cycle 17 corrected C4 execution)
+- Corrected C4 record: `research/experiments/sectorrotation_baseline_wf_001.md` (regenerated; the defective Cycle 15 original is preserved in git history, commit 1d540f8)
 - `research/hypotheses/sectorrotation_001.md`, `config/sectorrotation_candidate_001.yaml` (frozen C4 pre-registration — sound, unchanged)
 - `research/reports/opportunity_shortlist.md` (C3 29/35, C4 28/35, C6 26/35)
 - Git history: commit 1d540f8 (defective C4 artifacts)
 
 ---
 
-*Report generated: 2026-10-13 (Cycle 16)*
-*Code revision: 1d540f8*
+*Report generated: 2026-10-13 (Cycle 16); updated 2026-10-13 (Cycle 17 corrected C4 re-execution)*
+*Code revision: bd18164*
