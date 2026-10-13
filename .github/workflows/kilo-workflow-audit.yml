@@ -128,6 +128,8 @@ jobs:
             'completed with usable report' \
             'DELIVERY_CONFIRMED' \
             'Agent dialogue box' \
+            'SUPERVISOR_CIRCUIT_BREAKER_OPEN' \
+            'consecutive_unusable_reviews' \
             'SUPERVISOR_REVIEWS_COMPLETED' \
             'request-to-supervisor.md' \
             'response-from-supervisor.md' \
@@ -157,7 +159,7 @@ jobs:
           source = File.read(path)
           match = source.match(/\A---[ \t]*\r?\n(.*?)\r?\n---[ \t]*\r?\n/m) or abort("Missing YAML frontmatter in #{path}")
           agent = YAML.safe_load(match[1]) or abort("Empty supervisor frontmatter")
-          abort("Wrong agent mode") unless agent["mode"] == "subagent"
+          abort("Supervisor must support both direct CLI and Task invocation") unless agent["mode"] == "all"
           abort("Supervisor step limit is missing or unbounded") unless agent["steps"].is_a?(Integer) && agent["steps"] <= 8
           permission = agent.fetch("permission")
           abort("Permission default must deny all tools") unless permission.fetch("*") == "deny"
@@ -179,6 +181,8 @@ jobs:
           controller=.github/scripts/kilo-controller.sh
           grep -Fq -- "--interval-seconds 150" "$controller"
           grep -Fq -- "--review-timeout-seconds 120" "$controller"
+          grep -Fq -- "kilo run --agent loop-supervisor" "$controller"
+          grep -Fq -- "mode: all" .kilo/agents/loop-supervisor.md
           for marker in \
             "MANDATORY LOOP-SUPERVISOR PROTOCOL" \
             "150-second cadence" \
