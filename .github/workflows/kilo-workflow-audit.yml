@@ -122,10 +122,17 @@ jobs:
             'queued_not_yet_injected_units' \
             'worker-tail' \
             'sleep 30' \
+            'ACTUAL REQUEST SENT TO SUPERVISOR' \
+            'ACTUAL ADVICE RETURNED BY SUPERVISOR' \
+            'request-to-supervisor.md' \
+            'response-from-supervisor.md' \
+            'worker-delivery-' \
+            '--transcript-dir' \
+            'kilo-supervisor-transcripts-*/**' \
             'kilo-progress-trace-' \
             'supervisor_pending_units' \
             'persisted_checkpoints'; do
-            grep -Fq -- "$marker" "$controller" "$workflow" || {
+            grep -Fq -- "$marker" "$controller" "$workflow" .github/scripts/kilo-supervisor-loop.py .kilo/plugin/loop-supervisor-feedback.js || {
               echo "::error::Missing live-transparency marker: $marker"
               exit 1
             }
@@ -198,71 +205,83 @@ jobs:
           node --check --input-type=module < .kilo/plugin/loop-supervisor-feedback.js
           node --input-type=module <<'JS'
           import assert from "node:assert/strict";
-          import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+          import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
           import { join } from "node:path";
           import { tmpdir } from "node:os";
 
           const runtime = await mkdtemp(join(tmpdir(), "kilo-feedback-plugin-"));
           try {
             const feedbackPath = join(runtime, "feedback.md");
-          const cursorPath = join(runtime, "feedback-cursor.json");
-          const source = await readFile(".kilo/plugin/loop-supervisor-feedback.js", "utf8");
-          const pluginModule = await import("data:text/javascript;base64," + Buffer.from(source).toString("base64"));
-          process.env.RUNNER_TEMP = runtime;
-          process.env.KILO_SUPERVISOR_FEEDBACK_FILE = feedbackPath;
-          process.env.KILO_SUPERVISOR_FEEDBACK_CURSOR_FILE = cursorPath;
-          delete process.env.KILO_SUPERVISOR_MODE;
-          const firstMinute = "--- SUPERVISOR ADVICE ENTRY cycle=0001 ---\\nSTATUS: ATTENTION\\nCheck the first failing assertion.\\n--- END SUPERVISOR ADVICE ENTRY cycle=0001 ---\\n";
-          const secondMinute = "--- SUPERVISOR ADVICE ENTRY cycle=0002 ---\\nSTATUS: CRITICAL\\nThe error pattern changed; verify input parsing.\\n--- END SUPERVISOR ADVICE ENTRY cycle=0002 ---\\n";
-          await writeFile(feedbackPath, firstMinute, "utf8");
-          const hooks = await pluginModule.default.server();
-          const after = hooks["tool.execute.after"];
-          const first = { output: "original tool output" };
-          await after({ tool: "read" }, first);
-          assert.match(first.output, /Check the first failing assertion/);
-          const firstOutput = first.output;
-          await after({ tool: "read" }, first);
-          assert.equal(first.output, firstOutput, "delivered advice must not be appended twice");
-          assert.ok((await readFile(cursorPath, "utf8")).includes(String(firstMinute.length)),
-            "successfully injected advice should advance the durable cursor");
+            const cursorPath = join(runtime, "feedback-cursor.json");
+            const transcripts = join(runtime, "transcripts");
+            const source = await readFile(".kilo/plugin/loop-supervisor-feedback.js", "utf8");
+            const pluginModule = await import("data:text/javascript;base64," + Buffer.from(source).toString("base64"));
+            process.env.RUNNER_TEMP = runtime;
+            process.env.KILO_SUPERVISOR_FEEDBACK_FILE = feedbackPath;
+            process.env.KILO_SUPERVISOR_FEEDBACK_CURSOR_FILE = cursorPath;
+            process.env.KILO_SUPERVISOR_TRANSCRIPT_DIR = transcripts;
+            delete process.env.KILO_SUPERVISOR_MODE;
+            const firstMinute = "--- SUPERVISOR ADVICE ENTRY cycle=0001 ---\nSTATUS: ATTENTION\nCheck the first failing assertion.\n--- END SUPERVISOR ADVICE ENTRY cycle=0001 ---\n";
+            const secondMinute = "--- SUPERVISOR ADVICE ENTRY cycle=0002 ---\nSTATUS: CRITICAL\nThe error pattern changed; verify input parsing.\n--- END SUPERVISOR ADVICE ENTRY cycle=0002 ---\n";
+            await writeFile(feedbackPath, firstMinute, "utf8");
+            const hooks = await pluginModule.default.server();
+            const after = hooks["tool.execute.after"];
+            const first = { output: "original tool output" };
+            await after({ tool: "read" }, first);
+            assert.match(first.output, /Check the first failing assertion/);
+            assert.ok(first.output.startsWith("original tool output\n\n"));
+            const exactFirstDelivery = first.output.slice("original tool output\n\n".length);
+            const deliveryFiles1 = (await readdir(transcripts)).filter(name => name.startsWith("worker-delivery-"));
+            assert.equal(deliveryFiles1.length, 1, "first injection should create one transcript");
+            assert.equal(await readFile(join(transcripts, deliveryFiles1[0]), "utf8"), exactFirstDelivery,
+              "delivery transcript must exactly match the content appended to worker tool output");
+            const firstOutput = first.output;
+            await after({ tool: "read" }, first);
+            assert.equal(first.output, firstOutput, "delivered advice must not be appended twice");
 
-          await writeFile(feedbackPath, firstMinute + secondMinute, "utf8");
-          const second = { output: "next tool output" };
-          await after({ tool: "bash" }, second);
-          assert.match(second.output, /verify input parsing/);
-          assert.doesNotMatch(second.output, /Check the first failing assertion/,
-            "only new journal entries should be injected during the same worker process");
+            await writeFile(feedbackPath, firstMinute + secondMinute, "utf8");
+            const second = { output: "next tool output" };
+            await after({ tool: "bash" }, second);
+            assert.match(second.output, /verify input parsing/);
+            assert.doesNotMatch(second.output, /Check the first failing assertion/,
+              "only new journal entries should be injected during the same worker process");
+            assert.equal((await readdir(transcripts)).filter(name => name.startsWith("worker-delivery-")).length, 2,
+              "each actual delivery should have its own transcript");
 
-          // A fresh worker CLI/plugin process resumes from its cursor and can retrieve newly queued advice.
-          const thirdMinute = "--- SUPERVISOR ADVICE ENTRY cycle=0003 ---\\nSTATUS: ATTENTION\\nConfirm the fix using the regression test.\\n--- END SUPERVISOR ADVICE ENTRY cycle=0003 ---\\n";
-          await writeFile(feedbackPath, firstMinute + secondMinute + thirdMinute, "utf8");
-          const reloadedHooks = await pluginModule.default.server();
-          const reloaded = { output: "output after worker session rollover" };
-          await reloadedHooks["tool.execute.after"]({ tool: "read" }, reloaded);
-          assert.match(reloaded.output, /Confirm the fix using the regression test/);
-          assert.doesNotMatch(reloaded.output, /Check the first failing assertion/,
-            "a restarted session should resume the persisted cursor, not replay already delivered entries");
+            const thirdMinute = "--- SUPERVISOR ADVICE ENTRY cycle=0003 ---\nSTATUS: ATTENTION\nConfirm the fix using the regression test.\n--- END SUPERVISOR ADVICE ENTRY cycle=0003 ---\n";
+            await writeFile(feedbackPath, firstMinute + secondMinute + thirdMinute, "utf8");
+            const reloadedHooks = await pluginModule.default.server();
+            const reloaded = { output: "output after worker session rollover" };
+            await reloadedHooks["tool.execute.after"]({ tool: "read" }, reloaded);
+            assert.match(reloaded.output, /Confirm the fix using the regression test/);
+            assert.doesNotMatch(reloaded.output, /Check the first failing assertion/,
+              "a restarted session should resume the persisted cursor, not replay already delivered entries");
+            assert.equal((await readdir(transcripts)).filter(name => name.startsWith("worker-delivery-")).length, 3);
 
-          process.env.KILO_SUPERVISOR_FEEDBACK_FILE = join(tmpdir(), "outside-feedback.md");
-          const outsideHooks = await pluginModule.default.server();
-          const outside = { output: "leave unchanged" };
-          await outsideHooks["tool.execute.after"]({ tool: "read" }, outside);
-          assert.equal(outside.output, "leave unchanged", "files outside RUNNER_TEMP must be ignored");
+            process.env.KILO_SUPERVISOR_FEEDBACK_FILE = join(tmpdir(), "outside-feedback.md");
+            const outsideHooks = await pluginModule.default.server();
+            const outside = { output: "leave unchanged" };
+            await outsideHooks["tool.execute.after"]({ tool: "read" }, outside);
+            assert.equal(outside.output, "leave unchanged", "files outside RUNNER_TEMP must be ignored");
 
-          process.env.KILO_SUPERVISOR_MODE = "1";
-          const reviewerHooks = await pluginModule.default.server();
-          assert.equal(Object.keys(reviewerHooks).length, 0, "reviewer CLI sessions must not receive worker feedback");
-          console.log("Cumulative feedback journal delivery, durable cursor resume, path boundary, and reviewer isolation: OK");
+            process.env.KILO_SUPERVISOR_MODE = "1";
+            const reviewerHooks = await pluginModule.default.server();
+            assert.equal(Object.keys(reviewerHooks).length, 0, "reviewer CLI sessions must not receive worker feedback");
+            console.log("Exact worker delivery transcripts, durable cursor resume, path boundary, and reviewer isolation: OK");
           } finally {
             await rm(runtime, { recursive: true, force: true });
           }
-          JS
+          JS          JS
           controller=.github/scripts/kilo-controller.sh
           for marker in \
             "kilo-supervisor-loop.py" \
             "SUPERVISOR_ACTIVE_LOG_POINTER" \
             "KILO_SUPERVISOR_FEEDBACK_FILE" \
             "KILO_SUPERVISOR_FEEDBACK_CURSOR_FILE" \
+            "SUPERVISOR_TRANSCRIPT_DIR" \
+            "KILO_SUPERVISOR_TRANSCRIPT_DIR" \
+            "--transcript-dir" \
+            "Exact redacted review requests" \
             "Started alongside the Kilo worker" \
             "supervisor_loop_pid" \
             "kill -TERM"; do
@@ -271,7 +290,7 @@ jobs:
               exit 1
             }
           done
-          echo "Continuous supervisor loop, redaction, fail-open recovery, plugin syntax, and controller wiring: OK"
+          echo "Continuous supervisor loop, request/response/delivery transcripts, redaction, fail-open recovery, plugin syntax, and controller wiring: OK"
       - name: Verify supervisor discovery with the workflow's pinned Kilo CLI
         shell: bash
         run: |
