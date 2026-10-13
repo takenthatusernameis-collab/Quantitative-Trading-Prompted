@@ -38,7 +38,7 @@ for directory in "$HOME" "$XDG_CONFIG_HOME/kilo" "$XDG_DATA_HOME/kilo" "$XDG_CAC
   rm -f "$directory/.kilo-write-test"
 done
 
-# A durable marker opts this single activation into exactly two sessions.
+# A durable marker authorizes a validation-gated one-time activation; the active run remains cutoff-bound.
 one_shot_mode=0
 if [ -f ".kilo/TWO_AGENT_ONCE" ]; then
   one_shot_mode=1
@@ -139,9 +139,8 @@ printf 'python_version=%s\n' "$(python3 --version 2>&1)"
 printf 'kilo_cli_package=%s\n' "$(npm list --prefix "$RUNNER_TEMP/kilo" @kilocode/cli --depth=0 2>&1 | tail -n 1)"
 echo "::endgroup::"
 
-agents=2
 if [ "$one_shot_mode" -eq 1 ]; then
-  echo "Configured sequential Kilo sessions: exactly two (one-shot validation mode)."
+  echo "One-shot marker accepted; sequential Kilo sessions continue until the global 355-minute cutoff."
 else
   echo "Routine Kilo sessions continue until the global 355-minute cutoff."
 fi
@@ -276,9 +275,6 @@ cutoff=0
 agent_index=0
 while true; do
   agent_index=$((agent_index + 1))
-  if [ "$one_shot_mode" -eq 1 ] && [ "$agent_index" -gt "$agents" ]; then
-    break
-  fi
   remaining=$((cutoff_epoch - $(date +%s)))
   if [ "$remaining" -le 0 ]; then
     cutoff=1
@@ -293,11 +289,7 @@ while true; do
   no_progress_block=0
   transient_retry_backoff=15
   session_attempt=0
-  if [ "$one_shot_mode" -eq 1 ]; then
-    echo "Starting sequential Kilo session ${agent_index}/${agents}; remaining safety budget ${remaining}s."
-  else
-    echo "Starting sequential Kilo session ${agent_index}; remaining safety budget ${remaining}s."
-  fi
+  echo "Starting sequential Kilo session ${agent_index}; remaining safety budget ${remaining}s."
   while true; do
     session_attempt=$((session_attempt + 1))
     attempt_log="$RUNNER_TEMP/kilo-session-${agent_index}-attempt-${session_attempt}.log"
@@ -452,11 +444,11 @@ RECOVERY_PROMPT
   fi
   git clean -fd -- .github/workflows || true
 
-  # Signal routine activations to skip after session two (or if the global
-  # cutoff ends this one-shot early). The skip marker is written first.
+  # Consume the one-shot trigger after session two (or at the global cutoff).
+  # This does not end the active run; only the cutoff terminates the routine loop.
   if [ "$one_shot_mode" -eq 1 ] && { [ "$agent_index" -eq 2 ] || [ "$(date +%s)" -ge "$cutoff_epoch" ]; }; then
     mkdir -p .kilo
-    if printf '%s\n' 'Skip one routine Kilo activation after the one-shot two-agent reliability run.' > .kilo/SKIP_NEXT_ROUTINE_KILO; then
+    if printf '%s\n' 'Skip one routine Kilo activation after the one-shot validation-gated activation.' > .kilo/SKIP_NEXT_ROUTINE_KILO; then
       rm -f -- .kilo/TWO_AGENT_ONCE || echo "::warning::Could not remove the one-shot marker; routine activations remain safely gated."
     else
       echo "::warning::Could not write the post-run skip marker; retaining the one-shot marker for recovery."
@@ -650,8 +642,4 @@ fi
 if [ "$project_progress" -ne 1 ]; then
   echo "::warning::No meaningful repository change was confirmed before the action ended. Review the preserved session logs and checkpoints."
 fi
-if [ "$one_shot_mode" -eq 1 ]; then
-  echo "Kilo one-shot validation completed its two configured sessions."
-else
-  echo "Kilo controller reached the global 355-minute safety cutoff. Failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
-fi
+echo "Kilo controller reached the global 355-minute safety cutoff. Failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
