@@ -462,9 +462,11 @@ def main() -> int:
     previous_feedback = read_bounded(feedback_file, MAX_PREVIOUS_FEEDBACK_CHARS).strip()
     previous_report = ""
     previous_log = ""
+    consecutive_unusable_reviews = 0
+    circuit_breaker_threshold = 3
     cycle = 0
     next_due = time.monotonic()
-    log(f"started; reviewing immediately and then every {args.interval_seconds:g}s; failures never stop worker")
+    log(f"started; reviewing immediately and then every {args.interval_seconds:g}s; supervisor failures never stop worker")
 
     while not STOP_REQUESTED:
         cycle += 1
@@ -482,7 +484,15 @@ def main() -> int:
             args, cycle, objective, log_delta, git_snapshot,
             previous_feedback, repo_root, report_dir, transcript_dir,
         )
-        if report:
+        if report is None:
+            consecutive_unusable_reviews += 1
+            log(
+                f"review {cycle} produced no usable report "
+                f"(consecutive unusable reviews: {consecutive_unusable_reviews}/"
+                f"{circuit_breaker_threshold}); worker continues independently"
+            )
+        else:
+            consecutive_unusable_reviews = 0
             log(f"review {cycle} completed with usable report")
             if report != previous_report:
                 entry = (
@@ -514,6 +524,17 @@ def main() -> int:
                     log(f"review {cycle} feedback append failed ({type(exc).__name__}); existing advice retained; worker continues")
             else:
                 log(f"review {cycle} complete; recommendation unchanged, no duplicate journal entry added")
+        if consecutive_unusable_reviews >= circuit_breaker_threshold:
+            log(
+                f"SUPERVISOR_CIRCUIT_BREAKER_OPEN: {consecutive_unusable_reviews} consecutive "
+                "reviews produced no usable report; no further reviewer model calls will be launched "
+                "in this run; the worker remains unaffected"
+            )
+            # Keep the health/status process alive for the controller heartbeat, but stop
+            # consuming provider capacity on a persistently failing reviewer.
+            while not STOP_REQUESTED:
+                time.sleep(0.25)
+            break
         if args.max_reviews and cycle >= args.max_reviews:
             break
         next_due += args.interval_seconds
