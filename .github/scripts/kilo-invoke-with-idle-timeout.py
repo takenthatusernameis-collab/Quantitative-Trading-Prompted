@@ -36,7 +36,7 @@ def _signal_process_group(process: subprocess.Popen[bytes], signum: int) -> None
 def _terminate_process_group(process: subprocess.Popen[bytes]) -> None:
     _signal_process_group(process, signal.SIGTERM)
     try:
-        process.wait(timeout=10)
+        process.wait(timeout=5)
     except subprocess.TimeoutExpired:
         pass
     # Also terminate descendants that may have inherited the output pipe.
