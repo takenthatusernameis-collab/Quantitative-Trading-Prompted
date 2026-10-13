@@ -124,6 +124,11 @@ jobs:
             'sleep 30' \
             'ACTUAL REQUEST SENT TO SUPERVISOR' \
             'ACTUAL ADVICE RETURNED BY SUPERVISOR' \
+            'agent dialogue saved' \
+            'completed with usable report' \
+            'DELIVERY_CONFIRMED' \
+            'Agent dialogue box' \
+            'SUPERVISOR_REVIEWS_COMPLETED' \
             'request-to-supervisor.md' \
             'response-from-supervisor.md' \
             'worker-delivery-' \
@@ -172,9 +177,11 @@ jobs:
           puts "Supervisor frontmatter and deny-by-default path-scoped permissions: OK"
           RUBY
           controller=.github/scripts/kilo-controller.sh
+          grep -Fq -- "--interval-seconds 150" "$controller"
+          grep -Fq -- "--review-timeout-seconds 120" "$controller"
           for marker in \
             "MANDATORY LOOP-SUPERVISOR PROTOCOL" \
-            "60-second cadence" \
+            "150-second cadence" \
             "A/B/A/B" \
             "Five consecutive failed attempts without a verified successful outcome" \
             "Three attempts using substantially the same approach produce no meaningful improvement" \
@@ -196,7 +203,7 @@ jobs:
           fi
           rm -f "$probe"
           echo "Supervisor escalation contract and ignored-report behavior: OK"
-      - name: Test minute-cadence supervisor loop and feedback plugin
+      - name: Test scheduled supervisor dialogue and feedback plugin
         shell: bash
         run: |
           set -euo pipefail

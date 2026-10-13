@@ -131,6 +131,9 @@ const LoopSupervisorFeedback = async () => {
         const transcriptPath = await saveWorkerDelivery(safeTranscriptDir, injectionText, injectionSequence);
         console.log("[loop-supervisor-feedback] Exact supervisor-to-worker message appended to tool result; transcript="
           + (transcriptPath ? basename(transcriptPath) : "unavailable"));
+        console.log("[loop-supervisor-feedback] DELIVERY_CONFIRMED sequence=" + injectionSequence
+          + " transcript=" + (transcriptPath ? basename(transcriptPath) : "unavailable")
+          + " injected_chars=" + injectionText.length);
         console.log("[loop-supervisor-feedback-content] BEGIN exact injected content");
         for (const line of injectionText.split("\n")) {
           console.log("[loop-supervisor-feedback-content] " + line);

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail-open, minute-cadence Kilo supervisor for the active worker invocation."""
+"""Fail-open, 150-second-cadence Kilo supervisor for the active worker invocation."""
 from __future__ import annotations
 
 import argparse
@@ -117,7 +117,7 @@ def build_review_prompt(
         previous_feedback = "(No previous supervisor recommendation.)"
     return f"""CONTINUOUS KILO WORKER REVIEW — CYCLE {cycle}
 
-You are reviewing an active worker, not replacing or restarting it. Analyze the actual evidence below. Every minute review must be concise, specific, and useful. If there is no new evidence or recommendation change, explicitly say that the current recommendation remains unchanged; do not invent findings just to create novelty.
+You are reviewing an active worker, not replacing or restarting it. Analyze the actual evidence below. Every scheduled review must be concise, specific, and useful. If there is no new evidence or recommendation change, explicitly say that the current recommendation remains unchanged; do not invent findings just to create novelty.
 
 CURRENT WORKER OBJECTIVE / INSTRUCTIONS (redacted, truncated):
 {objective[-MAX_OBJECTIVE_CHARS:]}
@@ -197,6 +197,40 @@ def bounded_cli_transcript(text: str) -> str:
     half = MAX_CLI_TRANSCRIPT_CHARS // 2
     omitted = len(safe) - (half * 2)
     return safe[:half] + f"\n... [{omitted} characters omitted from CLI diagnostic output; request and advice are stored separately] ...\n" + safe[-half:]
+
+
+def write_agent_dialogue(
+    transcript_dir: Path,
+    cycle: int,
+    prompt: str,
+    cli_output: str,
+    advice: str,
+    outcome: str,
+) -> Optional[Path]:
+    """Write a combined, readable record of both sides of one reviewer exchange."""
+    def quote_block(value: str) -> str:
+        safe = redact_sensitive_text(value).strip()
+        if not safe:
+            return "> (none)"
+        return "\n".join("> " + line for line in safe.splitlines())
+
+    body = (
+        f"# Agent dialogue — loop-supervisor review {cycle:04d}\n\n"
+        "This is the redacted exchange for one isolated reviewer session.\n\n"
+        "## Worker/controller → supervisor: actual request and evidence\n\n"
+        f"{quote_block(prompt)}\n\n"
+        "## Supervisor CLI trace (sanitized)\n\n"
+        f"{quote_block(bounded_cli_transcript(cli_output or '') or '(no CLI output captured)')}\n\n"
+        "## Supervisor → worker: advice returned by the reviewer\n\n"
+        f"{quote_block(advice or '(No usable advice returned; previous advice was retained.)')}\n\n"
+        "## Review outcome\n\n"
+        f"{quote_block(outcome)}\n\n"
+        "## When the worker receives the advice\n\n"
+        "A usable report is added to the cumulative feedback journal by the controller. "
+        "The worker receives pending advice at its next tool-result boundary; this does not interrupt an operation already in progress. "
+        "The exact text appended to the worker tool result is also saved in a worker-delivery-*.md transcript.\n"
+    )
+    return transcript_file(transcript_dir, cycle, "agent-dialogue.md", body)
 
 
 def terminate_process_group(process: subprocess.Popen[str]) -> None:
@@ -279,6 +313,12 @@ def run_review(
     def write_outcome(value: str) -> None:
         transcript_file(transcript_dir, cycle, "outcome.txt", value)
 
+    def save_dialogue(cli_output: str, advice: str, outcome: str) -> None:
+        path = write_agent_dialogue(transcript_dir, cycle, prompt, cli_output, advice, outcome)
+        if path:
+            log(f"review {cycle} combined agent dialogue saved to {path}")
+
+    output = ""
     env = os.environ.copy()
     env["KILO_SUPERVISOR_MODE"] = "1"
     env.pop("KILO_SUPERVISOR_FEEDBACK_FILE", None)
@@ -302,7 +342,9 @@ def run_review(
                 log(f"review {cycle} CLI diagnostic output saved to {cli_path}")
             if output:
                 log_content_block(f"SUPERVISOR CLI OUTPUT BEFORE TIMEOUT — review {cycle}", bounded_cli_transcript(output))
-            write_outcome("Supervisor review timed out before producing a usable report. The worker was not interrupted.")
+            outcome = "TIMED OUT: no usable report was produced before the reviewer timeout; worker was not interrupted and previous advice remains available."
+            write_outcome(outcome)
+            save_dialogue(output or "", "", outcome)
             log(f"review {cycle} timed out; worker remains unaffected")
             return None
         rc = ACTIVE_REVIEW.returncode
@@ -312,12 +354,16 @@ def run_review(
         if rc != 0:
             safe_tail = bounded_cli_transcript(output or "")[-MAX_REVIEW_OUTPUT_CHARS:]
             detail = safe_tail.replace("\n", " | ").strip()
-            write_outcome(f"Supervisor CLI exited with code {rc}; advice was not published for this cycle.\n\n{safe_tail}")
+            outcome = f"CLI EXIT {rc}: advice was not published for this cycle; previous advice was retained."
+            write_outcome(f"{outcome}\n\n{safe_tail}")
+            save_dialogue(output or "", "", outcome)
             log_content_block(f"SUPERVISOR CLI ERROR OUTPUT — review {cycle}", safe_tail)
             log(f"review {cycle} returned exit {rc}; worker continues. {detail[:500]}")
             return None
     except (OSError, subprocess.SubprocessError) as exc:
-        write_outcome(f"Supervisor review failed to launch or complete: {type(exc).__name__}. Worker continues.")
+        outcome = f"LAUNCH/PROCESS FAILURE: {type(exc).__name__}; worker continues and previous advice remains available."
+        write_outcome(outcome)
+        save_dialogue(output or "", "", outcome)
         log(f"review {cycle} failed to launch or complete ({type(exc).__name__}); worker continues")
         return None
     finally:
@@ -326,25 +372,33 @@ def run_review(
     try:
         report = report_path.read_text(encoding="utf-8", errors="replace").strip()
     except OSError:
-        write_outcome("Supervisor CLI returned without writing its required report. No advice was published; previous advice was retained.")
+        outcome = "MISSING REPORT: the reviewer CLI returned without writing the required report; previous advice was retained."
+        write_outcome(outcome)
+        save_dialogue(output or "", "", outcome)
         log(f"review {cycle} returned without writing its report; previous advice retained")
         return None
     report = redact_sensitive_text(report)[:MAX_REPORT_CHARS].strip()
     if not report:
-        write_outcome("Supervisor wrote an empty report. No advice was published; previous advice was retained.")
+        outcome = "EMPTY REPORT: no advice was published; previous advice was retained."
+        write_outcome(outcome)
+        save_dialogue(output or "", "", outcome)
         log(f"review {cycle} wrote an empty report; previous advice retained")
         return None
     try:
         report_path.write_text(report + "\n", encoding="utf-8")
     except OSError:
-        write_outcome("Supervisor report could not be sanitized on disk. Feedback was not delivered.")
+        outcome = "REPORT SANITIZATION FAILURE: feedback was not delivered; previous advice was retained."
+        write_outcome(outcome)
+        save_dialogue(output or "", "", outcome)
         log(f"review {cycle} report could not be sanitized; feedback not delivered")
         return None
     response_path = transcript_file(transcript_dir, cycle, "response-from-supervisor.md", report)
     if response_path:
         log(f"review {cycle} actual advice saved to {response_path}")
     log_content_block(f"ACTUAL ADVICE RETURNED BY SUPERVISOR — review {cycle}", report)
-    write_outcome("Supervisor report was written, redacted, and accepted for cumulative feedback publishing.")
+    outcome = "USABLE REPORT GENERATED: redacted advice was accepted; the controller will publish it to the journal, then the plugin can deliver it at the worker's next tool-result boundary."
+    write_outcome(outcome)
+    save_dialogue(output or "", report, outcome)
     return report
 
 
@@ -374,8 +428,8 @@ def main() -> int:
     parser.add_argument("--model", default="kilo/kilo-auto/free")
     parser.add_argument("--run-id", default=os.environ.get("GITHUB_RUN_ID", "local"))
     parser.add_argument("--run-attempt", default=os.environ.get("GITHUB_RUN_ATTEMPT", "1"))
-    parser.add_argument("--interval-seconds", type=float, default=60.0)
-    parser.add_argument("--review-timeout-seconds", type=float, default=45.0)
+    parser.add_argument("--interval-seconds", type=float, default=150.0)
+    parser.add_argument("--review-timeout-seconds", type=float, default=120.0)
     parser.add_argument("--max-reviews", type=int, default=0, help=argparse.SUPPRESS)
     args = parser.parse_args()
 
@@ -429,6 +483,7 @@ def main() -> int:
             previous_feedback, repo_root, report_dir, transcript_dir,
         )
         if report:
+            log(f"review {cycle} completed with usable report")
             if report != previous_report:
                 entry = (
                     f"--- SUPERVISOR ADVICE ENTRY cycle={cycle:04d} ---\n"

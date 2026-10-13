@@ -122,6 +122,14 @@ class SupervisorLoopTests(unittest.TestCase):
                 "STATUS: ATTENTION\nEvidence: worker review 1\nRecommended next action: verify changed evidence 1",
             )
             self.assertIn("mock reviewer CLI output for cycle 1", cli_file.read_text(encoding="utf-8"))
+            dialogue_file = transcripts / "review-0001-agent-dialogue.md"
+            dialogue = dialogue_file.read_text(encoding="utf-8")
+            self.assertIn("Worker/controller → supervisor", dialogue)
+            self.assertIn("worker started", dialogue)
+            self.assertIn("Supervisor → worker", dialogue)
+            self.assertIn("worker review 1", dialogue)
+            self.assertIn("USABLE REPORT GENERATED", dialogue)
+            self.assertIn("next tool-result boundary", dialogue)
 
     def test_failed_review_records_request_and_cli_output_without_erasing_feedback(self):
         with tempfile.TemporaryDirectory(prefix="kilo-supervisor-failure-test-") as temp:
@@ -166,6 +174,10 @@ class SupervisorLoopTests(unittest.TestCase):
                 "mock CLI failure body",
                 (transcripts / "review-0001-supervisor-cli-output.txt").read_text(encoding="utf-8"),
             )
+            dialogue = (transcripts / "review-0001-agent-dialogue.md").read_text(encoding="utf-8")
+            self.assertIn("CLI EXIT 7", dialogue)
+            self.assertIn("mock CLI failure body", dialogue)
+            self.assertIn("No usable advice returned", dialogue)
 
 
 if __name__ == "__main__":
