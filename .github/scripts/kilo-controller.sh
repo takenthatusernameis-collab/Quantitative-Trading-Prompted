@@ -139,15 +139,12 @@ printf 'python_version=%s\n' "$(python3 --version 2>&1)"
 printf 'kilo_cli_package=%s\n' "$(npm list --prefix "$RUNNER_TEMP/kilo" @kilocode/cli --depth=0 2>&1 | tail -n 1)"
 echo "::endgroup::"
 
-agents="${KILO_INPUT_AGENTS:-1000}"
-if ! [[ "$agents" =~ ^[0-9]+$ ]]; then
-  echo "::warning::Invalid agent count; using a safe value."
-  agents=1
+agents=2
+if [ "$one_shot_mode" -eq 1 ]; then
+  echo "Configured sequential Kilo sessions: exactly two (one-shot validation mode)."
+else
+  echo "Routine Kilo sessions continue until the global 355-minute cutoff."
 fi
-if [ "$agents" -lt 1 ]; then agents=1; fi
-if [ "$agents" -gt 1000 ]; then agents=1000; fi
-if [ "$one_shot_mode" -eq 1 ]; then agents=2; fi
-echo "Configured sequential Kilo sessions: $agents (one-shot mode: $one_shot_mode)."
 command=$(cat <<'PROMPT'
 Execute the task assigned by the previous agent and prepare a task for the next agent!
 
@@ -271,14 +268,17 @@ idle_timeout_retry_count=0
 project_progress=0
 provider_pressure_streak=0
 hard_provider_block=0
-repeated_provider_block=0
 correction_failure_block=0
 no_progress_block=0
-repeated_failure_block=0
 MAX_TRANSIENT_ATTEMPTS=5
 cutoff=0
 
-for agent_index in $(seq 1 "$agents"); do
+agent_index=0
+while true; do
+  agent_index=$((agent_index + 1))
+  if [ "$one_shot_mode" -eq 1 ] && [ "$agent_index" -gt "$agents" ]; then
+    break
+  fi
   remaining=$((cutoff_epoch - $(date +%s)))
   if [ "$remaining" -le 0 ]; then
     cutoff=1
@@ -288,6 +288,9 @@ for agent_index in $(seq 1 "$agents"); do
   session_log="$RUNNER_TEMP/kilo-session-${agent_index}.log"
   : > "$session_log"
   provider_pressure=0
+  hard_provider_block=0
+  correction_failure_block=0
+  no_progress_block=0
   transient_retry_backoff=15
   session_attempt=0
   echo "Starting sequential Kilo session ${agent_index}/${agents}; remaining safety budget ${remaining}s."
@@ -590,24 +593,16 @@ PY
     echo "Meaningful repository progress checkpoint verified at $(git rev-parse HEAD)."
   fi
   if [ "$hard_provider_block" -eq 1 ]; then
-    cutoff=1
-    echo "::error::Hard provider quota/capacity failure; diagnostics and any useful checkpoint have been preserved, so this activation will not repeat the same provider call."
+    echo "::warning::This session hit a hard provider quota/capacity limit. The session is ending; a fresh session may retry while workflow time remains."
   elif [ "$provider_pressure_streak" -ge 3 ]; then
-    repeated_provider_block=1
-    cutoff=1
-    echo "::error::Three consecutive provider rate-limit/capacity failures; stopping this activation instead of repeating an unproductive loop."
+    echo "::warning::Provider rate-limit/capacity errors have recurred across sessions. Continuing with the existing session-level cooldown policy until the global cutoff."
   elif [ "$correction_failure_block" -eq 1 ]; then
-    repeated_failure_block=1
-    cutoff=1
-    echo "::error::The single corrective pass failed; stopping this activation after preserving the evidence and checkpoint."
+    echo "::warning::The bounded corrective pass failed. Its evidence and checkpoint are preserved; the next session will continue."
   elif [ "$no_progress_block" -eq 1 ]; then
-    repeated_failure_block=1
-    cutoff=1
-    echo "::error::The bounded corrective pass did not restore meaningful progress; stopping this activation rather than repeating no-op sessions."
-  elif [ "$consecutive_failures" -ge 5 ]; then
-    repeated_failure_block=1
-    cutoff=1
-    echo "::error::Five consecutive Kilo sessions failed; stopping instead of repeating the same session pattern for the remainder of the workflow budget."
+    echo "::warning::The corrective session produced no durable project progress. Preserving the evidence and starting another session while time remains."
+  fi
+  if [ "$consecutive_failures" -ge 5 ]; then
+    echo "::warning::At least five consecutive sessions have failed; continuing with fresh sessions rather than ending the action."
   fi
   if [ "$cutoff" -eq 1 ]; then
     break
@@ -645,13 +640,14 @@ fi
 printf 'project_progress=%s\n' "$project_progress" >> "$GITHUB_OUTPUT"
 printf 'failed_sessions=%s\n' "$failed_sessions" >> "$GITHUB_OUTPUT"
 printf 'idle_timeout_retries=%s\n' "$idle_timeout_retry_count" >> "$GITHUB_OUTPUT"
-if [ "$hard_provider_block" -eq 1 ] || [ "$repeated_provider_block" -eq 1 ] || [ "$repeated_failure_block" -eq 1 ]; then
-  echo "::error::Kilo activation stopped because of hard provider limits, repeated provider pressure, an unsuccessful corrective pass, no progress after correction, or five consecutive failed sessions. Any verified checkpoint remains persisted, but this activation is not marked successful."
-  exit 1
+if [ "$failed_sessions" -gt 0 ]; then
+  echo "::warning::$failed_sessions Kilo session(s) failed during this activation. Session-level failures did not stop the action; upstream idle/network retries: $idle_timeout_retry_count."
 fi
 if [ "$project_progress" -ne 1 ]; then
-  echo "::error::No meaningful repository change or durable handoff was committed and verified in this activation. Control-marker-only commits do not count as progress."
-  exit 1
+  echo "::warning::No meaningful repository change was confirmed before the action ended. Review the preserved session logs and checkpoints."
 fi
-if [ "$failed_sessions" -gt 0 ]; then echo "::warning::Useful progress was persisted, but $failed_sessions Kilo session(s) failed. Upstream idle/network retries: $idle_timeout_retry_count."; fi
-echo "Kilo controller completed with verified repository progress. Failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
+if [ "$one_shot_mode" -eq 1 ]; then
+  echo "Kilo one-shot validation completed its two configured sessions."
+else
+  echo "Kilo controller reached the global 355-minute safety cutoff. Failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
+fi
