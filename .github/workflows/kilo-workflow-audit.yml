@@ -7,6 +7,7 @@ on:
       - ".github/workflows/main.yml"
       - ".github/workflows/kilo-workflow-audit.yml"
       - ".github/workflows/kilo-two-agent-dispatch.yml"
+      - ".github/workflows/cycle15-c4-full-backtest.yml"
       - ".github/scripts/kilo-controller.sh"
       - ".kilo/TWO_AGENT_ONCE"
       - ".kilo/SKIP_NEXT_ROUTINE_KILO"
@@ -21,6 +22,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/kilo-workflow-audit.yml"
+      - ".github/workflows/cycle15-c4-full-backtest.yml"
       - "research/run_cycle15_c4_corrected.py"
       - "research/validate_cycle15_c4_contract.py"
       - "config/sectorrotation_candidate_001.yaml"
@@ -43,12 +45,12 @@ jobs:
       - name: Validate workflow syntax and schema
         uses: rhysd/actionlint@v1.7.7
         with:
-          args: -color .github/workflows/main.yml .github/workflows/kilo-workflow-audit.yml .github/workflows/kilo-two-agent-dispatch.yml
+          args: -color .github/workflows/main.yml .github/workflows/kilo-workflow-audit.yml .github/workflows/kilo-two-agent-dispatch.yml .github/workflows/cycle15-c4-full-backtest.yml
       - name: Independently parse YAML and validate embedded Bash
         shell: bash
         run: |
           set -euo pipefail
-          ruby -ryaml -e 'ARGV.each do |path|; doc = YAML.load_file(path); puts "#{path}: YAML OK"; if ["main.yml", "kilo-two-agent-dispatch.yml"].include?(File.basename(path)); step = doc.fetch("jobs").values.flat_map { |job| job.fetch("steps", []) }.find { |item| item["run"] }; raise "No run script found in #{path}" unless step; outdir = File.join(ENV.fetch("RUNNER_TEMP"), "kilo-shell-validation"); Dir.mkdir(outdir) unless Dir.exist?(outdir); File.write(File.join(outdir, File.basename(path, ".yml") + ".sh"), step.fetch("run")); end; end' .github/workflows/main.yml .github/workflows/kilo-workflow-audit.yml .github/workflows/kilo-two-agent-dispatch.yml
+          ruby -ryaml -e 'ARGV.each do |path|; doc = YAML.load_file(path); puts "#{path}: YAML OK"; if ["main.yml", "kilo-two-agent-dispatch.yml", "cycle15-c4-full-backtest.yml"].include?(File.basename(path)); step = doc.fetch("jobs").values.flat_map { |job| job.fetch("steps", []) }.find { |item| item["run"] }; raise "No run script found in #{path}" unless step; outdir = File.join(ENV.fetch("RUNNER_TEMP"), "kilo-shell-validation"); Dir.mkdir(outdir) unless Dir.exist?(outdir); File.write(File.join(outdir, File.basename(path, ".yml") + ".sh"), step.fetch("run")); end; end' .github/workflows/main.yml .github/workflows/kilo-workflow-audit.yml .github/workflows/kilo-two-agent-dispatch.yml .github/workflows/cycle15-c4-full-backtest.yml
           for script in "$RUNNER_TEMP"/kilo-shell-validation/*.sh; do
             bash -n "$script"
             echo "$script: Bash syntax OK"
