@@ -271,7 +271,7 @@ jobs:
           } finally {
             await rm(runtime, { recursive: true, force: true });
           }
-          JS          JS
+          JS
           controller=.github/scripts/kilo-controller.sh
           for marker in \
             "kilo-supervisor-loop.py" \
