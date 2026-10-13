@@ -91,6 +91,7 @@ jobs:
             ${{ runner.temp }}/kilo-progress-*.log
             ${{ runner.temp }}/kilo-progress-state-*.txt
             ${{ runner.temp }}/kilo-supervisor-loop-*.log
+            ${{ runner.temp }}/kilo-supervisor-transcripts-*/**
           if-no-files-found: ignore
           retention-days: 14
 
