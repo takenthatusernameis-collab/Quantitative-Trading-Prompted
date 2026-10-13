@@ -16,6 +16,8 @@ on:
       - "src/evaluation/walkforward.py"
       - "src/data/yfinance_fetcher.py"
       - "src/evaluation/utils.py"
+      - "requirements.txt"
+      - "tests/test_cycle15_c4_safeguards.py"
   pull_request:
     paths:
       - ".github/workflows/kilo-workflow-audit.yml"
@@ -25,6 +27,8 @@ on:
       - "src/evaluation/walkforward.py"
       - "src/data/yfinance_fetcher.py"
       - "src/evaluation/utils.py"
+      - "requirements.txt"
+      - "tests/test_cycle15_c4_safeguards.py"
   workflow_dispatch:
 
 permissions:
@@ -59,3 +63,9 @@ jobs:
           python3 -m py_compile research/run_cycle15_c4_corrected.py research/validate_cycle15_c4_contract.py
           python3 research/validate_cycle15_c4_contract.py
           ruby -ryaml -e 'cfg = YAML.load_file("config/sectorrotation_candidate_001.yaml"); expected = %w[XLB XLE XLF XLI XLK XLP XLU XLV XLY]; raise "C4 universe mismatch" unless cfg.fetch("universe") == expected; raise "C4 start-date mismatch" unless cfg.fetch("history_start") == "1998-12-22"; raise "C4 signal mismatch" unless cfg.dig("signal", "lookback") == 252 && cfg.dig("signal", "skip") == 21 && cfg.dig("signal", "top_fraction") == 0.5; raise "C4 costs mismatch" unless cfg.dig("cost_model", "total_round_trip_bps") == 3.0; raise "C4 cache policy mismatch" unless cfg.dig("data", "cached") == true && cfg.dig("data", "fetch_new") == false; puts "Frozen C4 YAML contract: PASS (9 ETFs, 252/21/0.5, 3 bps, cache-only)"'
+
+      - name: Install lightweight dependencies for C4 runtime-guard tests
+        run: python3 -m pip install --disable-pip-version-check "numpy>=1.24,<3" "pandas>=2,<4" "scipy>=1.10" "arch>=6" "PyYAML>=6" "yfinance>=0.2" "pyarrow>=12" "pytest>=7.4"
+
+      - name: Run C4 fail-closed regression tests
+        run: python3 -m pytest -q tests/test_cycle15_c4_safeguards.py

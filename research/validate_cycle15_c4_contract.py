@@ -135,6 +135,29 @@ def main() -> None:
     require("    fetch_close_prices," not in source and "    fetch_universe," not in source,
             "cache-only runner must not import a network-capable data loader")
 
+    walkforward_source = (ROOT / "src" / "evaluation" / "walkforward.py").read_text(encoding="utf-8")
+    eval_utils_source = (ROOT / "src" / "evaluation" / "utils.py").read_text(encoding="utf-8")
+    engine_source = (ROOT / "src" / "backtest" / "engine.py").read_text(encoding="utf-8")
+    generic_schema = {
+        "train_sharpe": "sharpe_ratio",
+        "train_ann_return": "annualized_return",
+        "test_sharpe": "sharpe_ratio",
+        "test_ann_return": "annualized_return",
+        "test_max_dd": "max_drawdown",
+        "test_turnover": "annualized_turnover",
+        "test_trades": "trade_count",
+    }
+    for output_column, engine_metric in generic_schema.items():
+        require(f'"{output_column}"' in walkforward_source,
+                f"generic walk-forward output schema is missing {output_column}")
+        require(f'.get("{engine_metric}"' in walkforward_source,
+                f"generic walk-forward mapping for {output_column} does not use {engine_metric}")
+    require("def period_metrics(" in eval_utils_source and "return compute_metrics(" in eval_utils_source,
+            "evaluation.utils.period_metrics must delegate to the canonical metric engine")
+    for engine_metric in set(generic_schema.values()):
+        require(f'"{engine_metric}"' in engine_source,
+                f"canonical metric engine is missing {engine_metric}")
+
     for token in (
         "EXPECTED_CLOSE_ROWS = 6991",
         "if len(splits) != 36",

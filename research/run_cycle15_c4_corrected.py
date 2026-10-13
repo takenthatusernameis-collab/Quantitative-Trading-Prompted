@@ -272,46 +272,99 @@ def _validate_core_benchmark_close(close_core: pd.DataFrame) -> None:
 
 
 def _validate_generated_outputs(close: pd.DataFrame, baseline: dict, wf: dict, splits: list[dict], report: str) -> None:
-    """Re-open persisted outputs and reject wrong-universe or wrong-fold artifacts."""
-    if len(wf["wf_df"]) != 36 or wf["summary"].get("n_folds") != 36:
+    """Fail closed on incomplete folds and verify artifacts against in-memory results."""
+    wf_df = wf["wf_df"]
+    if len(wf_df) != 36 or wf["summary"].get("n_folds") != 36:
         raise RuntimeError("Generated walk-forward record does not contain exactly 36 folds.")
-    # The legacy evaluator records per-fold exceptions as NaN and continues.
-    # A complete row count is not sufficient evidence that every fold ran.
-    required_oos_metrics = ("test_sharpe", "test_ann_return", "test_max_dd", "test_turnover", "test_trades")
-    for column in required_oos_metrics:
-        if column not in wf["wf_df"].columns:
-            raise RuntimeError(f"Walk-forward output is missing required OOS metric: {column}.")
-        values = pd.to_numeric(wf["wf_df"][column], errors="coerce")
-        if not np.isfinite(values.to_numpy(dtype=float)).all():
-            bad_folds = wf["wf_df"].loc[~np.isfinite(values.to_numpy(dtype=float)), "fold"].tolist()
+    if wf_df["fold"].tolist() != list(range(1, 37)):
+        raise RuntimeError("Generated walk-forward fold identifiers are missing, duplicated, or out of order.")
+
+    # The generic evaluator records per-fold exceptions as NaN and continues.
+    # Verify the real evaluator's train/OOS schema and the custom runner's
+    # derived Sortino metric, so a full row count can never mask a failed fold.
+    required_oos_metrics = (
+        "test_sharpe", "test_ann_return", "test_max_dd", "test_turnover", "test_trades",
+    )
+    required_train_metrics = ("train_sharpe", "train_ann_return")
+    required_fold_metrics = (*required_train_metrics, *required_oos_metrics, "test_sortino")
+    for column in required_fold_metrics:
+        if column not in wf_df.columns:
+            raise RuntimeError(f"Walk-forward output is missing required metric: {column}.")
+        values = pd.to_numeric(wf_df[column], errors="coerce").to_numpy(dtype=float)
+        invalid = ~np.isfinite(values)
+        if invalid.any():
+            bad_folds = wf_df.loc[invalid, "fold"].tolist()
             raise RuntimeError(f"Walk-forward metric {column} is missing/non-finite in fold(s): {bad_folds}.")
-    for row, split in zip(wf["wf_df"].to_dict(orient="records"), splits, strict=True):
+
+    for row, split in zip(wf_df.to_dict(orient="records"), splits, strict=True):
         for key in ("train_start", "train_end", "test_start", "test_end"):
             if row.get(key) != split.get(key):
                 raise RuntimeError(f"Generated fold {row.get('fold')} has incorrect {key}.")
-    if list(baseline["weights"].columns) != UNIVERSE or len(baseline["weights"]) != EXPECTED_CLOSE_ROWS:
+
+    expected_weights = baseline["weights"]
+    if list(expected_weights.columns) != UNIVERSE or len(expected_weights) != EXPECTED_CLOSE_ROWS:
         raise RuntimeError("In-memory weights violate the 9-ETF / 6,991-row contract.")
+    if not pd.DatetimeIndex(expected_weights.index).equals(pd.DatetimeIndex(close.index)):
+        raise RuntimeError("In-memory weights index differs from the aligned C4 price index.")
+    if not np.isfinite(expected_weights.to_numpy(dtype=float)).all():
+        raise RuntimeError("In-memory weights contain missing or non-finite values.")
+
     weights = pd.read_parquet(WEIGHTS_PARQUET)
     if list(weights.columns) != UNIVERSE or len(weights) != EXPECTED_CLOSE_ROWS:
         raise RuntimeError("Persisted weights violate the C4 universe/row-count contract.")
     if not pd.DatetimeIndex(weights.index).equals(pd.DatetimeIndex(close.index)):
         raise RuntimeError("Persisted weights index differs from the aligned C4 price index.")
+    persisted_weight_values = weights.to_numpy(dtype=float)
+    expected_weight_values = expected_weights.to_numpy(dtype=float)
+    if not np.isfinite(persisted_weight_values).all() or not np.allclose(
+        persisted_weight_values, expected_weight_values, rtol=1e-12, atol=1e-12,
+    ):
+        raise RuntimeError("Persisted weights contain invalid values or differ from in-memory weights.")
+
+    expected_daily = baseline["daily"]
     simulation = pd.read_parquet(SIM_PARQUET)
-    if len(simulation) != EXPECTED_CLOSE_ROWS or "net_return" not in simulation.columns:
-        raise RuntimeError("Persisted simulation parquet is missing rows or net_return.")
+    if len(simulation) != EXPECTED_CLOSE_ROWS or list(simulation.columns) != list(expected_daily.columns):
+        raise RuntimeError("Persisted simulation parquet has incorrect rows or columns.")
     if not pd.DatetimeIndex(simulation.index).equals(pd.DatetimeIndex(close.index)):
         raise RuntimeError("Persisted simulation index differs from the aligned C4 price index.")
+    for column in expected_daily.columns:
+        actual = pd.to_numeric(simulation[column], errors="coerce").to_numpy(dtype=float)
+        expected = pd.to_numeric(expected_daily[column], errors="coerce").to_numpy(dtype=float)
+        if not np.isfinite(actual).all() or not np.isfinite(expected).all():
+            raise RuntimeError(f"Persisted simulation column {column} contains missing/non-finite values.")
+        if not np.allclose(actual, expected, rtol=1e-12, atol=1e-12):
+            raise RuntimeError(f"Persisted simulation column {column} differs from in-memory results.")
+
     trades = pd.read_parquet(TRADES_PARQUET)
+    expected_trades = baseline["trades_df"]
+    if list(trades.columns) != list(expected_trades.columns):
+        raise RuntimeError("Persisted trade log has an unexpected schema.")
     if not trades.empty and not set(trades["symbol"].dropna().unique()).issubset(set(UNIVERSE)):
         raise RuntimeError("Persisted trade log contains a symbol outside the nine-sector universe.")
+    try:
+        pd.testing.assert_frame_equal(
+            trades.reset_index(drop=True), expected_trades.reset_index(drop=True),
+            check_dtype=False, check_exact=False, rtol=1e-12, atol=1e-12,
+        )
+    except AssertionError as exc:
+        raise RuntimeError("Persisted trade log differs from the in-memory trade log.") from exc
+
     expected_hash = _config_hash()
-    for required in ("sectorrotation_baseline_wf_001", "config/sectorrotation_candidate_001.yaml",
-                     expected_hash, "1998-12-22", "36 Folds",
-                     "XLB, XLE, XLF, XLI, XLK, XLP, XLU, XLV, XLY"):
+    required_provenance = (
+        "sectorrotation_baseline_wf_001",
+        "config/sectorrotation_candidate_001.yaml",
+        expected_hash,
+        "1998-12-22",
+        "36 Folds",
+        "XLB, XLE, XLF, XLI, XLK, XLP, XLU, XLV, XLY",
+    )
+    for required in required_provenance:
         if required not in report:
             raise RuntimeError(f"Generated report is missing provenance marker: {required}")
-    print("Persisted artifact contract: PASS (9 ETF columns, 6,991 dates, 36 folds, correct config hash).")
-
+    expected_revision = _git_hash()
+    if expected_revision != "unknown" and expected_revision not in report:
+        raise RuntimeError("Generated report does not record the executing code revision.")
+    print("Persisted artifact contract: PASS (9 ETF columns, values round-trip, 6,991 dates, 36 folds, correct config/revision provenance).")
 
 def _frame_hash(df: pd.DataFrame) -> str:
     return hashlib.sha256(
@@ -736,7 +789,7 @@ def run_benchmark_walkforward(
 
 
 # ---------------------------------------------------------------------------
-# Section 3: Robustness grid (27 pre-specified configurations, test period)
+# Section 3: Robustness grid (18 pre-registered configurations, test period)
 # ---------------------------------------------------------------------------
 def run_grid(close: pd.DataFrame) -> dict:
     print(f"\n=== [3] Robustness Grid ({N_GRID_CONFIGS} pre-specified configs, test period) ===")
@@ -1479,9 +1532,19 @@ def main() -> None:
     gates = evaluate_gates(wf["summary"], grid)
 
     report = build_report(close, baseline, wf, grid, benchmarks, mult, gates)
-    REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    REPORT_PATH.write_text(report)
+    # Validate the finished outputs before replacing the last known report.
     _validate_generated_outputs(close, baseline, wf, splits, report)
+    REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    report_tmp = REPORT_PATH.with_name(REPORT_PATH.name + ".tmp")
+    try:
+        report_tmp.write_text(report, encoding="utf-8")
+        if report_tmp.read_text(encoding="utf-8") != report:
+            raise RuntimeError("Persisted report content differs from the validated report.")
+        report_tmp.replace(REPORT_PATH)
+        if REPORT_PATH.read_text(encoding="utf-8") != report:
+            raise RuntimeError("Final report failed its persisted-content verification.")
+    finally:
+        report_tmp.unlink(missing_ok=True)
     print(f"\n  Report written -> {REPORT_PATH}")
 
     print("\n" + "=" * 60)
