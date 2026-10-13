@@ -245,6 +245,12 @@ correction_failure_block=0
 no_progress_block=0
 repeated_failure_block=0
 MAX_TRANSIENT_ATTEMPTS=5
+# Restart only silent/stalled invocations; the overall 355-minute workflow budget is unchanged.
+KILO_IDLE_TIMEOUT_SECONDS="${KILO_IDLE_TIMEOUT_SECONDS:-900}"
+if ! [[ "$KILO_IDLE_TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]]; then
+  echo "::error::KILO_IDLE_TIMEOUT_SECONDS must be a positive integer."
+  exit 1
+fi
 cutoff=0
 
 for agent_index in $(seq 1 "$agents"); do
@@ -267,7 +273,7 @@ for agent_index in $(seq 1 "$agents"); do
     if [ "$remaining_global" -le 0 ]; then rc=124; echo "::warning::355-minute workflow cutoff reached before attempt ${session_attempt}."; break; fi
     echo "Kilo invocation attempt ${session_attempt} for session ${agent_index}; transient upstream failures retry without an attempt-count limit."
     set +e
-    timeout --signal=TERM --kill-after=10s "${remaining_global}s" kilo run --model kilo/kilo-auto/free --auto "$command" 2>&1 | tee "$attempt_log" | tee -a "$session_log"
+    timeout --signal=TERM --kill-after=10s "${remaining_global}s" python3 .github/scripts/kilo-invoke-with-idle-timeout.py --idle-timeout-seconds "$KILO_IDLE_TIMEOUT_SECONDS" -- kilo run --model kilo/kilo-auto/free --auto "$command" 2>&1 | tee "$attempt_log" | tee -a "$session_log"
     rc=${PIPESTATUS[0]}
     set -e
     if [ "$rc" -eq 0 ]; then break; fi
@@ -288,7 +294,7 @@ PY
       echo "::error::Hard provider quota/capacity limit detected; stopping retries for this activation."
       break
     fi
-    if grep -Eiq 'Upstream idle timeout exceeded|upstream.{0,40}idle.{0,40}timeout|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|ENETUNREACH|EHOSTUNREACH|socket hang up|fetch failed|temporary failure in name resolution|gateway timeout|bad gateway|service unavailable|too many requests|rate[ _-]?limit|resource[_ -]?exhausted|temporarily unavailable|HTTP.{0,12}(429|500|502|503|504)|status.{0,12}(429|500|502|503|504)' "$normalized_attempt_log"; then
+    if grep -Eiq 'Kilo invocation idle timeout|Upstream idle timeout exceeded|upstream.{0,40}idle.{0,40}timeout|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|ENETUNREACH|EHOSTUNREACH|socket hang up|fetch failed|temporary failure in name resolution|gateway timeout|bad gateway|service unavailable|too many requests|rate[ _-]?limit|resource[_ -]?exhausted|temporarily unavailable|HTTP.{0,12}(429|500|502|503|504)|status.{0,12}(429|500|502|503|504)' "$normalized_attempt_log"; then
       idle_timeout_retry_count=$((idle_timeout_retry_count + 1))
       if [ "$session_attempt" -ge "$MAX_TRANSIENT_ATTEMPTS" ]; then
         echo "::warning::Transient provider/network failure persisted for $MAX_TRANSIENT_ATTEMPTS attempts; ending this invocation cycle after bounded retries."
@@ -297,7 +303,7 @@ PY
       retry_delay="$transient_retry_backoff"
       remaining_global=$((cutoff_epoch - $(date +%s)))
       if [ "$remaining_global" -le "$retry_delay" ]; then echo "::warning::Transient upstream/network failure detected, but insufficient workflow time remains for another retry."; break; fi
-      echo "::warning::Transient upstream/network failure in session ${agent_index}; retry #${idle_timeout_retry_count} after ${retry_delay}s. No attempt-count limit; retries continue until the 355-minute workflow cutoff."
+      echo "::warning::Transient upstream/network/idle failure in session ${agent_index}; retry #${idle_timeout_retry_count} after ${retry_delay}s (bounded to $MAX_TRANSIENT_ATTEMPTS invocation attempts)."
       sleep "$retry_delay"
       if [ "$transient_retry_backoff" -lt 300 ]; then
         transient_retry_backoff=$((transient_retry_backoff * 2))
@@ -310,7 +316,7 @@ PY
   # One bounded corrective pass for a non-transient invocation failure or no-progress success.
   # It is intentionally outside the retry loop and cannot recurse.
   correction_reason=""
-  if [ "$rc" -ne 0 ] && [ "$rc" -ne 124 ] && [ "$rc" -ne 137 ] && [ "$hard_provider_block" -eq 0 ] && [ -f "$normalized_attempt_log" ] && ! grep -Eiq 'Upstream idle timeout exceeded|upstream.{0,40}idle.{0,40}timeout|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|ENETUNREACH|EHOSTUNREACH|socket hang up|fetch failed|temporary failure in name resolution|gateway timeout|bad gateway|service unavailable|too many requests|rate[ _-]?limit|resource[_ -]?exhausted|temporarily unavailable|HTTP.{0,12}(429|500|502|503|504)|status.{0,12}(429|500|502|503|504)' "$normalized_attempt_log"; then
+  if [ "$rc" -ne 0 ] && [ "$rc" -ne 124 ] && [ "$rc" -ne 137 ] && [ "$hard_provider_block" -eq 0 ] && [ -f "$normalized_attempt_log" ] && ! grep -Eiq 'Kilo invocation idle timeout|Upstream idle timeout exceeded|upstream.{0,40}idle.{0,40}timeout|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|ENETUNREACH|EHOSTUNREACH|socket hang up|fetch failed|temporary failure in name resolution|gateway timeout|bad gateway|service unavailable|too many requests|rate[ _-]?limit|resource[_ -]?exhausted|temporarily unavailable|HTTP.{0,12}(429|500|502|503|504)|status.{0,12}(429|500|502|503|504)' "$normalized_attempt_log"; then
     correction_reason="non-transient Kilo invocation failure"
   elif [ "$rc" -eq 0 ] && [ "$hard_provider_block" -eq 0 ]; then
     current_project_changes="$(project_worktree_changes)"
@@ -328,7 +334,7 @@ RECOVERY_PROMPT
       recovery_log="$RUNNER_TEMP/kilo-session-${agent_index}-recovery.log"
       echo "::warning::${correction_reason}; starting one bounded corrective pass."
       set +e
-      KILO_PRIOR_FAILURE_LOG="$session_log" timeout --signal=TERM --kill-after=10s "${remaining_recovery}s" kilo run --model kilo/kilo-auto/free --auto "$recovery_command" 2>&1 | tee "$recovery_log" | tee -a "$session_log"
+      KILO_PRIOR_FAILURE_LOG="$session_log" timeout --signal=TERM --kill-after=10s "${remaining_recovery}s" python3 .github/scripts/kilo-invoke-with-idle-timeout.py --idle-timeout-seconds "$KILO_IDLE_TIMEOUT_SECONDS" -- kilo run --model kilo/kilo-auto/free --auto "$recovery_command" 2>&1 | tee "$recovery_log" | tee -a "$session_log"
       recovery_rc=${PIPESTATUS[0]}
       set -e
       mkdir -p "$RUNNER_TEMP/kilo-failure-logs"
