@@ -70,6 +70,7 @@ jobs:
             echo "- Supervisor reviews started: ${SUPERVISOR_REVIEW_COUNT:-0}"
             echo "- Cumulative supervisor advice entries: ${SUPERVISOR_ADVICE_ENTRIES:-0}"
             echo "- Advice journal units queued but not yet injected at shutdown: ${SUPERVISOR_PENDING_UNITS:-0}"
+            echo "- Full redacted supervisor request/response and exact worker-delivery transcripts: download artifact `kilo-progress-trace-${GITHUB_RUN_ID}`."
             echo "- Verified meaningful project progress: ${PROJECT_PROGRESS:-unknown}"
             echo "- Failed Kilo sessions: ${FAILED_SESSIONS:-unknown}"
             echo "- Upstream idle/network retries: ${IDLE_TIMEOUT_RETRIES:-unknown}"
