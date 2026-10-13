@@ -40,7 +40,13 @@ This repository implements a disciplined quantitative research process focused o
 
 ## Current Status
 
-**Cycle 14**: Pre-Registration for Sector Rotation (sectorrotation_001) complete.
+**Cycle 16**: Cross-sectional momentum family consolidation + C6 pre-registration.
+- **Execution-defect disclosure**: Cycle 15's "sectorrotation_001" evaluation was defective — `research/run_cycle15.py` ran the C3 18-ETF universe from 1993-01-01 (wrong `UNIVERSE`/`START_DATE`/`_config_hash` constants), so the C4 artifacts contain 18 weight columns, the C4 fold table is byte-identical to C3's (48 folds), and every C4 "result" is C3's. The pre-registered C4 test (9 sector ETFs, 36 folds from 1998-12-22) was never executed. Full evidence: `research/reports/cross_momentum_consolidation.md`
+- **Corrected family verdict**: C3 (broad 18-ETF cross-sectional momentum) is validly Rejected/Failed (WF mean OOS Sharpe 0.6868 < 0.9, DSR negative, baseline rank 17/18). C4 is "Blocked by execution defect" — re-execution is the Cycle 17 primary task, not a rejection.
+- C6 (calendar/rebalancing effects, turn-of-month window exposure on SPY/QQQ/IWM) pre-registered: `research/hypotheses/calendar_effects_001.md`, frozen `config/calendar_effects_001.yaml` — 18-config grid (pre_days {1,2,3} × post_days {1,2,3,5,7,10}), 33 verified walk-forward folds from the 2000-05-26 common-calendar start, 3 bps costs, promotion gates per AGENTS.md. No backtest executed.
+- Next: Cycle 17 — re-execute C4 correctly (`research/run_cycle15_c4_corrected.py`, 36 folds, 9 ETFs, verify artifacts/record) and validate the C6 pre-registration; Cycle 18 executes the C6 evaluation.
+
+**Cycle 14** (prior): Pre-Registration for Sector Rotation (sectorrotation_001) complete.
 - Candidate C4 (long-only cross-sectional momentum, 9 GICS sector ETFs XLB–XLY) pre-registered: full hypothesis (`research/hypotheses/sectorrotation_001.md`), frozen config (`config/sectorrotation_candidate_001.yaml`), evaluation plan — **no backtest executed** (evaluation is Cycle 15)
 - Grid arithmetic corrected: 3 lookbacks x 2 skips x 3 top-fractions = **18 unique configurations** (label equals the product; fixes the Cycle 13 "27" mislabel); Cycle 15 script must assert the count
 - Walk-forward: 10yr/1yr/6mo, 21d purge/embargo from the 1998-12-22 history start → **36 folds** (actual count verified via `generate_walkforward_splits`; the C3 48-fold count does not apply)
@@ -78,4 +84,4 @@ All hypotheses and experiments follow strict documentation requirements defined 
 
 This is a research/backtesting system only. It never places live trades, accesses credentials, or modifies account settings.
 
-**Current Status:** Cycle 15 complete — C4 sector rotation rejected/failed (WF mean 0.6868 < 0.9). Cycle 16: consolidating C3/C4 cross-sectional momentum family as rejected; advancing to Candidate C6 (calendar/rebalancing effects) with pre-registration for Cycle 17. See `research/experiments/sectorrotation_baseline_wf_001.md`.
+**Current Status:** Cycle 16 complete — cross-sectional momentum consolidated (C3 validly rejected; C4 execution defect disclosed, re-execution assigned to Cycle 17); C6 calendar effects pre-registered for Cycle 18 evaluation. See `research/reports/cross_momentum_consolidation.md`.

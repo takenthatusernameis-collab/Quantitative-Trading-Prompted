@@ -1,1 +1,0 @@
-Enable one-shot Kilo mode for the next manually dispatched workflow activation. The controller will override the configured session count to exactly two sequential sessions, then retire this marker and request one routine scheduled activation be skipped.
