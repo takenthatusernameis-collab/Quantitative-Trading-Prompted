@@ -1,0 +1,112 @@
+# Frozen pre-registered configuration for Macro Regime Overlay Extension (C5).
+#
+# Candidate identified in Cycle 11 Opportunity Shortlist (C5: 24/35 —
+# Exploratory signal, rank 6 of 10). This configuration is FROZEN
+# BEFORE any backtest execution (Cycle 19 pre-registration).
+# Cycle 19 will execute the baseline backtest and walk-forward
+# evaluation.
+# See research/hypotheses/macroregime_001.md for the full
+# hypothesis and evaluation plan.
+#
+# Code revision: 052135d
+
+candidate_id: "macroregime_001"
+
+universe:
+  - "SPY"   # SPDR S&P 500 ETF
+  - "QQQ"   # Invesco QQQ (Nasdaq-100)
+  - "IWM"   # iShares Russell 2000
+  - "TLT"   # iShares 20+ Year Treasury Bond ETF
+  - "GLD"   # SPDR Gold Shares
+  - "EFA"   # iShares MSCI EAFE ETF
+  - "EEM"   # iShares MSCI Emerging Markets ETF
+
+regime_driver: "^VIX"   # CBOE Volatility Index — INPUT ONLY, never a position
+
+signal:
+  type: "tsmomentum"      # time-series momentum (same as incumbent)
+  lookback: 226           # trading days (~11 months) — DEFAULT, pre-specified
+  skip: 21                # trading days (~1 month, short-term reversal skip) — DEFAULT
+  top_fraction: 0.5       # equal-weight top 50% by momentum rank — DEFAULT
+  rebalance_freq: "monthly"  # signal horizon (~21 trading days)
+
+risk_overlay:
+  # BASELINE BEFORE COMPLEXITY (per AGENTS.md): the baseline uses the
+  # incumbent's validated combined overlay (vol-target 10% + DD control 15%)
+  # plus the SPY 200d SMA trend filter. The C5 extension adds a VIX regime
+  # gate on top.
+  vol_target: 0.10
+  vol_lookback: 63
+  dd_threshold: 0.15
+  dd_reduction: 0.5
+  spy_sma_window: 200
+
+regime_gate:
+  # C5 extension: VIX-level exposure multiplier applied AFTER the SPY trend
+  # gate and BEFORE the vol+dd overlay.
+  vix_threshold: 30        # DEFAULT, pre-specified (same VIX filter as Cycle 5)
+  vix_exposure: 0.5        # DEFAULT: 50% exposure when VIX > threshold
+  vix_lag_days: 1          # regime uses the PRIOR day's VIX close (point-in-time)
+
+cost_model:
+  commission_bps: 1.0
+  slippage_bps: 2.0
+  total_round_trip_bps: 3.0
+
+execution:
+  signal_lag_days: 1        # signal computed on T-1 close
+  price_field: "Close"      # "Close" (EOD)
+  timezone: "UTC"
+  rebalance_schedule: "monthly"  # month-end calendar rebalancing
+
+history_start: "2004-11-18"   # 7-ETF common-calendar start (GLD inception)
+                               # (5,507 common trading days through 2026-10-09)
+overlay_warmup: "slice"       # "slice": overlay state initializes at start_date
+                               # (Cycle 5/7 test-period convention; N/A for baseline)
+seed: 42                      # engine is deterministic; bootstrap seed
+
+# Data integrity verified at freeze time (2026-10-13):
+#   7/7 parquet files, union calendar 8,482 rows (1993-01-29..2026-10-09),
+#   common calendar 5,507 rows (2004-11-18..2026-10-09), 100% Close
+#   completeness on the union calendar after forward-fill, 0 duplicate
+#   dates, aligned Close frame content hash 7393bf74d806c40b.
+#   ^VIX cached 1993-01-04..2026-10-08 (8,502 rows, 100% complete).
+data:
+  source: "yahoo_finance"
+  cached: true
+  fetch_new: false
+  frequency: "daily"
+  common_start: "2004-11-18"
+  common_end: "2026-10-09"
+  close_completeness: 1.0
+
+# Pre-registered evaluation metadata (for traceability, not used by engine)
+evaluation:
+  splits:
+    train_start: "2004-11-18"
+    train_end: "2009-12-31"
+    validation_end: "2017-12-31"
+    test_start: "2018-01-01"
+    test_end: "2026-10-09"
+  walk_forward:
+    train_years: 10
+    test_months: 12
+    step_months: 6
+    purge_days: 21
+    embargo_days: 21
+    expected_folds: 24        # actual count from generate_walkforward_splits
+                              # with the 2004-11-18 common-calendar start
+                              # (NOT 48 — the incumbent count does not apply)
+  promotion_gates:
+    wf_mean_oos_sharpe_min: 0.9
+    positive_fold_rate_min: 0.5
+    pooled_oos_trades_min: 100
+    plateau_fraction_min: 0.5  # >= 2 of 4 vix_thresholds within 10% of baseline
+  multiple_testing:
+    total_configs: 12          # 4 x 3 — label equals the product
+    dsr_method: "compute_dsr"
+    bootstrap_seed: 42
+    n_bootstrap: 1000
+  benchmarks:
+    - "tsmomentum_spytrend_001_control"   # incumbent with NO VIX gate (vix_exposure=1.0)
+    - "equal_weight_7"                    # 1/N over the 7-ETF universe
