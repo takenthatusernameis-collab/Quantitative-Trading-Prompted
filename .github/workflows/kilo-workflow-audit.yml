@@ -71,6 +71,7 @@ jobs:
           grep -Fq 'kilo-invoke-with-idle-timeout.py' "$controller"
           grep -Fq 'KILO_IDLE_TIMEOUT_SECONDS:-600' "$controller"
           grep -Fq 'ending this invocation and preserving progress before the next session' "$controller"
+          grep -Fq 'Kilo output silence=%ss idle watchdog=%ss' "$controller"
           grep -Fq 'This is the single bounded corrective pass' "$controller"
           grep -Fq 'Hard provider quota/capacity limit detected' "$controller"
           grep -Fq 'provider_pressure_streak" -ge 3' "$controller"
