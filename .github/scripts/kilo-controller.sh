@@ -319,12 +319,15 @@ SUPERVISOR_FEEDBACK_CURSOR_FILE="$RUNNER_TEMP/kilo-supervisor-feedback-cursor-${
 SUPERVISOR_ACTIVE_LOG_POINTER="$RUNNER_TEMP/kilo-supervisor-active-attempt"
 SUPERVISOR_OBJECTIVE_FILE="$RUNNER_TEMP/kilo-supervisor-objective-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.txt"
 SUPERVISOR_LOOP_LOG="$RUNNER_TEMP/kilo-supervisor-loop-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.log"
+SUPERVISOR_TRANSCRIPT_DIR="$RUNNER_TEMP/kilo-supervisor-transcripts-${GITHUB_RUN_ID:-local}-attempt-${GITHUB_RUN_ATTEMPT:-1}"
+mkdir -p "$SUPERVISOR_TRANSCRIPT_DIR"
 : > "$SUPERVISOR_ACTIVE_LOG_POINTER"
 : > "$SUPERVISOR_FEEDBACK_FILE"
 rm -f "$SUPERVISOR_FEEDBACK_CURSOR_FILE"
 printf '%s\n' "$command" > "$SUPERVISOR_OBJECTIVE_FILE"
 export KILO_SUPERVISOR_FEEDBACK_FILE="$SUPERVISOR_FEEDBACK_FILE"
 export KILO_SUPERVISOR_FEEDBACK_CURSOR_FILE="$SUPERVISOR_FEEDBACK_CURSOR_FILE"
+export KILO_SUPERVISOR_TRANSCRIPT_DIR="$SUPERVISOR_TRANSCRIPT_DIR"
 supervisor_loop_pid=""
 write_progress "supervisor-starting" "launching independent minute-cadence review process"
 python3 .github/scripts/kilo-supervisor-loop.py \
@@ -333,6 +336,7 @@ python3 .github/scripts/kilo-supervisor-loop.py \
   --active-log-pointer "$SUPERVISOR_ACTIVE_LOG_POINTER" \
   --objective-file "$SUPERVISOR_OBJECTIVE_FILE" \
   --feedback-file "$SUPERVISOR_FEEDBACK_FILE" \
+  --transcript-dir "$SUPERVISOR_TRANSCRIPT_DIR" \
   --report-dir .kilo/supervisor-reports \
   --kilo "$RUNNER_TEMP/kilo/node_modules/.bin/kilo" \
   --model kilo/kilo-auto/free \
@@ -343,6 +347,7 @@ python3 .github/scripts/kilo-supervisor-loop.py \
   > >(tee -a "$SUPERVISOR_LOOP_LOG") 2>&1 &
 supervisor_loop_pid=$!
 echo "[loop-supervisor] Started alongside the Kilo worker; immediate review plus one-minute cadence (PID $supervisor_loop_pid)."
+echo "[loop-supervisor] Exact redacted review requests, reviewer reports, CLI diagnostics, and worker-delivery messages are printed in the logs and saved under: $SUPERVISOR_TRANSCRIPT_DIR"
 write_progress "supervisor-running" "review loop launched"
 
 heartbeat() {
@@ -424,8 +429,9 @@ PY
     advice_entries="${advice_entries:-0}"
     pending_units=$((journal_units - cursor_offset))
     if [ "$pending_units" -lt 0 ]; then pending_units=0; fi
-    printf '[supervisor-status] reviews_started=%s advice_entries=%s journal_units=%s injected_cursor_units=%s queued_not_yet_injected_units=%s latest_event="%s"\n' \
-      "${review_started:-0}" "${advice_entries:-0}" "$journal_units" "$cursor_offset" "$pending_units" "${supervisor_event:-unknown}"
+    latest_transcript="$(find "$SUPERVISOR_TRANSCRIPT_DIR" -maxdepth 1 -type f -printf '%f\n' 2>/dev/null | sort | tail -n 1)"
+    printf '[supervisor-status] reviews_started=%s advice_entries=%s journal_units=%s injected_cursor_units=%s queued_not_yet_injected_units=%s latest_event="%s" latest_transcript="%s"\n' \
+      "${review_started:-0}" "${advice_entries:-0}" "$journal_units" "$cursor_offset" "$pending_units" "${supervisor_event:-unknown}" "${latest_transcript:-none}"
     sleep 30
   done
 }
