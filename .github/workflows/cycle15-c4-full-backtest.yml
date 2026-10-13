@@ -219,10 +219,10 @@ jobs:
           set -Eeuo pipefail
           {
             echo "## Cycle 15 C4 cache-only full backtest"
-            echo "- Pinned code revision: `fa9cd1593a190fcfa2523dd02bd3697fa2ccd1af`"
-            echo "- Cache preflight: `$PREFLIGHT_OUTCOME`"
-            echo "- Corrected backtest + internal artifact/report validation: `$BACKTEST_OUTCOME`"
-            echo "- Validated artifact staging: `$STAGE_OUTCOME`"
+            echo "- Pinned code revision: fa9cd1593a190fcfa2523dd02bd3697fa2ccd1af"
+            echo "- Cache preflight outcome: $PREFLIGHT_OUTCOME"
+            echo "- Corrected backtest + internal artifact/report validation: $BACKTEST_OUTCOME"
+            echo "- Validated artifact staging outcome: $STAGE_OUTCOME"
             echo "- Market-data downloads: prohibited; no download/fetch step configured"
             echo "- Kilo workflow: not invoked"
             if [[ "$BACKTEST_OUTCOME" == "success" && "$STAGE_OUTCOME" == "success" ]]; then
