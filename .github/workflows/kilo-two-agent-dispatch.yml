@@ -101,7 +101,7 @@ jobs:
           delay=5
           while [ "$attempt" -lt 3 ]; do
             attempt=$((attempt + 1))
-            if timeout --signal=TERM --kill-after=5s 20s gh workflow run main.yml --ref "$DEFAULT_BRANCH" --field agents=2; then
+            if timeout --signal=TERM --kill-after=5s 20s gh workflow run main.yml --ref "$DEFAULT_BRANCH"; then
               echo "Dispatched exactly two sequential Kilo sessions after successful validation."
               exit 0
             fi
