@@ -531,7 +531,11 @@ def main() -> int:
                 "in this run; the worker remains unaffected"
             )
             # Keep the health/status process alive for the controller heartbeat, but stop
-            # consuming provider capacity on a persistently failing reviewer.
+            # consuming provider capacity on a persistently failing reviewer. Deterministic
+            # test runs may request a finite review count; honor that cap instead of waiting
+            # for an external signal that CI tests do not send.
+            if args.max_reviews and cycle >= args.max_reviews:
+                break
             while not STOP_REQUESTED:
                 time.sleep(0.25)
             break
