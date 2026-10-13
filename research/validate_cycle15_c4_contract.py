@@ -138,7 +138,7 @@ def main() -> None:
         "if len(splits) != 36",
         "Persisted artifact contract: PASS",
         "required_oos_metrics",
-        "not finite in fold(s)",
+        "is missing/non-finite in fold(s)",
         "config/sectorrotation_candidate_001.yaml",
         "research/run_cycle15_c4_corrected.py",
     ):
