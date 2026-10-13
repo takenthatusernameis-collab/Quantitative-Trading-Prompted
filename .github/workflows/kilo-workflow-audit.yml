@@ -297,6 +297,8 @@ jobs:
             "Exact redacted review requests" \
             "Started alongside the Kilo worker" \
             "supervisor_loop_pid" \
+            "title=Live agent dialogue" \
+            "Summary box appears only after this controller step completes" \
             "kill -TERM"; do
             grep -Fq -- "$marker" "$controller" || {
               echo "::error::Missing continuous supervisor integration marker: $marker"
