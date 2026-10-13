@@ -9,6 +9,7 @@ on:
       - ".github/workflows/kilo-two-agent-dispatch.yml"
       - ".github/scripts/kilo-controller.sh"
       - ".github/scripts/kilo-invoke-with-idle-timeout.py"
+      - ".github/scripts/kilo-idle-circuit.py"
       - ".kilo/TWO_AGENT_ONCE"
       - ".kilo/SKIP_NEXT_ROUTINE_KILO"
   workflow_dispatch:
@@ -62,6 +63,39 @@ jobs:
           fi
           grep -Fq "Kilo invocation idle timeout" "$idle_log"
           echo "Kilo idle watchdog healthy-command and stalled-command tests: OK"
+      - name: Test persistent idle-stall circuit breaker
+        shell: bash
+        run: |
+          set -euo pipefail
+          helper=.github/scripts/kilo-idle-circuit.py
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path(".github/scripts/kilo-idle-circuit.py").read_text(encoding="utf-8")
+          compile(source, ".github/scripts/kilo-idle-circuit.py", "exec")
+          PY
+          state="$RUNNER_TEMP/kilo-idle-circuit-test.json"
+          rm -f "$state"
+          read -r mode count level retry_after < <(python3 "$helper" check --state-file "$state" --event schedule --now 1000)
+          test "$mode" = normal && test "$count" = 0
+          read -r count level retry_after < <(python3 "$helper" record-stall --state-file "$state" --count 0 --level 0 --run-id test --now 1000)
+          test "$count" = 1 && test "$level" = 0 && test "$retry_after" = 0
+          read -r mode count level retry_after < <(python3 "$helper" check --state-file "$state" --event schedule --now 1001)
+          test "$mode" = probe && test "$count" = 1
+          read -r count level retry_after < <(python3 "$helper" record-stall --state-file "$state" --count 1 --level 0 --run-id test --now 1002)
+          test "$count" = 2 && test "$level" = 1 && test "$retry_after" = 2802
+          read -r mode count level retry_after < <(python3 "$helper" check --state-file "$state" --event schedule --now 1100)
+          test "$mode" = skip && test "$retry_after" = 2802
+          read -r mode count level retry_after < <(python3 "$helper" check --state-file "$state" --event schedule --now 3000)
+          test "$mode" = probe
+          read -r count level retry_after < <(python3 "$helper" defer-probe --state-file "$state" --count 2 --level 1 --run-id test --now 3000)
+          test "$count" = 2 && test "$level" = 2 && test "$retry_after" = 6600
+          read -r mode count level retry_after < <(python3 "$helper" check --state-file "$state" --event schedule --now 3500)
+          test "$mode" = skip && test "$level" = 2
+          python3 "$helper" clear --state-file "$state"
+          read -r mode count level retry_after < <(python3 "$helper" check --state-file "$state" --event schedule --now 3500)
+          test "$mode" = normal && test "$count" = 0
+          rm -f "$state"
+          echo "Persistent Kilo stall count, cooldown, probe and reset tests: OK"
       - name: Guard bounded retry and correction policy
         shell: bash
         run: |
@@ -70,6 +104,10 @@ jobs:
           grep -Fq 'MAX_TRANSIENT_ATTEMPTS=5' "$controller"
           grep -Fq 'kilo-invoke-with-idle-timeout.py' "$controller"
           grep -Fq 'KILO_IDLE_TIMEOUT_SECONDS:-600' "$controller"
+          grep -Fq 'kilo-idle-circuit.py check' "$controller"
+          grep -Fq 'kilo-idle-circuit.py record-stall' "$controller"
+          grep -Fq 'circuit_open=%s' "$controller"
+          grep -Fq 'Recovery-probe mode overrides other session-count settings to exactly one Kilo session' "$controller"
           grep -Fq 'ending this invocation and preserving progress before the next session' "$controller"
           grep -Fq 'Kilo output silence=%ss idle watchdog=%ss' "$controller"
           grep -Fq 'This is the single bounded corrective pass' "$controller"
