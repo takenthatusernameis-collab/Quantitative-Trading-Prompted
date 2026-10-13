@@ -86,11 +86,11 @@ jobs:
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
-          name: kilo-progress-trace-\${{ github.run_id }}
+          name: kilo-progress-trace-${{ github.run_id }}
           path: |
-            \${{ runner.temp }}/kilo-progress-*.log
-            \${{ runner.temp }}/kilo-progress-state-*.txt
-            \${{ runner.temp }}/kilo-supervisor-loop-*.log
+            ${{ runner.temp }}/kilo-progress-*.log
+            ${{ runner.temp }}/kilo-progress-state-*.txt
+            ${{ runner.temp }}/kilo-supervisor-loop-*.log
           if-no-files-found: ignore
           retention-days: 14
 

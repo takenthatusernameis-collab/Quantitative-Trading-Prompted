@@ -17,30 +17,30 @@ if ! [[ "$KILO_MAX_SESSIONS" =~ ^[1-9][0-9]{0,3}$ ]] || [ "$KILO_MAX_SESSIONS" -
 fi
 echo "::notice::Configured maximum sequential Kilo worker sessions: $KILO_MAX_SESSIONS (355-minute hard cutoff also applies)."
 WORKFLOW_STARTED_EPOCH="$(date +%s)"
-KILO_PROGRESS_STATE_FILE="$RUNNER_TEMP/kilo-progress-state-\${GITHUB_RUN_ID:-local}-\${GITHUB_RUN_ATTEMPT:-1}.txt"
-KILO_PROGRESS_LOG="$RUNNER_TEMP/kilo-progress-\${GITHUB_RUN_ID:-local}-\${GITHUB_RUN_ATTEMPT:-1}.log"
+KILO_PROGRESS_STATE_FILE="$RUNNER_TEMP/kilo-progress-state-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.txt"
+KILO_PROGRESS_LOG="$RUNNER_TEMP/kilo-progress-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.log"
 : > "$KILO_PROGRESS_LOG"
 
 write_progress() {
-  local phase="\${1:-unknown}" detail="\${2:-}" now elapsed remaining head_sha tmp line
+  local phase="${1:-unknown}" detail="${2:-}" now elapsed remaining head_sha tmp line
   now="$(date +%s)"
   elapsed=$((now - WORKFLOW_STARTED_EPOCH))
   remaining=$((cutoff_epoch - now))
   if [ "$remaining" -lt 0 ]; then remaining=0; fi
   detail="$(printf '%s' "$detail" | tr '\r\n' '  ' | cut -c1-160)"
   head_sha="$(git rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
-  tmp="\${KILO_PROGRESS_STATE_FILE}.tmp.$"
+  tmp="${KILO_PROGRESS_STATE_FILE}.tmp.$$"
   if ! {
     printf 'updated_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     printf 'phase=%s\n' "$phase"
     printf 'detail=%s\n' "$detail"
-    printf 'session=%s\n' "\${agent_index:-0}"
+    printf 'session=%s\n' "${agent_index:-0}"
     printf 'session_limit=%s\n' "$KILO_MAX_SESSIONS"
-    printf 'attempt=%s\n' "\${session_attempt:-0}"
-    printf 'completed=%s\n' "\${sessions_completed:-0}"
-    printf 'failed=%s\n' "\${failed_sessions:-0}"
-    printf 'checkpoints=%s\n' "\${persisted_checkpoints:-0}"
-    printf 'verified_checkpoint_sha=%s\n' "\${last_verified_checkpoint_sha:-none}"
+    printf 'attempt=%s\n' "${session_attempt:-0}"
+    printf 'completed=%s\n' "${sessions_completed:-0}"
+    printf 'failed=%s\n' "${failed_sessions:-0}"
+    printf 'checkpoints=%s\n' "${persisted_checkpoints:-0}"
+    printf 'verified_checkpoint_sha=%s\n' "${last_verified_checkpoint_sha:-none}"
     printf 'head=%s\n' "$head_sha"
     printf 'elapsed_seconds=%s\n' "$elapsed"
     printf 'remaining_seconds=%s\n' "$remaining"
@@ -52,7 +52,7 @@ write_progress() {
     rm -f "$tmp"
     return 0
   fi
-  line="[progress] $(date -u +%Y-%m-%dT%H:%M:%SZ) phase=\${phase} session=\${agent_index:-0}/\${KILO_MAX_SESSIONS} attempt=\${session_attempt:-0}/\${MAX_TRANSIENT_ATTEMPTS:-5} completed=\${sessions_completed:-0} failed=\${failed_sessions:-0} checkpoints=\${persisted_checkpoints:-0} verified_sha=\${last_verified_checkpoint_sha:-none} head=\${head_sha} elapsed=\${elapsed}s remaining=\${remaining}s detail=\${detail}"
+  line="[progress] $(date -u +%Y-%m-%dT%H:%M:%SZ) phase=${phase} session=${agent_index:-0}/${KILO_MAX_SESSIONS} attempt=${session_attempt:-0}/${MAX_TRANSIENT_ATTEMPTS:-5} completed=${sessions_completed:-0} failed=${failed_sessions:-0} checkpoints=${persisted_checkpoints:-0} verified_sha=${last_verified_checkpoint_sha:-none} head=${head_sha} elapsed=${elapsed}s remaining=${remaining}s detail=${detail}"
   printf '%s\n' "$line" | tee -a "$KILO_PROGRESS_LOG" || true
 }
 
@@ -62,7 +62,7 @@ progress_field() {
   awk -F= -v field="$field" '$1 == field { sub(/^[^=]*=/, ""); print; exit }' "$KILO_PROGRESS_STATE_FILE"
 }
 
-write_progress "controller-configured" "event=\${KILO_TRIGGER_EVENT:-unknown}; cap=\${KILO_MAX_SESSIONS}; hard_cutoff=355_minutes"
+write_progress "controller-configured" "event=${KILO_TRIGGER_EVENT:-unknown}; cap=${KILO_MAX_SESSIONS}; hard_cutoff=355_minutes"
 
 # While the one-shot marker awaits its independent validation gate,
 # scheduled invocations must not consume it or start a duplicate run.
@@ -364,10 +364,10 @@ heartbeat() {
     state_time="$(progress_field updated_utc)"
     dirty_paths="$(git status --porcelain --untracked-files=all 2>/dev/null | wc -l | tr -d ' ' || printf 'unknown')"
     printf '[heartbeat] %sZ elapsed=%ss remaining=%ss phase=%s last_phase_at=%s session=%s/%s attempt=%s/%s completed=%s failed=%s verified_checkpoints=%s verified_sha=%s head=%s dirty_paths=%s idle_watchdog=%ss detail="%s"\n' \
-      "$stamp" "$elapsed" "$remaining" "\${phase:-unknown}" "\${state_time:-unknown}" \
-      "\${current_session:-0}" "$KILO_MAX_SESSIONS" "\${current_attempt:-0}" "\${MAX_TRANSIENT_ATTEMPTS:-5}" \
-      "\${completed:-0}" "\${failed:-0}" "\${checkpoints:-0}" "\${verified_sha:-none}" "\${state_head:-unknown}" \
-      "\${dirty_paths:-unknown}" "$KILO_IDLE_TIMEOUT_SECONDS" "\${detail:-unknown}"
+      "$stamp" "$elapsed" "$remaining" "${phase:-unknown}" "${state_time:-unknown}" \
+      "${current_session:-0}" "$KILO_MAX_SESSIONS" "${current_attempt:-0}" "${MAX_TRANSIENT_ATTEMPTS:-5}" \
+      "${completed:-0}" "${failed:-0}" "${checkpoints:-0}" "${verified_sha:-none}" "${state_head:-unknown}" \
+      "${dirty_paths:-unknown}" "$KILO_IDLE_TIMEOUT_SECONDS" "${detail:-unknown}"
     active_log=""
     if [ -f "$HEARTBEAT_STATE_FILE" ]; then IFS= read -r active_log < "$HEARTBEAT_STATE_FILE" || true; fi
     if [ -n "$active_log" ] && [ -f "$active_log" ]; then
@@ -393,7 +393,7 @@ for line in lines:
     if line: print(f"[worker-tail] {line}")
 PY
     else
-      printf '[activity] no active worker invocation; phase=%s\n' "\${phase:-unknown}"
+      printf '[activity] no active worker invocation; phase=%s\n' "${phase:-unknown}"
     fi
     if [ -f "$SUPERVISOR_LOOP_LOG" ]; then
       review_started="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ started' "$SUPERVISOR_LOOP_LOG" || true)"
@@ -419,13 +419,13 @@ except (OSError, ValueError, TypeError, json.JSONDecodeError):
 print(len(journal.encode("utf-16-le")) // 2, offset, journal.count("--- SUPERVISOR ADVICE ENTRY"))
 PY
     )
-    journal_units="\${journal_units:-0}"
-    cursor_offset="\${cursor_offset:-0}"
-    advice_entries="\${advice_entries:-0}"
+    journal_units="${journal_units:-0}"
+    cursor_offset="${cursor_offset:-0}"
+    advice_entries="${advice_entries:-0}"
     pending_units=$((journal_units - cursor_offset))
     if [ "$pending_units" -lt 0 ]; then pending_units=0; fi
     printf '[supervisor-status] reviews_started=%s advice_entries=%s journal_units=%s injected_cursor_units=%s queued_not_yet_injected_units=%s latest_event="%s"\n' \
-      "\${review_started:-0}" "\${advice_entries:-0}" "$journal_units" "$cursor_offset" "$pending_units" "\${supervisor_event:-unknown}"
+      "${review_started:-0}" "${advice_entries:-0}" "$journal_units" "$cursor_offset" "$pending_units" "${supervisor_event:-unknown}"
     sleep 30
   done
 }
