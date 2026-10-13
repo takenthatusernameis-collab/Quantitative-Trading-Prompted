@@ -167,6 +167,49 @@ jobs:
           python3 -m py_compile .github/scripts/kilo-supervisor-loop.py .github/scripts/test_kilo_supervisor_loop.py
           python3 .github/scripts/test_kilo_supervisor_loop.py
           node --check --input-type=module < .kilo/plugin/loop-supervisor-feedback.js
+          node --input-type=module <<'JS'
+          import assert from "node:assert/strict";
+          import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+          import { join } from "node:path";
+          import { tmpdir } from "node:os";
+
+          const runtime = await mkdtemp(join(tmpdir(), "kilo-feedback-plugin-"));
+          try {
+            const feedbackPath = join(runtime, "feedback.md");
+            const source = await readFile(".kilo/plugin/loop-supervisor-feedback.js", "utf8");
+            const pluginModule = await import("data:text/javascript;base64," + Buffer.from(source).toString("base64"));
+            process.env.RUNNER_TEMP = runtime;
+            process.env.KILO_SUPERVISOR_FEEDBACK_FILE = feedbackPath;
+            delete process.env.KILO_SUPERVISOR_MODE;
+            await writeFile(feedbackPath, "STATUS: ATTENTION\nCheck the new failing assertion.\n", "utf8");
+            const hooks = await pluginModule.default.server();
+            const after = hooks["tool.execute.after"];
+            const first = { output: "original tool output" };
+            await after({ tool: "read" }, first);
+            assert.match(first.output, /Check the new failing assertion/);
+            const firstOutput = first.output;
+            await after({ tool: "read" }, first);
+            assert.equal(first.output, firstOutput, "duplicate advice must not be appended twice");
+
+            await writeFile(feedbackPath, "STATUS: CRITICAL\nThe error pattern has changed; verify input parsing.\n", "utf8");
+            const second = { output: "next tool output" };
+            await after({ tool: "bash" }, second);
+            assert.match(second.output, /verify input parsing/);
+
+            process.env.KILO_SUPERVISOR_FEEDBACK_FILE = join(tmpdir(), "outside-feedback.md");
+            const outsideHooks = await pluginModule.default.server();
+            const outside = { output: "leave unchanged" };
+            await outsideHooks["tool.execute.after"]({ tool: "read" }, outside);
+            assert.equal(outside.output, "leave unchanged", "files outside RUNNER_TEMP must be ignored");
+
+            process.env.KILO_SUPERVISOR_MODE = "1";
+            const reviewerHooks = await pluginModule.default.server();
+            assert.equal(Object.keys(reviewerHooks).length, 0, "reviewer CLI sessions must not receive worker feedback");
+            console.log("Feedback plugin delivery, deduplication, path boundary, and reviewer isolation: OK");
+          } finally {
+            await rm(runtime, { recursive: true, force: true });
+          }
+          JS
           controller=.github/scripts/kilo-controller.sh
           for marker in \
             "kilo-supervisor-loop.py" \
