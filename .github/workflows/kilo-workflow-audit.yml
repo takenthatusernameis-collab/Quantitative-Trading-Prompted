@@ -138,7 +138,7 @@ jobs:
           controller=.github/scripts/kilo-controller.sh
           for marker in \
             "MANDATORY LOOP-SUPERVISOR PROTOCOL" \
-            "background: true" \
+            "60-second cadence" \
             "A/B/A/B" \
             "Five consecutive failed attempts without a verified successful outcome" \
             "Three attempts using substantially the same approach produce no meaningful improvement" \

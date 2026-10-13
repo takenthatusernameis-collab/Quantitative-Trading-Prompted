@@ -255,10 +255,10 @@ echo "Repository default branch: $DEFAULT_BRANCH"
 
 # Continuous supervisor starts before the first Kilo worker invocation and keeps
 # reviewing the active attempt throughout the controller's cutoff-bound session loop.
-SUPERVISOR_FEEDBACK_FILE="$RUNNER_TEMP/kilo-supervisor-feedback-\${GITHUB_RUN_ID:-local}-\${GITHUB_RUN_ATTEMPT:-1}.md"
+SUPERVISOR_FEEDBACK_FILE="$RUNNER_TEMP/kilo-supervisor-feedback-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.md"
 SUPERVISOR_ACTIVE_LOG_POINTER="$RUNNER_TEMP/kilo-supervisor-active-attempt"
-SUPERVISOR_OBJECTIVE_FILE="$RUNNER_TEMP/kilo-supervisor-objective-\${GITHUB_RUN_ID:-local}-\${GITHUB_RUN_ATTEMPT:-1}.txt"
-SUPERVISOR_LOOP_LOG="$RUNNER_TEMP/kilo-supervisor-loop-\${GITHUB_RUN_ID:-local}-\${GITHUB_RUN_ATTEMPT:-1}.log"
+SUPERVISOR_OBJECTIVE_FILE="$RUNNER_TEMP/kilo-supervisor-objective-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.txt"
+SUPERVISOR_LOOP_LOG="$RUNNER_TEMP/kilo-supervisor-loop-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.log"
 : > "$SUPERVISOR_ACTIVE_LOG_POINTER"
 : > "$SUPERVISOR_FEEDBACK_FILE"
 printf '%s\n' "$command" > "$SUPERVISOR_OBJECTIVE_FILE"
@@ -275,8 +275,8 @@ python3 .github/scripts/kilo-supervisor-loop.py \
   --model kilo/kilo-auto/free \
   --interval-seconds 60 \
   --review-timeout-seconds 45 \
-  --run-id "\${GITHUB_RUN_ID:-local}" \
-  --run-attempt "\${GITHUB_RUN_ATTEMPT:-1}" \
+  --run-id "${GITHUB_RUN_ID:-local}" \
+  --run-attempt "${GITHUB_RUN_ATTEMPT:-1}" \
   > >(tee -a "$SUPERVISOR_LOOP_LOG") 2>&1 &
 supervisor_loop_pid=$!
 echo "[loop-supervisor] Started alongside the Kilo worker; immediate review plus one-minute cadence (PID $supervisor_loop_pid)."
@@ -302,7 +302,7 @@ heartbeat() {
 
 heartbeat &
 heartbeat_pid=$!
-trap 'kill "$heartbeat_pid" 2>/dev/null || true; if [ -n "\${supervisor_loop_pid:-}" ]; then kill -TERM "$supervisor_loop_pid" 2>/dev/null || true; wait "$supervisor_loop_pid" 2>/dev/null || true; fi; rm -f "$HEARTBEAT_STATE_FILE" "$SUPERVISOR_ACTIVE_LOG_POINTER" "$SUPERVISOR_FEEDBACK_FILE" "$SUPERVISOR_OBJECTIVE_FILE"' EXIT
+trap 'kill "$heartbeat_pid" 2>/dev/null || true; if [ -n "${supervisor_loop_pid:-}" ]; then kill -TERM "$supervisor_loop_pid" 2>/dev/null || true; wait "$supervisor_loop_pid" 2>/dev/null || true; fi; rm -f "$HEARTBEAT_STATE_FILE" "$SUPERVISOR_ACTIVE_LOG_POINTER" "$SUPERVISOR_FEEDBACK_FILE" "$SUPERVISOR_OBJECTIVE_FILE"' EXIT
 
 # Project changes exclude workflow definitions and control-only markers.
 project_worktree_changes() {
