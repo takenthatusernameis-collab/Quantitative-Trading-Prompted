@@ -228,7 +228,7 @@ class SupervisorLoopTests(unittest.TestCase):
             output = captured.getvalue()
             self.assertIn("SUPERVISOR_CIRCUIT_BREAKER_OPEN", output)
             self.assertIn("worker remains unaffected", output)
-            self.assertEqual(output.count("produced no usable report"), 3)
+            self.assertEqual(output.count("(consecutive unusable reviews:"), 3)
             dialogues = list(transcripts.glob("review-*-agent-dialogue.md"))
             self.assertEqual(len(dialogues), 3)
             self.assertEqual(feedback.read_text(encoding="utf-8"), "")
