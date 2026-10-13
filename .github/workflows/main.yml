@@ -53,6 +53,12 @@ jobs:
           PERSISTED_CHECKPOINTS: ${{ steps.kilo_controller.outputs.persisted_checkpoints }}
           LAST_VERIFIED_CHECKPOINT_SHA: ${{ steps.kilo_controller.outputs.last_verified_checkpoint_sha }}
           SUPERVISOR_REVIEW_COUNT: ${{ steps.kilo_controller.outputs.supervisor_review_count }}
+          SUPERVISOR_REVIEWS_COMPLETED: ${{ steps.kilo_controller.outputs.supervisor_reviews_completed }}
+          SUPERVISOR_REVIEW_TIMEOUTS: ${{ steps.kilo_controller.outputs.supervisor_review_timeouts }}
+          SUPERVISOR_REVIEW_FAILURES: ${{ steps.kilo_controller.outputs.supervisor_review_failures }}
+          SUPERVISOR_DELIVERY_TRANSCRIPTS: ${{ steps.kilo_controller.outputs.supervisor_delivery_transcripts }}
+          SUPERVISOR_DIALOGUE_TRANSCRIPTS: ${{ steps.kilo_controller.outputs.supervisor_dialogue_transcripts }}
+          SUPERVISOR_TRANSCRIPT_DIR: ${{ runner.temp }}/kilo-supervisor-transcripts-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           SUPERVISOR_ADVICE_ENTRIES: ${{ steps.kilo_controller.outputs.supervisor_advice_entries }}
           SUPERVISOR_PENDING_UNITS: ${{ steps.kilo_controller.outputs.supervisor_pending_units }}
           FINAL_PHASE: ${{ steps.kilo_controller.outputs.final_phase }}
@@ -68,9 +74,12 @@ jobs:
             echo "- Controller-verified persisted checkpoints: ${PERSISTED_CHECKPOINTS:-0}"
             echo "- Last controller-verified checkpoint SHA: ${LAST_VERIFIED_CHECKPOINT_SHA:-none}"
             echo "- Supervisor reviews started: ${SUPERVISOR_REVIEW_COUNT:-0}"
+            echo "- Supervisor reviews completed with usable reports: ${SUPERVISOR_REVIEWS_COMPLETED:-0}"
+            echo "- Supervisor timeouts: ${SUPERVISOR_REVIEW_TIMEOUTS:-0}; other review failures: ${SUPERVISOR_REVIEW_FAILURES:-0}"
+            echo "- Exact worker-delivery transcripts saved: ${SUPERVISOR_DELIVERY_TRANSCRIPTS:-0}; combined agent-dialogue transcripts saved: ${SUPERVISOR_DIALOGUE_TRANSCRIPTS:-0}"
             echo "- Cumulative supervisor advice entries: ${SUPERVISOR_ADVICE_ENTRIES:-0}"
             echo "- Advice journal units queued but not yet injected at shutdown: ${SUPERVISOR_PENDING_UNITS:-0}"
-            echo "- Full redacted supervisor request/response and exact worker-delivery transcripts: download artifact kilo-progress-trace-${GITHUB_RUN_ID}."
+            echo "- Full redacted supervisor request/CLI trace/response and exact worker-delivery transcripts: download artifact kilo-progress-trace-${GITHUB_RUN_ID}."
             echo "- Verified meaningful project progress: ${PROJECT_PROGRESS:-unknown}"
             echo "- Failed Kilo sessions: ${FAILED_SESSIONS:-unknown}"
             echo "- Upstream idle/network retries: ${IDLE_TIMEOUT_RETRIES:-unknown}"
@@ -81,6 +90,25 @@ jobs:
               echo "::warning::Session failures and no-progress outcomes are recorded, but do not terminate the routine action early."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+          latest_dialogue="$(find "$SUPERVISOR_TRANSCRIPT_DIR" -maxdepth 1 -type f -name 'review-*-agent-dialogue.md' 2>/dev/null | sort | tail -n 1)"
+          if [ -n "$latest_dialogue" ] && [ -f "$latest_dialogue" ]; then
+            python3 - "$latest_dialogue" >> "$GITHUB_STEP_SUMMARY" <<'PY'
+          import html
+          import sys
+          from pathlib import Path
+          dialogue = Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace")
+          print()
+          print("<details open>")
+          print("<summary>Agent dialogue box — latest worker/controller ↔ loop-supervisor exchange</summary>")
+          print("<pre style=\"white-space: pre-wrap; overflow-wrap: anywhere;\">")
+          print(html.escape(dialogue))
+          print("</pre>")
+          print("</details>")
+          PY
+          else
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "No supervisor dialogue transcript was produced in this run." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Upload Kilo progress and supervisor trace
         if: always()
