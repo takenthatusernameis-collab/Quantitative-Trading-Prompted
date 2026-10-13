@@ -199,6 +199,15 @@ def bounded_cli_transcript(text: str) -> str:
     return safe[:half] + f"\n... [{omitted} characters omitted from CLI diagnostic output; request and advice are stored separately] ...\n" + safe[-half:]
 
 
+def log_live_dialogue_box(cycle: int, content: str) -> None:
+    """Render the exact redacted dialogue as a collapsible, live Actions log group."""
+    print(f"::group::LIVE AGENT DIALOGUE BOX — review {cycle:04d}", flush=True)
+    for line in content.splitlines() or ["(empty dialogue transcript)"]:
+        # Prefix every line so transcript text cannot be interpreted as an Actions command.
+        print("[agent-dialogue] " + line, flush=True)
+    print("::endgroup::", flush=True)
+
+
 def write_agent_dialogue(
     transcript_dir: Path,
     cycle: int,
@@ -316,7 +325,14 @@ def run_review(
     def save_dialogue(cli_output: str, advice: str, outcome: str) -> None:
         path = write_agent_dialogue(transcript_dir, cycle, prompt, cli_output, advice, outcome)
         if path:
-            log(f"review {cycle} combined agent dialogue saved to {path}")
+            try:
+                # Emit the box into the live Actions log immediately after each review,
+                # including timeouts/failures. The workflow Summary step runs only at job end.
+                dialogue = path.read_text(encoding="utf-8", errors="replace")
+                log_live_dialogue_box(cycle, dialogue)
+                log(f"review {cycle} combined agent dialogue saved to {path}")
+            except OSError as exc:
+                log(f"review {cycle} transcript saved but live dialogue rendering failed ({type(exc).__name__})")
 
     output = ""
     env = os.environ.copy()
