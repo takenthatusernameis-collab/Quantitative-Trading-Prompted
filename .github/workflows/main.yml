@@ -45,7 +45,7 @@ jobs:
           {
             echo "## Kilo controller health"
             echo "- Controller step outcome: \`$CONTROLLER_OUTCOME\`"
-            echo "- Session policy: routine activations continue until the global 355-minute cutoff; one-shot marker runs exactly two sessions."
+            echo "- Session policy: every active Kilo run continues until the global 355-minute cutoff, including validation-gated one-time activations."
             echo "- Verified meaningful project progress: ${PROJECT_PROGRESS:-unknown}"
             echo "- Failed Kilo sessions: ${FAILED_SESSIONS:-unknown}"
             echo "- Upstream idle/network retries: ${IDLE_TIMEOUT_RETRIES:-unknown}"
