@@ -7,12 +7,6 @@ on:
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
-    inputs:
-      agents:
-        description: "Number of sequential Kilo agents"
-        required: false
-        default: "1000"
-        type: number
 
 permissions:
   contents: write
@@ -37,7 +31,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           KILO_TRIGGER_EVENT: ${{ github.event_name }}
           KILO_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-          KILO_INPUT_AGENTS: ${{ inputs.agents || '1000' }}
         run: bash .github/scripts/kilo-controller.sh
       - name: Summarize controller outcome
         if: always()
@@ -52,15 +45,15 @@ jobs:
           {
             echo "## Kilo controller health"
             echo "- Controller step outcome: \`$CONTROLLER_OUTCOME\`"
-            echo "- Configured agent sessions: ${{ inputs.agents || '1000' }} (the one-shot marker, when present, overrides this to exactly 2)."
+            echo "- Session policy: routine activations continue until the global 355-minute cutoff; one-shot marker runs exactly two sessions."
             echo "- Verified meaningful project progress: ${PROJECT_PROGRESS:-unknown}"
             echo "- Failed Kilo sessions: ${FAILED_SESSIONS:-unknown}"
             echo "- Upstream idle/network retries: ${IDLE_TIMEOUT_RETRIES:-unknown}"
             if [ "$CONTROLLER_OUTCOME" = "success" ] && [ "$PROJECT_PROGRESS" = "1" ]; then
               echo "- Controller completed with verified, durable project progress."
             else
-              echo "- No verified project progress was confirmed in this activation. The run is marked failed so the next scheduled activation can recover."
-              echo "::warning::Do not treat a successful cleanup or marker commit as task completion."
+              echo "- No verified project progress was confirmed before this action ended. Review session logs and checkpoint evidence."
+              echo "::warning::Session failures and no-progress outcomes are recorded, but do not terminate the routine action early."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
