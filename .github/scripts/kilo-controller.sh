@@ -329,7 +329,7 @@ export KILO_SUPERVISOR_FEEDBACK_FILE="$SUPERVISOR_FEEDBACK_FILE"
 export KILO_SUPERVISOR_FEEDBACK_CURSOR_FILE="$SUPERVISOR_FEEDBACK_CURSOR_FILE"
 export KILO_SUPERVISOR_TRANSCRIPT_DIR="$SUPERVISOR_TRANSCRIPT_DIR"
 supervisor_loop_pid=""
-write_progress "supervisor-starting" "launching independent minute-cadence review process"
+write_progress "supervisor-starting" "launching independent 150-second-cadence review process"
 python3 .github/scripts/kilo-supervisor-loop.py \
   --repo-root "$PWD" \
   --runtime-root "$RUNNER_TEMP" \
@@ -346,7 +346,7 @@ python3 .github/scripts/kilo-supervisor-loop.py \
   --run-attempt "${GITHUB_RUN_ATTEMPT:-1}" \
   > >(tee -a "$SUPERVISOR_LOOP_LOG") 2>&1 &
 supervisor_loop_pid=$!
-echo "[loop-supervisor] Started alongside the Kilo worker; immediate review plus one-minute cadence (PID $supervisor_loop_pid)."
+echo "[loop-supervisor] Started alongside the Kilo worker; immediate review plus a 150-second cadence (PID $supervisor_loop_pid)."
 echo "[loop-supervisor] Exact redacted review requests, reviewer reports, CLI diagnostics, and worker-delivery messages are printed in the logs and saved under: $SUPERVISOR_TRANSCRIPT_DIR"
 write_progress "supervisor-running" "review loop launched"
 
@@ -404,7 +404,7 @@ PY
       review_started="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ started' "$SUPERVISOR_LOOP_LOG" || true)"
       review_completed="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ completed with usable report' "$SUPERVISOR_LOOP_LOG" || true)"
       review_timeouts="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ timed out;' "$SUPERVISOR_LOOP_LOG" || true)"
-      review_failures="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ (returned exit|returned without writing|wrote an empty report|report could not be sanitized|failed to launch or complete)' "$SUPERVISOR_LOOP_LOG" || true)"
+      review_failures="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ (returned exit|returned without writing|wrote an empty report|report could not be sanitized|failed to launch or complete|feedback append failed)' "$SUPERVISOR_LOOP_LOG" || true)"
       supervisor_event="$(grep -E '\[loop-supervisor\].*(review [0-9]+ started|review [0-9]+ completed with usable report|appended cumulative advice|complete;|timed out|returned exit|feedback append failed|stopped;|unexpected monitor failure)' "$SUPERVISOR_LOOP_LOG" | tail -n 1 | cut -c1-220 || true)"
     else
       review_started=0
@@ -909,7 +909,7 @@ if [ "$final_pending_units" -lt 0 ]; then final_pending_units=0; fi
 final_review_count="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ started' "$SUPERVISOR_LOOP_LOG" || true)"
 final_completed_review_count="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ completed with usable report' "$SUPERVISOR_LOOP_LOG" || true)"
 final_timeout_count="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ timed out;' "$SUPERVISOR_LOOP_LOG" || true)"
-final_review_failure_count="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ (returned exit|returned without writing|wrote an empty report|report could not be sanitized|failed to launch or complete)' "$SUPERVISOR_LOOP_LOG" || true)"
+final_review_failure_count="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ (returned exit|returned without writing|wrote an empty report|report could not be sanitized|failed to launch or complete|feedback append failed)' "$SUPERVISOR_LOOP_LOG" || true)"
 final_delivery_count="$(find "$SUPERVISOR_TRANSCRIPT_DIR" -maxdepth 1 -type f -name 'worker-delivery-*.md' 2>/dev/null | wc -l | tr -d '[:space:]')"
 final_dialogue_count="$(find "$SUPERVISOR_TRANSCRIPT_DIR" -maxdepth 1 -type f -name 'review-*-agent-dialogue.md' 2>/dev/null | wc -l | tr -d '[:space:]')"
 final_delivery_count="${final_delivery_count:-0}"

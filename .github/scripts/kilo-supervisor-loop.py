@@ -396,7 +396,7 @@ def run_review(
     if response_path:
         log(f"review {cycle} actual advice saved to {response_path}")
     log_content_block(f"ACTUAL ADVICE RETURNED BY SUPERVISOR — review {cycle}", report)
-    outcome = "USABLE REPORT GENERATED: redacted advice was accepted; the controller will publish it to the journal, then the plugin can deliver it at the worker's next tool-result boundary."
+    outcome = "USABLE REPORT GENERATED: redacted advice was accepted; the report is ready for journal publication; delivery can occur only after publication, at the worker's next tool-result boundary."
     write_outcome(outcome)
     save_dialogue(output or "", report, outcome)
     return report
