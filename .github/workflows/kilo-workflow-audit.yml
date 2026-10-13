@@ -90,7 +90,7 @@ jobs:
             echo "::error::A failure-count or no-progress guard still terminates the action before the global cutoff."
             exit 1
           fi
-          if grep -Fq 'for agent_index in $(seq 1 "$agents"); do' "$controller"; then
+          if grep -Fq "for agent_index in \$(seq 1 \"\$agents\"); do" "$controller"; then
             echo "::error::Routine session loop still ends after a fixed session count."
             exit 1
           fi
