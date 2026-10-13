@@ -32,7 +32,7 @@ class SupervisorLoopTests(unittest.TestCase):
         self.assertNotIn("super-secret-value", result)
         self.assertIn("hello world", result)
 
-    def test_two_minute_cycles_publish_latest_feedback_and_redact_log(self):
+    def test_two_minute_cycles_append_cumulative_feedback_and_redact_log(self):
         with tempfile.TemporaryDirectory(prefix="kilo-supervisor-test-") as temp:
             root = Path(temp)
             repo = root / "repo"
@@ -96,8 +96,10 @@ class SupervisorLoopTests(unittest.TestCase):
                 os.environ.update(old_env)
             self.assertEqual(code, 0)
             published = feedback.read_text(encoding="utf-8")
-            self.assertIn("review 2", published)
+            self.assertIn("worker review 1", published, "first-minute advice must remain in the journal")
+            self.assertIn("worker review 2", published, "second-minute advice must be appended")
             prompts = capture.read_text(encoding="utf-8")
+            self.assertIn("worker review 1", prompts, "later reviews must receive prior advice as context")
             self.assertIn("[REDACTED]", prompts)
             self.assertNotIn("secret-value", prompts)
             self.assertNotIn("ghp_123456789012345678901234567890", prompts)
