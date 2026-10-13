@@ -256,13 +256,16 @@ echo "Repository default branch: $DEFAULT_BRANCH"
 # Continuous supervisor starts before the first Kilo worker invocation and keeps
 # reviewing the active attempt throughout the controller's cutoff-bound session loop.
 SUPERVISOR_FEEDBACK_FILE="$RUNNER_TEMP/kilo-supervisor-feedback-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.md"
+SUPERVISOR_FEEDBACK_CURSOR_FILE="$RUNNER_TEMP/kilo-supervisor-feedback-cursor-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.json"
 SUPERVISOR_ACTIVE_LOG_POINTER="$RUNNER_TEMP/kilo-supervisor-active-attempt"
 SUPERVISOR_OBJECTIVE_FILE="$RUNNER_TEMP/kilo-supervisor-objective-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.txt"
 SUPERVISOR_LOOP_LOG="$RUNNER_TEMP/kilo-supervisor-loop-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.log"
 : > "$SUPERVISOR_ACTIVE_LOG_POINTER"
 : > "$SUPERVISOR_FEEDBACK_FILE"
+rm -f "$SUPERVISOR_FEEDBACK_CURSOR_FILE"
 printf '%s\n' "$command" > "$SUPERVISOR_OBJECTIVE_FILE"
 export KILO_SUPERVISOR_FEEDBACK_FILE="$SUPERVISOR_FEEDBACK_FILE"
+export KILO_SUPERVISOR_FEEDBACK_CURSOR_FILE="$SUPERVISOR_FEEDBACK_CURSOR_FILE"
 supervisor_loop_pid=""
 python3 .github/scripts/kilo-supervisor-loop.py \
   --repo-root "$PWD" \
@@ -302,7 +305,7 @@ heartbeat() {
 
 heartbeat &
 heartbeat_pid=$!
-trap 'kill "$heartbeat_pid" 2>/dev/null || true; if [ -n "${supervisor_loop_pid:-}" ]; then kill -TERM "$supervisor_loop_pid" 2>/dev/null || true; wait "$supervisor_loop_pid" 2>/dev/null || true; fi; rm -f "$HEARTBEAT_STATE_FILE" "$SUPERVISOR_ACTIVE_LOG_POINTER" "$SUPERVISOR_FEEDBACK_FILE" "$SUPERVISOR_OBJECTIVE_FILE"' EXIT
+trap 'kill "$heartbeat_pid" 2>/dev/null || true; if [ -n "${supervisor_loop_pid:-}" ]; then kill -TERM "$supervisor_loop_pid" 2>/dev/null || true; wait "$supervisor_loop_pid" 2>/dev/null || true; fi; rm -f "$HEARTBEAT_STATE_FILE" "$SUPERVISOR_ACTIVE_LOG_POINTER" "$SUPERVISOR_FEEDBACK_FILE" "$SUPERVISOR_FEEDBACK_CURSOR_FILE" "$SUPERVISOR_OBJECTIVE_FILE"' EXIT
 
 # Project changes exclude workflow definitions and control-only markers.
 project_worktree_changes() {
