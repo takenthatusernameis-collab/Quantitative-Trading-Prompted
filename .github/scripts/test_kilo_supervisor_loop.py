@@ -53,22 +53,25 @@ class SupervisorLoopTests(unittest.TestCase):
             feedback = runtime / "feedback.md"
             capture = runtime / "captured-prompts.txt"
             fake_kilo = runtime / "fake-kilo"
-            fake_kilo.write_text(textwrap.dedent(r"""\
-                #!/usr/bin/env python3
-                import os, re, sys
-                prompt = sys.argv[-1]
-                with open(os.environ["SUPERVISOR_TEST_CAPTURE"], "a", encoding="utf-8") as f:
-                    f.write(prompt + "\n---PROMPT-END---\n")
-                match = re.search(r"(?m)^REPORT_PATH:\s*(.+)$", prompt)
-                if not match:
-                    raise SystemExit(3)
-                report = match.group(1).strip()
-                cycle = int(re.search(r"review-(\d+)\.md$", report).group(1))
-                os.makedirs(os.path.dirname(report), exist_ok=True)
-                with open(report, "w", encoding="utf-8") as f:
-                    f.write("STATUS: ATTENTION\nEvidence: worker review " + str(cycle) + "\n"
-                            "Recommended next action: verify changed evidence " + str(cycle) + "\n")
-            """), encoding="utf-8")
+            fake_kilo.write_text(
+                "\n".join([
+                    "#!/usr/bin/env python3",
+                    "import os, re, sys",
+                    "prompt = sys.argv[-1]",
+                    "with open(os.environ['SUPERVISOR_TEST_CAPTURE'], 'a', encoding='utf-8') as f:",
+                    "    f.write(prompt + '\\n---PROMPT-END---\\n')",
+                    "match = re.search(r'(?m)^REPORT_PATH:\\s*(.+)$', prompt)",
+                    "if not match:",
+                    "    raise SystemExit(3)",
+                    "report = match.group(1).strip()",
+                    "cycle = int(re.search(r'review-(\\d+)\\.md$', report).group(1))",
+                    "os.makedirs(os.path.dirname(report), exist_ok=True)",
+                    "with open(report, 'w', encoding='utf-8') as f:",
+                    "    f.write('STATUS: ATTENTION\\nEvidence: worker review ' + str(cycle) + '\\n'",
+                    "            'Recommended next action: verify changed evidence ' + str(cycle) + '\\n')",
+                ]) + "\n",
+                encoding="utf-8",
+            )
             fake_kilo.chmod(0o755)
             old_env = os.environ.copy()
             try:
