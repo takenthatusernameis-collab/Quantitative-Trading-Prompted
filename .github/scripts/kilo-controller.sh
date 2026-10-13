@@ -8,25 +8,6 @@ if ! [[ "$KILO_IDLE_TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]]; then
   exit 1
 fi
 
-# Persist repeated silent stalls across workflow activations. A scheduled run
-# inside cooldown exits before installing or starting Kilo; the first allowed
-# recovery activation is probe-only (one session), not the usual 1,000.
-IDLE_CIRCUIT_FILE=".kilo/KILO_IDLE_CIRCUIT.json"
-idle_state_result="$(python3 .github/scripts/kilo-idle-circuit.py check --state-file "$IDLE_CIRCUIT_FILE" --event "${KILO_TRIGGER_EVENT:-unknown}")"
-IFS=$'\t' read -r idle_circuit_mode idle_stall_count idle_circuit_level idle_retry_after <<< "$idle_state_result"
-idle_circuit_probe=0
-idle_circuit_trip=0
-circuit_open=0
-if [ "$idle_circuit_mode" = "skip" ]; then
-  retry_after_utc="$(date -u -d "@$idle_retry_after" '+%Y-%m-%dT%H:%M:%SZ')"
-  echo "::warning::Persistent Kilo idle circuit is open until $retry_after_utc; this activation will not launch Kilo."
-  printf 'project_progress=0\nfailed_sessions=0\nidle_timeout_retries=0\ncircuit_open=1\ncircuit_probe=0\n' >> "$GITHUB_OUTPUT"
-  exit 0
-elif [ "$idle_circuit_mode" = "probe" ]; then
-  idle_circuit_probe=1
-  echo "::notice::Persistent Kilo idle state detected (stall count $idle_stall_count, cooldown level $idle_circuit_level); this activation is restricted to one recovery-probe session."
-fi
-
 # While the one-shot marker awaits its independent validation gate,
 # scheduled invocations must not consume it or start a duplicate run.
 if [ "$KILO_TRIGGER_EVENT" = "schedule" ]; then
@@ -156,10 +137,6 @@ if [ "$agents" -lt 1 ]; then agents=1; fi
 if [ "$agents" -gt 1000 ]; then agents=1000; fi
 if [ "$one_shot_mode" -eq 1 ]; then agents=2; fi
 echo "Configured sequential Kilo sessions: $agents (one-shot mode: $one_shot_mode)."
-if [ "$idle_circuit_probe" -eq 1 ]; then
-  agents=1
-  echo "::notice::Recovery-probe mode overrides other session-count settings to exactly one Kilo session."
-fi
 command=$(cat <<'PROMPT'
 Execute the task assigned by the previous agent and prepare a task for the next agent!
 
@@ -230,19 +207,6 @@ DEFAULT OPERATING PRINCIPLE
 Make progress despite imperfection. Fix cheap, deterministic blockers. Tolerate isolated recoverable failures. Protect durable progress and critical invariants. Change approach when evidence shows the current one is not working.
 PROMPT
 )
-
-if [ "$idle_circuit_probe" -eq 1 ]; then
-  probe_prefix=$(cat <<'PROBE_PREFIX'
-RECOVERY PROBE AFTER A PERSISTENT KILO IDLE STALL
-
-This activation is deliberately limited to one session because a prior Kilo invocation stalled. Read .kilo/KILO_IDLE_CIRCUIT.json and the repository's latest durable handoff/status before choosing work. Do not blindly repeat the last task or the same approach. First distinguish a task-scope/tooling problem from a provider, authentication, dependency, or network problem using evidence available in this checkout. If there is an actionable, safe root cause, make one small correction and verify it. Otherwise record a concise evidence-based handoff without speculative edits or fake progress. Avoid broad research runs, large backtests, and unrelated refactors. A successful process exit alone does not clear the breaker; only substantive, verified project changes do.
-PROBE_PREFIX
-)
-  command="$probe_prefix
-
-$command"
-fi
-
 DEFAULT_BRANCH="$KILO_DEFAULT_BRANCH"
 
 if [ -z "$DEFAULT_BRANCH" ]; then
@@ -286,8 +250,7 @@ project_worktree_changes() {
     if (path != "" &&
         path !~ /^\.github\/workflows\// &&
         path != ".kilo/TWO_AGENT_ONCE" &&
-        path != ".kilo/SKIP_NEXT_ROUTINE_KILO" &&
-        path != ".kilo/KILO_IDLE_CIRCUIT.json") print path
+        path != ".kilo/SKIP_NEXT_ROUTINE_KILO") print path
   }' | sort -u
 }
 
@@ -316,7 +279,6 @@ for agent_index in $(seq 1 "$agents"); do
   provider_pressure=0
   transient_retry_backoff=15
   session_attempt=0
-  session_idle_stall=0
   echo "Starting sequential Kilo session ${agent_index}/${agents}; remaining safety budget ${remaining}s."
   while true; do
     session_attempt=$((session_attempt + 1))
@@ -351,7 +313,6 @@ PY
     fi
     # Our own silence watchdog is a stall signal, not a network error worth repeating five times in place.
     if grep -Fq 'Kilo invocation idle timeout' "$normalized_attempt_log"; then
-      session_idle_stall=1
       idle_timeout_retry_count=$((idle_timeout_retry_count + 1))
       echo "::warning::Kilo invocation remained silent for ${KILO_IDLE_TIMEOUT_SECONDS}s; ending this invocation and preserving progress before the next session."
       break
@@ -434,39 +395,6 @@ RECOVERY_PROMPT
       echo "::warning::Insufficient workflow time remains for the bounded corrective pass; preserving the failure for the handoff."
     fi
   fi
-
-  # Only verified project changes reset persistent stall history.
-  current_project_changes="$(project_worktree_changes)"
-  if [ "$rc" -eq 0 ] && [ -n "$current_project_changes" ] && [ -f "$IDLE_CIRCUIT_FILE" ]; then
-    if python3 .github/scripts/kilo-idle-circuit.py clear --state-file "$IDLE_CIRCUIT_FILE"; then
-      idle_stall_count=0
-      idle_circuit_level=0
-      echo "::notice::Verified project work is present; cleared the persistent idle-stall history."
-    else
-      echo "::error::Could not clear persistent idle state after project progress; retaining fail-safe state."
-    fi
-  fi
-
-  if [ "$session_idle_stall" -eq 1 ]; then
-    idle_state_update="$(python3 .github/scripts/kilo-idle-circuit.py record-stall --state-file "$IDLE_CIRCUIT_FILE" --count "$idle_stall_count" --level "$idle_circuit_level" --run-id "${GITHUB_RUN_ID:-unknown}")"
-    IFS=$'\t' read -r idle_stall_count idle_circuit_level idle_retry_after <<< "$idle_state_update"
-    if [ "$idle_stall_count" -ge 2 ]; then
-      idle_circuit_trip=1
-      circuit_open=1
-      retry_after_utc="$(date -u -d "@$idle_retry_after" '+%Y-%m-%dT%H:%M:%SZ')"
-      echo "::error::Repeated Kilo silent stalls without verified project progress. Circuit opened until $retry_after_utc; stopping after checkpoint."
-    else
-      echo "::warning::First silent stall recorded durably; one fresh session may test whether the freeze was transient."
-    fi
-  elif [ "$idle_circuit_probe" -eq 1 ] && [ "$rc" -ne 0 ]; then
-    idle_state_update="$(python3 .github/scripts/kilo-idle-circuit.py defer-probe --state-file "$IDLE_CIRCUIT_FILE" --count "$idle_stall_count" --level "$idle_circuit_level" --run-id "${GITHUB_RUN_ID:-unknown}")"
-    IFS=$'\t' read -r idle_stall_count idle_circuit_level idle_retry_after <<< "$idle_state_update"
-    idle_circuit_trip=1
-    circuit_open=1
-    retry_after_utc="$(date -u -d "@$idle_retry_after" '+%Y-%m-%dT%H:%M:%SZ')"
-    echo "::error::The single recovery probe did not produce verified project progress. Cooldown extended until $retry_after_utc."
-  fi
-
   if [ "$rc" -ne 0 ]; then
     mkdir -p "$RUNNER_TEMP/kilo-failure-logs"
     tail -n 2000 "$session_log" > "$RUNNER_TEMP/kilo-failure-logs/session-${agent_index}.log" || true
@@ -585,7 +513,7 @@ PY
   if [ "$checkpoint_ready" -eq 1 ] && ! git diff --cached --quiet; then
     while IFS= read -r -d '' changed_path; do
       case "$changed_path" in
-        .kilo/TWO_AGENT_ONCE|.kilo/SKIP_NEXT_ROUTINE_KILO|.kilo/KILO_IDLE_CIRCUIT.json) ;;
+        .kilo/TWO_AGENT_ONCE|.kilo/SKIP_NEXT_ROUTINE_KILO) ;;
         *) checkpoint_has_project_changes=1 ;;
       esac
     done < <(git diff --cached --name-only -z)
@@ -653,10 +581,6 @@ PY
   if [ "$hard_provider_block" -eq 1 ]; then
     cutoff=1
     echo "::error::Hard provider quota/capacity failure; diagnostics and any useful checkpoint have been preserved, so this activation will not repeat the same provider call."
-  elif [ "$idle_circuit_trip" -eq 1 ]; then
-    repeated_failure_block=1
-    cutoff=1
-    echo "::error::Persistent silent-stall circuit breaker stopped this activation after its durable checkpoint; automatic sessions remain paused until a cooldown recovery probe is permitted."
   elif [ "$provider_pressure_streak" -ge 3 ]; then
     repeated_provider_block=1
     cutoff=1
@@ -705,17 +629,11 @@ PY
 done
 
 if [ "$cutoff" -eq 1 ]; then
-  if [ "$(date +%s)" -ge "$cutoff_epoch" ]; then
-    echo "::warning::The 355-minute safety cutoff was reached; see checkpoint verification messages above."
-  else
-    echo "::warning::A bounded controller health guard stopped this activation before the global cutoff."
-  fi
+  echo "::warning::The 355-minute safety cutoff was reached; see checkpoint verification messages above."
 fi
 printf 'project_progress=%s\n' "$project_progress" >> "$GITHUB_OUTPUT"
 printf 'failed_sessions=%s\n' "$failed_sessions" >> "$GITHUB_OUTPUT"
 printf 'idle_timeout_retries=%s\n' "$idle_timeout_retry_count" >> "$GITHUB_OUTPUT"
-printf 'circuit_open=%s\n' "$circuit_open" >> "$GITHUB_OUTPUT"
-printf 'circuit_probe=%s\n' "$idle_circuit_probe" >> "$GITHUB_OUTPUT"
 if [ "$hard_provider_block" -eq 1 ] || [ "$repeated_provider_block" -eq 1 ] || [ "$repeated_failure_block" -eq 1 ]; then
   echo "::error::Kilo activation stopped because of hard provider limits, repeated provider pressure, an unsuccessful corrective pass, no progress after correction, or five consecutive failed sessions. Any verified checkpoint remains persisted, but this activation is not marked successful."
   exit 1
