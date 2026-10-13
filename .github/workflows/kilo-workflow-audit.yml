@@ -177,16 +177,16 @@ jobs:
           from pathlib import Path
 
           output = Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace")
-          heading = re.search(r"(?m)^loop-supervisor \\(subagent\\)\\s*$", output)
+          heading = re.search(r"(?m)^loop-supervisor \(subagent\)\s*$", output)
           if heading is None:
               raise SystemExit("Could not isolate loop-supervisor's resolved permission section")
           section = output[heading.end():]
-          next_agent = re.search(r"(?m)^[a-zA-Z0-9_-]+ \\((?:primary|subagent|all)\\)\\s*$", section)
+          next_agent = re.search(r"(?m)^[a-zA-Z0-9_-]+ \((?:primary|subagent|all)\)\s*$", section)
           if next_agent is not None:
               section = section[:next_agent.start()]
 
           rules = []
-          for match in re.finditer(r"\\{[^{}]*\\}", section, flags=re.DOTALL):
+          for match in re.finditer(r"\{[^{}]*\}", section, flags=re.DOTALL):
               try:
                   item = json.loads(match.group(0))
               except json.JSONDecodeError:
