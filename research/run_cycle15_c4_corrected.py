@@ -254,6 +254,16 @@ def _validate_generated_outputs(close: pd.DataFrame, baseline: dict, wf: dict, s
     """Re-open persisted outputs and reject wrong-universe or wrong-fold artifacts."""
     if len(wf["wf_df"]) != 36 or wf["summary"].get("n_folds") != 36:
         raise RuntimeError("Generated walk-forward record does not contain exactly 36 folds.")
+    # The legacy evaluator records per-fold exceptions as NaN and continues.
+    # A complete row count is not sufficient evidence that every fold ran.
+    required_oos_metrics = ("test_sharpe", "test_ann_return", "test_max_dd", "test_turnover", "test_trades")
+    for column in required_oos_metrics:
+        if column not in wf["wf_df"].columns:
+            raise RuntimeError(f"Walk-forward output is missing required OOS metric: {column}.")
+        values = pd.to_numeric(wf["wf_df"][column], errors="coerce")
+        if not np.isfinite(values.to_numpy(dtype=float)).all():
+            bad_folds = wf["wf_df"].loc[~np.isfinite(values.to_numpy(dtype=float)), "fold"].tolist()
+            raise RuntimeError(f"Walk-forward metric {column} is missing/non-finite in fold(s): {bad_folds}.")
     for row, split in zip(wf["wf_df"].to_dict(orient="records"), splits, strict=True):
         for key in ("train_start", "train_end", "test_start", "test_end"):
             if row.get(key) != split.get(key):
