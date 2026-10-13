@@ -1,6 +1,12 @@
 set -Eeuo pipefail
 cutoff_epoch=$(($(date +%s) + 355 * 60))
 umask 077
+# A silent Kilo invocation is a stall; this does not shorten the global workflow cutoff.
+KILO_IDLE_TIMEOUT_SECONDS="${KILO_IDLE_TIMEOUT_SECONDS:-600}"
+if ! [[ "$KILO_IDLE_TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]]; then
+  echo "::error::KILO_IDLE_TIMEOUT_SECONDS must be a positive integer."
+  exit 1
+fi
 
 # While the one-shot marker awaits its independent validation gate,
 # scheduled invocations must not consume it or start a duplicate run.
@@ -22,6 +28,8 @@ export XDG_DATA_HOME="$HOME/.local/share"
 export XDG_CACHE_HOME="$HOME/.cache"
 export TMPDIR="$RUNNER_TEMP/kilo-tmp"
 mkdir -p "$XDG_CONFIG_HOME/kilo" "$XDG_DATA_HOME/kilo" "$XDG_CACHE_HOME/kilo" "$TMPDIR" "$RUNNER_TEMP/kilo"
+HEARTBEAT_STATE_FILE="$RUNNER_TEMP/kilo-active-attempt"
+: > "$HEARTBEAT_STATE_FILE"
 for directory in "$HOME" "$XDG_CONFIG_HOME/kilo" "$XDG_DATA_HOME/kilo" "$XDG_CACHE_HOME/kilo" "$TMPDIR" "$RUNNER_TEMP/kilo"; do
   if ! ( : > "$directory/.kilo-write-test" ) 2>/dev/null; then
     echo "::error::Runtime directory is not writable: $directory."
@@ -210,14 +218,26 @@ echo "Repository default branch: $DEFAULT_BRANCH"
 
 heartbeat() {
   while true; do
-    printf '[heartbeat] %sZ\n' "$(date -u +%Y-%m-%dT%H:%M:%S)"
+    stamp="$(date -u +%Y-%m-%dT%H:%M:%S)"
+    now_epoch="$(date +%s)"
+    active_log=""
+    if [ -f "$HEARTBEAT_STATE_FILE" ]; then
+      IFS= read -r active_log < "$HEARTBEAT_STATE_FILE" || true
+    fi
+    if [ -n "$active_log" ] && [ -f "$active_log" ]; then
+      last_output_epoch="$(stat -c '%Y' "$active_log" 2>/dev/null || printf '%s' "$now_epoch")"
+      silent_for=$((now_epoch - last_output_epoch))
+      printf '[heartbeat] %sZ Kilo output silence=%ss idle watchdog=%ss\n' "$stamp" "$silent_for" "$KILO_IDLE_TIMEOUT_SECONDS"
+    else
+      printf '[heartbeat] %sZ Kilo invocation=starting-or-between-attempts idle watchdog=%ss\n' "$stamp" "$KILO_IDLE_TIMEOUT_SECONDS"
+    fi
     sleep 60
   done
 }
 
 heartbeat &
 heartbeat_pid=$!
-trap 'kill "$heartbeat_pid" 2>/dev/null || true' EXIT
+trap 'kill "$heartbeat_pid" 2>/dev/null || true; rm -f "$HEARTBEAT_STATE_FILE"' EXIT
 
 # Project changes exclude workflow definitions and control-only markers.
 project_worktree_changes() {
@@ -245,12 +265,6 @@ correction_failure_block=0
 no_progress_block=0
 repeated_failure_block=0
 MAX_TRANSIENT_ATTEMPTS=5
-# Restart only silent/stalled invocations; the overall 355-minute workflow budget is unchanged.
-KILO_IDLE_TIMEOUT_SECONDS="${KILO_IDLE_TIMEOUT_SECONDS:-600}"
-if ! [[ "$KILO_IDLE_TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]]; then
-  echo "::error::KILO_IDLE_TIMEOUT_SECONDS must be a positive integer."
-  exit 1
-fi
 cutoff=0
 
 for agent_index in $(seq 1 "$agents"); do
@@ -271,11 +285,14 @@ for agent_index in $(seq 1 "$agents"); do
     attempt_log="$RUNNER_TEMP/kilo-session-${agent_index}-attempt-${session_attempt}.log"
     remaining_global=$((cutoff_epoch - $(date +%s)))
     if [ "$remaining_global" -le 0 ]; then rc=124; echo "::warning::355-minute workflow cutoff reached before attempt ${session_attempt}."; break; fi
-    echo "Kilo invocation attempt ${session_attempt} for session ${agent_index}; transient upstream failures retry without an attempt-count limit."
+    : > "$attempt_log"
+    printf '%s\n' "$attempt_log" > "$HEARTBEAT_STATE_FILE"
+    echo "Kilo invocation attempt ${session_attempt} for session ${agent_index}; transient upstream failures use bounded retries."
     set +e
     timeout --signal=TERM --kill-after=10s "${remaining_global}s" python3 .github/scripts/kilo-invoke-with-idle-timeout.py --idle-timeout-seconds "$KILO_IDLE_TIMEOUT_SECONDS" -- kilo run --model kilo/kilo-auto/free --auto "$command" 2>&1 | tee "$attempt_log" | tee -a "$session_log"
     rc=${PIPESTATUS[0]}
     set -e
+    rm -f "$HEARTBEAT_STATE_FILE"
     if [ "$rc" -eq 0 ]; then break; fi
     # Normalize ANSI color/control sequences before classifying provider errors.
     normalized_attempt_log="$attempt_log.normalized"
@@ -339,10 +356,13 @@ RECOVERY_PROMPT
     if [ "$remaining_recovery" -ge 60 ]; then
       recovery_log="$RUNNER_TEMP/kilo-session-${agent_index}-recovery.log"
       echo "::warning::${correction_reason}; starting one bounded corrective pass."
+      : > "$recovery_log"
+      printf '%s\n' "$recovery_log" > "$HEARTBEAT_STATE_FILE"
       set +e
       KILO_PRIOR_FAILURE_LOG="$session_log" timeout --signal=TERM --kill-after=10s "${remaining_recovery}s" python3 .github/scripts/kilo-invoke-with-idle-timeout.py --idle-timeout-seconds "$KILO_IDLE_TIMEOUT_SECONDS" -- kilo run --model kilo/kilo-auto/free --auto "$recovery_command" 2>&1 | tee "$recovery_log" | tee -a "$session_log"
       recovery_rc=${PIPESTATUS[0]}
       set -e
+      rm -f "$HEARTBEAT_STATE_FILE"
       mkdir -p "$RUNNER_TEMP/kilo-failure-logs"
       tail -n 2000 "$session_log" > "$RUNNER_TEMP/kilo-failure-logs/corrective-session-${agent_index}.log" || true
       if [ "$recovery_rc" -eq 0 ]; then
