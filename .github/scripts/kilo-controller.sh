@@ -16,6 +16,53 @@ if ! [[ "$KILO_MAX_SESSIONS" =~ ^[1-9][0-9]{0,3}$ ]] || [ "$KILO_MAX_SESSIONS" -
   exit 1
 fi
 echo "::notice::Configured maximum sequential Kilo worker sessions: $KILO_MAX_SESSIONS (355-minute hard cutoff also applies)."
+WORKFLOW_STARTED_EPOCH="$(date +%s)"
+KILO_PROGRESS_STATE_FILE="$RUNNER_TEMP/kilo-progress-state-\${GITHUB_RUN_ID:-local}-\${GITHUB_RUN_ATTEMPT:-1}.txt"
+KILO_PROGRESS_LOG="$RUNNER_TEMP/kilo-progress-\${GITHUB_RUN_ID:-local}-\${GITHUB_RUN_ATTEMPT:-1}.log"
+: > "$KILO_PROGRESS_LOG"
+
+write_progress() {
+  local phase="\${1:-unknown}" detail="\${2:-}" now elapsed remaining head_sha tmp line
+  now="$(date +%s)"
+  elapsed=$((now - WORKFLOW_STARTED_EPOCH))
+  remaining=$((cutoff_epoch - now))
+  if [ "$remaining" -lt 0 ]; then remaining=0; fi
+  detail="$(printf '%s' "$detail" | tr '\r\n' '  ' | cut -c1-160)"
+  head_sha="$(git rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
+  tmp="\${KILO_PROGRESS_STATE_FILE}.tmp.$"
+  if ! {
+    printf 'updated_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    printf 'phase=%s\n' "$phase"
+    printf 'detail=%s\n' "$detail"
+    printf 'session=%s\n' "\${agent_index:-0}"
+    printf 'session_limit=%s\n' "$KILO_MAX_SESSIONS"
+    printf 'attempt=%s\n' "\${session_attempt:-0}"
+    printf 'completed=%s\n' "\${sessions_completed:-0}"
+    printf 'failed=%s\n' "\${failed_sessions:-0}"
+    printf 'checkpoints=%s\n' "\${persisted_checkpoints:-0}"
+    printf 'verified_checkpoint_sha=%s\n' "\${last_verified_checkpoint_sha:-none}"
+    printf 'head=%s\n' "$head_sha"
+    printf 'elapsed_seconds=%s\n' "$elapsed"
+    printf 'remaining_seconds=%s\n' "$remaining"
+  } > "$tmp"; then
+    rm -f "$tmp"
+    return 0
+  fi
+  if ! mv -f "$tmp" "$KILO_PROGRESS_STATE_FILE"; then
+    rm -f "$tmp"
+    return 0
+  fi
+  line="[progress] $(date -u +%Y-%m-%dT%H:%M:%SZ) phase=\${phase} session=\${agent_index:-0}/\${KILO_MAX_SESSIONS} attempt=\${session_attempt:-0}/\${MAX_TRANSIENT_ATTEMPTS:-5} completed=\${sessions_completed:-0} failed=\${failed_sessions:-0} checkpoints=\${persisted_checkpoints:-0} verified_sha=\${last_verified_checkpoint_sha:-none} head=\${head_sha} elapsed=\${elapsed}s remaining=\${remaining}s detail=\${detail}"
+  printf '%s\n' "$line" | tee -a "$KILO_PROGRESS_LOG" || true
+}
+
+progress_field() {
+  local field="$1"
+  if [ ! -f "$KILO_PROGRESS_STATE_FILE" ]; then printf 'unknown'; return 0; fi
+  awk -F= -v field="$field" '$1 == field { sub(/^[^=]*=/, ""); print; exit }' "$KILO_PROGRESS_STATE_FILE"
+}
+
+write_progress "controller-configured" "event=\${KILO_TRIGGER_EVENT:-unknown}; cap=\${KILO_MAX_SESSIONS}; hard_cutoff=355_minutes"
 
 # While the one-shot marker awaits its independent validation gate,
 # scheduled invocations must not consume it or start a duplicate run.
@@ -116,8 +163,10 @@ EOF
 
 install_attempt=0
 install_backoff=5
+write_progress "kilo-cli-install" "installing pinned Kilo CLI"
 until timeout --signal=TERM --kill-after=10s 180s npm install --no-audit --no-fund --prefix "$RUNNER_TEMP/kilo" @kilocode/cli@7.7.1; do
   install_attempt=$((install_attempt + 1))
+  write_progress "kilo-cli-install-retry" "CLI installation retry=${install_attempt}"
   remaining=$((cutoff_epoch - $(date +%s)))
   if [ "$remaining" -le 0 ]; then
     echo "::error::Kilo installation did not recover before the 355-minute cutoff; no agent session was started."
@@ -261,6 +310,7 @@ if [ -z "$DEFAULT_BRANCH" ]; then
 fi
 
 echo "Repository default branch: $DEFAULT_BRANCH"
+write_progress "runtime-ready" "Kilo CLI installed; supervisor and worker are being prepared"
 
 # Continuous supervisor starts before the first Kilo worker invocation and keeps
 # reviewing the active attempt throughout the controller's cutoff-bound session loop.
@@ -276,6 +326,7 @@ printf '%s\n' "$command" > "$SUPERVISOR_OBJECTIVE_FILE"
 export KILO_SUPERVISOR_FEEDBACK_FILE="$SUPERVISOR_FEEDBACK_FILE"
 export KILO_SUPERVISOR_FEEDBACK_CURSOR_FILE="$SUPERVISOR_FEEDBACK_CURSOR_FILE"
 supervisor_loop_pid=""
+write_progress "supervisor-starting" "launching independent minute-cadence review process"
 python3 .github/scripts/kilo-supervisor-loop.py \
   --repo-root "$PWD" \
   --runtime-root "$RUNNER_TEMP" \
@@ -292,28 +343,96 @@ python3 .github/scripts/kilo-supervisor-loop.py \
   > >(tee -a "$SUPERVISOR_LOOP_LOG") 2>&1 &
 supervisor_loop_pid=$!
 echo "[loop-supervisor] Started alongside the Kilo worker; immediate review plus one-minute cadence (PID $supervisor_loop_pid)."
+write_progress "supervisor-running" "review loop launched"
 
 heartbeat() {
   while true; do
     stamp="$(date -u +%Y-%m-%dT%H:%M:%S)"
     now_epoch="$(date +%s)"
+    elapsed=$((now_epoch - WORKFLOW_STARTED_EPOCH))
+    remaining=$((cutoff_epoch - now_epoch))
+    if [ "$remaining" -lt 0 ]; then remaining=0; fi
+    phase="$(progress_field phase)"
+    detail="$(progress_field detail)"
+    current_session="$(progress_field session)"
+    current_attempt="$(progress_field attempt)"
+    completed="$(progress_field completed)"
+    failed="$(progress_field failed)"
+    checkpoints="$(progress_field checkpoints)"
+    verified_sha="$(progress_field verified_checkpoint_sha)"
+    state_head="$(progress_field head)"
+    state_time="$(progress_field updated_utc)"
+    dirty_paths="$(git status --porcelain --untracked-files=all 2>/dev/null | wc -l | tr -d ' ' || printf 'unknown')"
+    printf '[heartbeat] %sZ elapsed=%ss remaining=%ss phase=%s last_phase_at=%s session=%s/%s attempt=%s/%s completed=%s failed=%s verified_checkpoints=%s verified_sha=%s head=%s dirty_paths=%s idle_watchdog=%ss detail="%s"\n' \
+      "$stamp" "$elapsed" "$remaining" "\${phase:-unknown}" "\${state_time:-unknown}" \
+      "\${current_session:-0}" "$KILO_MAX_SESSIONS" "\${current_attempt:-0}" "\${MAX_TRANSIENT_ATTEMPTS:-5}" \
+      "\${completed:-0}" "\${failed:-0}" "\${checkpoints:-0}" "\${verified_sha:-none}" "\${state_head:-unknown}" \
+      "\${dirty_paths:-unknown}" "$KILO_IDLE_TIMEOUT_SECONDS" "\${detail:-unknown}"
     active_log=""
-    if [ -f "$HEARTBEAT_STATE_FILE" ]; then
-      IFS= read -r active_log < "$HEARTBEAT_STATE_FILE" || true
-    fi
+    if [ -f "$HEARTBEAT_STATE_FILE" ]; then IFS= read -r active_log < "$HEARTBEAT_STATE_FILE" || true; fi
     if [ -n "$active_log" ] && [ -f "$active_log" ]; then
       last_output_epoch="$(stat -c '%Y' "$active_log" 2>/dev/null || printf '%s' "$now_epoch")"
       silent_for=$((now_epoch - last_output_epoch))
-      printf '[heartbeat] %sZ Kilo output silence=%ss idle watchdog=%ss\n' "$stamp" "$silent_for" "$KILO_IDLE_TIMEOUT_SECONDS"
+      printf '[activity] worker_log=%s output_silence=%ss idle_watchdog_remaining=%ss\n' "$(basename "$active_log")" "$silent_for" "$((KILO_IDLE_TIMEOUT_SECONDS - silent_for))"
+      python3 - "$active_log" <<'PY'
+import re
+import sys
+from pathlib import Path
+try:
+    lines = Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace").splitlines()[-3:]
+except OSError:
+    lines = []
+for line in lines:
+    line = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", line)
+    line = re.sub(r"(?i)(authorization\s*:\s*bearer)\s+\S+", r"\1 [REDACTED]", line)
+    line = re.sub(r"(?i)\bbearer\s+[A-Za-z0-9._~+/\-=]{8,}", "Bearer [REDACTED]", line)
+    line = re.sub(r"\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b", "[REDACTED_GITHUB_TOKEN]", line)
+    line = re.sub(r"\bsk-[A-Za-z0-9_-]{20,}\b", "[REDACTED_API_KEY]", line)
+    line = re.sub(r"(?i)\b(GITHUB_TOKEN|GH_TOKEN|KILO_API_KEY|API_KEY|ACCESS_TOKEN|SECRET_KEY|PASSWORD)\s*[:=]\s*\S+", r"\1=[REDACTED]", line)
+    line = " ".join(line.split())[:220]
+    if line: print(f"[worker-tail] {line}")
+PY
     else
-      printf '[heartbeat] %sZ Kilo invocation=starting-or-between-attempts idle watchdog=%ss\n' "$stamp" "$KILO_IDLE_TIMEOUT_SECONDS"
+      printf '[activity] no active worker invocation; phase=%s\n' "\${phase:-unknown}"
     fi
-    sleep 60
+    if [ -f "$SUPERVISOR_LOOP_LOG" ]; then
+      review_started="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ started' "$SUPERVISOR_LOOP_LOG" || true)"
+      supervisor_event="$(grep -E '\[loop-supervisor\].*(review [0-9]+ started|appended cumulative advice|complete;|timed out|returned exit|feedback append failed|stopped;|unexpected monitor failure)' "$SUPERVISOR_LOOP_LOG" | tail -n 1 | cut -c1-220 || true)"
+    else
+      review_started=0
+      supervisor_event="no supervisor log yet"
+    fi
+    read -r journal_units cursor_offset advice_entries < <(python3 - "$SUPERVISOR_FEEDBACK_FILE" "$SUPERVISOR_FEEDBACK_CURSOR_FILE" <<'PY'
+import json
+import sys
+from pathlib import Path
+journal_path, cursor_path = map(Path, sys.argv[1:3])
+try:
+    journal = journal_path.read_text(encoding="utf-8", errors="replace")
+except OSError:
+    journal = ""
+try:
+    cursor = json.loads(cursor_path.read_text(encoding="utf-8"))
+    offset = int(cursor.get("offset", 0))
+except (OSError, ValueError, TypeError, json.JSONDecodeError):
+    offset = 0
+print(len(journal.encode("utf-16-le")) // 2, offset, journal.count("--- SUPERVISOR ADVICE ENTRY"))
+PY
+    )
+    journal_units="\${journal_units:-0}"
+    cursor_offset="\${cursor_offset:-0}"
+    advice_entries="\${advice_entries:-0}"
+    pending_units=$((journal_units - cursor_offset))
+    if [ "$pending_units" -lt 0 ]; then pending_units=0; fi
+    printf '[supervisor-status] reviews_started=%s advice_entries=%s journal_units=%s injected_cursor_units=%s queued_not_yet_injected_units=%s latest_event="%s"\n' \
+      "\${review_started:-0}" "\${advice_entries:-0}" "$journal_units" "$cursor_offset" "$pending_units" "\${supervisor_event:-unknown}"
+    sleep 30
   done
 }
 
 heartbeat &
 heartbeat_pid=$!
+write_progress "worker-loop-ready" "30-second live status heartbeat active"
 trap 'kill "$heartbeat_pid" 2>/dev/null || true; if [ -n "${supervisor_loop_pid:-}" ]; then kill -TERM "$supervisor_loop_pid" 2>/dev/null || true; wait "$supervisor_loop_pid" 2>/dev/null || true; fi; rm -f "$HEARTBEAT_STATE_FILE" "$SUPERVISOR_ACTIVE_LOG_POINTER" "$SUPERVISOR_FEEDBACK_FILE" "$SUPERVISOR_FEEDBACK_CURSOR_FILE" "$SUPERVISOR_OBJECTIVE_FILE"' EXIT
 
 # Project changes exclude workflow definitions and control-only markers.
@@ -332,6 +451,9 @@ project_worktree_changes() {
 }
 
 failed_sessions=0
+sessions_completed=0
+persisted_checkpoints=0
+last_verified_checkpoint_sha="none"
 consecutive_failures=0
 idle_timeout_retry_count=0
 project_progress=0
@@ -361,6 +483,7 @@ while true; do
   transient_retry_backoff=15
   session_attempt=0
   echo "Starting sequential Kilo session ${agent_index}; remaining safety budget ${remaining}s."
+  write_progress "session-start" "starting session ${agent_index} of ${KILO_MAX_SESSIONS}"
   while true; do
     session_attempt=$((session_attempt + 1))
     attempt_log="$RUNNER_TEMP/kilo-session-${agent_index}-attempt-${session_attempt}.log"
@@ -370,6 +493,7 @@ while true; do
     printf '%s\n' "$attempt_log" > "$HEARTBEAT_STATE_FILE"
     printf '%s\n' "$attempt_log" > "$SUPERVISOR_ACTIVE_LOG_POINTER"
     echo "Kilo invocation attempt ${session_attempt} for session ${agent_index}; transient upstream failures use bounded retries."
+    write_progress "invocation-start" "Kilo worker process invoked"
     SESSION_REPORT_PREFIX=".kilo/supervisor-reports/run-${GITHUB_RUN_ID:-local}-attempt-${GITHUB_RUN_ATTEMPT:-1}-session-${agent_index}-invocation-${session_attempt}"
     session_command="${command}
 
@@ -386,6 +510,7 @@ SESSION-SCOPED SUPERVISOR OUTPUT CONTEXT
     rc=${PIPESTATUS[0]}
     set -e
     rm -f "$HEARTBEAT_STATE_FILE"
+    write_progress "invocation-exit" "Kilo invocation returned exit_code=${rc}"
     if [ "$rc" -eq 0 ]; then break; fi
     # Normalize ANSI color/control sequences before classifying provider errors.
     normalized_attempt_log="$attempt_log.normalized"
@@ -420,6 +545,7 @@ PY
       remaining_global=$((cutoff_epoch - $(date +%s)))
       if [ "$remaining_global" -le "$retry_delay" ]; then echo "::warning::Transient upstream/network failure detected, but insufficient workflow time remains for another retry."; break; fi
       echo "::warning::Transient upstream/network/idle failure in session ${agent_index}; retry #${idle_timeout_retry_count} after ${retry_delay}s (bounded to $MAX_TRANSIENT_ATTEMPTS invocation attempts)."
+      write_progress "retry-cooldown" "sleeping ${retry_delay}s before provider/network retry"
       sleep "$retry_delay"
       if [ "$transient_retry_backoff" -lt 300 ]; then
         transient_retry_backoff=$((transient_retry_backoff * 2))
@@ -449,6 +575,7 @@ RECOVERY_PROMPT
     if [ "$remaining_recovery" -ge 60 ]; then
       recovery_log="$RUNNER_TEMP/kilo-session-${agent_index}-recovery.log"
       echo "::warning::${correction_reason}; starting one bounded corrective pass."
+      write_progress "corrective-pass-start" "${correction_reason}; bounded corrective pass"
       : > "$recovery_log"
       printf '%s\n' "$recovery_log" > "$HEARTBEAT_STATE_FILE"
       printf '%s\n' "$recovery_log" > "$SUPERVISOR_ACTIVE_LOG_POINTER"
@@ -457,6 +584,7 @@ RECOVERY_PROMPT
       recovery_rc=${PIPESTATUS[0]}
       set -e
       rm -f "$HEARTBEAT_STATE_FILE"
+      write_progress "corrective-pass-exit" "corrective invocation returned exit_code=${recovery_rc}"
       mkdir -p "$RUNNER_TEMP/kilo-failure-logs"
       tail -n 2000 "$session_log" > "$RUNNER_TEMP/kilo-failure-logs/corrective-session-${agent_index}.log" || true
       if [ "$recovery_rc" -eq 0 ]; then
@@ -550,6 +678,7 @@ RECOVERY_PROMPT
       ':(exclude)**/*.tmp' ':(exclude)**/coverage.xml' ':(exclude)**/.coverage' \
       ':(exclude)**/kilo-session-*.log'
   }
+  write_progress "checkpoint-staging" "staging project changes; workflow definitions excluded"
   checkpoint_ready=1
   if ! stage_repository_changes; then
     echo "::warning::Staging failed; preserving worktree and allowing the next session to retry."
@@ -616,6 +745,7 @@ PY
   if [ "$checkpoint_ready" -eq 1 ] && ! git diff --cached --quiet; then
     if git commit --allow-empty-message -m ""; then
       committed_this_iteration=1
+      write_progress "checkpoint-committed" "local checkpoint created; remote verification pending"
     else
       echo "::warning::Checkpoint commit failed; retaining worktree for the next session."
       checkpoint_ready=0
@@ -638,6 +768,7 @@ PY
         break
       fi
       push_attempt=$((push_attempt + 1))
+      write_progress "checkpoint-push" "remote reconciliation/persistence attempt=${push_attempt}"
       if ! git fetch origin "$DEFAULT_BRANCH"; then
         echo "::warning::Fetch failed on persistence attempt $push_attempt; retrying."
       elif ! git merge-base --is-ancestor "origin/$DEFAULT_BRANCH" HEAD; then
@@ -651,6 +782,7 @@ PY
         if [ -n "$remote_sha" ] && [ "$remote_sha" = "$local_sha" ]; then
           persisted=1
           echo "Repository persistence verified at $remote_sha after $push_attempt attempt(s)."
+          write_progress "checkpoint-verified" "remote head verified at ${remote_sha} after ${push_attempt} attempt(s)"
           break
         fi
         echo "::warning::Remote head did not match the local checkpoint after attempt $push_attempt; refetching."
@@ -668,6 +800,11 @@ PY
     echo "::warning::Checkpoint persistence was not confirmed. No success claim is made; stopping edits and preserving diagnostics before the cutoff."
     cutoff=1
   fi
+  if [ "$persisted" -eq 1 ] && [ "$committed_this_iteration" -eq 1 ]; then
+    persisted_checkpoints=$((persisted_checkpoints + 1))
+    last_verified_checkpoint_sha="$(git rev-parse --short HEAD)"
+  fi
+  write_progress "checkpoint-result" "persisted=${persisted} committed=${committed_this_iteration} project_changes=${checkpoint_has_project_changes}"
   if [ "$persisted" -eq 1 ] && [ "$committed_this_iteration" -eq 1 ] && [ "$checkpoint_has_project_changes" -eq 1 ]; then
     project_progress=1
     echo "Meaningful repository progress checkpoint verified at $(git rev-parse HEAD)."
@@ -684,11 +821,14 @@ PY
   if [ "$consecutive_failures" -ge 5 ]; then
     echo "::warning::At least five consecutive sessions have failed; continuing with fresh sessions rather than ending the action."
   fi
+  sessions_completed=$((sessions_completed + 1))
+  write_progress "session-complete" "exit_code=${rc} persisted=${persisted} progress=${project_progress}"
   if [ "$cutoff" -eq 1 ]; then
     break
   fi
   if [ "$agent_index" -ge "$KILO_MAX_SESSIONS" ]; then
     session_limit_reached=1
+    write_progress "session-limit-reached" "configured cap reached after checkpoint handling"
     echo "::notice::Configured session limit of ${KILO_MAX_SESSIONS} reached after the session checkpoint."
     break
   fi
@@ -703,6 +843,7 @@ PY
     if [ "$backoff_seconds" -gt "$remaining" ]; then backoff_seconds="$remaining"; fi
     if [ "$backoff_seconds" -gt 0 ]; then
       echo "Provider cooldown: waiting ${backoff_seconds}s; no fixed failure-count limit."
+      write_progress "provider-cooldown" "waiting ${backoff_seconds}s due to provider pressure"
       sleep "$backoff_seconds"
     fi
   elif [ "$consecutive_failures" -gt 0 ]; then
@@ -715,6 +856,7 @@ PY
     jitter_seconds=$((RANDOM % 8))
     backoff_seconds=$((backoff_seconds + jitter_seconds))
     echo "Waiting ${backoff_seconds}s before the next agent session to reduce transient provider/network contention."
+    write_progress "session-cooldown" "waiting ${backoff_seconds}s before next session"
     sleep "$backoff_seconds"
   fi
 done
@@ -722,11 +864,46 @@ done
 if [ "$cutoff" -eq 1 ]; then
   echo "::warning::The 355-minute safety cutoff was reached; see checkpoint verification messages above."
 fi
+if [ "$session_limit_reached" -eq 1 ]; then
+  write_progress "controller-finished" "selected session cap reached"
+elif [ "$cutoff" -eq 1 ]; then
+  write_progress "controller-finished" "355-minute hard cutoff reached"
+else
+  write_progress "controller-finished" "controller loop finished"
+fi
+read -r final_journal_units final_cursor_offset final_advice_entries < <(python3 - "$SUPERVISOR_FEEDBACK_FILE" "$SUPERVISOR_FEEDBACK_CURSOR_FILE" <<'PY'
+import json
+import sys
+from pathlib import Path
+journal_path, cursor_path = map(Path, sys.argv[1:3])
+try:
+    journal = journal_path.read_text(encoding="utf-8", errors="replace")
+except OSError:
+    journal = ""
+try:
+    cursor = json.loads(cursor_path.read_text(encoding="utf-8"))
+    offset = int(cursor.get("offset", 0))
+except (OSError, ValueError, TypeError, json.JSONDecodeError):
+    offset = 0
+print(len(journal.encode("utf-16-le")) // 2, offset, journal.count("--- SUPERVISOR ADVICE ENTRY"))
+PY
+)
+final_pending_units=$((final_journal_units - final_cursor_offset))
+if [ "$final_pending_units" -lt 0 ]; then final_pending_units=0; fi
+final_review_count="$(grep -Ec '[loop-supervisor].*review [0-9]+ started' "$SUPERVISOR_LOOP_LOG" || true)"
 printf 'project_progress=%s\n' "$project_progress" >> "$GITHUB_OUTPUT"
 printf 'failed_sessions=%s\n' "$failed_sessions" >> "$GITHUB_OUTPUT"
 printf 'idle_timeout_retries=%s\n' "$idle_timeout_retry_count" >> "$GITHUB_OUTPUT"
 printf 'session_limit=%s\n' "$KILO_MAX_SESSIONS" >> "$GITHUB_OUTPUT"
 printf 'sessions_started=%s\n' "$agent_index" >> "$GITHUB_OUTPUT"
+printf 'sessions_completed=%s\n' "$sessions_completed" >> "$GITHUB_OUTPUT"
+printf 'persisted_checkpoints=%s\n' "$persisted_checkpoints" >> "$GITHUB_OUTPUT"
+printf 'last_verified_checkpoint_sha=%s\n' "$last_verified_checkpoint_sha" >> "$GITHUB_OUTPUT"
+printf 'supervisor_review_count=%s\n' "$final_review_count" >> "$GITHUB_OUTPUT"
+printf 'supervisor_advice_entries=%s\n' "$final_advice_entries" >> "$GITHUB_OUTPUT"
+printf 'supervisor_pending_units=%s\n' "$final_pending_units" >> "$GITHUB_OUTPUT"
+printf 'final_phase=%s\n' "$(progress_field phase)" >> "$GITHUB_OUTPUT"
+printf 'final_phase_detail=%s\n' "$(progress_field detail)" >> "$GITHUB_OUTPUT"
 if [ "$failed_sessions" -gt 0 ]; then
   echo "::warning::$failed_sessions Kilo session(s) failed during this activation. Session-level failures did not stop the action; upstream idle/network retries: $idle_timeout_retry_count."
 fi

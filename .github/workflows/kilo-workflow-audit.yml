@@ -113,6 +113,23 @@ jobs:
           grep -Fq "printf 'session_limit=%s" "$controller"
           grep -Fq "printf 'sessions_started=%s" "$controller"
           echo "Kilo bounded recovery, configurable session count, and 355-minute cutoff guardrails: OK"
+          for marker in \
+            "write_progress()" \
+            'phase=invocation-start' \
+            'phase=checkpoint-push' \
+            'phase=checkpoint-result' \
+            'phase=session-complete' \
+            'queued_not_yet_injected_units' \
+            'worker-tail' \
+            'sleep 30' \
+            'kilo-progress-trace-' \
+            'supervisor_pending_units' \
+            'persisted_checkpoints'; do
+            grep -Fq -- "$marker" "$controller" "$workflow" || {
+              echo "::error::Missing live-transparency marker: $marker"
+              exit 1
+            }
+          done
 
   validate-supervisor:
     runs-on: ubuntu-24.04

@@ -49,13 +49,27 @@ jobs:
           IDLE_TIMEOUT_RETRIES: ${{ steps.kilo_controller.outputs.idle_timeout_retries }}
           SESSION_LIMIT: ${{ steps.kilo_controller.outputs.session_limit }}
           SESSIONS_STARTED: ${{ steps.kilo_controller.outputs.sessions_started }}
+          SESSIONS_COMPLETED: ${{ steps.kilo_controller.outputs.sessions_completed }}
+          PERSISTED_CHECKPOINTS: ${{ steps.kilo_controller.outputs.persisted_checkpoints }}
+          LAST_VERIFIED_CHECKPOINT_SHA: ${{ steps.kilo_controller.outputs.last_verified_checkpoint_sha }}
+          SUPERVISOR_REVIEW_COUNT: ${{ steps.kilo_controller.outputs.supervisor_review_count }}
+          SUPERVISOR_ADVICE_ENTRIES: ${{ steps.kilo_controller.outputs.supervisor_advice_entries }}
+          SUPERVISOR_PENDING_UNITS: ${{ steps.kilo_controller.outputs.supervisor_pending_units }}
+          FINAL_PHASE: ${{ steps.kilo_controller.outputs.final_phase }}
+          FINAL_PHASE_DETAIL: ${{ steps.kilo_controller.outputs.final_phase_detail }}
         shell: bash
         run: |
           {
             echo "## Kilo controller health"
             echo "- Controller step outcome: \`$CONTROLLER_OUTCOME\`"
             echo "- Session policy: stop at the selected cap (${SESSION_LIMIT:-unknown} sessions) or the global 355-minute hard cutoff, whichever comes first."
-            echo "- Worker sessions started: ${SESSIONS_STARTED:-unknown}"
+            echo "- Worker sessions started: ${SESSIONS_STARTED:-unknown}; completed: ${SESSIONS_COMPLETED:-unknown}"
+            echo "- Last phase: ${FINAL_PHASE:-unknown} — ${FINAL_PHASE_DETAIL:-unknown}"
+            echo "- Controller-verified persisted checkpoints: ${PERSISTED_CHECKPOINTS:-0}"
+            echo "- Last controller-verified checkpoint SHA: ${LAST_VERIFIED_CHECKPOINT_SHA:-none}"
+            echo "- Supervisor reviews started: ${SUPERVISOR_REVIEW_COUNT:-0}"
+            echo "- Cumulative supervisor advice entries: ${SUPERVISOR_ADVICE_ENTRIES:-0}"
+            echo "- Advice journal units queued but not yet injected at shutdown: ${SUPERVISOR_PENDING_UNITS:-0}"
             echo "- Verified meaningful project progress: ${PROJECT_PROGRESS:-unknown}"
             echo "- Failed Kilo sessions: ${FAILED_SESSIONS:-unknown}"
             echo "- Upstream idle/network retries: ${IDLE_TIMEOUT_RETRIES:-unknown}"
@@ -66,6 +80,19 @@ jobs:
               echo "::warning::Session failures and no-progress outcomes are recorded, but do not terminate the routine action early."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Kilo progress and supervisor trace
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: kilo-progress-trace-\${{ github.run_id }}
+          path: |
+            \${{ runner.temp }}/kilo-progress-*.log
+            \${{ runner.temp }}/kilo-progress-state-*.txt
+            \${{ runner.temp }}/kilo-supervisor-loop-*.log
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Upload Kilo failure transcripts
         if: always()
