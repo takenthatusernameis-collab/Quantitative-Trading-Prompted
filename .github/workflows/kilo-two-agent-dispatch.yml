@@ -1,4 +1,4 @@
-name: Gated two-agent Kilo dispatcher
+name: Gated Kilo dispatcher
 
 on:
   workflow_run:
@@ -81,8 +81,9 @@ jobs:
             fi
           fi
 
-          # A marker on origin/main authorizes exactly one two-session campaign.
-          # The current controller removes it after session two or the safety cutoff.
+          # A marker on origin/main authorizes one validation-gated activation.
+          # The controller consumes the marker after session two or at cutoff,
+          # but the active Kilo run continues until the global cutoff.
           if ! git cat-file -e "origin/$DEFAULT_BRANCH:.kilo/TWO_AGENT_ONCE" 2>/dev/null; then
             echo "::notice::No one-shot marker is present on the live default branch; nothing to dispatch."
             exit 0
@@ -102,7 +103,7 @@ jobs:
           while [ "$attempt" -lt 3 ]; do
             attempt=$((attempt + 1))
             if timeout --signal=TERM --kill-after=5s 20s gh workflow run main.yml --ref "$DEFAULT_BRANCH"; then
-              echo "Dispatched exactly two sequential Kilo sessions after successful validation."
+              echo "Dispatched a validation-gated Kilo activation; the run continues until the global cutoff."
               exit 0
             fi
             if [ "$attempt" -lt 3 ]; then
