@@ -167,11 +167,12 @@ GENERAL RELIABILITY AND PROGRESS RULES
 
 MANDATORY LOOP-SUPERVISOR PROTOCOL
 
-A. START EACH WORKER SESSION IN PARALLEL
-- At the start of each Kilo worker session, invoke exactly one `loop-supervisor` task with `background: true`. Give it the current objective, acceptance criteria, relevant files, recent handoff, and any already-known errors. Tell it to write its startup review to the unique startup-report path supplied in SESSION-SCOPED SUPERVISOR OUTPUT CONTEXT.
-- The supervisor is a finite independent reviewer, not a persistent watcher. Start it and immediately continue the assigned task; do not poll or wait for the startup review. Incorporate its returned findings when Kilo delivers them.
-- If background tasks or the supervisor are unavailable, report that limitation in the handoff and continue the assigned task without terminating the workflow or repeatedly retrying the unavailable mechanism.
-- Never launch duplicate startup reviews in the same worker invocation.
+A. CONTINUOUS SUPERVISION FROM WORKER START
+- The controller starts a separate read/write-restricted `loop-supervisor` review process immediately before the first worker invocation. It reviews the current task and the latest worker/repository evidence immediately, then on a 60-second cadence.
+- New or materially changed supervisor feedback is injected into the next worker tool result by the `loop-supervisor-feedback` plugin. Read it, assess it against current evidence, and either take the smallest safe verified action or explicitly explain why it is unsuitable.
+- A one-minute review is not a promise that the model can interrupt a tool call or active generation. Feedback arrives at the next tool-result boundary. The monitor still records its scheduled review and status every minute.
+- Do not spawn an additional background startup review; the controller-managed continuous monitor is authoritative. You may still invoke a targeted foreground supervisor task for a failure loop, using a unique report path.
+- If the plugin, monitor, or supervisor is unavailable, continue the assigned task using the best available evidence. No supervisor failure may terminate or restart the worker.
 
 B. ESCALATE TO A FOREGROUND SUPERVISOR ON A FAILURE LOOP
 Consult `loop-supervisor` using a foreground Task call and await its result when any one condition is observed:
@@ -252,6 +253,34 @@ fi
 
 echo "Repository default branch: $DEFAULT_BRANCH"
 
+# Continuous supervisor starts before the first Kilo worker invocation and keeps
+# reviewing the active attempt throughout the controller's cutoff-bound session loop.
+SUPERVISOR_FEEDBACK_FILE="$RUNNER_TEMP/kilo-supervisor-feedback-\${GITHUB_RUN_ID:-local}-\${GITHUB_RUN_ATTEMPT:-1}.md"
+SUPERVISOR_ACTIVE_LOG_POINTER="$RUNNER_TEMP/kilo-supervisor-active-attempt"
+SUPERVISOR_OBJECTIVE_FILE="$RUNNER_TEMP/kilo-supervisor-objective-\${GITHUB_RUN_ID:-local}-\${GITHUB_RUN_ATTEMPT:-1}.txt"
+SUPERVISOR_LOOP_LOG="$RUNNER_TEMP/kilo-supervisor-loop-\${GITHUB_RUN_ID:-local}-\${GITHUB_RUN_ATTEMPT:-1}.log"
+: > "$SUPERVISOR_ACTIVE_LOG_POINTER"
+: > "$SUPERVISOR_FEEDBACK_FILE"
+printf '%s\n' "$command" > "$SUPERVISOR_OBJECTIVE_FILE"
+export KILO_SUPERVISOR_FEEDBACK_FILE="$SUPERVISOR_FEEDBACK_FILE"
+supervisor_loop_pid=""
+python3 .github/scripts/kilo-supervisor-loop.py \
+  --repo-root "$PWD" \
+  --runtime-root "$RUNNER_TEMP" \
+  --active-log-pointer "$SUPERVISOR_ACTIVE_LOG_POINTER" \
+  --objective-file "$SUPERVISOR_OBJECTIVE_FILE" \
+  --feedback-file "$SUPERVISOR_FEEDBACK_FILE" \
+  --report-dir .kilo/supervisor-reports \
+  --kilo "$RUNNER_TEMP/kilo/node_modules/.bin/kilo" \
+  --model kilo/kilo-auto/free \
+  --interval-seconds 60 \
+  --review-timeout-seconds 45 \
+  --run-id "\${GITHUB_RUN_ID:-local}" \
+  --run-attempt "\${GITHUB_RUN_ATTEMPT:-1}" \
+  > >(tee -a "$SUPERVISOR_LOOP_LOG") 2>&1 &
+supervisor_loop_pid=$!
+echo "[loop-supervisor] Started alongside the Kilo worker; immediate review plus one-minute cadence (PID $supervisor_loop_pid)."
+
 heartbeat() {
   while true; do
     stamp="$(date -u +%Y-%m-%dT%H:%M:%S)"
@@ -273,7 +302,7 @@ heartbeat() {
 
 heartbeat &
 heartbeat_pid=$!
-trap 'kill "$heartbeat_pid" 2>/dev/null || true; rm -f "$HEARTBEAT_STATE_FILE"' EXIT
+trap 'kill "$heartbeat_pid" 2>/dev/null || true; if [ -n "\${supervisor_loop_pid:-}" ]; then kill -TERM "$supervisor_loop_pid" 2>/dev/null || true; wait "$supervisor_loop_pid" 2>/dev/null || true; fi; rm -f "$HEARTBEAT_STATE_FILE" "$SUPERVISOR_ACTIVE_LOG_POINTER" "$SUPERVISOR_FEEDBACK_FILE" "$SUPERVISOR_OBJECTIVE_FILE"' EXIT
 
 # Project changes exclude workflow definitions and control-only markers.
 project_worktree_changes() {
@@ -326,6 +355,7 @@ while true; do
     if [ "$remaining_global" -le 0 ]; then rc=124; echo "::warning::355-minute workflow cutoff reached before attempt ${session_attempt}."; break; fi
     : > "$attempt_log"
     printf '%s\n' "$attempt_log" > "$HEARTBEAT_STATE_FILE"
+    printf '%s\n' "$attempt_log" > "$SUPERVISOR_ACTIVE_LOG_POINTER"
     echo "Kilo invocation attempt ${session_attempt} for session ${agent_index}; transient upstream failures use bounded retries."
     SESSION_REPORT_PREFIX=".kilo/supervisor-reports/run-${GITHUB_RUN_ID:-local}-attempt-${GITHUB_RUN_ATTEMPT:-1}-session-${agent_index}-invocation-${session_attempt}"
     session_command="${command}
@@ -408,6 +438,7 @@ RECOVERY_PROMPT
       echo "::warning::${correction_reason}; starting one bounded corrective pass."
       : > "$recovery_log"
       printf '%s\n' "$recovery_log" > "$HEARTBEAT_STATE_FILE"
+      printf '%s\n' "$recovery_log" > "$SUPERVISOR_ACTIVE_LOG_POINTER"
       set +e
       KILO_PRIOR_FAILURE_LOG="$session_log" timeout --signal=TERM --kill-after=10s "${remaining_recovery}s" python3 .github/scripts/kilo-invoke-with-idle-timeout.py --idle-timeout-seconds "$KILO_IDLE_TIMEOUT_SECONDS" -- kilo run --model kilo/kilo-auto/free --auto "$recovery_command" 2>&1 | tee "$recovery_log" | tee -a "$session_log"
       recovery_rc=${PIPESTATUS[0]}

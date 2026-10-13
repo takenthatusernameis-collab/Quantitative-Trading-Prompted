@@ -9,6 +9,9 @@ on:
       - ".github/workflows/kilo-two-agent-dispatch.yml"
       - ".github/scripts/kilo-controller.sh"
       - ".github/scripts/kilo-invoke-with-idle-timeout.py"
+      - ".github/scripts/kilo-supervisor-loop.py"
+      - ".github/scripts/test_kilo_supervisor_loop.py"
+      - ".kilo/plugin/loop-supervisor-feedback.js"
       - ".gitignore"
       - ".kilo/agents/**"
       - ".kilo/supervisor-reports/.gitkeep"
@@ -157,6 +160,27 @@ jobs:
           fi
           rm -f "$probe"
           echo "Supervisor escalation contract and ignored-report behavior: OK"
+      - name: Test minute-cadence supervisor loop and feedback plugin
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile .github/scripts/kilo-supervisor-loop.py .github/scripts/test_kilo_supervisor_loop.py
+          python3 .github/scripts/test_kilo_supervisor_loop.py
+          node --check --input-type=module < .kilo/plugin/loop-supervisor-feedback.js
+          controller=.github/scripts/kilo-controller.sh
+          for marker in \
+            "kilo-supervisor-loop.py" \
+            "SUPERVISOR_ACTIVE_LOG_POINTER" \
+            "KILO_SUPERVISOR_FEEDBACK_FILE" \
+            "Started alongside the Kilo worker" \
+            "supervisor_loop_pid" \
+            "kill -TERM"; do
+            grep -Fq -- "$marker" "$controller" || {
+              echo "::error::Missing continuous supervisor integration marker: $marker"
+              exit 1
+            }
+          done
+          echo "Continuous supervisor loop, redaction, fail-open recovery, plugin syntax, and controller wiring: OK"
       - name: Verify supervisor discovery with the workflow's pinned Kilo CLI
         shell: bash
         run: |
