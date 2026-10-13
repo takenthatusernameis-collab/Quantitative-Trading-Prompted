@@ -22,10 +22,13 @@ MAX_OBJECTIVE_CHARS = 2_500
 MAX_REPORT_CHARS = 3_200
 MAX_PREVIOUS_FEEDBACK_CHARS = 12_000
 MAX_REVIEW_OUTPUT_CHARS = 1_200
+MAX_CLI_TRANSCRIPT_CHARS = 24_000
 
 
 def redact_sensitive_text(text: str) -> str:
-    """Redact common credential formats before text is sent to another model or log."""
+    """Redact common credentials and terminal controls before sharing text."""
+    text = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", text)
+    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
     patterns = [
         (r"(?i)(authorization\s*:\s*bearer)\s+[A-Za-z0-9._~+/\-=]+", r"\1 [REDACTED]"),
         (r"(?i)\bbearer\s+[A-Za-z0-9._~+/\-=]{8,}", "Bearer [REDACTED]"),
@@ -148,14 +151,14 @@ Review cadence target: {cadence_seconds} seconds. Your feedback is advisory. The
 """
 
 
-def atomic_write(path: Path, content: str) -> None:
+def atomic_write(path: Path, content: str, *, ensure_newline: bool = True) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent))
     temporary_path = Path(temporary_name)
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
             handle.write(content)
-            if not content.endswith("\n"):
+            if ensure_newline and not content.endswith("\n"):
                 handle.write("\n")
         os.replace(temporary_path, path)
     finally:
@@ -163,6 +166,37 @@ def atomic_write(path: Path, content: str) -> None:
             temporary_path.unlink()
         except FileNotFoundError:
             pass
+
+
+def transcript_file(transcript_dir: Path, cycle: int, suffix: str, content: str) -> Optional[Path]:
+    """Persist sanitized request/response content under a run-scoped runner-temp directory."""
+    path = transcript_dir / f"review-{cycle:04d}-{suffix}"
+    if not within_directory(path, transcript_dir):
+        log("refusing transcript path outside the configured transcript directory")
+        return None
+    try:
+        atomic_write(path, redact_sensitive_text(content), ensure_newline=False)
+    except OSError as exc:
+        log(f"could not save {suffix} transcript ({type(exc).__name__}); live review continues")
+        return None
+    return path
+
+
+def log_content_block(label: str, content: str) -> None:
+    """Print sanitized message bodies as safe, individually prefixed Actions log lines."""
+    log(f"BEGIN {label}")
+    for line in content.splitlines() or ["(empty)"]:
+        print(f"[supervisor-message] {line}", flush=True)
+    log(f"END {label}")
+
+
+def bounded_cli_transcript(text: str) -> str:
+    safe = redact_sensitive_text(text)
+    if len(safe) <= MAX_CLI_TRANSCRIPT_CHARS:
+        return safe
+    half = MAX_CLI_TRANSCRIPT_CHARS // 2
+    omitted = len(safe) - (half * 2)
+    return safe[:half] + f"\n... [{omitted} characters omitted from CLI diagnostic output; request and advice are stored separately] ...\n" + safe[-half:]
 
 
 def terminate_process_group(process: subprocess.Popen[str]) -> None:
@@ -214,6 +248,7 @@ def run_review(
     previous_feedback: str,
     repo_root: Path,
     report_dir: Path,
+    transcript_dir: Path,
 ) -> Optional[str]:
     global ACTIVE_REVIEW
     report_name = f"run-{args.run_id}-attempt-{args.run_attempt}-review-{cycle:04d}.md"
@@ -226,10 +261,24 @@ def run_review(
     except OSError:
         pass
     report_relative_path = report_path.relative_to(repo_root).as_posix()
-    prompt = build_review_prompt(
+    prompt = redact_sensitive_text(build_review_prompt(
         objective, log_delta, git_snapshot, previous_feedback,
         report_relative_path, cycle, args.interval_seconds,
-    )
+    ))
+    request_path = transcript_file(transcript_dir, cycle, "request-to-supervisor.md", prompt)
+    if request_path:
+        log(f"review {cycle} exact request saved to {request_path}")
+    log_content_block(f"ACTUAL REQUEST SENT TO SUPERVISOR — review {cycle}", prompt)
+
+    def save_cli_output(value: str) -> Optional[Path]:
+        return transcript_file(
+            transcript_dir, cycle, "supervisor-cli-output.txt",
+            bounded_cli_transcript(value or ""),
+        )
+
+    def write_outcome(value: str) -> None:
+        transcript_file(transcript_dir, cycle, "outcome.txt", value)
+
     env = os.environ.copy()
     env["KILO_SUPERVISOR_MODE"] = "1"
     env.pop("KILO_SUPERVISOR_FEEDBACK_FILE", None)
@@ -248,15 +297,27 @@ def run_review(
         except subprocess.TimeoutExpired:
             terminate_process_group(ACTIVE_REVIEW)
             output, _ = ACTIVE_REVIEW.communicate(timeout=2)
+            cli_path = save_cli_output(output or "")
+            if cli_path:
+                log(f"review {cycle} CLI diagnostic output saved to {cli_path}")
+            if output:
+                log_content_block(f"SUPERVISOR CLI OUTPUT BEFORE TIMEOUT — review {cycle}", bounded_cli_transcript(output))
+            write_outcome("Supervisor review timed out before producing a usable report. The worker was not interrupted.")
             log(f"review {cycle} timed out; worker remains unaffected")
             return None
         rc = ACTIVE_REVIEW.returncode
+        cli_path = save_cli_output(output or "")
+        if cli_path:
+            log(f"review {cycle} CLI diagnostic output saved to {cli_path}")
         if rc != 0:
-            safe_tail = redact_sensitive_text(output or "")[-MAX_REVIEW_OUTPUT_CHARS:]
+            safe_tail = bounded_cli_transcript(output or "")[-MAX_REVIEW_OUTPUT_CHARS:]
             detail = safe_tail.replace("\n", " | ").strip()
+            write_outcome(f"Supervisor CLI exited with code {rc}; advice was not published for this cycle.\n\n{safe_tail}")
+            log_content_block(f"SUPERVISOR CLI ERROR OUTPUT — review {cycle}", safe_tail)
             log(f"review {cycle} returned exit {rc}; worker continues. {detail[:500]}")
             return None
     except (OSError, subprocess.SubprocessError) as exc:
+        write_outcome(f"Supervisor review failed to launch or complete: {type(exc).__name__}. Worker continues.")
         log(f"review {cycle} failed to launch or complete ({type(exc).__name__}); worker continues")
         return None
     finally:
@@ -265,17 +326,25 @@ def run_review(
     try:
         report = report_path.read_text(encoding="utf-8", errors="replace").strip()
     except OSError:
+        write_outcome("Supervisor CLI returned without writing its required report. No advice was published; previous advice was retained.")
         log(f"review {cycle} returned without writing its report; previous advice retained")
         return None
     report = redact_sensitive_text(report)[:MAX_REPORT_CHARS].strip()
     if not report:
+        write_outcome("Supervisor wrote an empty report. No advice was published; previous advice was retained.")
         log(f"review {cycle} wrote an empty report; previous advice retained")
         return None
     try:
         report_path.write_text(report + "\n", encoding="utf-8")
     except OSError:
+        write_outcome("Supervisor report could not be sanitized on disk. Feedback was not delivered.")
         log(f"review {cycle} report could not be sanitized; feedback not delivered")
         return None
+    response_path = transcript_file(transcript_dir, cycle, "response-from-supervisor.md", report)
+    if response_path:
+        log(f"review {cycle} actual advice saved to {response_path}")
+    log_content_block(f"ACTUAL ADVICE RETURNED BY SUPERVISOR — review {cycle}", report)
+    write_outcome("Supervisor report was written, redacted, and accepted for cumulative feedback publishing.")
     return report
 
 
@@ -299,6 +368,7 @@ def main() -> int:
     parser.add_argument("--active-log-pointer", type=Path, required=True)
     parser.add_argument("--objective-file", type=Path, required=True)
     parser.add_argument("--feedback-file", type=Path, required=True)
+    parser.add_argument("--transcript-dir", type=Path, required=True)
     parser.add_argument("--report-dir", type=Path, default=Path(".kilo/supervisor-reports"))
     parser.add_argument("--kilo", type=Path, required=True)
     parser.add_argument("--model", default="kilo/kilo-auto/free")
@@ -320,19 +390,21 @@ def main() -> int:
     pointer_file = safe_runtime_path(str(args.active_log_pointer), runtime_root)
     objective_file = safe_runtime_path(str(args.objective_file), runtime_root)
     feedback_file = safe_runtime_path(str(args.feedback_file), runtime_root)
+    transcript_dir = safe_runtime_path(str(args.transcript_dir), runtime_root)
     kilo_path = args.kilo.resolve()
 
     if not repo_root.is_dir():
         parser.error("repository root is not a directory")
     if not within_directory(report_dir, repo_root / ".kilo" / "supervisor-reports"):
         parser.error("report directory must be under .kilo/supervisor-reports")
-    if pointer_file is None or objective_file is None or feedback_file is None:
-        parser.error("active log pointer, objective file, and feedback file must be under runtime root")
+    if pointer_file is None or objective_file is None or feedback_file is None or transcript_dir is None:
+        parser.error("active log pointer, objective file, feedback file, and transcript directory must be under runtime root")
     if not kilo_path.is_file():
         log("pinned Kilo executable is missing; supervisor monitor will exit fail-open")
         return 0
 
     report_dir.mkdir(parents=True, exist_ok=True)
+    transcript_dir.mkdir(parents=True, exist_ok=True)
     previous_feedback = read_bounded(feedback_file, MAX_PREVIOUS_FEEDBACK_CHARS).strip()
     previous_report = ""
     previous_log = ""
@@ -350,11 +422,11 @@ def main() -> int:
             log_delta = current_log
         previous_log = current_log
         git_snapshot = read_git_snapshot(repo_root)
-        log(f"review {cycle} started; new worker-output characters={len(log_delta)}")
+        log(f"review {cycle} started; gathering and recording actual worker evidence and reviewer messages")
         started = time.monotonic()
         report = run_review(
             args, cycle, objective, log_delta, git_snapshot,
-            previous_feedback, repo_root, report_dir,
+            previous_feedback, repo_root, report_dir, transcript_dir,
         )
         if report:
             if report != previous_report:
