@@ -180,5 +180,58 @@ class SupervisorLoopTests(unittest.TestCase):
             self.assertIn("No usable advice returned", dialogue)
 
 
+    def test_three_consecutive_timeouts_open_circuit_breaker_without_worker_failure(self):
+        import contextlib
+        import io
+
+        with tempfile.TemporaryDirectory(prefix="kilo-supervisor-breaker-test-") as temp:
+            root = Path(temp)
+            repo = root / "repo"
+            report_dir = repo / ".kilo" / "supervisor-reports"
+            report_dir.mkdir(parents=True)
+            runtime = root / "runtime"
+            runtime.mkdir()
+            transcripts = runtime / "supervisor-transcripts"
+            pointer = runtime / "active-pointer"
+            pointer.write_text("", encoding="utf-8")
+            objective = runtime / "objective.txt"
+            objective.write_text("Review the active worker safely.\n", encoding="utf-8")
+            feedback = runtime / "feedback.md"
+            feedback.write_text("", encoding="utf-8")
+            fake_kilo = runtime / "slow-kilo"
+            fake_kilo.write_text(
+                "#!/usr/bin/env python3\n"
+                "import time\n"
+                "print('mock slow reviewer started', flush=True)\n"
+                "time.sleep(2)\n",
+                encoding="utf-8",
+            )
+            fake_kilo.chmod(0o755)
+            captured = io.StringIO()
+            with contextlib.redirect_stdout(captured):
+                code = monitor.main_with_args([
+                    "--repo-root", str(repo),
+                    "--runtime-root", str(runtime),
+                    "--active-log-pointer", str(pointer),
+                    "--objective-file", str(objective),
+                    "--feedback-file", str(feedback),
+                    "--transcript-dir", str(transcripts),
+                    "--report-dir", str(report_dir),
+                    "--kilo", str(fake_kilo),
+                    "--interval-seconds", "0.12",
+                    "--review-timeout-seconds", "0.05",
+                    "--max-reviews", "3",
+                    "--run-id", "test-breaker",
+                    "--run-attempt", "1",
+                ])
+            self.assertEqual(code, 0)
+            output = captured.getvalue()
+            self.assertIn("SUPERVISOR_CIRCUIT_BREAKER_OPEN", output)
+            self.assertIn("worker remains unaffected", output)
+            self.assertEqual(output.count("produced no usable report"), 3)
+            dialogues = list(transcripts.glob("review-*-agent-dialogue.md"))
+            self.assertEqual(len(dialogues), 3)
+            self.assertEqual(feedback.read_text(encoding="utf-8"), "")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
