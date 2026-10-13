@@ -117,7 +117,7 @@ def _today() -> str:
 
 
 def _config_hash() -> str:
-    p = REPO_ROOT / "config" / "sectorrotation_candidate_001.yaml
+    p = REPO_ROOT / "config" / "sectorrotation_candidate_001.yaml"
     return hashlib.sha256(p.read_bytes()).hexdigest()[:12]
 
 
