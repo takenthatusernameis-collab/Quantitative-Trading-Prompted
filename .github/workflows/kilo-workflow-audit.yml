@@ -78,13 +78,20 @@ jobs:
           grep -Fq 'Kilo output silence=%ss idle watchdog=%ss' "$controller"
           grep -Fq 'This is the single bounded corrective pass' "$controller"
           grep -Fq 'Hard provider quota/capacity limit detected' "$controller"
-          grep -Fq 'provider_pressure_streak" -ge 3' "$controller"
           grep -Fq 'project_worktree_changes()' "$controller"
           grep -Fq 'git diff --name-only' "$controller"
           grep -Fq 'WORKFLOW_BASE_SHA' "$controller"
           grep -Fq 'correction_failure_block=1' "$controller"
           grep -Fq 'no_progress_block=1' "$controller"
-          grep -Fq 'consecutive_failures" -ge 5' "$controller"
           grep -Fq 'CORRECTIVE_VERIFICATION=PASS' "$controller"
           grep -Fq 'did not provide the required successful-verification marker' "$controller"
-          echo "Kilo bounded recovery guardrails: OK"
+          grep -Fq 'while true; do' "$controller"
+          if grep -Eq 'Five consecutive Kilo sessions failed; stopping|Three consecutive provider rate-limit/capacity failures; stopping|activation stopped because of hard provider limits|No meaningful repository change or durable handoff was committed and verified in this activation' "$controller"; then
+            echo "::error::A failure-count or no-progress guard still terminates the action before the global cutoff."
+            exit 1
+          fi
+          if grep -Fq 'for agent_index in $(seq 1 "$agents"); do' "$controller"; then
+            echo "::error::Routine session loop still ends after a fixed session count."
+            exit 1
+          fi
+          echo "Kilo bounded session recovery and cutoff-only routine termination guardrails: OK"
