@@ -322,7 +322,7 @@ jobs:
           from pathlib import Path
 
           output = Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace")
-          heading = re.search(r"(?m)^loop-supervisor \(subagent\)\s*$", output)
+          heading = re.search(r"(?m)^loop-supervisor \(all\)\s*$", output)
           if heading is None:
               raise SystemExit("Could not isolate loop-supervisor's resolved permission section")
           section = output[heading.end():]
