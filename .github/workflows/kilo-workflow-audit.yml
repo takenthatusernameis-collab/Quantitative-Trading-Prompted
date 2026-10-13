@@ -10,6 +10,21 @@ on:
       - ".github/scripts/kilo-controller.sh"
       - ".kilo/TWO_AGENT_ONCE"
       - ".kilo/SKIP_NEXT_ROUTINE_KILO"
+      - "research/run_cycle15_c4_corrected.py"
+      - "research/validate_cycle15_c4_contract.py"
+      - "config/sectorrotation_candidate_001.yaml"
+      - "src/evaluation/walkforward.py"
+      - "src/data/yfinance_fetcher.py"
+      - "src/evaluation/utils.py"
+  pull_request:
+    paths:
+      - ".github/workflows/kilo-workflow-audit.yml"
+      - "research/run_cycle15_c4_corrected.py"
+      - "research/validate_cycle15_c4_contract.py"
+      - "config/sectorrotation_candidate_001.yaml"
+      - "src/evaluation/walkforward.py"
+      - "src/data/yfinance_fetcher.py"
+      - "src/evaluation/utils.py"
   workflow_dispatch:
 
 permissions:
@@ -36,3 +51,11 @@ jobs:
           done
           bash -n .github/scripts/kilo-controller.sh
           echo ".github/scripts/kilo-controller.sh: Bash syntax OK"
+
+      - name: Verify deterministic C4 source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile research/run_cycle15_c4_corrected.py research/validate_cycle15_c4_contract.py
+          python3 research/validate_cycle15_c4_contract.py
+          ruby -ryaml -e 'cfg = YAML.load_file("config/sectorrotation_candidate_001.yaml"); expected = %w[XLB XLE XLF XLI XLK XLP XLU XLV XLY]; raise "C4 universe mismatch" unless cfg.fetch("universe") == expected; raise "C4 start-date mismatch" unless cfg.fetch("history_start") == "1998-12-22"; raise "C4 signal mismatch" unless cfg.dig("signal", "lookback") == 252 && cfg.dig("signal", "skip") == 21 && cfg.dig("signal", "top_fraction") == 0.5; raise "C4 costs mismatch" unless cfg.dig("cost_model", "total_round_trip_bps") == 3.0; raise "C4 cache policy mismatch" unless cfg.dig("data", "cached") == true && cfg.dig("data", "fetch_new") == false; puts "Frozen C4 YAML contract: PASS (9 ETFs, 252/21/0.5, 3 bps, cache-only)"'
