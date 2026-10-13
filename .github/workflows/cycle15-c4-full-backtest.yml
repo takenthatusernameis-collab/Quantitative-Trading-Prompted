@@ -1,0 +1,255 @@
+name: Cycle 15 C4 cache-only full backtest
+run-name: C4 cache-only backtest @ fa9cd159
+
+on:
+  push:
+    branches:
+      - pilot/deterministic-c4-fixes-20261013
+    paths:
+      - ".github/workflows/cycle15-c4-full-backtest.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cycle15-c4-cache-only-full-backtest
+  cancel-in-progress: false
+
+jobs:
+  c4-full-backtest:
+    name: Pinned C4 backtest with cache preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 355
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout exact corrected-runner revision
+        uses: actions/checkout@v6
+        with:
+          ref: fa9cd1593a190fcfa2523dd02bd3697fa2ccd1af
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Verify pinned revision and tracked cache files
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          expected="fa9cd1593a190fcfa2523dd02bd3697fa2ccd1af"
+          actual="$(git rev-parse HEAD)"
+          if [[ "$actual" != "$expected" ]]; then
+            echo "::error::Expected source revision $expected; checked out $actual."
+            exit 1
+          fi
+
+          symbols=(XLB XLE XLF XLI XLK XLP XLU XLV XLY SPY QQQ IWM TLT GLD EFA EEM)
+          for symbol in "${symbols[@]}"; do
+            path="data/raw/${symbol}.parquet"
+            git ls-files --error-unmatch "$path" >/dev/null
+            test -s "$path"
+          done
+          echo "Pinned source revision verified: $actual"
+          echo "All 16 required market-data cache files are tracked and present."
+          echo "No actions/cache restore, data download, or fetcher command is configured."
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install runtime dependencies
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python -m pip install --disable-pip-version-check \
+            "numpy>=1.24,<3" \
+            "pandas>=2,<4" \
+            "scipy>=1.10" \
+            "arch>=6" \
+            "PyYAML>=6" \
+            "yfinance>=0.2" \
+            "pyarrow>=12"
+
+      - name: Cache-only preflight (before any backtest computation)
+        id: cache_preflight
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python - 2>&1 <<'PY' | tee "$RUNNER_TEMP/c4-cache-preflight.log"
+          import hashlib
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          import pandas as pd
+
+          root = Path.cwd()
+          raw = root / "data" / "raw"
+          sectors = ["XLB", "XLE", "XLF", "XLI", "XLK", "XLP", "XLU", "XLV", "XLY"]
+          core7 = ["SPY", "QQQ", "IWM", "TLT", "GLD", "EFA", "EEM"]
+          symbols = list(dict.fromkeys([*sectors, *core7]))
+          start = pd.Timestamp("1998-12-22", tz="UTC")
+          end = pd.Timestamp("2026-10-09", tz="UTC")
+          expected_sector_end = "2026-10-08"
+          manifest = {
+              "purpose": "cache-only C4 full backtest",
+              "source_revision": subprocess.check_output(
+                  ["git", "rev-parse", "HEAD"], text=True
+              ).strip(),
+              "market_data_downloads_permitted": False,
+              "expected_sector_rows": 6991,
+              "sector_date_range": ["1998-12-22", expected_sector_end],
+              "inputs": [],
+          }
+
+          for symbol in symbols:
+              path = raw / f"{symbol}.parquet"
+              subprocess.run(
+                  ["git", "ls-files", "--error-unmatch", str(path.relative_to(root))],
+                  check=True, stdout=subprocess.DEVNULL,
+              )
+              if not path.is_file() or path.stat().st_size == 0:
+                  raise RuntimeError(f"Missing or empty tracked cache: {path}")
+              frame = pd.read_parquet(path)
+              if frame.empty or "Close" not in frame.columns:
+                  raise RuntimeError(f"{symbol} cache is empty or lacks Close")
+              index = pd.to_datetime(frame.index, utc=True)
+              if index.has_duplicates:
+                  raise RuntimeError(f"Duplicate cache timestamps for {symbol}")
+              close = pd.Series(
+                  pd.to_numeric(frame["Close"], errors="coerce").to_numpy(),
+                  index=index, name="Close",
+              )
+              mask = (close.index >= start) & (close.index <= end)
+              in_window = close.loc[mask]
+              if in_window.empty or in_window.index.max().date().isoformat() < expected_sector_end:
+                  raise RuntimeError(f"{symbol} cache does not cover through {expected_sector_end}")
+              if symbol in sectors:
+                  if len(in_window) != 6991:
+                      raise RuntimeError(
+                          f"{symbol} frozen row-count mismatch: expected 6991, got {len(in_window)}"
+                      )
+                  if in_window.index.min().date().isoformat() != "1998-12-22":
+                      raise RuntimeError(f"{symbol} frozen cache start date mismatch")
+                  if in_window.index.max().date().isoformat() != expected_sector_end:
+                      raise RuntimeError(f"{symbol} frozen cache end date mismatch")
+                  numeric = pd.to_numeric(in_window, errors="coerce")
+                  if numeric.isna().any() or (numeric <= 0).any():
+                      raise RuntimeError(f"{symbol} cache has missing/non-positive Close values")
+              manifest["inputs"].append({
+                  "symbol": symbol,
+                  "path": str(path.relative_to(root)),
+                  "bytes": path.stat().st_size,
+                  "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                  "rows": int(len(frame)),
+                  "first_timestamp": index.min().isoformat(),
+                  "last_timestamp": index.max().isoformat(),
+                  "rows_in_c4_window": int(len(in_window)),
+              })
+
+          out = Path(os.environ["RUNNER_TEMP"]) / "c4-cache-manifest.json"
+          out.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+          print(
+              f"CACHE-ONLY PREFLIGHT PASS: {len(symbols)} tracked parquet inputs; "
+              "9 sector caches each have 6,991 complete positive Close rows from "
+              "1998-12-22 through 2026-10-08. No market-data downloads were made."
+          )
+          print(f"Input hashes written to {out}")
+          PY
+
+      - name: Run corrected Cycle 15 C4 backtest and full validation
+        id: c4_run
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 research/run_cycle15_c4_corrected.py 2>&1 | tee "$RUNNER_TEMP/c4-run.log"
+
+      - name: Stage validated report and research outputs
+        id: stage_validated_outputs
+        if: steps.c4_run.outcome == 'success'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          stage="$RUNNER_TEMP/cycle15-c4-validated"
+          mkdir -p "$stage"
+          cp research/experiments/sectorrotation_baseline_wf_001.md "$stage/"
+          cp data/processed/simulation_sectorrotation_001.parquet "$stage/"
+          cp data/processed/trades_sectorrotation_001.parquet "$stage/"
+          cp data/processed/weights_sectorrotation_001.parquet "$stage/"
+          cp "$RUNNER_TEMP/c4-cache-manifest.json" "$stage/"
+          (
+            cd "$stage"
+            sha256sum \
+              sectorrotation_baseline_wf_001.md \
+              simulation_sectorrotation_001.parquet \
+              trades_sectorrotation_001.parquet \
+              weights_sectorrotation_001.parquet \
+              c4-cache-manifest.json > SHA256SUMS.txt
+          )
+          cat > "$stage/EXECUTION-PROVENANCE.md" <<'EOF'
+          # Cycle 15 C4 validated execution
+
+          - Source revision: fa9cd1593a190fcfa2523dd02bd3697fa2ccd1af
+          - Market-data policy: tracked parquet caches only; new market-data downloads prohibited
+          - Report and three processed parquet outputs are staged only after the corrected runner exits successfully.
+          - The runner's own contract validates cache integrity, all 36 walk-forward folds, finite required metrics, persisted artifacts, report contents, frozen configuration and code-revision provenance.
+          - This workflow does not commit or push generated research outputs back to the repository and does not invoke Kilo.
+          EOF
+          echo "Staged validated report, 3 processed outputs, input-cache hashes, and output checksums."
+
+      - name: Publish validated report and research artifacts
+        if: steps.stage_validated_outputs.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cycle15-c4-validated-${{ github.run_id }}
+          path: ${{ runner.temp }}/cycle15-c4-validated/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Write run summary and diagnostics manifest
+        if: always()
+        shell: bash
+        env:
+          PREFLIGHT_OUTCOME: ${{ steps.cache_preflight.outcome }}
+          BACKTEST_OUTCOME: ${{ steps.c4_run.outcome }}
+          STAGE_OUTCOME: ${{ steps.stage_validated_outputs.outcome }}
+        run: |
+          set -Eeuo pipefail
+          {
+            echo "## Cycle 15 C4 cache-only full backtest"
+            echo "- Pinned code revision: `fa9cd1593a190fcfa2523dd02bd3697fa2ccd1af`"
+            echo "- Cache preflight: `$PREFLIGHT_OUTCOME`"
+            echo "- Corrected backtest + internal artifact/report validation: `$BACKTEST_OUTCOME`"
+            echo "- Validated artifact staging: `$STAGE_OUTCOME`"
+            echo "- Market-data downloads: prohibited; no download/fetch step configured"
+            echo "- Kilo workflow: not invoked"
+            if [[ "$BACKTEST_OUTCOME" == "success" && "$STAGE_OUTCOME" == "success" ]]; then
+              echo "- Result: validated report and processed outputs were staged for artifact publication."
+            else
+              echo "- Result: no research outputs are certified/published as validated. Inspect the diagnostic logs and stop if cache preflight failed."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat > "$RUNNER_TEMP/c4-run-diagnostics.md" <<EOF
+          # Cycle 15 C4 run diagnostics
+
+          - Pinned code revision: fa9cd1593a190fcfa2523dd02bd3697fa2ccd1af
+          - Cache preflight outcome: $PREFLIGHT_OUTCOME
+          - Corrected backtest outcome: $BACKTEST_OUTCOME
+          - Validated output staging outcome: $STAGE_OUTCOME
+          - Market-data downloads: prohibited
+          - Kilo invoked: no
+          EOF
+
+      - name: Publish diagnostic logs (including cache-preflight failures)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cycle15-c4-diagnostics-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/c4-cache-preflight.log
+            ${{ runner.temp }}/c4-run.log
+            ${{ runner.temp }}/c4-run-diagnostics.md
+          if-no-files-found: ignore
+          retention-days: 14
