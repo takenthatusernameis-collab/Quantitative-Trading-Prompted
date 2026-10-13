@@ -8,6 +8,7 @@ on:
       - ".github/workflows/kilo-workflow-audit.yml"
       - ".github/workflows/kilo-two-agent-dispatch.yml"
       - ".github/scripts/kilo-controller.sh"
+      - ".github/scripts/kilo-invoke-with-idle-timeout.py"
       - ".kilo/TWO_AGENT_ONCE"
       - ".kilo/SKIP_NEXT_ROUTINE_KILO"
   workflow_dispatch:
@@ -36,12 +37,39 @@ jobs:
           done
           bash -n .github/scripts/kilo-controller.sh
           echo ".github/scripts/kilo-controller.sh: Bash syntax OK"
+      - name: Validate Kilo invocation idle watchdog
+        shell: bash
+        run: |
+          set -euo pipefail
+          helper=.github/scripts/kilo-invoke-with-idle-timeout.py
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path(".github/scripts/kilo-invoke-with-idle-timeout.py").read_text(encoding="utf-8")
+          compile(source, ".github/scripts/kilo-invoke-with-idle-timeout.py", "exec")
+          PY
+          healthy_log="$RUNNER_TEMP/kilo-watchdog-healthy.log"
+          python3 "$helper" --idle-timeout-seconds 5 -- python3 -c 'print("KILO_WATCHDOG_HEALTHY_OK", flush=True)' > "$healthy_log"
+          grep -Fq "KILO_WATCHDOG_HEALTHY_OK" "$healthy_log"
+          idle_log="$RUNNER_TEMP/kilo-watchdog-idle.log"
+          set +e
+          python3 "$helper" --idle-timeout-seconds 2 -- python3 -c 'import time; print("KILO_WATCHDOG_IDLE_TEST_STARTED", flush=True); time.sleep(10)' > "$idle_log" 2>&1
+          idle_rc=$?
+          set -e
+          if [ "$idle_rc" -ne 124 ]; then
+            cat "$idle_log"
+            echo "::error::Idle watchdog smoke test returned $idle_rc; expected 124."
+            exit 1
+          fi
+          grep -Fq "Kilo invocation idle timeout" "$idle_log"
+          echo "Kilo idle watchdog healthy-command and stalled-command tests: OK"
       - name: Guard bounded retry and correction policy
         shell: bash
         run: |
           set -euo pipefail
           controller=.github/scripts/kilo-controller.sh
           grep -Fq 'MAX_TRANSIENT_ATTEMPTS=5' "$controller"
+          grep -Fq 'kilo-invoke-with-idle-timeout.py' "$controller"
+          grep -Fq 'KILO_IDLE_TIMEOUT_SECONDS:-900' "$controller"
           grep -Fq 'This is the single bounded corrective pass' "$controller"
           grep -Fq 'Hard provider quota/capacity limit detected' "$controller"
           grep -Fq 'provider_pressure_streak" -ge 3' "$controller"
