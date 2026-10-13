@@ -52,7 +52,7 @@ jobs:
           grep -Fq "KILO_WATCHDOG_HEALTHY_OK" "$healthy_log"
           idle_log="$RUNNER_TEMP/kilo-watchdog-idle.log"
           set +e
-          python3 "$helper" --idle-timeout-seconds 2 -- python3 -c 'import time; print("KILO_WATCHDOG_IDLE_TEST_STARTED", flush=True); time.sleep(10)' > "$idle_log" 2>&1
+          python3 "$helper" --idle-timeout-seconds 2 --diagnostic-sample-interval-seconds 1 -- python3 -c 'import time; print("KILO_WATCHDOG_IDLE_TEST_STARTED", flush=True); time.sleep(10)' > "$idle_log" 2>&1
           idle_rc=$?
           set -e
           if [ "$idle_rc" -ne 124 ]; then
@@ -61,7 +61,11 @@ jobs:
             exit 1
           fi
           grep -Fq "Kilo invocation idle timeout" "$idle_log"
-          echo "Kilo idle watchdog healthy-command and stalled-command tests: OK"
+          grep -Fq "KILO_IDLE_DIAGNOSTICS_BEGIN" "$idle_log"
+          grep -Fq "KILO_IDLE_DIAGNOSTICS_END" "$idle_log"
+          grep -Fq "process_group_members:" "$idle_log"
+          grep -Fq "loadavg:" "$idle_log"
+          echo "Kilo idle watchdog healthy-command, stalled-command and diagnostic-capture tests: OK"
       - name: Guard bounded retry and correction policy
         shell: bash
         run: |
