@@ -230,6 +230,19 @@ DEFAULT OPERATING PRINCIPLE
 Make progress despite imperfection. Fix cheap, deterministic blockers. Tolerate isolated recoverable failures. Protect durable progress and critical invariants. Change approach when evidence shows the current one is not working.
 PROMPT
 )
+
+if [ "$idle_circuit_probe" -eq 1 ]; then
+  probe_prefix=$(cat <<'PROBE_PREFIX'
+RECOVERY PROBE AFTER A PERSISTENT KILO IDLE STALL
+
+This activation is deliberately limited to one session because a prior Kilo invocation stalled. Read .kilo/KILO_IDLE_CIRCUIT.json and the repository's latest durable handoff/status before choosing work. Do not blindly repeat the last task or the same approach. First distinguish a task-scope/tooling problem from a provider, authentication, dependency, or network problem using evidence available in this checkout. If there is an actionable, safe root cause, make one small correction and verify it. Otherwise record a concise evidence-based handoff without speculative edits or fake progress. Avoid broad research runs, large backtests, and unrelated refactors. A successful process exit alone does not clear the breaker; only substantive, verified project changes do.
+PROBE_PREFIX
+)
+  command="$probe_prefix
+
+$command"
+fi
+
 DEFAULT_BRANCH="$KILO_DEFAULT_BRANCH"
 
 if [ -z "$DEFAULT_BRANCH" ]; then
