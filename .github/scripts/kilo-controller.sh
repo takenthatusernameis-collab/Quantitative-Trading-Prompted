@@ -162,8 +162,37 @@ GENERAL RELIABILITY AND PROGRESS RULES
 - After five consecutive failures, do not repeat that same approach unchanged a sixth time.
 - Record the observed failures and evidence, then choose a materially different approach.
 - Changing wording, waiting, or retrying an identical operation with unchanged assumptions is not a materially different approach.
-- Do not make speculative changes merely to satisfy this rule. If no safe, evidence-based alternative exists, stop that line of work and prepare a clear handoff.
+- Do not make speculative changes merely to satisfy this rule. If no safe, evidence-based alternative is apparent, consult loop-supervisor once before handing off; if it still cannot identify a safe alternative, preserve the evidence and prepare a clear handoff.
 - Distinguish a recurring deterministic blocker from unrelated transient errors.
+
+MANDATORY LOOP-SUPERVISOR PROTOCOL
+
+A. START EACH WORKER SESSION IN PARALLEL
+- At the start of each Kilo worker session, invoke exactly one `loop-supervisor` task with `background: true`. Give it the current objective, acceptance criteria, relevant files, recent handoff, and any already-known errors. Tell it to write its startup review to the unique startup-report path supplied in SESSION-SCOPED SUPERVISOR OUTPUT CONTEXT.
+- The supervisor is a finite independent reviewer, not a persistent watcher. Start it and immediately continue the assigned task; do not poll or wait for the startup review. Incorporate its returned findings when Kilo delivers them.
+- If background tasks or the supervisor are unavailable, report that limitation in the handoff and continue the assigned task without terminating the workflow or repeatedly retrying the unavailable mechanism.
+- Never launch duplicate startup reviews in the same worker invocation.
+
+B. ESCALATE TO A FOREGROUND SUPERVISOR ON A FAILURE LOOP
+Consult `loop-supervisor` using a foreground Task call and await its result when any one condition is observed:
+- Five consecutive failed attempts without a verified successful outcome.
+- An alternating normalized failure pattern such as A/B/A/B, even though neither individual error occurred five times.
+- The same underlying failure recurs after an attempted correction.
+- Three attempts using substantially the same approach produce no meaningful improvement.
+Do not escalate every transient error: if a retry succeeds and the relevant outcome is verified, continue normally. Normalize away timestamps, request IDs, volatile temporary paths, and line numbers when they do not change the underlying failure.
+
+C. SEND EVIDENCE, NOT JUST AN ERROR LABEL
+- Supply the actual relevant error/output, current objective and acceptance criteria, approaches already tried, changes made, and results of verification. Redact tokens, credentials, secrets, and personal data.
+- Request one evidence-supported diagnosis and one materially different, reversible next step, plus a focused verification check.
+- Use the session-scoped escalation report path supplied below. Keep supervisor calls sequential: do not launch concurrent duplicate reviews for the same failure cluster.
+- After receiving advice, either apply a materially different approach and verify it, or explain why the advice is unsupported/infeasible and choose another evidence-based approach. If a new approach fails, the worker may escalate again with updated evidence; do not repeatedly ask the same question without testing or updating evidence.
+- Treat the supervisor's returned Task result as the primary communication channel. The written report is supplementary traceability, not proof that the worker received or acted on the advice.
+
+D. BOUNDS AND FAILURE BEHAVIOR
+- The supervisor may diagnose and write only its report; the worker remains responsible for code changes, commands, tests, and commits.
+- The supervisor cannot run shell commands, use the network, delegate to other agents, change configuration, control workflows, or end the worker session.
+- A supervisor error, timeout, unavailable capability, or inconclusive answer must not end this worker session or the GitHub Actions run. Continue safely using available evidence.
+- Before handing off an unresolved task, consult the supervisor once for that unresolved failure cluster unless it is unavailable or unsafe to do so. Then preserve a precise, evidence-based handoff.
 
 3. HANDLE ERRORS PROPORTIONATELY
 - For transient network, provider, rate-limit, timeout, and service errors, preserve progress, use bounded backoff, and honor available retry instructions.
@@ -298,8 +327,19 @@ while true; do
     : > "$attempt_log"
     printf '%s\n' "$attempt_log" > "$HEARTBEAT_STATE_FILE"
     echo "Kilo invocation attempt ${session_attempt} for session ${agent_index}; transient upstream failures use bounded retries."
+    SESSION_REPORT_PREFIX=".kilo/supervisor-reports/run-${GITHUB_RUN_ID:-local}-attempt-${GITHUB_RUN_ATTEMPT:-1}-session-${agent_index}-invocation-${session_attempt}"
+    session_command="${command}
+
+SESSION-SCOPED SUPERVISOR OUTPUT CONTEXT
+- GitHub Actions run ID: ${GITHUB_RUN_ID:-local}
+- Run attempt: ${GITHUB_RUN_ATTEMPT:-1}
+- Worker session index: ${agent_index}; CLI invocation attempt: ${session_attempt}
+- Startup review report path: ${SESSION_REPORT_PREFIX}-startup.md
+- For each later supervisor escalation, use ${SESSION_REPORT_PREFIX}-escalation-NN.md, replacing NN with a unique, increasing two-digit number for this invocation.
+- Reports are temporary diagnostics under .kilo/supervisor-reports/ and must not be treated as research outputs or project deliverables.
+"
     set +e
-    timeout --signal=TERM --kill-after=10s "${remaining_global}s" python3 .github/scripts/kilo-invoke-with-idle-timeout.py --idle-timeout-seconds "$KILO_IDLE_TIMEOUT_SECONDS" -- kilo run --model kilo/kilo-auto/free --auto "$command" 2>&1 | tee "$attempt_log" | tee -a "$session_log"
+    timeout --signal=TERM --kill-after=10s "${remaining_global}s" python3 .github/scripts/kilo-invoke-with-idle-timeout.py --idle-timeout-seconds "$KILO_IDLE_TIMEOUT_SECONDS" -- kilo run --model kilo/kilo-auto/free --auto "$session_command" 2>&1 | tee "$attempt_log" | tee -a "$session_log"
     rc=${PIPESTATUS[0]}
     set -e
     rm -f "$HEARTBEAT_STATE_FILE"

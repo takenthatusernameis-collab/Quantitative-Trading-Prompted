@@ -8,3 +8,7 @@ __pycache__/
 .ruff_cache/
 .tox/
 node_modules/
+
+# Kilo loop-supervisor reports are runtime-only diagnostics, never project deliverables.
+.kilo/supervisor-reports/*
+!.kilo/supervisor-reports/.gitkeep

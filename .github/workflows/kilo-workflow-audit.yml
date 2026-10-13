@@ -9,6 +9,9 @@ on:
       - ".github/workflows/kilo-two-agent-dispatch.yml"
       - ".github/scripts/kilo-controller.sh"
       - ".github/scripts/kilo-invoke-with-idle-timeout.py"
+      - ".gitignore"
+      - ".kilo/agents/**"
+      - ".kilo/supervisor-reports/.gitkeep"
       - ".kilo/TWO_AGENT_ONCE"
       - ".kilo/SKIP_NEXT_ROUTINE_KILO"
   workflow_dispatch:
@@ -95,3 +98,76 @@ jobs:
             exit 1
           fi
           echo "Kilo bounded session recovery and cutoff-only routine termination guardrails: OK"
+
+  validate-supervisor:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate supervisor permissions and worker escalation contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          ruby -ryaml <<'RUBY'
+          path = ".kilo/agents/loop-supervisor.md"
+          source = File.read(path)
+          match = source.match(/\A---[ \t]*\r?\n(.*?)\r?\n---[ \t]*\r?\n/m) or abort("Missing YAML frontmatter in #{path}")
+          agent = YAML.safe_load(match[1]) or abort("Empty supervisor frontmatter")
+          abort("Wrong agent mode") unless agent["mode"] == "subagent"
+          abort("Supervisor step limit is missing or unbounded") unless agent["steps"].is_a?(Integer) && agent["steps"] <= 8
+          permission = agent.fetch("permission")
+          abort("Permission default must deny all tools") unless permission.fetch("*") == "deny"
+          %w[read glob grep].each do |tool|
+            abort("#{tool} must be permitted for repository inspection") unless permission[tool] == "allow"
+          end
+          %w[edit write].each do |tool|
+            rules = permission.fetch(tool)
+            abort("#{tool} must deny all paths by default") unless rules.fetch("*") == "deny"
+            abort("#{tool} must allow the report directory") unless rules.fetch(".kilo/supervisor-reports/*") == "allow"
+            abort("#{tool} has an unexpected permission exception") unless rules.keys.sort == ["*", ".kilo/supervisor-reports/*"].sort
+          end
+          %w[bash webfetch websearch].each do |tool|
+            abort("#{tool} must be denied") unless permission[tool] == "deny"
+          end
+          abort("Subagent delegation must be denied") unless permission.fetch("task").fetch("*") == "deny"
+          puts "Supervisor frontmatter and deny-by-default path-scoped permissions: OK"
+          RUBY
+          controller=.github/scripts/kilo-controller.sh
+          for marker in \
+            "MANDATORY LOOP-SUPERVISOR PROTOCOL" \
+            "background: true" \
+            "A/B/A/B" \
+            "Five consecutive failed attempts without a verified successful outcome" \
+            "Three attempts using substantially the same approach produce no meaningful improvement" \
+            "SESSION_REPORT_PREFIX" \
+            'session_command="${command}'; do
+            if ! grep -Fq -- "$marker" "$controller"; then
+              echo "::error::Missing supervisor contract in controller prompt: $marker"
+              exit 1
+            fi
+          done
+          grep -Fq '.kilo/supervisor-reports/*' .gitignore
+          mkdir -p .kilo/supervisor-reports
+          probe=.kilo/supervisor-reports/audit-ignore-probe.md
+          printf 'temporary audit probe\n' > "$probe"
+          if ! git check-ignore -q "$probe"; then
+            rm -f "$probe"
+            echo "::error::Supervisor reports are not ignored by Git."
+            exit 1
+          fi
+          rm -f "$probe"
+          echo "Supervisor escalation contract and ignored-report behavior: OK"
+      - name: Verify supervisor discovery with the workflow's pinned Kilo CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund --prefix "$RUNNER_TEMP/kilo-cli" @kilocode/cli@7.7.1
+          kilo="$RUNNER_TEMP/kilo-cli/node_modules/.bin/kilo"
+          agent_list="$RUNNER_TEMP/kilo-agent-list.txt"
+          "$kilo" agent list > "$agent_list" 2>&1
+          cat "$agent_list"
+          if ! grep -Fqi "loop-supervisor" "$agent_list"; then
+            echo "::error::Pinned Kilo CLI did not discover loop-supervisor."
+            exit 1
+          fi
+          echo "Pinned Kilo CLI discovered loop-supervisor."
