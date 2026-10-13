@@ -38,17 +38,22 @@ splits = generate_walkforward_splits(
     "2000-05-26", "2026-10-09", 10, 12, 6, 21, 21
 )
 assert len(splits) == 33, f"expected 33 folds, got {len(splits)}"
-assert splits[0] == {
-    **splits[0],
+expected_first = {
     "train_start": "2000-05-26",
     "train_end": "2010-01-21",
     "test_start": "2010-02-22",
     "test_end": "2011-02-08",
 }
-assert splits[-1]["train_start"] == "2015-11-10"
-assert splits[-1]["train_end"] == "2025-07-07"
-assert splits[-1]["test_start"] == "2025-08-06"
-assert splits[-1]["test_end"] == "2026-07-23"
+expected_last = {
+    "train_start": "2015-11-10",
+    "train_end": "2025-07-07",
+    "test_start": "2025-08-06",
+    "test_end": "2026-07-23",
+}
+for key, value in expected_first.items():
+    assert splits[0][key] == value, (key, splits[0][key], value)
+for key, value in expected_last.items():
+    assert splits[-1][key] == value, (key, splits[-1][key], value)
 print("C6 pre-registration checks: PASS (18 configurations, 33 folds)")
 PY
 ```
