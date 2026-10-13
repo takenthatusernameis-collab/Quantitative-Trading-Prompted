@@ -367,7 +367,10 @@ def main() -> int:
                     + f"\n--- END SUPERVISOR ADVICE ENTRY cycle={cycle:04d} ---\n"
                 )
                 try:
-                    existing = feedback_file.read_text(encoding="utf-8", errors="replace")
+                    try:
+                        existing = feedback_file.read_text(encoding="utf-8", errors="replace")
+                    except FileNotFoundError:
+                        existing = ""
                     separator = "" if not existing or existing.endswith("\n") else "\n"
                     atomic_write(feedback_file, existing + separator + entry)
                     previous_report = report
