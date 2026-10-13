@@ -128,6 +128,8 @@ jobs:
             'completed with usable report' \
             'DELIVERY_CONFIRMED' \
             'Agent dialogue box' \
+            'LIVE AGENT DIALOGUE BOX' \
+            'log_live_dialogue_box' \
             'SUPERVISOR_CIRCUIT_BREAKER_OPEN' \
             'consecutive_unusable_reviews' \
             'SUPERVISOR_REVIEWS_COMPLETED' \
