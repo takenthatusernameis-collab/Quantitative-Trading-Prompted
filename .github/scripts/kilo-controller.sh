@@ -42,7 +42,7 @@ done
 one_shot_mode=0
 if [ -f ".kilo/TWO_AGENT_ONCE" ]; then
   one_shot_mode=1
-  echo "::notice::One-shot marker detected; setting the sequential session count to exactly two."
+  echo "::notice::One-shot marker detected; authorizing a validation-gated activation."
 fi
 # A queued schedule may check out an older commit containing the sentinel.
 # Require it to exist on the live default branch before spending the allowance.
@@ -59,7 +59,7 @@ if [ "$one_shot_mode" -eq 1 ]; then
 fi
 
 if [ "$KILO_TRIGGER_EVENT" = "push" ] && [ "$one_shot_mode" -ne 1 ]; then
-  echo "::notice::Activation message was present but the two-agent sentinel is absent; safe no-op."
+  echo "::notice::One-shot sentinel is absent; safe no-op."
   exit 0
 fi
 
@@ -318,7 +318,7 @@ target.write_text(text, encoding="utf-8")
 PY
     if grep -Eiq 'current[:= ]*402.*limit[:= ]*400|insufficient.{0,20}(quota|credit)|quota.{0,30}(exceed|exhaust|limit)|exceed.{0,20}quota|billing.{0,30}(limit|quota)|account.{0,30}(limit|quota)|credits?.{0,20}(exhaust|deplet|limit)' "$normalized_attempt_log"; then
       hard_provider_block=1
-      echo "::error::Hard provider quota/capacity limit detected; stopping retries for this activation."
+      echo "::error::Hard provider quota/capacity limit detected; ending retries for this session. A fresh session will start while workflow time remains."
       break
     fi
     # Our own silence watchdog is a stall signal, not a network error worth repeating five times in place.
