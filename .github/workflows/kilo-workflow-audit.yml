@@ -140,7 +140,7 @@ jobs:
             "Five consecutive failed attempts without a verified successful outcome" \
             "Three attempts using substantially the same approach produce no meaningful improvement" \
             "SESSION_REPORT_PREFIX" \
-            'session_command="${command}'; do
+            "SESSION-SCOPED SUPERVISOR OUTPUT CONTEXT"; do
             if ! grep -Fq -- "$marker" "$controller"; then
               echo "::error::Missing supervisor contract in controller prompt: $marker"
               exit 1
@@ -171,20 +171,64 @@ jobs:
             exit 1
           fi
           python3 - "$agent_list" <<'PY'
+          import json
           import re
           import sys
           from pathlib import Path
 
           output = Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace")
-          actions = re.findall(
-              r'\{\s*"permission":\s*"external_directory",\s*"pattern":\s*"[^"]*",\s*"action":\s*"(allow|deny|ask)"\s*\}',
-              output,
-              flags=re.DOTALL,
-          )
-          if not actions:
-              raise SystemExit("Could not verify resolved external_directory permission in Kilo CLI output")
-          if actions[-1] != "deny":
-              raise SystemExit(f"External-directory permission is not finally denied: {actions}")
-          print("Resolved Kilo CLI external-directory permission ends in deny.")
+          heading = re.search(r"(?m)^loop-supervisor \\(subagent\\)\\s*$", output)
+          if heading is None:
+              raise SystemExit("Could not isolate loop-supervisor's resolved permission section")
+          section = output[heading.end():]
+          next_agent = re.search(r"(?m)^[a-zA-Z0-9_-]+ \\((?:primary|subagent|all)\\)\\s*$", section)
+          if next_agent is not None:
+              section = section[:next_agent.start()]
+
+          rules = []
+          for match in re.finditer(r"\\{[^{}]*\\}", section, flags=re.DOTALL):
+              try:
+                  item = json.loads(match.group(0))
+              except json.JSONDecodeError:
+                  continue
+              if isinstance(item, dict) and item.get("permission"):
+                  rules.append(item)
+          if not rules:
+              raise SystemExit("Could not parse resolved rules for loop-supervisor")
+
+          expected_internal_paths = {
+              "/home/runner/.local/share/kilo/tool-output/*",
+              "/tmp/kilo/*",
+              "/home/runner/.config/kilo/*",
+              "/home/runner/.kilocode/*",
+              "/home/runner/.kilo/*",
+          }
+          external_rules = [r for r in rules if r.get("permission") == "external_directory"]
+          if not any(r.get("pattern") == "*" and r.get("action") == "deny" for r in external_rules):
+              raise SystemExit("Supervisor has no catch-all external-directory deny rule")
+          unexpected = [
+              rule for rule in external_rules
+              if rule.get("action") == "allow" and rule.get("pattern") not in expected_internal_paths
+          ]
+          if unexpected:
+              raise SystemExit(f"Supervisor has unexpected external-directory allow rules: {unexpected}")
+          allowed_paths = {rule.get("pattern") for rule in external_rules if rule.get("action") == "allow"}
+          if not allowed_paths.issubset(expected_internal_paths):
+              raise SystemExit(f"Supervisor external-directory allow rules exceed Kilo runner internal paths: {allowed_paths}")
+
+          for tool in ("bash", "task", "webfetch", "websearch"):
+              tool_rules = [rule for rule in rules if rule.get("permission") == tool]
+              if not tool_rules or tool_rules[-1].get("action") != "deny":
+                  raise SystemExit(f"Resolved supervisor permission does not end with {tool}=deny: {tool_rules[-3:]}")
+          for tool in ("edit", "write"):
+              tool_rules = [rule for rule in rules if rule.get("permission") == tool]
+              if not any(rule.get("pattern") == "*" and rule.get("action") == "deny" for rule in tool_rules):
+                  raise SystemExit(f"Supervisor has no catch-all {tool} deny rule")
+              if not any(rule.get("pattern") == ".kilo/supervisor-reports/*" and rule.get("action") == "allow" for rule in tool_rules):
+                  raise SystemExit(f"Supervisor report path exception missing for {tool}")
+              for rule in tool_rules:
+                  if rule.get("action") == "allow" and rule.get("pattern") not in ("*", ".kilo/supervisor-reports/*"):
+                      raise SystemExit(f"Unexpected {tool} write-path exception: {rule}")
+          print("Resolved loop-supervisor permissions: execution/delegation denied; writes restricted to its report directory; external access limited to Kilo runtime paths.")
           PY
-          echo "Pinned Kilo CLI discovered loop-supervisor with external-directory access denied."
+          echo "Pinned Kilo CLI discovered loop-supervisor and its resolved permissions passed the boundary checks."
