@@ -47,8 +47,6 @@ jobs:
           PROJECT_PROGRESS: ${{ steps.kilo_controller.outputs.project_progress }}
           FAILED_SESSIONS: ${{ steps.kilo_controller.outputs.failed_sessions }}
           IDLE_TIMEOUT_RETRIES: ${{ steps.kilo_controller.outputs.idle_timeout_retries }}
-          CIRCUIT_OPEN: ${{ steps.kilo_controller.outputs.circuit_open }}
-          CIRCUIT_PROBE: ${{ steps.kilo_controller.outputs.circuit_probe }}
         shell: bash
         run: |
           {
@@ -58,15 +56,8 @@ jobs:
             echo "- Verified meaningful project progress: ${PROJECT_PROGRESS:-unknown}"
             echo "- Failed Kilo sessions: ${FAILED_SESSIONS:-unknown}"
             echo "- Upstream idle/network retries: ${IDLE_TIMEOUT_RETRIES:-unknown}"
-            if [ "$CIRCUIT_OPEN" = "1" ]; then
-              echo "- Persistent idle-stall circuit breaker: OPEN. No further Kilo sessions will launch until the cooldown permits a one-session recovery probe."
-            elif [ "$CIRCUIT_PROBE" = "1" ]; then
-              echo "- Persistent idle-stall recovery probe: this activation was restricted to one Kilo session; durable project progress is required to clear the breaker."
-            fi
             if [ "$CONTROLLER_OUTCOME" = "success" ] && [ "$PROJECT_PROGRESS" = "1" ]; then
               echo "- Controller completed with verified, durable project progress."
-            elif [ "$CIRCUIT_OPEN" = "1" ]; then
-              echo "- Repeated or unresolved stall detected. Review the persisted circuit state and uploaded transcripts before forcing another run."
             else
               echo "- No verified project progress was confirmed in this activation. The run is marked failed so the next scheduled activation can recover."
               echo "::warning::Do not treat a successful cleanup or marker commit as task completion."
