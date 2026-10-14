@@ -58,7 +58,7 @@ class DialogueProtocolTests(unittest.TestCase):
             message="Worker response correlated to the supervisor recommendation.",
         ))
         protocol.append_event(self.dialogue, self.event(
-            "message_delivered", direction="worker_to_supervisor", task=task, message_id=self.message_id,
+            "worker_processed", direction="worker_to_supervisor", task=task, message_id=self.message_id,
             acknowledgement_state="acknowledged", disposition=disposition,
             work_performed=work_performed, verification=verification,
             message="Worker response correlated to the supervisor recommendation.",
