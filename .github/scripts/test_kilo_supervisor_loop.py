@@ -104,20 +104,17 @@ class SupervisorLoopTests(unittest.TestCase):
 
             self.assertEqual(code, 0)
             live_text = live_output.getvalue()
-            self.assertIn("::group::LIVE AGENT DIALOGUE BOX — review 0001", live_text)
-            self.assertIn("Worker/controller → supervisor: actual request and evidence", live_text)
-            self.assertIn("Supervisor → worker: advice returned by the reviewer", live_text)
-            self.assertIn("Recommended next action: verify changed evidence 1", live_text)
-            self.assertIn("::endgroup::", live_text)
+            self.assertNotIn("LIVE AGENT DIALOGUE BOX", live_text)
+            self.assertIn("duplicate review skipped", live_text)
             published = feedback.read_text(encoding="utf-8")
             self.assertIn("worker review 1", published)
-            self.assertIn("worker review 2", published)
+            self.assertNotIn("worker review 2", published)
             prompts = capture.read_text(encoding="utf-8")
             self.assertIn("worker review 1", prompts)
             self.assertIn("[REDACTED]", prompts)
             self.assertNotIn("secret-value", prompts)
             self.assertNotIn("ghp_123456789012345678901234567890", prompts)
-            self.assertEqual(len(list(report_dir.glob("run-test-run-attempt-1-review-*.md"))), 2)
+            self.assertEqual(len(list(report_dir.glob("run-test-run-attempt-1-review-*.md"))), 1)
 
             first_prompt = prompts.split("\n---PROMPT-END---\n", 1)[0]
             request_file = transcripts / "review-0001-request-to-supervisor.md"
@@ -133,14 +130,33 @@ class SupervisorLoopTests(unittest.TestCase):
                 "STATUS: ATTENTION\nEvidence: worker review 1\nRecommended next action: verify changed evidence 1",
             )
             self.assertIn("mock reviewer CLI output for cycle 1", cli_file.read_text(encoding="utf-8"))
-            dialogue_file = transcripts / "review-0001-agent-dialogue.md"
+            self.assertFalse(list(transcripts.glob("review-*-agent-dialogue.md")))
+            dialogue_file = transcripts / "agent-dialogue.md"
+            self.assertFalse(dialogue_file.exists())
+            self.assertIsNotNone(monitor.append_agent_dialogue(
+                transcripts, "Supervisor → Worker", "recommendation-1",
+                "Focused recommendation: run the exact regression test.",
+            ))
+            worker_message = (
+                "Disposition: in_progress\n"
+                "Reason: I am running the targeted test.\n"
+                "Evidence: test command prepared.\n"
+                "Verification: pending."
+            )
+            self.assertIsNotNone(monitor.append_agent_dialogue(
+                transcripts, "Worker → Supervisor", "recommendation-1", worker_message,
+            ))
+            # Replaying the same role message must not duplicate it.
+            monitor.append_agent_dialogue(
+                transcripts, "Worker → Supervisor", "recommendation-1", worker_message,
+            )
             dialogue = dialogue_file.read_text(encoding="utf-8")
-            self.assertIn("Worker/controller → supervisor", dialogue)
-            self.assertIn("worker started", dialogue)
-            self.assertIn("Supervisor → worker", dialogue)
-            self.assertIn("worker review 1", dialogue)
-            self.assertIn("USABLE REPORT GENERATED", dialogue)
-            self.assertIn("next tool-result boundary", dialogue)
+            self.assertEqual(dialogue.count("## Supervisor → Worker"), 1)
+            self.assertEqual(dialogue.count("## Worker → Supervisor"), 1)
+            self.assertIn("Focused recommendation: run the exact regression test.", dialogue)
+            self.assertIn("Disposition: in_progress", dialogue)
+            self.assertNotIn("mock reviewer CLI output", dialogue)
+            self.assertNotIn("worker started", dialogue)
 
     def test_failed_review_records_request_and_cli_output_without_erasing_feedback(self):
         with tempfile.TemporaryDirectory(prefix="kilo-supervisor-failure-test-") as temp:
@@ -352,13 +368,13 @@ class SupervisorLoopTests(unittest.TestCase):
             self.assertEqual(code, 0)
             output = captured.getvalue()
             self.assertIn("SUPERVISOR_CIRCUIT_BREAKER_OPEN", output)
-            self.assertIn("::group::LIVE AGENT DIALOGUE BOX — review 0001", output)
+            self.assertNotIn("LIVE AGENT DIALOGUE BOX", output)
             self.assertIn("TIMED OUT", output)
-            self.assertIn("No usable advice returned", output)
             self.assertIn("worker remains unaffected", output)
             self.assertEqual(output.count("(consecutive unusable reviews:"), 3)
-            dialogues = list(transcripts.glob("review-*-agent-dialogue.md"))
-            self.assertEqual(len(dialogues), 3)
+            self.assertFalse((transcripts / "agent-dialogue.md").exists(),
+                             "failed reviews must not be fabricated as role-to-role messages")
+            self.assertFalse(list(transcripts.glob("review-*-agent-dialogue.md")))
             self.assertEqual(feedback.read_text(encoding="utf-8"), "")
 
 
