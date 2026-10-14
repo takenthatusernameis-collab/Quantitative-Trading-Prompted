@@ -171,39 +171,40 @@ def validate_event(value: Any) -> None:
 
 
 def append_event(path: Path, event: dict) -> bool:
-    """Append one event once, under a file lock; never silently truncate a partial/corrupt log."""
+    """Append one event once under an exclusive lock on the JSONL file itself."""
     validate_event(event)
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    lock_path = path.with_name(path.name + ".lock")
-    lock_fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o600)
+    fd = os.open(path, os.O_CREAT | os.O_RDWR | os.O_APPEND, 0o600)
     try:
-        fcntl.flock(lock_fd, fcntl.LOCK_EX)
-        if path.exists():
-            content = path.read_bytes()
-            if content and not content.endswith(b"\n"):
-                raise ProtocolError(f"{path} has an incomplete trailing record; refusing to append")
-            for index, raw in enumerate(content.splitlines(), start=1):
-                try:
-                    old = json.loads(raw)
-                    validate_event(old)
-                except (json.JSONDecodeError, ProtocolError) as exc:
-                    raise ProtocolError(f"{path} record {index} is malformed; refusing to append") from exc
-                if old.get("event_key") == event["event_key"]:
-                    return False
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        os.lseek(fd, 0, os.SEEK_SET)
+        chunks = []
+        while True:
+            chunk = os.read(fd, 64 * 1024)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        content = b"".join(chunks)
+        if content and not content.endswith(b"\n"):
+            raise ProtocolError(f"{path} has an incomplete trailing record; refusing to append")
+        for index, raw in enumerate(content.splitlines(), start=1):
+            try:
+                old = json.loads(raw)
+                validate_event(old)
+            except (json.JSONDecodeError, ProtocolError) as exc:
+                raise ProtocolError(f"{path} record {index} is malformed; refusing to append") from exc
+            if old.get("event_key") == event["event_key"]:
+                return False
         payload = (json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8")
-        fd = os.open(path, os.O_CREAT | os.O_APPEND | os.O_WRONLY, 0o600)
-        try:
-            written = os.write(fd, payload)
-            if written != len(payload):
-                raise ProtocolError("short append while writing dialogue event")
-            os.fsync(fd)
-        finally:
-            os.close(fd)
+        written = os.write(fd, payload)
+        if written != len(payload):
+            raise ProtocolError("short append while writing dialogue event")
+        os.fsync(fd)
         return True
     finally:
-        fcntl.flock(lock_fd, fcntl.LOCK_UN)
-        os.close(lock_fd)
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        os.close(fd)
 
 
 def read_events(path: Path) -> tuple[list[dict], list[str]]:

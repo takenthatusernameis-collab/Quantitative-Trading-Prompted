@@ -855,10 +855,10 @@ def main() -> int:
                 }
                 recorded = append_dialogue_event(
                     transcript_dir, "worker_to_supervisor", "worker", recommendation_id, worker_reply,
-                    stage="message_delivered", **response_fields, delivery_state="delivered",
+                    stage="worker_processed", **response_fields, delivery_state="delivered",
                 )
                 ack_message = f"Worker {current_disposition['acknowledgement_state']} recommendation {recommendation_id}."
-                append_communication_event(
+                acknowledged = append_communication_event(
                     transcript_dir, stage="worker_acknowledged", direction="worker_to_supervisor", role="worker",
                     message_id=recommendation_id, message=ack_message, **response_fields,
                     delivery_state="received",
@@ -876,8 +876,8 @@ def main() -> int:
                         print("[agent-dialogue] " + message_line, flush=True)
                     print("::endgroup::", flush=True)
                     log_delta = (log_delta.rstrip() + "\n\nNEW WORKER-TO-SUPERVISOR MESSAGE\n" + worker_reply).strip()
-                if not recorded and not processed:
-                    log(f"worker disposition was seen but transcript persistence was not confirmed for recommendation={recommendation_id}")
+                if not acknowledged or not processed or not recorded:
+                    log(f"worker disposition persistence incomplete for recommendation={recommendation_id}; dialogue={recorded} acknowledged={acknowledged} processed={processed}")
         else:
             previous_worker_disposition_digest = None
 

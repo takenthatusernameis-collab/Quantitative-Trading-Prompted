@@ -174,9 +174,16 @@ class SupervisorLoopTests(unittest.TestCase):
             self.assertEqual(len(list(report_dir.glob("run-test-run-attempt-1-review-*.md"))), 1, "supervisor-generated reports must not trigger a second review")
 
             self.assertEqual(
-                list(transcripts.iterdir()), [],
-                "reviewer prompts, CLI traces, status files, and undelivered advice must not be recorded as role dialogue",
+                sorted(path.name for path in transcripts.iterdir()),
+                ["agent-communication.jsonl"],
+                "an undelivered recommendation may be in the lifecycle ledger but not the role-boundary dialogue",
             )
+            communication = [
+                json.loads(line)
+                for line in (transcripts / "agent-communication.jsonl").read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertEqual([event["stage"] for event in communication], ["message_written"])
+            self.assertFalse(any(event["stage"] == "message_delivered" for event in communication))
 
     def test_failed_review_keeps_feedback_without_transcript_dumps(self):
         with tempfile.TemporaryDirectory(prefix="kilo-supervisor-failure-test-") as temp:
@@ -281,9 +288,17 @@ class SupervisorLoopTests(unittest.TestCase):
             self.assertIn("Different next step: write the concise diagnostic report", published)
             self.assertIn("Verification: confirm the next review creates a report", published)
             self.assertEqual(
-                list(transcripts.iterdir()), [],
-                "an undelivered report is not a supervisor-to-worker dialogue message",
+                sorted(path.name for path in transcripts.iterdir()),
+                ["agent-communication.jsonl"],
+                "an undelivered report has a written lifecycle event but no role-boundary dialogue event",
             )
+            communication = [
+                json.loads(line)
+                for line in (transcripts / "agent-communication.jsonl").read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertEqual([event["stage"] for event in communication], ["message_written"])
+            dialogue_path = transcripts / "agent-dialogue.jsonl"
+            self.assertFalse(dialogue_path.exists(), "undelivered advice must not appear in the delivered dialogue transcript")
 
     def test_missing_report_without_actionable_final_response_is_not_published(self):
         with tempfile.TemporaryDirectory(prefix="kilo-supervisor-empty-recovery-test-") as temp:
@@ -484,6 +499,13 @@ class SupervisorLoopTests(unittest.TestCase):
                     f"Reason: {reason}",
                     f"Evidence: {evidence}",
                     f"Verification: {verification}",
+                    "Work performed: (not supplied)",
+                    "Acknowledgement: acknowledged",
+                    "Changed files: []",
+                    "Tests: []",
+                    "Artifacts: []",
+                    "Blockers: []",
+                    "Outstanding work: []",
                 ]),
             )
 
