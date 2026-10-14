@@ -297,8 +297,8 @@ class SupervisorLoopTests(unittest.TestCase):
                 ])
 
             self.assertEqual(code, 0)
-            self.assertIn("MISSING/EMPTY REPORT", captured.getvalue())
-            self.assertIn("previous advice retained", captured.getvalue())
+            self.assertNotIn("MISSING/EMPTY REPORT", captured.getvalue(), "internal supervisor diagnostics must not be echoed into live logs")
+            self.assertIn("produced no report file or recoverable final response; previous advice retained", captured.getvalue())
             self.assertEqual(feedback.read_text(encoding="utf-8"), "Previously published advice.\n")
             self.assertFalse((report_dir / "run-test-empty-recovery-attempt-1-review-0001.md").exists())
             self.assertIn(
@@ -306,7 +306,7 @@ class SupervisorLoopTests(unittest.TestCase):
                 (transcripts / "review-0001-outcome.txt").read_text(encoding="utf-8"),
             )
 
-    def test_three_consecutive_timeouts_open_circuit_breaker_without_worker_failure(self):
+    def test_single_timeout_does_not_repeat_without_new_evidence(self):
         import contextlib
         import io
 
@@ -352,7 +352,7 @@ class SupervisorLoopTests(unittest.TestCase):
                 ])
             self.assertEqual(code, 0)
             output = captured.getvalue()
-            self.assertIn("SUPERVISOR_CIRCUIT_BREAKER_OPEN", output)
+            self.assertNotIn("SUPERVISOR_CIRCUIT_BREAKER_OPEN", output)
             self.assertNotIn("::group::LIVE AGENT DIALOGUE BOX — review 0001", output)
             self.assertIn("timed out; worker remains unaffected", output)
             self.assertNotIn("mock slow reviewer started", output)
