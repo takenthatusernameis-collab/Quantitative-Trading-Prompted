@@ -420,7 +420,7 @@ PY
       review_completed="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ completed with usable report' "$SUPERVISOR_LOOP_LOG" || true)"
       review_timeouts="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ timed out;' "$SUPERVISOR_LOOP_LOG" || true)"
       review_failures="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ (returned exit|returned without writing|wrote an empty report|report could not be sanitized|failed to launch or complete|feedback append failed)' "$SUPERVISOR_LOOP_LOG" || true)"
-      supervisor_event="$(grep -E '\[loop-supervisor\].*(review [0-9]+ started|review [0-9]+ completed with usable report|appended cumulative advice|complete;|timed out|returned exit|feedback append failed|stopped;|unexpected monitor failure)' "$SUPERVISOR_LOOP_LOG" | tail -n 1 | cut -c1-220 || true)"
+      supervisor_event="$(grep -E '\[loop-supervisor\].*(review [0-9]+ started|review [0-9]+ completed with usable report|issued a new supervisor recommendation|complete;|timed out|returned exit|feedback append failed|stopped;|unexpected monitor failure)' "$SUPERVISOR_LOOP_LOG" | tail -n 1 | cut -c1-220 || true)"
     else
       review_started=0
       review_completed=0
