@@ -186,8 +186,20 @@ class PaperTradingState:
 
     def to_yaml(self, path: str | Path) -> None:
         p = _ensure_path(path)
+
+        def convert(obj):
+            if isinstance(obj, (np.integer, np.floating)):
+                return obj.item()
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+            if isinstance(obj, dict):
+                return {k: convert(v) for k, v in obj.items()}
+            if isinstance(obj, list):
+                return [convert(v) for v in obj]
+            return obj
+
         with open(p, "w") as fh:
-            yaml.safe_dump(asdict(self), fh, sort_keys=False)
+            yaml.safe_dump(convert(asdict(self)), fh, sort_keys=False)
 
 
 def run_daily_paper_update(
