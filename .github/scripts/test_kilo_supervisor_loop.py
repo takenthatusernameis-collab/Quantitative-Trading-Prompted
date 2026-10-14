@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import json
 import os
 import sys
 import tempfile
@@ -359,6 +360,53 @@ class SupervisorLoopTests(unittest.TestCase):
             dialogues = list(transcripts.glob("review-*-agent-dialogue.md"))
             self.assertEqual(len(dialogues), 3)
             self.assertEqual(feedback.read_text(encoding="utf-8"), "")
+
+
+    def test_file_backed_dialogue_protocol_rejects_stale_or_malformed_dispositions(self):
+        with tempfile.TemporaryDirectory(prefix="kilo-dialogue-protocol-test-") as temp:
+            protocol = Path(temp)
+            report = (
+                "STATUS: ATTENTION\nObserved evidence: repeated failure persisted.\n"
+                "Different next step: run the focused regression test.\n"
+                "Verification: require the assertion to pass.\nLimitations: full suite not run.\n"
+            )
+            recommendation_id = monitor.publish_current_recommendation(
+                protocol, "test-run", "1", 2, report,
+                "worker changed file and test output showed assertion failure",
+            )
+            self.assertIsNotNone(recommendation_id)
+            published = json.loads((protocol / "current-supervisor-recommendation.json").read_text(encoding="utf-8"))
+            self.assertEqual(published["recommendation_id"], recommendation_id)
+            self.assertEqual(len(published["source_worker_state_sha256"]), 64)
+            self.assertIn(recommendation_id, monitor.dialogue_protocol_observation(protocol))
+            self.assertIn("UNACKNOWLEDGED_OR_STALE", monitor.dialogue_protocol_observation(protocol))
+
+            disposition = {
+                "schema_version": 1,
+                "recommendation_id": recommendation_id,
+                "disposition": "in_progress",
+                "reason": "I am applying the focused recommendation before other work.",
+                "evidence": "The relevant assertion failed in the previous test run.",
+                "verification": "",
+                "updated_at": "2026-10-14T00:00:00Z",
+            }
+            (protocol / "worker-disposition.json").write_text(json.dumps(disposition), encoding="utf-8")
+            accepted = monitor.read_worker_disposition(protocol)
+            self.assertEqual(accepted["disposition"], "in_progress")
+            self.assertIn("in_progress", monitor.dialogue_protocol_observation(protocol))
+
+            disposition["recommendation_id"] = "old-run-old-recommendation"
+            (protocol / "worker-disposition.json").write_text(json.dumps(disposition), encoding="utf-8")
+            self.assertIn("UNACKNOWLEDGED_OR_STALE", monitor.dialogue_protocol_observation(protocol))
+
+            disposition["recommendation_id"] = recommendation_id
+            disposition["disposition"] = "verified"
+            disposition["verification"] = ""
+            (protocol / "worker-disposition.json").write_text(json.dumps(disposition), encoding="utf-8")
+            self.assertIsNone(monitor.read_worker_disposition(protocol))
+
+            (protocol / "worker-disposition.json").write_text("not json", encoding="utf-8")
+            self.assertIsNone(monitor.read_worker_disposition(protocol))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

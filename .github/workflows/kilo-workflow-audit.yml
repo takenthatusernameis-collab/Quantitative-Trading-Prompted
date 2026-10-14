@@ -127,6 +127,10 @@ jobs:
             'agent dialogue saved' \
             'completed with usable report' \
             'DELIVERY_CONFIRMED' \
+            'SUPERVISOR RECOMMENDATION AWAITING WORKER DISPOSITION' \
+            'KILO_SUPERVISOR_PROTOCOL_DIR' \
+            'current-supervisor-recommendation.json' \
+            'worker-disposition.json' \
             'Agent dialogue box' \
             'LIVE AGENT DIALOGUE BOX' \
             'log_live_dialogue_box' \
@@ -187,6 +191,10 @@ jobs:
           grep -Fq -- "mode: all" .kilo/agents/loop-supervisor.md
           for marker in \
             "MANDATORY LOOP-SUPERVISOR PROTOCOL" \
+            "FILE-BACKED TWO-WAY DIALOGUE" \
+            "worker-disposition.json" \
+            "current-supervisor-recommendation.json" \
+            "within the next two tool calls" \
             "150-second cadence" \
             "A/B/A/B" \
             "Five consecutive failed attempts without a verified successful outcome" \
@@ -276,6 +284,66 @@ jobs:
             const outside = { output: "leave unchanged" };
             await outsideHooks["tool.execute.after"]({ tool: "read" }, outside);
             assert.equal(outside.output, "leave unchanged", "files outside RUNNER_TEMP must be ignored");
+
+            // File-backed protocol: controller owns recommendations; worker owns disposition.
+            const workspace = join(runtime, "workspace");
+            const protocolDir = join(workspace, ".kilo", "runtime");
+            await (await import("node:fs/promises")).mkdir(protocolDir, { recursive: true });
+            process.env.GITHUB_WORKSPACE = workspace;
+            process.env.KILO_SUPERVISOR_PROTOCOL_DIR = protocolDir;
+            process.env.KILO_SUPERVISOR_FEEDBACK_FILE = feedbackPath;
+            process.env.KILO_SUPERVISOR_FEEDBACK_CURSOR_FILE = cursorPath;
+            process.env.KILO_SUPERVISOR_TRANSCRIPT_DIR = transcripts;
+            const recommendation = {
+              schema_version: 1,
+              recommendation_id: "run-test-review-0002-deadbeef0000",
+              review_cycle: 2,
+              source_worker_state_sha256: "a".repeat(64),
+              report: "STATUS: ATTENTION\nObserved evidence: test evidence.\nDifferent next step: run the regression test.\nVerification: check assertion.\nLimitations: limited test context.",
+              created_at: "2026-10-14T00:00:00Z"
+            };
+            await writeFile(join(protocolDir, "current-supervisor-recommendation.json"), JSON.stringify(recommendation), "utf8");
+            await rm(join(protocolDir, "worker-disposition.json"), { force: true });
+            const protocolHooks = await pluginModule.default.server();
+            for (let i = 0; i < 3; i++) {
+              const noReminder = { output: "tool output " + i };
+              await protocolHooks["tool.execute.after"]({ tool: "read" }, noReminder);
+              assert.doesNotMatch(noReminder.output, /SUPERVISOR RECOMMENDATION AWAITING WORKER DISPOSITION/);
+            }
+            const reminder = { output: "fourth tool output" };
+            await protocolHooks["tool.execute.after"]({ tool: "read" }, reminder);
+            assert.match(reminder.output, /SUPERVISOR RECOMMENDATION AWAITING WORKER DISPOSITION/);
+            assert.match(reminder.output, /run-test-review-0002-deadbeef0000/);
+            assert.equal((await readdir(transcripts)).filter(name => name.startsWith("worker-delivery-")).length, 4,
+              "an outstanding recommendation reminder must be preserved as an exact delivery transcript");
+
+            await writeFile(join(protocolDir, "worker-disposition.json"), JSON.stringify({
+              schema_version: 1,
+              recommendation_id: recommendation.recommendation_id,
+              disposition: "in_progress",
+              reason: "I am applying this specific recommendation before unrelated work.",
+              evidence: "The last test assertion failed.",
+              verification: "",
+              updated_at: "2026-10-14T00:00:01Z"
+            }), "utf8");
+            for (let i = 0; i < 4; i++) {
+              const acked = { output: "acknowledged tool output " + i };
+              await protocolHooks["tool.execute.after"]({ tool: "read" }, acked);
+              assert.doesNotMatch(acked.output, /SUPERVISOR RECOMMENDATION AWAITING WORKER DISPOSITION/,
+                "a matching valid disposition must stop repeated reminders");
+            }
+
+            recommendation.recommendation_id = "run-test-review-0003-cafefeed0000";
+            await writeFile(join(protocolDir, "current-supervisor-recommendation.json"), JSON.stringify(recommendation), "utf8");
+            for (let i = 0; i < 3; i++) {
+              const noFreshReminder = { output: "new ID boundary " + i };
+              await protocolHooks["tool.execute.after"]({ tool: "read" }, noFreshReminder);
+              assert.doesNotMatch(noFreshReminder.output, /SUPERVISOR RECOMMENDATION AWAITING WORKER DISPOSITION/);
+            }
+            const freshReminder = { output: "new ID fourth boundary" };
+            await protocolHooks["tool.execute.after"]({ tool: "read" }, freshReminder);
+            assert.match(freshReminder.output, /run-test-review-0003-cafefeed0000/,
+              "a fresh recommendation ID must not be masked by an old acknowledgement");
 
             process.env.KILO_SUPERVISOR_MODE = "1";
             const reviewerHooks = await pluginModule.default.server();
