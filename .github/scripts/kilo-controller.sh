@@ -550,15 +550,15 @@ write_progress "worker-loop-ready" "30-second live status heartbeat active"
 trap 'kill "$heartbeat_pid" 2>/dev/null || true; if [ -n "${supervisor_loop_pid:-}" ]; then kill -TERM "$supervisor_loop_pid" 2>/dev/null || true; wait "$supervisor_loop_pid" 2>/dev/null || true; fi; rm -f "$HEARTBEAT_STATE_FILE" "$SUPERVISOR_ACTIVE_LOG_POINTER" "$SUPERVISOR_FEEDBACK_FILE" "$SUPERVISOR_FEEDBACK_CURSOR_FILE" "$SUPERVISOR_OBJECTIVE_FILE"' EXIT
 
 
-if [ "\${KILO_E2E_MODE:-0}" = "1" ]; then
+if [ "${KILO_E2E_MODE:-0}" = "1" ]; then
   # The E2E worker must never start without an actual supervisor recommendation
   # and its append-only written-state event. Retry the supervisor bootstrap first.
   E2E_STARTUP_TIMEOUT_SECONDS=240
-  e2e_task_id="\${GITHUB_RUN_ID:-local}-attempt-\${GITHUB_RUN_ATTEMPT:-1}"
+  e2e_task_id="${GITHUB_RUN_ID:-local}-attempt-${GITHUB_RUN_ATTEMPT:-1}"
   recommendation_file="$DIALOGUE_PROTOCOL_DIR/current-supervisor-recommendation.json"
   communication_file="$SUPERVISOR_TRANSCRIPT_DIR/agent-communication.jsonl"
   startup_deadline=$(( $(date +%s) + E2E_STARTUP_TIMEOUT_SECONDS ))
-  echo "[e2e-gate] Waiting for a valid run-correlated initial supervisor recommendation; deadline=\${E2E_STARTUP_TIMEOUT_SECONDS}s."
+  echo "[e2e-gate] Waiting for a valid run-correlated initial supervisor recommendation; deadline=${E2E_STARTUP_TIMEOUT_SECONDS}s."
   while true; do
     if python3 - "$recommendation_file" "$communication_file" "$e2e_task_id" <<'PY'
 import json
