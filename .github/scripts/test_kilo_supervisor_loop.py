@@ -220,7 +220,7 @@ class SupervisorLoopTests(unittest.TestCase):
             self.assertEqual(code, 0)
             output = captured.getvalue()
             self.assertIn("recovered a substantive final response into the report file", output)
-            self.assertIn("review 1 advice queued for worker delivery", output)
+            self.assertIn("review 1 issued a new supervisor recommendation", output)
             self.assertNotIn("SUPERVISOR_CIRCUIT_BREAKER_OPEN", output)
             self.assertTrue((report_dir / "run-test-recovery-attempt-1-review-0001.md").is_file())
             published = feedback.read_text(encoding="utf-8")
