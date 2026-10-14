@@ -39,6 +39,13 @@ class E2EVerificationTests(unittest.TestCase):
         self.assertIn('"message_written"', gate)
         self.assertIn("no worker was started", gate)
 
+    def test_raw_evidence_contract_excludes_later_completion_status(self):
+        self.assertEqual(
+            verifier.REQUIRED_RAW,
+            {"agent-dialogue.jsonl", "agent-communication.jsonl", "worker-disposition.json"},
+            "task-completion-status.json is created by the independent verifier after raw evidence upload",
+        )
+
     def test_only_non_default_infra_branch_allowed(self):
         self.assertTrue(verifier.isolated_target_branch("infra/e2e-test", "main"))
         self.assertFalse(verifier.isolated_target_branch("main", "main"))

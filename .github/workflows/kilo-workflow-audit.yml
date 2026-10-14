@@ -142,6 +142,7 @@ jobs:
           grep -Fq 'include-hidden-files: true' .github/workflows/main.yml
           grep -Fq '"gh", "run", "download"' .github/scripts/kilo-e2e-verification.py
           grep -Fq 'remote_checkpoint' .github/scripts/kilo-e2e-verification.py
+          grep -Fq 'task-completion-status.json is created by the independent verifier after raw evidence upload' .github/scripts/test_kilo_e2e_verification.py
           echo "Branch isolation, short cutoff, worker-scope override, artifact recovery and independent checkpoint gate: OK"
       - name: Exercise terminal outcome classification and CLI exit semantics
         shell: bash

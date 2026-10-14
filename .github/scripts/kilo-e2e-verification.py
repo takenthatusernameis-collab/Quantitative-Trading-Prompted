@@ -11,7 +11,7 @@ from typing import Any
 import kilo_dialogue_protocol as protocol
 
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
-REQUIRED_RAW = {"agent-dialogue.jsonl", "agent-communication.jsonl", "worker-disposition.json", "task-completion-status.json"}
+REQUIRED_RAW = {"agent-dialogue.jsonl", "agent-communication.jsonl", "worker-disposition.json"}
 
 def isolated_target_branch(target: str, default: str) -> bool:
     return target.startswith("infra/") and target != default
