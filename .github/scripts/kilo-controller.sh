@@ -1,5 +1,10 @@
 set -Eeuo pipefail
-cutoff_epoch=$(($(date +%s) + 355 * 60))
+KILO_HARD_CUTOFF_MINUTES="${KILO_HARD_CUTOFF_MINUTES:-355}"
+if ! [[ "$KILO_HARD_CUTOFF_MINUTES" =~ ^[1-9][0-9]*$ ]] || [ "$KILO_HARD_CUTOFF_MINUTES" -gt 355 ]; then
+  echo "::error::KILO_HARD_CUTOFF_MINUTES must be a positive whole number no greater than 355."
+  exit 1
+fi
+cutoff_epoch=$(($(date +%s) + KILO_HARD_CUTOFF_MINUTES * 60))
 umask 077
 # A silent Kilo invocation is a stall; this does not shorten the global workflow cutoff.
 KILO_IDLE_TIMEOUT_SECONDS="${KILO_IDLE_TIMEOUT_SECONDS:-600}"
@@ -10,12 +15,44 @@ fi
 
 # Session target is user-configurable; transient attempts and corrective retries have no numeric cap.
 KILO_INPUT_SESSIONS="${KILO_INPUT_SESSIONS:-1000}"
+KILO_TARGET_BRANCH="${KILO_TARGET_BRANCH:-${KILO_DEFAULT_BRANCH:-}}"
+if [ "${KILO_E2E_MODE:-0}" = "1" ]; then
+  if [ "$KILO_HARD_CUTOFF_MINUTES" != "10" ]; then
+    echo "::error::Bounded E2E mode requires an exact 10-minute controller cutoff."
+    exit 1
+  fi
+  repository_default="${KILO_REPOSITORY_DEFAULT_BRANCH:-${KILO_DEFAULT_BRANCH:-main}}"
+  if [ "${KILO_TRIGGER_EVENT:-}" != "workflow_dispatch" ] ||
+     [ -z "$KILO_TARGET_BRANCH" ] || [ "$KILO_TARGET_BRANCH" = "$repository_default" ] ||
+     [[ "$KILO_TARGET_BRANCH" != infra/* ]]; then
+    echo "::error::Bounded E2E mode requires an explicit workflow_dispatch on a non-default infra/* branch."
+    exit 1
+  fi
+  if [ "${GITHUB_REF_TYPE:-branch}" != "branch" ] || [ "${GITHUB_REF_NAME:-}" != "$KILO_TARGET_BRANCH" ] ||
+     [ "$(git branch --show-current)" != "$KILO_TARGET_BRANCH" ]; then
+    echo "::error::Bounded E2E target branch does not match the checked-out workflow ref."
+    exit 1
+  fi
+  if ! git fetch origin "$KILO_TARGET_BRANCH"; then
+    echo "::error::Could not fetch the bounded E2E target branch."
+    exit 1
+  fi
+  if [ "$(git rev-parse HEAD)" != "$(git rev-parse "origin/$KILO_TARGET_BRANCH")" ]; then
+    echo "::error::Bounded E2E checkout is not at the current remote target head; refusing to run."
+    exit 1
+  fi
+  if [ -e .kilo/TWO_AGENT_ONCE ] || [ -e .kilo/SKIP_NEXT_ROUTINE_KILO ]; then
+    echo "::error::Bounded E2E mode refuses to consume or alter routine Kilo control markers."
+    exit 1
+  fi
+  KILO_INPUT_SESSIONS=1
+fi
 if ! [[ "$KILO_INPUT_SESSIONS" =~ ^[1-9][0-9]*$ ]]; then
   echo "::error::KILO_INPUT_SESSIONS must be a positive whole number."
   exit 1
 fi
 SESSION_LIMIT_POLICY="$KILO_INPUT_SESSIONS"
-echo "::notice::Configured worker session target: $SESSION_LIMIT_POLICY; transient retries and corrective attempts remain count-unbounded until the global 355-minute cutoff."
+echo "::notice::Configured worker session target: $SESSION_LIMIT_POLICY; transient retries and corrective attempts remain bounded by the configured ${KILO_HARD_CUTOFF_MINUTES}-minute hard cutoff."
 WORKFLOW_STARTED_EPOCH="$(date +%s)"
 KILO_PROGRESS_STATE_FILE="$RUNNER_TEMP/kilo-progress-state-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.txt"
 KILO_PROGRESS_LOG="$RUNNER_TEMP/kilo-progress-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.log"
@@ -62,18 +99,26 @@ progress_field() {
   awk -F= -v field="$field" '$1 == field { sub(/^[^=]*=/, ""); print; exit }' "$KILO_PROGRESS_STATE_FILE"
 }
 
-write_progress "controller-configured" "event=${KILO_TRIGGER_EVENT:-unknown}; session_policy=${SESSION_LIMIT_POLICY}; hard_cutoff=355_minutes"
+record_intentional_noop() {
+  python3 .github/scripts/kilo-terminal-outcome.py --intentional-noop --cutoff 0 --checkpoint-sha "$(git rev-parse HEAD 2>/dev/null || printf 'unknown')" --output "${GITHUB_OUTPUT:-}"
+}
+
+# Shared production checkpoint routine: CI calls it directly against a local bare Git remote.
+source .github/scripts/kilo-persist-checkpoint.sh
+
+write_progress "controller-configured" "event=${KILO_TRIGGER_EVENT:-unknown}; session_policy=${SESSION_LIMIT_POLICY}; hard_cutoff=${KILO_HARD_CUTOFF_MINUTES}_minutes"
 
 # While the one-shot marker awaits its independent validation gate,
 # scheduled invocations must not consume it or start a duplicate run.
 if [ "$KILO_TRIGGER_EVENT" = "schedule" ]; then
-  DEFAULT_BRANCH="$KILO_DEFAULT_BRANCH"
+  DEFAULT_BRANCH="$KILO_TARGET_BRANCH"
   if [ -z "$DEFAULT_BRANCH" ] || ! git fetch origin "$DEFAULT_BRANCH"; then
     echo "::error::Could not verify the default branch; scheduled activation cannot safely continue."
     exit 1
   fi
   if git cat-file -e "origin/$DEFAULT_BRANCH:.kilo/TWO_AGENT_ONCE" 2>/dev/null; then
     echo "::notice::One-shot marker is awaiting validation/dispatch; this scheduled activation will not start Kilo."
+    record_intentional_noop
     exit 0
   fi
 fi
@@ -96,7 +141,7 @@ done
 
 # A durable marker authorizes a validation-gated one-time activation; the active run remains cutoff-bound.
 one_shot_mode=0
-if [ -f ".kilo/TWO_AGENT_ONCE" ]; then
+if [ "${KILO_E2E_MODE:-0}" != "1" ] && [ -f ".kilo/TWO_AGENT_ONCE" ]; then
   one_shot_mode=1
   echo "::notice::One-shot marker detected; authorizing a validation-gated activation."
 fi
@@ -106,19 +151,21 @@ fi
 # A queued schedule may check out an older commit containing the sentinel.
 # Require it to exist on the live default branch before spending the allowance.
 if [ "$one_shot_mode" -eq 1 ]; then
-  DEFAULT_BRANCH="$KILO_DEFAULT_BRANCH"
+  DEFAULT_BRANCH="$KILO_TARGET_BRANCH"
   if [ -z "$DEFAULT_BRANCH" ] || ! git fetch origin "$DEFAULT_BRANCH"; then
     echo "::error::Could not verify the one-shot marker on the remote branch."
     exit 1
   fi
   if ! git cat-file -e "origin/$DEFAULT_BRANCH:.kilo/TWO_AGENT_ONCE" 2>/dev/null; then
     echo "::notice::The one-shot marker is absent from origin/$DEFAULT_BRANCH; this is a stale/duplicate activation, exiting without invoking Kilo."
+    record_intentional_noop
     exit 0
   fi
 fi
 
 if [ "$KILO_TRIGGER_EVENT" = "push" ] && [ "$one_shot_mode" -ne 1 ]; then
   echo "::notice::One-shot sentinel is absent; safe no-op."
+  record_intentional_noop
   exit 0
 fi
 
@@ -126,7 +173,7 @@ if [ "$one_shot_mode" -eq 0 ] && [ "${GITHUB_EVENT_NAME:-${KILO_TRIGGER_EVENT:-}
   echo "::notice::Consuming the one-time post-smoke skip; this activation will not start Kilo."
   git config user.name "kilo-autonomous"
   git config user.email "kilo-autonomous@users.noreply.github.com"
-  DEFAULT_BRANCH="$KILO_DEFAULT_BRANCH"
+  DEFAULT_BRANCH="$KILO_TARGET_BRANCH"
   if [ -z "$DEFAULT_BRANCH" ]; then
     echo "::error::Default branch is unavailable; retaining the skip marker for recovery."
     exit 1
@@ -157,6 +204,7 @@ if [ "$one_shot_mode" -eq 0 ] && [ "${GITHUB_EVENT_NAME:-${KILO_TRIGGER_EVENT:-}
     sleep "$delay"
     if [ "$delay" -lt 30 ]; then delay=$((delay * 2)); if [ "$delay" -gt 30 ]; then delay=30; fi; fi
   done
+  record_intentional_noop
   exit 0
 fi
 
@@ -231,7 +279,7 @@ MANDATORY LOOP-SUPERVISOR PROTOCOL
 A. CONTINUOUS SUPERVISION FROM WORKER START
 - The controller starts a separate read/write-restricted `loop-supervisor` review process immediately before the first worker invocation. It reviews the current task and the latest worker/repository evidence immediately, then on a 150-second cadence.
 - New or materially changed supervisor feedback is injected into the next worker tool result by the `loop-supervisor-feedback` plugin. Read it, assess it against current evidence, and either take the smallest safe verified action or explicitly explain why it is unsuitable.
-- FILE-BACKED TWO-WAY DIALOGUE (mandatory, lightweight, non-blocking): the controller owns `.kilo-runtime/current-supervisor-recommendation.json`; never edit or replace it. The `.kilo-runtime/` directory is deliberately outside `.kilo/` because Kilo validates JSON files under `.kilo/` as configuration. When advice arrives, read that file and write/replace `.kilo-runtime/worker-disposition.json` within the next two tool calls, before unrelated exploration when practical. Use a JSON object with `schema_version: 1`, `recommendation_id` copied exactly from the current recommendation, `disposition` (one of `accepted`, `in_progress`, `verified`, `blocked`, `rejected_with_reason`, `superseded`), `reason`, `evidence`, `verification`, and `updated_at`. Include a concrete reason of at least one sentence; `verified` requires the actual verification result. `reason`, `evidence`, and `verification` must be JSON strings; `updated_at` should be an ISO-8601 UTC timestamp. Example: `{\"schema_version\":1,\"recommendation_id\":\"<exact id>\",\"disposition\":\"in_progress\",\"reason\":\"I reviewed the supervisor recommendation and am incorporating the relevant parts into this task.\",\"evidence\":\"Read the current recommendation file.\",\"verification\":\"\",\"updated_at\":\"<UTC timestamp>\"}`. Update the worker-owned disposition file as work progresses. If advice is unsafe, stale, technically incorrect, or conflicts with higher-priority requirements, record `rejected_with_reason` or `superseded` and explain why; never obey blindly. These runtime files are ignored locally and must not be committed. If the protocol file cannot be written, continue work safely; the controller will expose the outstanding recommendation again at bounded intervals.
+- FILE-BACKED TWO-WAY DIALOGUE (mandatory, lightweight, persistent for this run): the controller owns `.kilo-runtime/current-supervisor-recommendation.json`; never edit or replace it. The `.kilo-runtime/` directory is outside `.kilo/` because Kilo validates JSON files under `.kilo/` as configuration. When advice arrives, read that file and write/update `.kilo-runtime/worker-disposition.json` within the next two tool calls, before unrelated exploration when practical. Use JSON `schema_version: 2` and copy the exact `recommendation_id`, `task_id`, and `session_id` from the injected message. Include `acknowledgement_state` (`acknowledged` or `rejected`), `disposition` (`accepted`, `in_progress`, `verified`, `blocked`, `rejected_with_reason`, `superseded`), `reason`, `evidence`, `verification`, `work_performed`, `blockers` (array), `changed_files` (array), `commit_sha`, `checkpoint_sha`, `commands_executed` (array of objects including command and exit code when known), `test_outcomes` (array of objects including status and evidence reference when known), `artifact_refs` (array), `acceptance_criteria` (array of worker-reported criteria; never represent them as independently controller-verified), `outstanding_work` (array), and `updated_at` (ISO-8601 UTC). Empty arrays/strings are acceptable only when they accurately mean none or not yet available. Update the worker-owned disposition as work progresses. If advice is unsafe, stale, technically incorrect, or conflicts with higher-priority requirements, record a rejection and explain why; never obey blindly. A worker's `verified` value is a claim, not proof of task completion. The completion gate requires a task-scoped, controller-issued verification manifest with evidence-backed acceptance criteria, passing test results, verified artifacts, and the exact independently checked remote checkpoint SHA. The runner preserves append-only messages and lifecycle transitions in its progress-trace artifact. This supports review after a cutoff but does not automatically replay them into a new workflow run. If the protocol file cannot be written, continue safely and leave completion unverified.
 - A scheduled review is not a promise that the model can interrupt a tool call or active generation. Feedback arrives at the next tool-result boundary. The monitor still records its scheduled review and status; the controller heartbeat reports status every 30 seconds.
 - Do not spawn an additional background startup review; the controller-managed continuous monitor is authoritative. You may still invoke a targeted foreground supervisor task for a failure loop, using a unique report path.
 - If the plugin, monitor, or supervisor is unavailable, continue the assigned task using the best available evidence. No supervisor failure may terminate or restart the worker.
@@ -306,7 +354,26 @@ DEFAULT OPERATING PRINCIPLE
 Make progress despite imperfection. Fix cheap, deterministic blockers. Tolerate isolated recoverable failures. Protect durable progress and critical invariants. Change approach when evidence shows the current one is not working.
 PROMPT
 )
-DEFAULT_BRANCH="$KILO_DEFAULT_BRANCH"
+if [ -n "${KILO_TASK_PROMPT_FILE:-}" ]; then
+  if [ ! -f "$KILO_TASK_PROMPT_FILE" ]; then
+    echo "::error::Configured task prompt file is missing: $KILO_TASK_PROMPT_FILE"
+    exit 1
+  fi
+  task_prompt="$(cat "$KILO_TASK_PROMPT_FILE")"
+  if [ -z "$task_prompt" ]; then
+    echo "::error::Configured task prompt file is empty: $KILO_TASK_PROMPT_FILE"
+    exit 1
+  fi
+  command="${command}
+
+TASK-SCOPED OBJECTIVE OVERRIDE
+For this activation, the bounded task below takes priority over the generic fallback that asks the worker to select a task. Do not broaden scope or select another task. Preserve all mandatory loop-supervisor acknowledgement and disposition rules from the general instructions above.
+
+$task_prompt"
+  command="${command//__RUN_ID__/${GITHUB_RUN_ID:-local}}"
+  command="${command//__RUN_ATTEMPT__/${GITHUB_RUN_ATTEMPT:-1}}"
+fi
+DEFAULT_BRANCH="$KILO_TARGET_BRANCH"
 
 if [ -z "$DEFAULT_BRANCH" ]; then
   echo "::error::GitHub did not provide the default branch; refusing to report a successful activation."
@@ -343,24 +410,37 @@ export KILO_SUPERVISOR_FEEDBACK_FILE="$SUPERVISOR_FEEDBACK_FILE"
 export KILO_SUPERVISOR_FEEDBACK_CURSOR_FILE="$SUPERVISOR_FEEDBACK_CURSOR_FILE"
 export KILO_SUPERVISOR_TRANSCRIPT_DIR="$SUPERVISOR_TRANSCRIPT_DIR"
 supervisor_loop_pid=""
-write_progress "supervisor-starting" "launching independent 150-second-cadence review process"
-python3 .github/scripts/kilo-supervisor-loop.py \
-  --repo-root "$PWD" \
-  --runtime-root "$RUNNER_TEMP" \
-  --active-log-pointer "$SUPERVISOR_ACTIVE_LOG_POINTER" \
-  --objective-file "$SUPERVISOR_OBJECTIVE_FILE" \
-  --feedback-file "$SUPERVISOR_FEEDBACK_FILE" \
-  --transcript-dir "$SUPERVISOR_TRANSCRIPT_DIR" \
-  --report-dir .kilo/supervisor-reports \
-  --kilo "$RUNNER_TEMP/kilo/node_modules/.bin/kilo" \
-  --model kilo/kilo-auto/free \
-  --interval-seconds 150 \
-  --review-timeout-seconds 120 \
-  --run-id "${GITHUB_RUN_ID:-local}" \
-  --run-attempt "${GITHUB_RUN_ATTEMPT:-1}" \
+SUPERVISOR_INTERVAL_SECONDS="${KILO_SUPERVISOR_INTERVAL_SECONDS:-150}"
+SUPERVISOR_REVIEW_TIMEOUT_SECONDS="${KILO_SUPERVISOR_REVIEW_TIMEOUT_SECONDS:-120}"
+if ! [[ "$SUPERVISOR_INTERVAL_SECONDS" =~ ^[1-9][0-9]*$ ]] ||
+   ! [[ "$SUPERVISOR_REVIEW_TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]] ||
+   [ "$SUPERVISOR_REVIEW_TIMEOUT_SECONDS" -ge "$SUPERVISOR_INTERVAL_SECONDS" ]; then
+  echo "::error::Supervisor interval and review timeout must be positive integers, with timeout shorter than interval."
+  exit 1
+fi
+supervisor_args=(
+  --repo-root "$PWD"
+  --runtime-root "$RUNNER_TEMP"
+  --active-log-pointer "$SUPERVISOR_ACTIVE_LOG_POINTER"
+  --objective-file "$SUPERVISOR_OBJECTIVE_FILE"
+  --feedback-file "$SUPERVISOR_FEEDBACK_FILE"
+  --transcript-dir "$SUPERVISOR_TRANSCRIPT_DIR"
+  --report-dir .kilo/supervisor-reports
+  --kilo "$RUNNER_TEMP/kilo/node_modules/.bin/kilo"
+  --model kilo/kilo-auto/free
+  --interval-seconds "$SUPERVISOR_INTERVAL_SECONDS"
+  --review-timeout-seconds "$SUPERVISOR_REVIEW_TIMEOUT_SECONDS"
+  --run-id "${GITHUB_RUN_ID:-local}"
+  --run-attempt "${GITHUB_RUN_ATTEMPT:-1}"
+)
+if [ "${KILO_E2E_MODE:-0}" = "1" ]; then
+  supervisor_args+=(--require-initial-recommendation)
+fi
+write_progress "supervisor-starting" "launching independent ${SUPERVISOR_INTERVAL_SECONDS}-second-cadence review process"
+python3 .github/scripts/kilo-supervisor-loop.py "${supervisor_args[@]}" \
   > >(tee -a "$SUPERVISOR_LOOP_LOG") 2>&1 &
 supervisor_loop_pid=$!
-echo "[loop-supervisor] Started alongside the Kilo worker; immediate review plus a 150-second cadence (PID $supervisor_loop_pid)."
+echo "[loop-supervisor] Started alongside the Kilo worker; review cadence ${SUPERVISOR_INTERVAL_SECONDS}s (PID $supervisor_loop_pid)."
 echo "[loop-supervisor] Only actual supervisor-to-worker and worker-to-supervisor messages are emitted as live dialogue and saved to agent-dialogue.jsonl; review prompts, repository snapshots, and CLI diagnostics are not published."
 echo "::notice title=Live agent dialogue::Expand the 'Run bash .github/scripts/kilo-controller.sh' step logs and search for 'LIVE AGENT DIALOGUE BOX — SUPERVISOR → WORKER' or 'LIVE AGENT DIALOGUE BOX — WORKER → SUPERVISOR'. Only new messages actually crossing a role boundary are shown."
 write_progress "supervisor-running" "review loop launched"
@@ -469,6 +549,89 @@ heartbeat_pid=$!
 write_progress "worker-loop-ready" "30-second live status heartbeat active"
 trap 'kill "$heartbeat_pid" 2>/dev/null || true; if [ -n "${supervisor_loop_pid:-}" ]; then kill -TERM "$supervisor_loop_pid" 2>/dev/null || true; wait "$supervisor_loop_pid" 2>/dev/null || true; fi; rm -f "$HEARTBEAT_STATE_FILE" "$SUPERVISOR_ACTIVE_LOG_POINTER" "$SUPERVISOR_FEEDBACK_FILE" "$SUPERVISOR_FEEDBACK_CURSOR_FILE" "$SUPERVISOR_OBJECTIVE_FILE"' EXIT
 
+
+if [ "${KILO_E2E_MODE:-0}" = "1" ]; then
+  # The E2E worker must never start without an actual supervisor recommendation
+  # and its append-only written-state event. Retry the supervisor bootstrap first.
+  E2E_STARTUP_TIMEOUT_SECONDS=240
+  e2e_task_id="${GITHUB_RUN_ID:-local}-attempt-${GITHUB_RUN_ATTEMPT:-1}"
+  recommendation_file="$DIALOGUE_PROTOCOL_DIR/current-supervisor-recommendation.json"
+  communication_file="$SUPERVISOR_TRANSCRIPT_DIR/agent-communication.jsonl"
+  startup_deadline=$(( $(date +%s) + E2E_STARTUP_TIMEOUT_SECONDS ))
+  echo "[e2e-gate] Waiting for a valid run-correlated initial supervisor recommendation; deadline=${E2E_STARTUP_TIMEOUT_SECONDS}s."
+  while true; do
+    if python3 - "$recommendation_file" "$communication_file" "$e2e_task_id" <<'PY'
+import json
+import re
+import sys
+from pathlib import Path
+recommendation_path, communication_path = map(Path, sys.argv[1:3])
+task_id = sys.argv[3]
+try:
+    item = json.loads(recommendation_path.read_text(encoding="utf-8"))
+except (OSError, ValueError, json.JSONDecodeError):
+    raise SystemExit(1)
+recommendation_id = item.get("recommendation_id")
+report = item.get("report")
+if (
+    item.get("schema_version") != 2
+    or item.get("task_id") != task_id
+    or item.get("session_id") != task_id
+    or not isinstance(recommendation_id, str)
+    or not recommendation_id.startswith(task_id + "-review-")
+    or not isinstance(report, str)
+    or len(report.strip()) < 80
+    or not re.match(r"^STATUS: (?:CONTINUE|ATTENTION|CRITICAL)\s*$", report.splitlines()[0] if report.splitlines() else "")
+):
+    raise SystemExit(1)
+try:
+    lines = communication_path.read_text(encoding="utf-8").splitlines()
+except OSError:
+    raise SystemExit(1)
+for line in lines:
+    try:
+        event = json.loads(line)
+    except ValueError:
+        continue
+    if (
+        event.get("task_id") == task_id
+        and event.get("direction") == "supervisor_to_worker"
+        and event.get("stage") == "message_written"
+        and event.get("message_id") == recommendation_id
+        and event.get("correlation_id") == recommendation_id
+        and event.get("role") == "supervisor"
+        and isinstance(event.get("message"), str)
+        and len(event.get("message", "")) >= min(80, len(report))
+        and report.startswith(event.get("message", ""))
+    ):
+        raise SystemExit(0)
+raise SystemExit(1)
+PY
+    then
+      echo "[e2e-gate] Initial supervisor recommendation and written-state event validated."
+      write_progress "supervisor-recommendation-ready" "initial run-correlated recommendation validated; worker may start"
+      break
+    fi
+    if [ -f "$SUPERVISOR_LOOP_LOG" ] && grep -Fq "SUPERVISOR_CIRCUIT_BREAKER_OPEN" "$SUPERVISOR_LOOP_LOG"; then
+      echo "::error::Supervisor bootstrap exhausted its bounded retries without publishing a recommendation; no worker was started."
+      exit 1
+    fi
+    if ! kill -0 "$supervisor_loop_pid" 2>/dev/null; then
+      echo "::error::Supervisor process exited before publishing the required initial recommendation; no worker was started."
+      exit 1
+    fi
+    now_epoch=$(date +%s)
+    remaining_startup=$((startup_deadline - now_epoch))
+    remaining_global=$((cutoff_epoch - now_epoch))
+    if [ "$remaining_startup" -le 0 ] || [ "$remaining_global" -le 60 ]; then
+      echo "::error::Initial supervisor recommendation was not published within the bounded startup window; no worker was started."
+      exit 1
+    fi
+    sleep 2
+  done
+fi
+
+
 # Project changes exclude workflow definitions and control-only markers.
 project_worktree_changes() {
   {
@@ -524,11 +687,12 @@ while true; do
     session_attempt=$((session_attempt + 1))
     attempt_log="$RUNNER_TEMP/kilo-session-${agent_index}-attempt-${session_attempt}.log"
     remaining_global=$((cutoff_epoch - $(date +%s)))
-    if [ "$remaining_global" -le 0 ]; then rc=124; echo "::warning::355-minute workflow cutoff reached before attempt ${session_attempt}."; break; fi
+    if [ "$remaining_global" -le 0 ]; then rc=124; echo "::warning::configured ${KILO_HARD_CUTOFF_MINUTES}-minute workflow cutoff reached before attempt ${session_attempt}."; break; fi
     : > "$attempt_log"
     printf '%s\n' "$attempt_log" > "$HEARTBEAT_STATE_FILE"
     printf '%s\n' "$attempt_log" > "$SUPERVISOR_ACTIVE_LOG_POINTER"
     echo "Kilo invocation attempt ${session_attempt} for session ${agent_index}; transient upstream failures retry without an attempt-count cap."
+    export KILO_WORKER_SESSION_ID="${GITHUB_RUN_ID:-local}-attempt-${GITHUB_RUN_ATTEMPT:-1}-session-${agent_index}-try-${session_attempt}"
     write_progress "invocation-start" "Kilo worker process invoked"
     SESSION_REPORT_PREFIX=".kilo/supervisor-reports/run-${GITHUB_RUN_ID:-local}-attempt-${GITHUB_RUN_ATTEMPT:-1}-session-${agent_index}-invocation-${session_attempt}"
     session_command="${command}
@@ -611,7 +775,7 @@ PY
     correction_attempt=$((correction_attempt + 1))
     prior_record="${previous_recovery_log:-$session_log}"
     recovery_command=$(cat <<RECOVERY_PROMPT
-Corrective invocation ${correction_attempt} for the ongoing Kilo task. The previous invocation failed or made no durable project changes. This is not a one-pass allowance: keep trying materially different, evidence-supported corrections until verified durable project progress is produced or the global 355-minute cutoff is reached.
+Corrective invocation ${correction_attempt} for the ongoing Kilo task. The previous invocation failed or made no durable project changes. This is not a one-pass allowance: keep trying materially different, evidence-supported corrections until verified durable project progress is produced or the configured ${KILO_HARD_CUTOFF_MINUTES}-minute hard cutoff is reached.
 Latest observed blocker: ${correction_reason}
 Inspect the current worktree and the latest diagnostic record at: ${prior_record}
 If this is not the first corrective invocation, inspect its previous corrective log and choose an approach materially different from prior failed approaches. Do not simply repeat the same operation with unchanged assumptions. Do not invent changes merely to create activity. Identify the smallest justified correction, implement it when safe, and run the narrowest relevant verification. Record what changed, the exact verification commands and outputs, and unresolved blockers in a durable handoff. Emit exactly one final machine-readable line CORRECTIVE_VERIFICATION=PASS only if focused verification actually succeeded; otherwise emit CORRECTIVE_VERIFICATION=BLOCKED and explain the blocker. Preserve research pre-registrations and promotion gates, tests, security controls, workflow boundaries, user data, and all safety requirements. If no safe correction is supported, preserve useful evidence and explain the next distinct investigation needed.
@@ -681,7 +845,7 @@ RECOVERY_PROMPT
   if [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ]; then
     if [ "$(date +%s)" -ge "$cutoff_epoch" ]; then
       cutoff=1
-      echo "::warning::355-minute safety cutoff reached; saving the last possible checkpoint."
+      echo "::warning::configured ${KILO_HARD_CUTOFF_MINUTES}-minute safety cutoff reached; saving the last possible checkpoint."
     else
       consecutive_failures=$((consecutive_failures + 1))
       failed_sessions=$((failed_sessions + 1))
@@ -799,176 +963,9 @@ PY
     fi
   fi
 
-  # Deterministic repository-level persistence. A checkpoint is already committed
-  # locally before entering this loop. When rebase fails, preserve that exact
-  # commit in both a git bundle (uploaded as a run artifact) and a non-force-
-  # pushed recovery ref before aborting; never blindly retry an identical
-  # local-checkpoint/remote-head conflict.
-  persisted=1
-  if [ "$checkpoint_ready" -eq 1 ] && [ "$committed_this_iteration" -eq 1 ]; then
-    persisted=0
-    push_attempt=0
-    rebase_conflicts=0
-    last_conflict_signature=""
-    delay=5
-    while [ "$persisted" -ne 1 ]; do
-      remaining=$((cutoff_epoch - $(date +%s)))
-      if [ "$remaining" -le 0 ]; then
-        cutoff=1
-        echo "::warning::Safety cutoff reached before checkpoint persistence could be confirmed."
-        break
-      fi
+  # Keep persistence logic independently testable; this is the exact production routine.
+  persist_current_checkpoint
 
-      push_attempt=$((push_attempt + 1))
-      write_progress "checkpoint-push" "remote reconciliation/persistence attempt=${push_attempt}"
-      if ! git fetch origin "$DEFAULT_BRANCH"; then
-        echo "::warning::Fetch failed on persistence attempt ${push_attempt}; retrying."
-      else
-        remote_sha_before="$(git rev-parse --verify "origin/$DEFAULT_BRANCH^{commit}" 2>/dev/null || true)"
-        if [ -z "$remote_sha_before" ]; then
-          echo "::warning::Fetched origin but could not resolve origin/$DEFAULT_BRANCH; retrying."
-        elif git merge-base --is-ancestor "$remote_sha_before" HEAD; then
-          if git push origin "HEAD:$DEFAULT_BRANCH"; then
-            remote_sha="$(git ls-remote origin "refs/heads/$DEFAULT_BRANCH" 2>/dev/null | awk 'NR==1 {print $1}')"
-            local_sha="$(git rev-parse HEAD)"
-            if [ -n "$remote_sha" ] && [ "$remote_sha" = "$local_sha" ]; then
-              persisted=1
-              echo "Repository persistence verified at $remote_sha after $push_attempt attempt(s)."
-              write_progress "checkpoint-verified" "remote head verified at ${remote_sha} after ${push_attempt} attempt(s)"
-              break
-            fi
-            echo "::warning::Remote head did not match the local checkpoint after attempt $push_attempt; refetching."
-          else
-            echo "::warning::Push failed on persistence attempt $push_attempt; fetching and reconciling again."
-          fi
-        else
-          checkpoint_sha_before="$(git rev-parse HEAD)"
-          if git rebase --autostash "$remote_sha_before"; then
-            # A successful rebase must be pushed in this same iteration. If
-            # another writer advances main concurrently, the next loop fetches
-            # and reconciles the new head.
-            if git push origin "HEAD:$DEFAULT_BRANCH"; then
-              remote_sha="$(git ls-remote origin "refs/heads/$DEFAULT_BRANCH" 2>/dev/null | awk 'NR==1 {print $1}')"
-              local_sha="$(git rev-parse HEAD)"
-              if [ -n "$remote_sha" ] && [ "$remote_sha" = "$local_sha" ]; then
-                persisted=1
-                echo "Repository persistence verified at $remote_sha after $push_attempt attempt(s)."
-                write_progress "checkpoint-verified" "remote head verified at ${remote_sha} after ${push_attempt} attempt(s)"
-                break
-              fi
-              echo "::warning::Remote head advanced after the rebased push on attempt $push_attempt; refetching."
-            else
-              echo "::warning::Push failed after successful rebase on persistence attempt $push_attempt; fetching and reconciling again."
-            fi
-          else
-            rebase_conflicts=$((rebase_conflicts + 1))
-            conflict_paths="$(git diff --name-only --diff-filter=U 2>/dev/null || true)"
-            status_snapshot="$(git status --short --branch 2>&1 || true)"
-            conflict_signature="${checkpoint_sha_before}:${remote_sha_before}"
-            recovery_dir="${RUNNER_TEMP:-/tmp}/kilo-failure-logs"
-            if ! mkdir -p "$recovery_dir"; then
-              recovery_dir="/tmp/kilo-failure-logs"
-              mkdir -p "$recovery_dir" 2>/dev/null || true
-            fi
-            recovery_report="$recovery_dir/kilo-persistence-recovery-${GITHUB_RUN_ID:-manual}-${agent_index:-0}-${push_attempt}.txt"
-            recovery_bundle="$recovery_dir/kilo-persistence-checkpoint-${checkpoint_sha_before}.bundle"
-            recovery_ref="refs/heads/kilo-recovery/${checkpoint_sha_before}"
-            {
-              printf 'reason=rebase_conflict\n'
-              printf 'run_id=%s\n' "${GITHUB_RUN_ID:-unknown}"
-              printf 'agent_index=%s\n' "${agent_index:-unknown}"
-              printf 'persistence_attempt=%s\n' "$push_attempt"
-              printf 'rebase_conflict_count=%s\n' "$rebase_conflicts"
-              printf 'checkpoint_sha_before_rebase=%s\n' "$checkpoint_sha_before"
-              printf 'remote_sha_before_rebase=%s\n' "$remote_sha_before"
-              printf 'recovery_ref=%s\n' "$recovery_ref"
-              printf 'conflicting_paths_begin\n%s\nconflicting_paths_end\n' "${conflict_paths:-<none reported by git diff --diff-filter=U>}"
-              printf 'worktree_status_during_conflict_begin\n%s\nworktree_status_during_conflict_end\n' "${status_snapshot:-<status unavailable>}"
-            } > "$recovery_report" 2>&1 || true
-
-            bundle_verified=0
-            checkpoint_ref="refs/kilo-recovery/checkpoint-${checkpoint_sha_before}"
-            if git update-ref "$checkpoint_ref" "$checkpoint_sha_before" >> "$recovery_report" 2>&1; then
-              if git bundle create "$recovery_bundle" "$checkpoint_ref" >> "$recovery_report" 2>&1 &&
-                 git bundle verify "$recovery_bundle" >> "$recovery_report" 2>&1; then
-                bundle_verified=1
-              else
-                printf 'bundle_verification=FAILED\n' >> "$recovery_report" 2>/dev/null || true
-              fi
-              git update-ref -d "$checkpoint_ref" >> "$recovery_report" 2>&1 || true
-            else
-              printf 'checkpoint_ref_creation=FAILED\n' >> "$recovery_report" 2>/dev/null || true
-            fi
-
-            recovery_ref_verified=0
-            if git push origin "${checkpoint_sha_before}:${recovery_ref}" >> "$recovery_report" 2>&1; then
-              recovery_remote_sha="$(git ls-remote origin "$recovery_ref" 2>/dev/null | awk 'NR==1 {print $1}')"
-              if [ -n "$recovery_remote_sha" ] && [ "$recovery_remote_sha" = "$checkpoint_sha_before" ]; then
-                recovery_ref_verified=1
-              fi
-            fi
-            {
-              printf 'bundle_verified=%s\n' "$bundle_verified"
-              printf 'recovery_ref_verified=%s\n' "$recovery_ref_verified"
-              printf 'recovery_remote_sha=%s\n' "${recovery_remote_sha:-unverified}"
-            } >> "$recovery_report" 2>/dev/null || true
-
-            abort_ok=0
-            if git rebase --abort >> "$recovery_report" 2>&1; then
-              abort_ok=1
-            fi
-            printf 'rebase_abort_succeeded=%s\n' "$abort_ok" >> "$recovery_report" 2>/dev/null || true
-            echo "::warning::Rebase conflict on persistence attempt $push_attempt; checkpoint=$checkpoint_sha_before remote=$remote_sha_before bundle_verified=$bundle_verified recovery_ref_verified=$recovery_ref_verified. See the uploaded kilo-failure-transcripts artifact for conflict paths and recovery details."
-
-            if [ "$abort_ok" -ne 1 ]; then
-              echo "::error::Could not confirm rebase abort after preserving recovery evidence; stopping persistence attempts."
-              cutoff=1
-              break
-            fi
-            if [ "$bundle_verified" -ne 1 ] && [ "$recovery_ref_verified" -ne 1 ]; then
-              echo "::error::Neither the checkpoint bundle nor recovery ref could be verified; stopping rather than risking repeated conflict retries."
-              cutoff=1
-              break
-            fi
-            if [ "$conflict_signature" = "$last_conflict_signature" ]; then
-              printf 'repeated_identical_conflict=1\n' >> "$recovery_report" 2>/dev/null || true
-              echo "::error::The same checkpoint conflicted with the same remote head again; recovery evidence is preserved and the loop is stopping for targeted resolution."
-              cutoff=1
-              break
-            fi
-            last_conflict_signature="$conflict_signature"
-            if [ "$rebase_conflicts" -ge 3 ]; then
-              echo "::error::Reached three rebase conflicts in this checkpoint persistence loop; recovery evidence is preserved and automatic retries are stopping."
-              cutoff=1
-              break
-            fi
-          fi
-        fi
-      fi
-
-      remaining=$((cutoff_epoch - $(date +%s)))
-      if [ "$cutoff" -eq 1 ] || [ "$remaining" -le 0 ]; then
-        cutoff=1
-        break
-      fi
-      if [ "$delay" -gt "$remaining" ]; then delay="$remaining"; fi
-      if [ "$delay" -gt 0 ]; then sleep "$delay"; fi
-      if [ "$delay" -lt 30 ]; then delay=$((delay * 2)); if [ "$delay" -gt 30 ]; then delay=30; fi; fi
-    done
-  fi
-  if [ "$persisted" -ne 1 ]; then
-    echo "::warning::Checkpoint persistence was not confirmed. No success claim is made; stopping edits and preserving diagnostics before the cutoff."
-    cutoff=1
-  fi
-  if [ "$persisted" -eq 1 ] && [ "$committed_this_iteration" -eq 1 ]; then
-    persisted_checkpoints=$((persisted_checkpoints + 1))
-    last_verified_checkpoint_sha="$(git rev-parse --short HEAD)"
-  fi
-  write_progress "checkpoint-result" "persisted=${persisted} committed=${committed_this_iteration} project_changes=${checkpoint_has_project_changes}"
-  if [ "$persisted" -eq 1 ] && [ "$committed_this_iteration" -eq 1 ] && [ "$checkpoint_has_project_changes" -eq 1 ]; then
-    project_progress=1
-    echo "Meaningful repository progress checkpoint verified at $(git rev-parse HEAD)."
-  fi
   if [ "$hard_provider_block" -eq 1 ]; then
     echo "::warning::This session hit a hard provider quota/capacity limit. The session is ending; a fresh session may retry while workflow time remains."
   elif [ "$provider_pressure_streak" -ge 3 ]; then
@@ -1015,10 +1012,10 @@ PY
 done
 
 if [ "$cutoff" -eq 1 ]; then
-  echo "::warning::The 355-minute safety cutoff was reached; see checkpoint verification messages above."
+  echo "::warning::The configured ${KILO_HARD_CUTOFF_MINUTES}-minute safety cutoff was reached; see checkpoint verification messages above."
 fi
 if [ "$cutoff" -eq 1 ]; then
-  write_progress "controller-finished" "355-minute hard cutoff reached"
+  write_progress "controller-finished" "${KILO_HARD_CUTOFF_MINUTES}-minute hard cutoff reached"
 else
   write_progress "controller-finished" "controller loop finished before cutoff"
 fi
@@ -1053,6 +1050,26 @@ final_worker_reply_count="$(grep -c '"direction":"worker_to_supervisor"' "$dialo
 final_delivery_count="${final_delivery_count:-0}"
 final_dialogue_count="${final_dialogue_count:-0}"
 final_worker_reply_count="${final_worker_reply_count:-0}"
+communication_file="$SUPERVISOR_TRANSCRIPT_DIR/agent-communication.jsonl"
+completion_status_file="$SUPERVISOR_TRANSCRIPT_DIR/task-completion-status.json"
+task_id="${GITHUB_RUN_ID:-local}-attempt-${GITHUB_RUN_ATTEMPT:-1}"
+verification_file="$RUNNER_TEMP/kilo-task-verification-${GITHUB_RUN_ID:-local}-attempt-${GITHUB_RUN_ATTEMPT:-1}.json"
+communication_count="$(grep -c '"stage":' "$communication_file" 2>/dev/null || true)"
+communication_count="${communication_count:-0}"
+checkpoint_persisted_arg=0
+if [ "${persisted:-0}" = "1" ] && [[ "${last_verified_checkpoint_sha:-}" =~ ^[0-9a-f]{40}$ ]]; then checkpoint_persisted_arg=1; fi
+python3 .github/scripts/kilo_dialogue_protocol.py completion-status \
+  --dialogue "$dialogue_file" \
+  --communication "$communication_file" \
+  --verification "$verification_file" \
+  --task-id "$task_id" \
+  --checkpoint-sha "${last_verified_checkpoint_sha:-}" \
+  --checkpoint-persisted "$checkpoint_persisted_arg" \
+  --output "$completion_status_file"
+task_completion_status="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8")).get("status", "unknown"))' "$completion_status_file")"
+echo "::notice::Task completion gate status: $task_completion_status. Advice delivery, acknowledgement, worker claims, green CI, and checkpoint persistence alone do not prove task completion."
+printf 'task_completion_status=%s\n' "$task_completion_status" >> "$GITHUB_OUTPUT"
+printf 'supervisor_communication_events=%s\n' "$communication_count" >> "$GITHUB_OUTPUT"
 printf 'project_progress=%s\n' "$project_progress" >> "$GITHUB_OUTPUT"
 printf 'failed_sessions=%s\n' "$failed_sessions" >> "$GITHUB_OUTPUT"
 printf 'idle_timeout_retries=%s\n' "$idle_timeout_retry_count" >> "$GITHUB_OUTPUT"
@@ -1083,3 +1100,21 @@ if [ "$cutoff" -eq 1 ]; then
 else
   echo "Kilo controller finished at the configured session target or cutoff. Sessions started: $agent_index; failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
 fi
+
+# A successful final echo is not evidence of a successful repository outcome.
+# Recheck the worktree so unstaged substantive changes cannot be reported as durable progress.
+terminal_status_file="${RUNNER_TEMP:-/tmp}/kilo-terminal-git-status-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.txt"
+if ! git status --porcelain --untracked-files=all > "$terminal_status_file"; then
+  printf '?? terminal-status-check-unavailable\n' > "$terminal_status_file"
+fi
+set +e
+python3 .github/scripts/kilo-terminal-outcome.py \
+  --project-progress "${project_progress:-0}" \
+  --checkpoint-persisted "${persisted:-0}" \
+  --git-status-file "$terminal_status_file" \
+  --cutoff "$cutoff" \
+  --checkpoint-sha "$(git rev-parse HEAD 2>/dev/null || printf 'unknown')" \
+  --output "${GITHUB_OUTPUT:-}"
+terminal_exit_code=$?
+set -e
+exit "$terminal_exit_code"

@@ -9,9 +9,17 @@ on:
       - ".github/workflows/kilo-two-agent-dispatch.yml"
       - ".github/scripts/kilo-controller.sh"
       - ".github/scripts/test_kilo_checkpoint_recovery.sh"
-      - ".github/scripts/test_kilo_checkpoint_recovery.sh"
+      - ".github/scripts/kilo-persist-checkpoint.sh"
+      - ".github/scripts/kilo-terminal-outcome.py"
+      - ".github/scripts/test_kilo_terminal_outcome.py"
+      - "requirements.txt"
       - ".github/scripts/kilo-invoke-with-idle-timeout.py"
       - ".github/scripts/kilo-supervisor-loop.py"
+      - ".github/prompts/kilo-e2e-verification.md"
+      - ".github/scripts/kilo-e2e-verification.py"
+      - ".github/scripts/test_kilo_e2e_verification.py"
+      - ".github/scripts/kilo_dialogue_protocol.py"
+      - ".github/scripts/test_kilo_dialogue_protocol.py"
       - ".github/scripts/test_kilo_supervisor_loop.py"
       - ".kilo/plugin/loop-supervisor-feedback.js"
       - ".gitignore"
@@ -24,7 +32,17 @@ on:
       - ".github/workflows/main.yml"
       - ".github/workflows/kilo-workflow-audit.yml"
       - ".github/scripts/kilo-controller.sh"
+      - ".github/scripts/kilo-persist-checkpoint.sh"
+      - ".github/scripts/kilo-terminal-outcome.py"
+      - ".github/scripts/test_kilo_terminal_outcome.py"
+      - ".github/scripts/test_kilo_checkpoint_recovery.sh"
+      - "requirements.txt"
       - ".github/scripts/kilo-supervisor-loop.py"
+      - ".github/prompts/kilo-e2e-verification.md"
+      - ".github/scripts/kilo-e2e-verification.py"
+      - ".github/scripts/test_kilo_e2e_verification.py"
+      - ".github/scripts/kilo_dialogue_protocol.py"
+      - ".github/scripts/test_kilo_dialogue_protocol.py"
       - ".github/scripts/test_kilo_supervisor_loop.py"
       - ".kilo/plugin/loop-supervisor-feedback.js"
       - ".gitignore"
@@ -36,7 +54,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v6
       - name: Validate workflow syntax and schema
@@ -53,7 +71,8 @@ jobs:
             echo "$script: Bash syntax OK"
           done
           bash -n .github/scripts/kilo-controller.sh
-          echo ".github/scripts/kilo-controller.sh: Bash syntax OK"
+          bash -n .github/scripts/kilo-persist-checkpoint.sh
+          echo "Kilo controller and production checkpoint helper: Bash syntax OK"
       - name: Validate Kilo invocation idle watchdog
         shell: bash
         run: |
@@ -88,16 +107,70 @@ jobs:
         run: |
           set -euo pipefail
           controller=.github/scripts/kilo-controller.sh
-          grep -Fq 'git bundle create' "$controller"
-          grep -Fq 'git bundle verify' "$controller"
-          grep -Fq 'checkpoint_ref="refs/kilo-recovery/checkpoint-' "$controller"
-          grep -Fq 'refs/heads/kilo-recovery/' "$controller"
-          grep -Fq 'conflict_signature=' "$controller"
-          grep -Fq 'Reached three rebase conflicts' "$controller"
-          grep -Fq 'same checkpoint conflicted with the same remote head again' "$controller"
-          grep -Fq 'rebase_abort_succeeded=' "$controller"
-          echo "Recoverable checkpoint, verified backup, and repeated-conflict guard: OK"
-      - name: Exercise checkpoint recovery after a rebase conflict
+          persist=.github/scripts/kilo-persist-checkpoint.sh
+          grep -Fq 'source .github/scripts/kilo-persist-checkpoint.sh' "$controller"
+          grep -Fq 'persist_current_checkpoint' "$controller"
+          grep -Fq 'git bundle create' "$persist"
+          grep -Fq 'git bundle verify' "$persist"
+          grep -Fq 'checkpoint_ref="refs/kilo-recovery/checkpoint-' "$persist"
+          grep -Fq 'refs/heads/kilo-recovery/' "$persist"
+          grep -Fq 'conflict_signature=' "$persist"
+          grep -Fq 'Reached three rebase conflicts' "$persist"
+          grep -Fq 'same checkpoint conflicted with the same remote head again' "$persist"
+          grep -Fq 'rebase_abort_succeeded=' "$persist"
+          echo "Production checkpoint routine is isolated for direct integration testing: OK"
+
+      - name: Validate branch-isolated bounded E2E controls
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          grep -Fq 'KILO_HARD_CUTOFF_MINUTES' .github/scripts/kilo-controller.sh
+          grep -Fq 'KILO_HARD_CUTOFF_MINUTES" != "10"' .github/scripts/kilo-controller.sh
+          grep -Fq 'KILO_E2E_MODE' .github/scripts/kilo-controller.sh
+          grep -Fq 'KILO_TARGET_BRANCH' .github/scripts/kilo-controller.sh
+          grep -Fq 'KILO_TASK_PROMPT_FILE' .github/scripts/kilo-controller.sh
+          grep -Fq -- '--require-initial-recommendation' .github/scripts/kilo-controller.sh
+          grep -Fq 'E2E_STARTUP_TIMEOUT_SECONDS=240' .github/scripts/kilo-controller.sh
+          grep -Fq 'require_initial_recommendation' .github/scripts/kilo-supervisor-loop.py
+          grep -Fq 'should_run_review' .github/scripts/kilo-supervisor-loop.py
+          grep -Fq 'KILO_SUPERVISOR_INTERVAL_SECONDS:' .github/workflows/main.yml
+          grep -Fq 'KILO_SUPERVISOR_REVIEW_TIMEOUT_SECONDS:' .github/workflows/main.yml
+          grep -Fq "format('kilo-e2e-{0}', github.ref_name)" .github/workflows/main.yml
+          grep -Fq "KILO_HARD_CUTOFF_MINUTES:" .github/workflows/main.yml
+          grep -Fq 'actions: read' .github/workflows/main.yml
+          grep -Fq 'LAST_VERIFIED_CHECKPOINT_SHA' .github/workflows/main.yml
+          grep -Fq 'include-hidden-files: true' .github/workflows/main.yml
+          grep -Fq '"gh", "run", "download"' .github/scripts/kilo-e2e-verification.py
+          grep -Fq 'remote_checkpoint' .github/scripts/kilo-e2e-verification.py
+          grep -Fq 'task-completion-status.json is created by the independent verifier after raw evidence upload' .github/scripts/test_kilo_e2e_verification.py
+          echo "Branch isolation, short cutoff, worker-scope override, artifact recovery and independent checkpoint gate: OK"
+      - name: Exercise terminal outcome classification and CLI exit semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile .github/scripts/kilo-terminal-outcome.py .github/scripts/test_kilo_terminal_outcome.py
+          python3 .github/scripts/test_kilo_terminal_outcome.py
+      - name: Verify clean-runner Parquet dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'pyarrow>=12.0.0' requirements.txt
+          python3 -m venv "$RUNNER_TEMP/parquet-smoke-venv"
+          timeout 150s "$RUNNER_TEMP/parquet-smoke-venv/bin/python" -m pip install --disable-pip-version-check --quiet "pandas>=2.0.0" "pyarrow>=12.0.0"
+          "$RUNNER_TEMP/parquet-smoke-venv/bin/python" - <<'PY'
+          import tempfile
+          from pathlib import Path
+          import pandas as pd
+          import pyarrow
+          frame = pd.DataFrame({"symbol": ["SPY", "QQQ"], "close": [500.0, 600.0]})
+          with tempfile.TemporaryDirectory() as temp:
+              path = Path(temp) / "smoke.parquet"
+              frame.to_parquet(path, engine="pyarrow", index=False)
+              restored = pd.read_parquet(path, engine="pyarrow")
+              assert restored.equals(frame), "Parquet round-trip altered the smoke fixture"
+          print(f"Parquet dependency smoke passed with pyarrow={pyarrow.__version__}")
+          PY
+      - name: Exercise checkpoint persistence against a bare Git remote
         shell: bash
         run: bash .github/scripts/test_kilo_checkpoint_recovery.sh
       - name: Guard cutoff-bounded unbounded retry and correction policy
@@ -105,6 +178,7 @@ jobs:
         run: |
           set -euo pipefail
           controller=.github/scripts/kilo-controller.sh
+          persist=.github/scripts/kilo-persist-checkpoint.sh
           grep -Fq 'kilo-invoke-with-idle-timeout.py' "$controller"
           grep -Fq 'KILO_IDLE_TIMEOUT_SECONDS:-600' "$controller"
           grep -Fq 'output_silence=%ss idle_watchdog_remaining=%ss' "$controller"
@@ -147,7 +221,7 @@ jobs:
           grep -Fq '.kilo-runtime' "$controller"
           grep -Fq 'const protocolDir = join(workspace, ".kilo-runtime");' .github/workflows/kilo-workflow-audit.yml
           echo "Supervisor dialogue state is outside Kilo's config directory: OK"
-          echo "Customizable session target, count-unbounded retries/corrections, and 355-minute cutoff guardrails: OK"
+          echo "Customizable session target, cutoff-bounded retries/corrections, and configurable hard-cutoff guardrails: OK"
           for marker in \
             "write_progress()" \
             'write_progress "invocation-start"' \
@@ -172,13 +246,22 @@ jobs:
             'consecutive_unusable_reviews' \
             'SUPERVISOR_REVIEWS_COMPLETED' \
             'append_dialogue_event(' \
+            "kilo_dialogue_protocol.py" \
+            "completion-status" \
+            "agent-communication.jsonl" \
+            "task-completion-status.json" \
+            "task_completion_status" \
             'supervisor_to_worker' \
             '--transcript-dir' \
             'kilo-supervisor-transcripts-*/agent-dialogue.jsonl' \
             'kilo-progress-trace-' \
             'supervisor_pending_units' \
-            'persisted_checkpoints'; do
-            grep -Fq -- "$marker" "$controller" "$workflow" .github/scripts/kilo-supervisor-loop.py .kilo/plugin/loop-supervisor-feedback.js || {
+            'persisted_checkpoints' \
+            'kilo-terminal-outcome.py' \
+            'terminal_status' \
+            'terminal_checkpoint_sha' \
+            'intentional_noop'; do
+            grep -Fq -- "$marker" "$controller" "$workflow" "$persist" .github/scripts/kilo-supervisor-loop.py .kilo/plugin/loop-supervisor-feedback.js || {
               echo "::error::Missing live-transparency marker: $marker"
               exit 1
             }
@@ -218,8 +301,10 @@ jobs:
           puts "Supervisor frontmatter and deny-by-default path-scoped permissions: OK"
           RUBY
           controller=.github/scripts/kilo-controller.sh
-          grep -Fq -- "--interval-seconds 150" "$controller"
-          grep -Fq -- "--review-timeout-seconds 120" "$controller"
+                    grep -Fq -- 'SUPERVISOR_INTERVAL_SECONDS' "$controller"
+          grep -Fq -- 'SUPERVISOR_REVIEW_TIMEOUT_SECONDS' "$controller"
+          grep -Fq -- '--interval-seconds' "$controller"
+          grep -Fq -- '--review-timeout-seconds' "$controller"
           grep -Fq -- '"--agent", "loop-supervisor"' .github/scripts/kilo-supervisor-loop.py
           grep -Fq -- "mode: all" .kilo/agents/loop-supervisor.md
           for marker in \
@@ -254,8 +339,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m py_compile .github/scripts/kilo-supervisor-loop.py .github/scripts/test_kilo_supervisor_loop.py
+          python3 -m py_compile .github/scripts/kilo-supervisor-loop.py .github/scripts/test_kilo_supervisor_loop.py .github/scripts/kilo_dialogue_protocol.py .github/scripts/test_kilo_dialogue_protocol.py .github/scripts/kilo-e2e-verification.py .github/scripts/test_kilo_e2e_verification.py
           python3 .github/scripts/test_kilo_supervisor_loop.py
+          python3 .github/scripts/test_kilo_dialogue_protocol.py
+          python3 .github/scripts/test_kilo_e2e_verification.py
           node --check --input-type=module < .kilo/plugin/loop-supervisor-feedback.js
           node --input-type=module <<'JS'
           import assert from "node:assert/strict";
@@ -383,6 +470,367 @@ jobs:
             assert.match(fresh.output, /run-test-review-0005-cafefeed0000/);
             dialogueEvents = (await readFile(dialoguePath, "utf8")).trim().split("\n").map(line => JSON.parse(line));
             assert.equal(dialogueEvents.length, 5, "a fresh ID yields exactly one additional supervisor-to-worker message");
+
+            // If either JSONL track fails, the cursor must stay pending; recovery should
+            // finish the missing append without silently losing the message.
+            const failureRoot = join(runtime, "persistence-failure");
+            const failureFeedbackPath = join(failureRoot, "feedback.md");
+            const failureCursorPath = join(failureRoot, "feedback-cursor.json");
+            const failureTranscripts = join(failureRoot, "transcripts");
+            await (await import("node:fs/promises")).mkdir(failureTranscripts, { recursive: true });
+            await (await import("node:fs/promises")).mkdir(
+              join(failureTranscripts, "agent-communication.jsonl"), { recursive: true }
+            );
+            recommendation.recommendation_id = "run-test-review-0006-deadbeef0000";
+            recommendation.report = "STATUS: ATTENTION\nObserved evidence: the prior transcript append failed.\nDifferent next step: Retry persistence after recovering the dialogue ledger.\nVerification: confirm both ledgers contain the correlated message.\nLimitations: first attempt is not a durable delivery.\n";
+            await writeFile(join(protocolDir, "current-supervisor-recommendation.json"), JSON.stringify(recommendation), "utf8");
+            const failureAdvice = "--- SUPERVISOR ADVICE ENTRY cycle=0006 ---\nSTATUS: ATTENTION\nRetry persistence after recovering the dialogue ledger.\n--- END SUPERVISOR ADVICE ENTRY cycle=0006 ---\n";
+            await writeFile(failureFeedbackPath, failureAdvice, "utf8");
+            process.env.KILO_SUPERVISOR_FEEDBACK_FILE = failureFeedbackPath;
+            process.env.KILO_SUPERVISOR_FEEDBACK_CURSOR_FILE = failureCursorPath;
+            process.env.KILO_SUPERVISOR_TRANSCRIPT_DIR = failureTranscripts;
+            const failureHooks = await pluginModule.default.server();
+            const firstAttempt = { output: "first persistence attempt" };
+            await failureHooks["tool.execute.after"]({ tool: "read" }, firstAttempt);
+            assert.match(firstAttempt.output, /Retry persistence after recovering/);
+            await assert.rejects(
+              readFile(failureCursorPath),
+              error => error.code === "ENOENT",
+              "cursor must not advance when either communication track fails to persist"
+            );
+            await rm(join(failureTranscripts, "agent-communication.jsonl"), { recursive: true, force: true });
+            const retryAttempt = { output: "persistence retry after repair" };
+            await failureHooks["tool.execute.after"]({ tool: "read" }, retryAttempt);
+            assert.match(retryAttempt.output, /Retry persistence after recovering/);
+            const recoveredCursor = JSON.parse(await readFile(failureCursorPath, "utf8"));
+            assert.equal(recoveredCursor.offset, failureAdvice.length);
+            const recoveredDialogue = (await readFile(join(failureTranscripts, "agent-dialogue.jsonl"), "utf8"))
+              .trim().split("\n").map(line => JSON.parse(line));
+            const recoveredCommunication = (await readFile(join(failureTranscripts, "agent-communication.jsonl"), "utf8"))
+              .trim().split("\n").map(line => JSON.parse(line));
+            assert.equal(recoveredDialogue.length, 1, "retry must not duplicate the first successful track append");
+            assert.equal(recoveredCommunication.length, 1, "retry must persist the missing lifecycle event");
+            assert.equal(recoveredDialogue[0].message_id, recommendation.recommendation_id);
+            assert.equal(recoveredCommunication[0].correlation_id, recommendation.recommendation_id);
+
+            process.env.KILO_SUPERVISOR_MODE = "1";
+            const reviewerHooks = await pluginModule.default.server();
+            assert.equal(Object.keys(reviewerHooks).length, 0, "reviewer CLI sessions must not receive worker feedback");
+            console.log("Exact worker delivery transcripts, durable cursor resume, path boundary, and reviewer isolation: OK");
+          } finally {
+            await rm(runtime, { recursive: true, force: true });
+          }
+          JS
+          controller=.github/scripts/kilo-controller.sh
+          for marker in \
+            "kilo-supervisor-loop.py" \
+            "SUPERVISOR_ACTIVE_LOG_POINTER" \
+            "KILO_SUPERVISOR_FEEDBACK_FILE" \
+            "KILO_SUPERVISOR_FEEDBACK_CURSOR_FILE" \
+            "SUPERVISOR_TRANSCRIPT_DIR" \
+            "KILO_SUPERVISOR_TRANSCRIPT_DIR" \
+            "--transcript-dir" \
+            "Only actual supervisor-to-worker and worker-to-supervisor messages are emitted" \
+            "Started alongside the Kilo worker" \
+            "supervisor_loop_pid" \
+            "title=Live agent dialogue" \
+            "Only new messages actually crossing a role boundary are shown" \
+            "kill -TERM"; do
+            grep -Fq -- "$marker" "$controller" || {
+              echo "::error::Missing continuous supervisor integration marker: $marker"
+              exit 1
+            }
+          done
+          echo "Continuous supervisor loop, dialogue-only records and duplicate suppression, redaction, fail-open recovery, plugin syntax, and controller wiring: OK"
+      - name: Verify supervisor discovery with the workflow's pinned Kilo CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund --prefix "$RUNNER_TEMP/kilo-cli" @kilocode/cli@7.7.1
+          kilo="$RUNNER_TEMP/kilo-cli/node_modules/.bin/kilo"
+          agent_list="$RUNNER_TEMP/kilo-agent-list.txt"
+          "$kilo" agent list > "$agent_list" 2>&1
+          cat "$agent_list"
+          if ! grep -Fqi "loop-supervisor" "$agent_list"; then
+            echo "::error::Pinned Kilo CLI did not discover loop-supervisor."
+            exit 1
+          fi
+          python3 - "$agent_list" <<'PY'
+          import json
+          import re
+          import sys
+          from pathlib import Path
+
+          output = Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace")
+          heading = re.search(r"(?m)^loop-supervisor \(all\)\s*$", output)
+          if heading is None:
+              raise SystemExit("Could not isolate loop-supervisor's resolved permission section")
+          section = output[heading.end():]
+          next_agent = re.search(r"(?m)^[a-zA-Z0-9_-]+ \((?:primary|subagent|all)\)\s*$", section)
+          if next_agent is not None:
+              section = section[:next_agent.start()]
+
+          rules = []
+          for match in re.finditer(r"\{[^{}]*\}", section, flags=re.DOTALL):
+              try:
+                  item = json.loads(match.group(0))
+              except json.JSONDecodeError:
+                  continue
+              if isinstance(item, dict) and item.get("permission"):
+                  rules.append(item)
+          if not rules:
+              raise SystemExit("Could not parse resolved rules for loop-supervisor")
+
+          expected_internal_paths = {
+              "/home/runner/.local/share/kilo/tool-output/*",
+              "/tmp/kilo/*",
+              "/home/runner/.config/kilo/*",
+              "/home/runner/.kilocode/*",
+              "/home/runner/.kilo/*",
+          }
+          external_rules = [r for r in rules if r.get("permission") == "external_directory"]
+          if not any(r.get("pattern") == "*" and r.get("action") == "deny" for r in external_rules):
+              raise SystemExit("Supervisor has no catch-all external-directory deny rule")
+          unexpected = [
+              rule for rule in external_rules
+              if rule.get("action") == "allow" and rule.get("pattern") not in expected_internal_paths
+          ]
+          if unexpected:
+              raise SystemExit(f"Supervisor has unexpected external-directory allow rules: {unexpected}")
+          allowed_paths = {rule.get("pattern") for rule in external_rules if rule.get("action") == "allow"}
+          if not allowed_paths.issubset(expected_internal_paths):
+              raise SystemExit(f"Supervisor external-directory allow rules exceed Kilo runner internal paths: {allowed_paths}")
+
+          for tool in ("bash", "task", "webfetch", "websearch"):
+              tool_rules = [rule for rule in rules if rule.get("permission") == tool]
+              if not tool_rules or tool_rules[-1].get("action") != "deny":
+                  raise SystemExit(f"Resolved supervisor permission does not end with {tool}=deny: {tool_rules[-3:]}")
+          for tool in ("edit", "write"):
+              tool_rules = [rule for rule in rules if rule.get("permission") == tool]
+              if not any(rule.get("pattern") == "*" and rule.get("action") == "deny" for rule in tool_rules):
+                  raise SystemExit(f"Supervisor has no catch-all {tool} deny rule")
+              if not any(rule.get("pattern") == ".kilo/supervisor-reports/*" and rule.get("action") == "allow" for rule in tool_rules):
+                  raise SystemExit(f"Supervisor report path exception missing for {tool}")
+              for rule in tool_rules:
+                  if rule.get("action") == "allow" and rule.get("pattern") not in ("*", ".kilo/supervisor-reports/*"):
+                      raise SystemExit(f"Unexpected {tool} write-path exception: {rule}")
+          print("Resolved loop-supervisor permissions: execution/delegation denied; writes restricted to its report directory; external access limited to Kilo runtime paths.")
+          PY
+          echo "Pinned Kilo CLI discovered loop-supervisor and its resolved permissions passed the boundary checks."
+
+          controller=.github/scripts/kilo-controller.sh
+          grep -Fq -- 'SUPERVISOR_INTERVAL_SECONDS' "$controller"
+          grep -Fq -- 'SUPERVISOR_REVIEW_TIMEOUT_SECONDS' "$controller"
+          grep -Fq -- '--interval-seconds' "$controller"
+          grep -Fq -- '--review-timeout-seconds' "$controller"
+          grep -Fq -- '"--agent", "loop-supervisor"' .github/scripts/kilo-supervisor-loop.py
+          grep -Fq -- "mode: all" .kilo/agents/loop-supervisor.md
+          for marker in \
+            "MANDATORY LOOP-SUPERVISOR PROTOCOL" \
+            "FILE-BACKED TWO-WAY DIALOGUE" \
+            "worker-disposition.json" \
+            "current-supervisor-recommendation.json" \
+            "within the next two tool calls" \
+            "150-second cadence" \
+            "A/B/A/B" \
+            "Five consecutive failed attempts without a verified successful outcome" \
+            "Three attempts using substantially the same approach produce no meaningful improvement" \
+            "SESSION_REPORT_PREFIX" \
+            "SESSION-SCOPED SUPERVISOR OUTPUT CONTEXT"; do
+            if ! grep -Fq -- "$marker" "$controller"; then
+              echo "::error::Missing supervisor contract in controller prompt: $marker"
+              exit 1
+            fi
+          done
+          grep -Fq '.kilo/supervisor-reports/*' .gitignore
+          mkdir -p .kilo/supervisor-reports
+          probe=.kilo/supervisor-reports/audit-ignore-probe.md
+          printf 'temporary audit probe\n' > "$probe"
+          if ! git check-ignore -q "$probe"; then
+            rm -f "$probe"
+            echo "::error::Supervisor reports are not ignored by Git."
+            exit 1
+          fi
+          rm -f "$probe"
+          echo "Supervisor escalation contract and ignored-report behavior: OK"
+      - name: Test scheduled supervisor dialogue and feedback plugin
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile .github/scripts/kilo-supervisor-loop.py .github/scripts/test_kilo_supervisor_loop.py .github/scripts/kilo_dialogue_protocol.py .github/scripts/test_kilo_dialogue_protocol.py .github/scripts/kilo-e2e-verification.py .github/scripts/test_kilo_e2e_verification.py
+          python3 .github/scripts/test_kilo_supervisor_loop.py
+          python3 .github/scripts/test_kilo_dialogue_protocol.py
+          python3 .github/scripts/test_kilo_e2e_verification.py
+          node --check --input-type=module < .kilo/plugin/loop-supervisor-feedback.js
+          node --input-type=module <<'JS'
+          import assert from "node:assert/strict";
+          import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+          import { join } from "node:path";
+          import { tmpdir } from "node:os";
+
+          const runtime = await mkdtemp(join(tmpdir(), "kilo-feedback-plugin-"));
+          try {
+            const feedbackPath = join(runtime, "feedback.md");
+            const cursorPath = join(runtime, "feedback-cursor.json");
+            const transcripts = join(runtime, "transcripts");
+            const source = await readFile(".kilo/plugin/loop-supervisor-feedback.js", "utf8");
+            const pluginModule = await import("data:text/javascript;base64," + Buffer.from(source).toString("base64"));
+            process.env.RUNNER_TEMP = runtime;
+            process.env.KILO_SUPERVISOR_FEEDBACK_FILE = feedbackPath;
+            process.env.KILO_SUPERVISOR_FEEDBACK_CURSOR_FILE = cursorPath;
+            process.env.KILO_SUPERVISOR_TRANSCRIPT_DIR = transcripts;
+            delete process.env.KILO_SUPERVISOR_MODE;
+            const firstMinute = "--- SUPERVISOR ADVICE ENTRY cycle=0001 ---\nSTATUS: ATTENTION\nCheck the first failing assertion.\n--- END SUPERVISOR ADVICE ENTRY cycle=0001 ---\n";
+            const secondMinute = "--- SUPERVISOR ADVICE ENTRY cycle=0002 ---\nSTATUS: CRITICAL\nThe error pattern changed; verify input parsing.\n--- END SUPERVISOR ADVICE ENTRY cycle=0002 ---\n";
+            await writeFile(feedbackPath, firstMinute, "utf8");
+            const hooks = await pluginModule.default.server();
+            const after = hooks["tool.execute.after"];
+            const first = { output: "original tool output" };
+            await after({ tool: "read" }, first);
+            assert.match(first.output, /Check the first failing assertion/);
+            assert.ok(first.output.startsWith("original tool output\n\n"));
+            const exactFirstDelivery = first.output.slice("original tool output\n\n".length);
+            const dialoguePath = join(transcripts, "agent-dialogue.jsonl");
+            let dialogueEvents = (await readFile(dialoguePath, "utf8")).trim().split("\n").map(line => JSON.parse(line));
+            assert.equal(dialogueEvents.length, 1, "first delivery should create one role-dialogue event");
+            assert.equal(dialogueEvents[0].direction, "supervisor_to_worker");
+            assert.equal(dialogueEvents[0].message, exactFirstDelivery,
+              "role-dialogue content must exactly match the content appended to worker tool output");
+            const firstOutput = first.output;
+            await after({ tool: "read" }, first);
+            assert.equal(first.output, firstOutput, "delivered advice must not be appended twice");
+
+            await writeFile(feedbackPath, firstMinute + secondMinute, "utf8");
+            const second = { output: "next tool output" };
+            await after({ tool: "bash" }, second);
+            assert.match(second.output, /verify input parsing/);
+            assert.doesNotMatch(second.output, /Check the first failing assertion/,
+              "only new journal entries should be injected during the same worker process");
+            dialogueEvents = (await readFile(dialoguePath, "utf8")).trim().split("\n").map(line => JSON.parse(line));
+            assert.equal(dialogueEvents.length, 2, "second distinct message should add exactly one role-dialogue event");
+
+            const thirdMinute = "--- SUPERVISOR ADVICE ENTRY cycle=0003 ---\nSTATUS: ATTENTION\nConfirm the fix using the regression test.\n--- END SUPERVISOR ADVICE ENTRY cycle=0003 ---\n";
+            await writeFile(feedbackPath, firstMinute + secondMinute + thirdMinute, "utf8");
+            const reloadedHooks = await pluginModule.default.server();
+            const reloaded = { output: "output after worker session rollover" };
+            await reloadedHooks["tool.execute.after"]({ tool: "read" }, reloaded);
+            assert.match(reloaded.output, /Confirm the fix using the regression test/);
+            assert.doesNotMatch(reloaded.output, /Check the first failing assertion/,
+              "a restarted session should resume the persisted cursor, not replay already delivered entries");
+            dialogueEvents = (await readFile(dialoguePath, "utf8")).trim().split("\n").map(line => JSON.parse(line));
+            assert.equal(dialogueEvents.length, 3, "session rollover must resume the cursor without replaying old messages");
+
+            process.env.KILO_SUPERVISOR_FEEDBACK_FILE = join(tmpdir(), "outside-feedback.md");
+            const outsideHooks = await pluginModule.default.server();
+            const outside = { output: "leave unchanged" };
+            await outsideHooks["tool.execute.after"]({ tool: "read" }, outside);
+            assert.equal(outside.output, "leave unchanged", "files outside RUNNER_TEMP must be ignored");
+
+            // File-backed protocol: a recommendation is delivered once; repeated reads never echo it.
+            const workspace = join(runtime, "workspace");
+            const protocolDir = join(workspace, ".kilo-runtime");
+            await (await import("node:fs/promises")).mkdir(protocolDir, { recursive: true });
+            process.env.GITHUB_WORKSPACE = workspace;
+            process.env.KILO_SUPERVISOR_PROTOCOL_DIR = protocolDir;
+            process.env.KILO_SUPERVISOR_FEEDBACK_FILE = feedbackPath;
+            process.env.KILO_SUPERVISOR_FEEDBACK_CURSOR_FILE = cursorPath;
+            process.env.KILO_SUPERVISOR_TRANSCRIPT_DIR = transcripts;
+            const recommendation = {
+              schema_version: 1,
+              recommendation_id: "run-test-review-0004-deadbeef0000",
+              review_cycle: 4,
+              source_worker_state_sha256: "a".repeat(64),
+              report: "STATUS: ATTENTION\\nObserved evidence: test evidence.\\nDifferent next step: run the regression test.\\nVerification: check assertion.\\nLimitations: limited test context.",
+              created_at: "2026-10-14T00:00:00Z"
+            };
+            await writeFile(join(protocolDir, "current-supervisor-recommendation.json"), JSON.stringify(recommendation), "utf8");
+            await rm(join(protocolDir, "worker-disposition.json"), { force: true });
+            const fourthMinute = "--- SUPERVISOR ADVICE ENTRY cycle=0004 ---\\nSTATUS: ATTENTION\\nA new worker-specific recommendation should only be delivered once.\\n--- END SUPERVISOR ADVICE ENTRY cycle=0004 ---\\n";
+            await writeFile(feedbackPath, fourthMinute, "utf8");
+            const protocolHooks = await pluginModule.default.server();
+            const delivered = { output: "new recommendation tool output" };
+            await protocolHooks["tool.execute.after"]({ tool: "read" }, delivered);
+            assert.match(delivered.output, /new worker-specific recommendation/);
+            assert.match(delivered.output, /run-test-review-0004-deadbeef0000/);
+            dialogueEvents = (await readFile(dialoguePath, "utf8")).trim().split("\n").map(line => JSON.parse(line));
+            assert.equal(dialogueEvents.length, 4);
+            assert.equal(dialogueEvents[3].message_id, recommendation.recommendation_id);
+            for (let i = 0; i < 8; i++) {
+              const repeated = { output: "repeated tool output " + i };
+              await protocolHooks["tool.execute.after"]({ tool: "read" }, repeated);
+              assert.doesNotMatch(repeated.output, /new worker-specific recommendation/,
+                "an already delivered recommendation must not be repeated on later tool boundaries");
+            }
+            await writeFile(join(protocolDir, "worker-disposition.json"), JSON.stringify({
+              schema_version: 1,
+              recommendation_id: recommendation.recommendation_id,
+              disposition: "in_progress",
+              reason: "I am applying this specific recommendation before unrelated work.",
+              evidence: "The last test assertion failed.",
+              verification: "",
+              updated_at: "2026-10-14T00:00:01Z"
+            }), "utf8");
+            for (let i = 0; i < 4; i++) {
+              const acknowledged = { output: "acknowledged tool output " + i };
+              await protocolHooks["tool.execute.after"]({ tool: "read" }, acknowledged);
+              assert.doesNotMatch(acknowledged.output, /SUPERVISOR → WORKER: NEW MESSAGE/,
+                "writing a worker disposition must not re-trigger the last supervisor message");
+            }
+
+            recommendation.recommendation_id = "run-test-review-0005-cafefeed0000";
+            recommendation.report = "STATUS: ATTENTION\\nObserved evidence: updated test evidence.\\nDifferent next step: check the new regression assertion.\\nVerification: rerun focused test.\\nLimitations: still bounded.";
+            await writeFile(join(protocolDir, "current-supervisor-recommendation.json"), JSON.stringify(recommendation), "utf8");
+            const fifthMinute = "--- SUPERVISOR ADVICE ENTRY cycle=0005 ---\\nSTATUS: ATTENTION\\nA materially new recommendation is being delivered.\\n--- END SUPERVISOR ADVICE ENTRY cycle=0005 ---\\n";
+            await writeFile(feedbackPath, fifthMinute, "utf8");
+            const fresh = { output: "new ID boundary" };
+            await protocolHooks["tool.execute.after"]({ tool: "read" }, fresh);
+            assert.match(fresh.output, /materially new recommendation/);
+            assert.match(fresh.output, /run-test-review-0005-cafefeed0000/);
+            dialogueEvents = (await readFile(dialoguePath, "utf8")).trim().split("\n").map(line => JSON.parse(line));
+            assert.equal(dialogueEvents.length, 5, "a fresh ID yields exactly one additional supervisor-to-worker message");
+
+            // If either JSONL track fails, the cursor must stay pending; recovery should
+            // finish the missing append without silently losing the message.
+            const failureRoot = join(runtime, "persistence-failure");
+            const failureFeedbackPath = join(failureRoot, "feedback.md");
+            const failureCursorPath = join(failureRoot, "feedback-cursor.json");
+            const failureTranscripts = join(failureRoot, "transcripts");
+            await (await import("node:fs/promises")).mkdir(failureTranscripts, { recursive: true });
+            await (await import("node:fs/promises")).mkdir(
+              join(failureTranscripts, "agent-communication.jsonl"), { recursive: true }
+            );
+            recommendation.recommendation_id = "run-test-review-0006-deadbeef0000";
+            recommendation.report = "STATUS: ATTENTION\nObserved evidence: the prior transcript append failed.\nDifferent next step: Retry persistence after recovering the dialogue ledger.\nVerification: confirm both ledgers contain the correlated message.\nLimitations: first attempt is not a durable delivery.\n";
+            await writeFile(join(protocolDir, "current-supervisor-recommendation.json"), JSON.stringify(recommendation), "utf8");
+            const failureAdvice = "--- SUPERVISOR ADVICE ENTRY cycle=0006 ---\nSTATUS: ATTENTION\nRetry persistence after recovering the dialogue ledger.\n--- END SUPERVISOR ADVICE ENTRY cycle=0006 ---\n";
+            await writeFile(failureFeedbackPath, failureAdvice, "utf8");
+            process.env.KILO_SUPERVISOR_FEEDBACK_FILE = failureFeedbackPath;
+            process.env.KILO_SUPERVISOR_FEEDBACK_CURSOR_FILE = failureCursorPath;
+            process.env.KILO_SUPERVISOR_TRANSCRIPT_DIR = failureTranscripts;
+            const failureHooks = await pluginModule.default.server();
+            const firstAttempt = { output: "first persistence attempt" };
+            await failureHooks["tool.execute.after"]({ tool: "read" }, firstAttempt);
+            assert.match(firstAttempt.output, /Retry persistence after recovering/);
+            await assert.rejects(
+              readFile(failureCursorPath),
+              error => error.code === "ENOENT",
+              "cursor must not advance when either communication track fails to persist"
+            );
+            await rm(join(failureTranscripts, "agent-communication.jsonl"), { recursive: true, force: true });
+            const retryAttempt = { output: "persistence retry after repair" };
+            await failureHooks["tool.execute.after"]({ tool: "read" }, retryAttempt);
+            assert.match(retryAttempt.output, /Retry persistence after recovering/);
+            const recoveredCursor = JSON.parse(await readFile(failureCursorPath, "utf8"));
+            assert.equal(recoveredCursor.offset, failureAdvice.length);
+            const recoveredDialogue = (await readFile(join(failureTranscripts, "agent-dialogue.jsonl"), "utf8"))
+              .trim().split("\n").map(line => JSON.parse(line));
+            const recoveredCommunication = (await readFile(join(failureTranscripts, "agent-communication.jsonl"), "utf8"))
+              .trim().split("\n").map(line => JSON.parse(line));
+            assert.equal(recoveredDialogue.length, 1, "retry must not duplicate the first successful track append");
+            assert.equal(recoveredCommunication.length, 1, "retry must persist the missing lifecycle event");
+            assert.equal(recoveredDialogue[0].message_id, recommendation.recommendation_id);
+            assert.equal(recoveredCommunication[0].correlation_id, recommendation.recommendation_id);
+
             process.env.KILO_SUPERVISOR_MODE = "1";
             const reviewerHooks = await pluginModule.default.server();
             assert.equal(Object.keys(reviewerHooks).length, 0, "reviewer CLI sessions must not receive worker feedback");

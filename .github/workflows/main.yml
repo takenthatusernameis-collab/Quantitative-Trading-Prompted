@@ -16,14 +16,17 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
-  group: kilo-repository
+  group: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && format('kilo-e2e-{0}', github.ref_name) || 'kilo-repository' }}
   cancel-in-progress: false
 
 jobs:
   kilo:
+    if: ${{ github.ref_name == github.event.repository.default_branch || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/')) }}
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && 12 || 360 }}
 
     steps:
       - uses: actions/checkout@v6
@@ -37,13 +40,24 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           KILO_TRIGGER_EVENT: ${{ github.event_name }}
           KILO_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          KILO_REPOSITORY_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          KILO_TARGET_BRANCH: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && github.ref_name || github.event.repository.default_branch }}
+          KILO_E2E_MODE: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && '1' || '0' }}
+          KILO_HARD_CUTOFF_MINUTES: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && '10' || '355' }}
+          KILO_TASK_PROMPT_FILE: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && '.github/prompts/kilo-e2e-verification.md' || '' }}
+          KILO_SUPERVISOR_INTERVAL_SECONDS: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && '60' || '150' }}
+          KILO_SUPERVISOR_REVIEW_TIMEOUT_SECONDS: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && '45' || '120' }}
           KILO_INPUT_SESSIONS: ${{ inputs.sessions || '1000' }}
         run: bash .github/scripts/kilo-controller.sh
       - name: Summarize controller outcome
         if: always()
         continue-on-error: true
         env:
+          KILO_E2E_MODE: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && '1' || '0' }}
+          KILO_HARD_CUTOFF_MINUTES: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && '10' || '355' }}
           CONTROLLER_OUTCOME: ${{ steps.kilo_controller.outcome }}
+          TERMINAL_STATUS: ${{ steps.kilo_controller.outputs.terminal_status }}
+          TERMINAL_CUTOFF_REACHED: ${{ steps.kilo_controller.outputs.cutoff_reached }}
           PROJECT_PROGRESS: ${{ steps.kilo_controller.outputs.project_progress }}
           FAILED_SESSIONS: ${{ steps.kilo_controller.outputs.failed_sessions }}
           IDLE_TIMEOUT_RETRIES: ${{ steps.kilo_controller.outputs.idle_timeout_retries }}
@@ -51,6 +65,7 @@ jobs:
           SESSIONS_COMPLETED: ${{ steps.kilo_controller.outputs.sessions_completed }}
           PERSISTED_CHECKPOINTS: ${{ steps.kilo_controller.outputs.persisted_checkpoints }}
           LAST_VERIFIED_CHECKPOINT_SHA: ${{ steps.kilo_controller.outputs.last_verified_checkpoint_sha }}
+          TERMINAL_CHECKPOINT_SHA: ${{ steps.kilo_controller.outputs.terminal_checkpoint_sha }}
           SUPERVISOR_REVIEW_COUNT: ${{ steps.kilo_controller.outputs.supervisor_review_count }}
           SUPERVISOR_REVIEWS_COMPLETED: ${{ steps.kilo_controller.outputs.supervisor_reviews_completed }}
           SUPERVISOR_REVIEW_TIMEOUTS: ${{ steps.kilo_controller.outputs.supervisor_review_timeouts }}
@@ -58,6 +73,8 @@ jobs:
           SUPERVISOR_DELIVERY_TRANSCRIPTS: ${{ steps.kilo_controller.outputs.supervisor_delivery_transcripts }}
           SUPERVISOR_DIALOGUE_TRANSCRIPTS: ${{ steps.kilo_controller.outputs.supervisor_dialogue_transcripts }}
           SUPERVISOR_WORKER_REPLIES: ${{ steps.kilo_controller.outputs.supervisor_worker_replies }}
+          SUPERVISOR_COMMUNICATION_EVENTS: ${{ steps.kilo_controller.outputs.supervisor_communication_events }}
+          TASK_COMPLETION_STATUS: ${{ steps.kilo_controller.outputs.task_completion_status }}
           SUPERVISOR_TRANSCRIPT_DIR: ${{ runner.temp }}/kilo-supervisor-transcripts-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           SUPERVISOR_ADVICE_ENTRIES: ${{ steps.kilo_controller.outputs.supervisor_advice_entries }}
           SUPERVISOR_PENDING_UNITS: ${{ steps.kilo_controller.outputs.supervisor_pending_units }}
@@ -68,27 +85,62 @@ jobs:
           {
             echo "## Kilo controller health"
             echo "- Controller step outcome: \`$CONTROLLER_OUTCOME\`"
-            echo "- Requested sequential worker sessions: ${{ inputs.sessions || '1000' }} (one-shot marker overrides to exactly 2). Transient retries and corrective attempts have no count cap and remain bounded by the global 355-minute cutoff."
+            if [ "${KILO_E2E_MODE:-0}" = "1" ]; then
+            echo "- Bounded E2E mode: one worker session; exact 10-minute hard cutoff; worker startup waits for a run-correlated supervisor recommendation."
+          else
+            echo "- Requested sequential worker sessions: ${{ inputs.sessions || '1000' }} (one-shot marker overrides to exactly 2). Transient retries and corrective attempts remain bounded by the configured ${KILO_HARD_CUTOFF_MINUTES:-355}-minute hard cutoff."
+          fi
             echo "- Worker sessions started: ${SESSIONS_STARTED:-unknown}; completed: ${SESSIONS_COMPLETED:-unknown}"
             echo "- Last phase: ${FINAL_PHASE:-unknown} — ${FINAL_PHASE_DETAIL:-unknown}"
             echo "- Controller-verified persisted checkpoints: ${PERSISTED_CHECKPOINTS:-0}"
             echo "- Last controller-verified checkpoint SHA: ${LAST_VERIFIED_CHECKPOINT_SHA:-none}"
+            echo "- Terminal local checkpoint SHA (current HEAD; remote verification is reported separately): ${TERMINAL_CHECKPOINT_SHA:-unknown}"
             echo "- Supervisor reviews started: ${SUPERVISOR_REVIEW_COUNT:-0}"
             echo "- Supervisor reviews completed with usable reports: ${SUPERVISOR_REVIEWS_COMPLETED:-0}"
             echo "- Supervisor timeouts: ${SUPERVISOR_REVIEW_TIMEOUTS:-0}; other review failures: ${SUPERVISOR_REVIEW_FAILURES:-0}"
             echo "- Supervisor-to-worker messages delivered: ${SUPERVISOR_DELIVERY_TRANSCRIPTS:-0}; worker-to-supervisor replies: ${SUPERVISOR_WORKER_REPLIES:-0}; total role-dialogue messages: ${SUPERVISOR_DIALOGUE_TRANSCRIPTS:-0}"
+            echo "- Append-only communication lifecycle events: ${SUPERVISOR_COMMUNICATION_EVENTS:-0}"
+            echo "- Task completion gate: ${TASK_COMPLETION_STATUS:-unknown}. Advice delivery, acknowledgement, worker claims, green CI, and checkpoint persistence alone do not prove task completion."
             echo "- Current supervisor recommendation entries: ${SUPERVISOR_ADVICE_ENTRIES:-0}"
             echo "- Current recommendation units not yet injected at shutdown: ${SUPERVISOR_PENDING_UNITS:-0}"
             echo "- Artifact kilo-progress-trace-${GITHUB_RUN_ID} retains only role-dialogue messages plus controller health telemetry; repeated prompt echoes and raw reviewer traces are not published."
+            EFFECTIVE_TERMINAL_STATUS="${TERMINAL_STATUS:-}"
+            if [ -z "$EFFECTIVE_TERMINAL_STATUS" ]; then
+              if [ "$CONTROLLER_OUTCOME" = "success" ]; then
+                EFFECTIVE_TERMINAL_STATUS="unclassified_success"
+              else
+                EFFECTIVE_TERMINAL_STATUS="controller_failure"
+              fi
+            fi
+            echo "- Terminal outcome: $EFFECTIVE_TERMINAL_STATUS"
+            echo "- Cutoff reached: ${TERMINAL_CUTOFF_REACHED:-unknown}"
             echo "- Verified meaningful project progress: ${PROJECT_PROGRESS:-unknown}"
             echo "- Failed Kilo sessions: ${FAILED_SESSIONS:-unknown}"
             echo "- Upstream idle/network retries: ${IDLE_TIMEOUT_RETRIES:-unknown}"
-            if [ "$CONTROLLER_OUTCOME" = "success" ] && [ "$PROJECT_PROGRESS" = "1" ]; then
-              echo "- Controller completed with verified, durable project progress."
-            else
-              echo "- No verified project progress was confirmed before this action ended. Review session logs and checkpoint evidence."
-              echo "::warning::Session failures and no-progress outcomes are recorded, but do not terminate the routine action early."
-            fi
+            case "$EFFECTIVE_TERMINAL_STATUS" in
+              verified_progress)
+                if [ "$CONTROLLER_OUTCOME" = "success" ]; then
+                  echo "- Controller finished with meaningful progress and a verified durable checkpoint."
+                else
+                  echo "::error::Terminal status says verified_progress but the controller step failed."
+                fi
+                ;;
+              intentional_noop)
+                echo "- Controller intentionally did not start a worker; this is not classified as productive progress."
+                ;;
+              persistence_failure)
+                echo "::error::Checkpoint persistence or clean-worktree verification failed; inspect recovery refs, bundles, and failure transcripts."
+                ;;
+              no_progress_failure)
+                echo "::error::The worker activation ended without meaningful, durable project progress."
+                ;;
+              controller_failure)
+                echo "::error::The controller failed before it could publish a terminal outcome."
+                ;;
+              *)
+                echo "::error::The controller exited successfully without a recognized terminal outcome."
+                ;;
+            esac
           } >> "$GITHUB_STEP_SUMMARY"
           python3 - "$SUPERVISOR_TRANSCRIPT_DIR" >> "$GITHUB_STEP_SUMMARY" <<'PY'
           import html
@@ -130,6 +182,7 @@ jobs:
           PY
 
       - name: Upload Kilo progress and supervisor trace
+        id: upload_kilo_trace
         if: always()
         continue-on-error: true
         uses: actions/upload-artifact@v4
@@ -140,8 +193,80 @@ jobs:
             ${{ runner.temp }}/kilo-progress-state-*.txt
             ${{ runner.temp }}/kilo-supervisor-loop-*.log
             ${{ runner.temp }}/kilo-supervisor-transcripts-*/agent-dialogue.jsonl
+            ${{ runner.temp }}/kilo-supervisor-transcripts-*/agent-communication.jsonl
+            ${{ runner.temp }}/kilo-supervisor-transcripts-*/task-completion-status.json
+            .kilo-runtime/worker-disposition.json
+            docs/verification/kilo-e2e-run-*.md
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 14
+
+
+      - name: Independently verify bounded Kilo E2E evidence
+        id: kilo_e2e_verification
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          TARGET_BRANCH: ${{ github.ref_name }}
+          REPOSITORY_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          CONTROLLER_OUTCOME: ${{ steps.kilo_controller.outcome }}
+          CONTROLLER_TERMINAL_STATUS: ${{ steps.kilo_controller.outputs.terminal_status }}
+          PERSISTED_CHECKPOINTS: ${{ steps.kilo_controller.outputs.persisted_checkpoints }}
+          LAST_VERIFIED_CHECKPOINT_SHA: ${{ steps.kilo_controller.outputs.last_verified_checkpoint_sha }}
+          RAW_ARTIFACT_ID: ${{ steps.upload_kilo_trace.outputs.artifact-id }}
+          RAW_ARTIFACT_URL: ${{ steps.upload_kilo_trace.outputs.artifact-url }}
+          RAW_ARTIFACT_UPLOAD_OUTCOME: ${{ steps.upload_kilo_trace.outcome }}
+          SUPERVISOR_TRANSCRIPT_DIR: ${{ runner.temp }}/kilo-supervisor-transcripts-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+        shell: bash
+        run: python3 .github/scripts/kilo-e2e-verification.py
+
+      - name: Upload independent Kilo E2E verification manifest
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: kilo-e2e-verification-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/kilo-task-verification-${{ github.run_id }}-attempt-${{ github.run_attempt }}.json
+            ${{ runner.temp }}/kilo-e2e-verification-summary-${{ github.run_id }}-attempt-${{ github.run_attempt }}.json
+            ${{ runner.temp }}/kilo-supervisor-transcripts-${{ github.run_id }}-attempt-${{ github.run_attempt }}/task-completion-status.json
+            ${{ runner.temp }}/kilo-supervisor-transcripts-${{ github.run_id }}-attempt-${{ github.run_attempt }}/agent-communication.jsonl
           if-no-files-found: ignore
           retention-days: 14
+
+      - name: Publish bounded Kilo E2E verdict
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch }}
+        shell: bash
+        env:
+          STATUS_FILE: ${{ runner.temp }}/kilo-supervisor-transcripts-${{ github.run_id }}-attempt-${{ github.run_attempt }}/task-completion-status.json
+          MANIFEST_FILE: ${{ runner.temp }}/kilo-task-verification-${{ github.run_id }}-attempt-${{ github.run_attempt }}.json
+        run: |
+          python3 - "$STATUS_FILE" "$MANIFEST_FILE" "$GITHUB_STEP_SUMMARY" <<'PY'
+          import json, sys
+          from pathlib import Path
+          status_path, manifest_path, summary_path = map(Path, sys.argv[1:4])
+          try:
+              status = json.loads(status_path.read_text(encoding="utf-8"))
+          except (OSError, json.JSONDecodeError):
+              status = {"status": "incomplete_evidence", "reasons": ["completion status is missing or unreadable"]}
+          try:
+              manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          except (OSError, json.JSONDecodeError):
+              manifest = {"blockers": ["controller verification manifest is missing or unreadable"]}
+          with summary_path.open("a", encoding="utf-8") as out:
+              out.write("\n## Bounded Kilo E2E independent verdict\n")
+              out.write(f"- Status: {status.get('status', 'unknown')}\n")
+              out.write(f"- Task: {status.get('task_id', 'unknown')}\n")
+              out.write(f"- Verified remote checkpoint: {manifest.get('remote_checkpoint', {}).get('sha', 'none')}\n")
+              out.write(f"- Blockers: {json.dumps(manifest.get('blockers', []), ensure_ascii=False)}\n")
+          print(json.dumps({"status": status.get("status"), "blockers": manifest.get("blockers", [])}, indent=2))
+          if status.get("status") != "verified_completion":
+              raise SystemExit("Independent completion gate did not pass; task remains unverified.")
+          PY
 
       - name: Upload Kilo failure transcripts
         if: always()

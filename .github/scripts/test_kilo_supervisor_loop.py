@@ -40,6 +40,89 @@ class SupervisorLoopTests(unittest.TestCase):
         self.assertIn("The report's first line must be exactly one of", prompt)
         self.assertIn("Do not number or bold headings.", prompt)
 
+        bootstrap = monitor.build_review_prompt(
+            "Run the bounded E2E protocol test.",
+            "(No new worker output since the previous review; assess repository/task state without inventing progress.)",
+            "repository status: clean",
+            "",
+            ".kilo/supervisor-reports/bootstrap.md",
+            1,
+            60.0,
+            require_initial_recommendation=True,
+        )
+        self.assertIn("BOOTSTRAP REQUIREMENT", bootstrap)
+        self.assertIn("initial recommendation is mandatory", bootstrap.lower())
+        self.assertIn("During a mandatory initial bootstrap", bootstrap)
+        self.assertIn("5. This is the required initial recommendation; do not return NO_NEW_DIALOGUE.", bootstrap)
+        self.assertNotIn("5. If no new action or materially changed recommendation is warranted", bootstrap)
+        self.assertIn("5. If no new action or materially changed recommendation is warranted", prompt)
+        self.assertNotIn("{no_new_dialogue_rule}", bootstrap + prompt)
+
+    def test_bootstrap_requires_written_event_and_repairs_half_published_recommendation(self):
+        with tempfile.TemporaryDirectory(prefix="kilo-bootstrap-repair-test-") as temp:
+            root = Path(temp)
+            protocol_dir = root / ".kilo-runtime"
+            transcript_dir = root / "transcripts"
+            report = (
+                "STATUS: ATTENTION\n"
+                "Observed evidence: the initial recommendation file exists without its lifecycle event.\n"
+                "Previous approaches: the file-backed state was published before the event append completed.\n"
+                "Likely cause: the readiness check must validate both independently persisted records.\n"
+                "Different next step: retry publication until the exact written event is durable.\n"
+                "Verification: require the event task, session, message, correlation, and report to match.\n"
+                "Limitations: worker delivery remains a separate later lifecycle stage.\n"
+            )
+            first_id = monitor.publish_current_recommendation(
+                protocol_dir, "bootstrap-run", "2", 1, report, "observed worker and repository state",
+            )
+            self.assertIsNotNone(first_id)
+            partial = monitor.read_current_recommendation(protocol_dir)
+            self.assertFalse(monitor.initial_recommendation_is_ready(
+                protocol_dir, transcript_dir, partial, "bootstrap-run", "2",
+            ))
+            self.assertTrue(monitor.should_run_review(
+                has_new_worker_output=False, repository_changed=False,
+                require_initial_recommendation=True, recommendation_ready=False,
+            ))
+
+            repaired_id = monitor.publish_current_recommendation(
+                protocol_dir, "bootstrap-run", "2", 2, report, "observed worker and repository state",
+                transcript_dir=transcript_dir,
+            )
+            self.assertIsNotNone(repaired_id)
+            self.assertNotEqual(first_id, repaired_id)
+            repaired = monitor.read_current_recommendation(protocol_dir)
+            self.assertTrue(monitor.initial_recommendation_is_ready(
+                protocol_dir, transcript_dir, repaired, "bootstrap-run", "2",
+            ))
+            events, errors = monitor.read_protocol_events(transcript_dir / "agent-communication.jsonl")
+            self.assertEqual(errors, [])
+            self.assertTrue(any(
+                event.get("stage") == "message_written"
+                and event.get("message_id") == repaired_id
+                and event.get("correlation_id") == repaired_id
+                and event.get("message") == report.strip()
+                for event in events
+            ))
+
+    def test_required_initial_recommendation_retries_without_new_evidence(self):
+        self.assertTrue(monitor.should_run_review(
+            has_new_worker_output=False, repository_changed=False,
+            require_initial_recommendation=True, recommendation_ready=False,
+        ))
+        self.assertFalse(monitor.should_run_review(
+            has_new_worker_output=False, repository_changed=False,
+            require_initial_recommendation=True, recommendation_ready=True,
+        ))
+        self.assertFalse(monitor.should_run_review(
+            has_new_worker_output=False, repository_changed=False,
+            require_initial_recommendation=False, recommendation_ready=False,
+        ))
+        self.assertTrue(monitor.should_run_review(
+            has_new_worker_output=True, repository_changed=False,
+            require_initial_recommendation=False, recommendation_ready=False,
+        ))
+
     def test_report_fallback_requires_status_on_first_line(self):
         valid = (
             "Additional CLI narration.\n"
@@ -174,9 +257,16 @@ class SupervisorLoopTests(unittest.TestCase):
             self.assertEqual(len(list(report_dir.glob("run-test-run-attempt-1-review-*.md"))), 1, "supervisor-generated reports must not trigger a second review")
 
             self.assertEqual(
-                list(transcripts.iterdir()), [],
-                "reviewer prompts, CLI traces, status files, and undelivered advice must not be recorded as role dialogue",
+                sorted(path.name for path in transcripts.iterdir()),
+                ["agent-communication.jsonl"],
+                "an undelivered recommendation may be in the lifecycle ledger but not the role-boundary dialogue",
             )
+            communication = [
+                json.loads(line)
+                for line in (transcripts / "agent-communication.jsonl").read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertEqual([event["stage"] for event in communication], ["message_written"])
+            self.assertFalse(any(event["stage"] == "message_delivered" for event in communication))
 
     def test_failed_review_keeps_feedback_without_transcript_dumps(self):
         with tempfile.TemporaryDirectory(prefix="kilo-supervisor-failure-test-") as temp:
@@ -281,9 +371,17 @@ class SupervisorLoopTests(unittest.TestCase):
             self.assertIn("Different next step: write the concise diagnostic report", published)
             self.assertIn("Verification: confirm the next review creates a report", published)
             self.assertEqual(
-                list(transcripts.iterdir()), [],
-                "an undelivered report is not a supervisor-to-worker dialogue message",
+                sorted(path.name for path in transcripts.iterdir()),
+                ["agent-communication.jsonl"],
+                "an undelivered report has a written lifecycle event but no role-boundary dialogue event",
             )
+            communication = [
+                json.loads(line)
+                for line in (transcripts / "agent-communication.jsonl").read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertEqual([event["stage"] for event in communication], ["message_written"])
+            dialogue_path = transcripts / "agent-dialogue.jsonl"
+            self.assertFalse(dialogue_path.exists(), "undelivered advice must not appear in the delivered dialogue transcript")
 
     def test_missing_report_without_actionable_final_response_is_not_published(self):
         with tempfile.TemporaryDirectory(prefix="kilo-supervisor-empty-recovery-test-") as temp:
@@ -439,6 +537,105 @@ class SupervisorLoopTests(unittest.TestCase):
             self.assertTrue(all("prompt" not in event and "cli_output" not in event for event in events))
 
 
+    def test_matching_worker_disposition_evidence_reaches_followup_review(self):
+        with tempfile.TemporaryDirectory(prefix="kilo-dialogue-follow-through-test-") as temp:
+            protocol = Path(temp) / ".kilo-runtime"
+            transcripts = Path(temp) / "transcripts"
+            report = (
+                "STATUS: ATTENTION\n"
+                "Observed evidence: the focused regression test failed on an all-NA momentum row.\n"
+                "Previous approaches: the failing row was not handled before selecting weights.\n"
+                "Likely cause: idxmax received a row with no valid momentum values.\n"
+                "Different next step: add an all-NA guard before selecting weights.\n"
+                "Verification: rerun the focused regression test and adjacent edge cases.\n"
+                "Limitations: the full suite is not yet verified.\n"
+            )
+            recommendation_id = monitor.publish_current_recommendation(
+                protocol, "test-follow-through", "1", 1, report,
+                "worker log contains the reproducible all-NA failure",
+            )
+            self.assertIsNotNone(recommendation_id)
+
+            reason = "The recommended missing-data guard was implemented before unrelated changes."
+            evidence = "The focused regression output now reports the previously failing case as passed."
+            verification = "The focused regression test reran successfully; adjacent edge cases remain."
+            disposition = {
+                "schema_version": 1,
+                "recommendation_id": recommendation_id,
+                "acknowledgement_state": "acknowledged",
+                "disposition": "verified",
+                "reason": reason,
+                "evidence": evidence,
+                "verification": verification,
+                "updated_at": "2026-10-14T20:00:00Z",
+            }
+            (protocol / "worker-disposition.json").write_text(json.dumps(disposition), encoding="utf-8")
+
+            current = monitor.read_current_recommendation(protocol)
+            accepted = monitor.read_worker_disposition(protocol)
+            self.assertIsNotNone(current)
+            self.assertIsNotNone(accepted)
+            worker_reply = monitor.format_worker_disposition(current, accepted)
+            self.assertEqual(
+                worker_reply,
+                "\n".join([
+                    "Disposition: verified",
+                    f"Reason: {reason}",
+                    f"Evidence: {evidence}",
+                    f"Verification: {verification}",
+                    "Work performed: (not supplied)",
+                    "Acknowledgement: acknowledged",
+                    "Changed files: []",
+                    "Tests: []",
+                    "Artifacts: []",
+                    "Blockers: []",
+                    "Outstanding work: []",
+                ]),
+            )
+
+            log_delta = "Focused regression test passed.\n\nNEW WORKER-TO-SUPERVISOR MESSAGE\n" + worker_reply
+            prompt = monitor.build_review_prompt(
+                "Apply recommendations and independently verify changes.",
+                log_delta,
+                "repository status: test change present",
+                "previous advice: add the all-NA guard",
+                ".kilo/supervisor-reports/follow-through.md",
+                2,
+                150.0,
+            )
+            for expected in (
+                "NEW WORKER-TO-SUPERVISOR MESSAGE",
+                "Disposition: verified",
+                f"Reason: {reason}",
+                f"Evidence: {evidence}",
+                f"Verification: {verification}",
+            ):
+                self.assertIn(expected, prompt)
+
+            transcripts.mkdir(parents=True, exist_ok=True)
+            self.assertTrue(monitor.append_dialogue_event(
+                transcripts, "worker_to_supervisor", "worker",
+                recommendation_id, worker_reply,
+            ))
+            self.assertFalse(monitor.append_dialogue_event(
+                transcripts, "worker_to_supervisor", "worker",
+                recommendation_id, worker_reply,
+            ), "duplicate follow-through must not be recorded twice")
+            events = [
+                json.loads(line)
+                for line in (transcripts / "agent-dialogue.jsonl").read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertEqual(len(events), 1)
+            self.assertEqual(events[0]["direction"], "worker_to_supervisor")
+            self.assertEqual(events[0]["message_id"], recommendation_id)
+            self.assertEqual(events[0]["message"], worker_reply)
+
+            disposition["recommendation_id"] = "stale-recommendation-id"
+            (protocol / "worker-disposition.json").write_text(json.dumps(disposition), encoding="utf-8")
+            stale = monitor.read_worker_disposition(protocol)
+            self.assertIsNotNone(stale)
+            self.assertEqual(monitor.format_worker_disposition(current, stale), "")
+
     def test_file_backed_dialogue_protocol_rejects_stale_or_malformed_dispositions(self):
         with tempfile.TemporaryDirectory(prefix="kilo-dialogue-protocol-test-") as temp:
             protocol = Path(temp)
@@ -461,6 +658,7 @@ class SupervisorLoopTests(unittest.TestCase):
             disposition = {
                 "schema_version": 1,
                 "recommendation_id": recommendation_id,
+                "acknowledgement_state": "acknowledged",
                 "disposition": "in_progress",
                 "reason": "I am applying the focused recommendation before other work.",
                 "evidence": "The relevant assertion failed in the previous test run.",
@@ -470,7 +668,14 @@ class SupervisorLoopTests(unittest.TestCase):
             (protocol / "worker-disposition.json").write_text(json.dumps(disposition), encoding="utf-8")
             accepted = monitor.read_worker_disposition(protocol)
             self.assertEqual(accepted["disposition"], "in_progress")
+            self.assertEqual(accepted["acknowledgement_state"], "acknowledged")
             self.assertIn("in_progress", monitor.dialogue_protocol_observation(protocol))
+
+            # A disposition without an explicit acknowledgement must not synthesize one.
+            disposition.pop("acknowledgement_state")
+            (protocol / "worker-disposition.json").write_text(json.dumps(disposition), encoding="utf-8")
+            self.assertIsNone(monitor.read_worker_disposition(protocol))
+            disposition["acknowledgement_state"] = "acknowledged"
 
             disposition["recommendation_id"] = "old-run-old-recommendation"
             (protocol / "worker-disposition.json").write_text(json.dumps(disposition), encoding="utf-8")
@@ -484,6 +689,65 @@ class SupervisorLoopTests(unittest.TestCase):
 
             (protocol / "worker-disposition.json").write_text("not json", encoding="utf-8")
             self.assertIsNone(monitor.read_worker_disposition(protocol))
+
+    def test_schema_v2_worker_reply_must_match_active_task_and_message(self):
+        with tempfile.TemporaryDirectory(prefix="kilo-dialogue-correlation-test-") as temp:
+            protocol = Path(temp)
+            report = (
+                "STATUS: ATTENTION\n"
+                "Observed evidence: the focused regression test failed.\n"
+                "Different next step: rerun the failing input in isolation.\n"
+                "Verification: require the isolated regression to pass.\n"
+                "Limitations: broad suite not yet run.\n"
+            )
+            recommendation_id = monitor.publish_current_recommendation(
+                protocol, "correlation-run", "2", 1, report,
+                "the worker log contains the failing input",
+            )
+            recommendation = monitor.read_current_recommendation(protocol)
+            self.assertIsNotNone(recommendation)
+            disposition = {
+                "schema_version": 2,
+                "recommendation_id": recommendation_id,
+                "task_id": recommendation["task_id"],
+                "session_id": "correlation-run-attempt-2-session-1",
+                "acknowledgement_state": "acknowledged",
+                "disposition": "in_progress",
+                "reason": "I am reproducing the failure before changing code.",
+                "evidence": "The reported failing input is available.",
+                "verification": "",
+                "work_performed": "Started an isolated reproduction.",
+                "blockers": [],
+                "changed_files": [],
+                "commit_sha": "",
+                "checkpoint_sha": "",
+                "commands_executed": [],
+                "test_outcomes": [],
+                "artifact_refs": [],
+                "acceptance_criteria": [],
+                "outstanding_work": ["Confirm the regression locally."],
+                "updated_at": "2026-10-14T00:00:00Z",
+            }
+            path = protocol / "worker-disposition.json"
+            path.write_text(json.dumps(disposition), encoding="utf-8")
+            self.assertIsNotNone(monitor.read_worker_disposition(protocol, recommendation))
+
+            disposition["task_id"] = "different-run-attempt"
+            path.write_text(json.dumps(disposition), encoding="utf-8")
+            self.assertIsNone(monitor.read_worker_disposition(protocol, recommendation),
+                              "a response for a different task must not be attributed to the active recommendation")
+
+            disposition["task_id"] = recommendation["task_id"]
+            disposition["recommendation_id"] = "stale-message-id"
+            path.write_text(json.dumps(disposition), encoding="utf-8")
+            self.assertIsNone(monitor.read_worker_disposition(protocol, recommendation),
+                              "a response for a different message must not be attributed to the active recommendation")
+
+            disposition["recommendation_id"] = recommendation_id
+            disposition["session_id"] = ""
+            path.write_text(json.dumps(disposition), encoding="utf-8")
+            self.assertIsNone(monitor.read_worker_disposition(protocol, recommendation),
+                              "schema v2 requires the worker session identifier")
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

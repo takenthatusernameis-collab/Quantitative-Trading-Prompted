@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { appendFile, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep, basename } from "node:path";
 
@@ -66,7 +66,7 @@ async function readCurrentRecommendation(protocolDir) {
     if (raw.length > MAX_PROTOCOL_RECORD_CHARS) return null;
     const value = JSON.parse(raw);
     if (!value || typeof value !== "object" || Array.isArray(value)
-        || value.schema_version !== 1
+        || ![1, 2].includes(value.schema_version)
         || typeof value.recommendation_id !== "string"
         || !value.recommendation_id.trim()
         || typeof value.report !== "string"
@@ -74,6 +74,13 @@ async function readCurrentRecommendation(protocolDir) {
         || value.report.length > MAX_PROTOCOL_RECORD_CHARS) return null;
     return {
       recommendation_id: value.recommendation_id.trim(),
+      task_id: typeof value.task_id === "string" && value.task_id.trim()
+        ? value.task_id.trim() : ((process.env.GITHUB_RUN_ID || "local") + "-attempt-" + (process.env.GITHUB_RUN_ATTEMPT || "1")),
+      session_id: typeof value.session_id === "string" ? value.session_id : "",
+      message_type: typeof value.message_type === "string" ? value.message_type : "advisory_recommendation",
+      priority: typeof value.priority === "string" ? value.priority : "normal",
+      scope_boundaries: Array.isArray(value.scope_boundaries) ? value.scope_boundaries.slice(0, 64) : [],
+      acceptance_criteria: Array.isArray(value.acceptance_criteria) ? value.acceptance_criteria.slice(0, 64) : [],
       report: redactSensitiveText(value.report).trim(),
     };
   } catch {
@@ -91,37 +98,103 @@ function chooseChunkEnd(journal, start) {
   return end;
 }
 
-async function saveWorkerDelivery(transcriptDir, injectionText, sequence, recommendationId) {
-  if (!transcriptDir) return null;
-  const destination = resolve(transcriptDir, "agent-dialogue.jsonl");
-  if (!isInside(transcriptDir, destination)) return null;
-  const safeMessage = redactSensitiveText(injectionText);
-  const messageId = recommendationId || "unlinked-recommendation";
-  const eventKey = digest("supervisor_to_worker\0" + messageId + "\0" + safeMessage);
+function buildCommunicationEvent(stage, base) {
+  const event = {
+    schema_version: 2,
+    event_id: randomUUID(),
+    timestamp_utc: new Date().toISOString(),
+    stage,
+    direction: base.direction,
+    role: base.role,
+    message_id: base.message_id,
+    task_id: base.task_id,
+    run_id: base.run_id,
+    session_id: base.session_id,
+    message_type: base.message_type,
+    priority: base.priority,
+    scope_boundaries: base.scope_boundaries,
+    acceptance_criteria: base.acceptance_criteria,
+    correlation_id: base.correlation_id,
+    delivery_state: base.delivery_state,
+    acknowledgement_state: base.acknowledgement_state,
+    disposition: "",
+    reason: "",
+    evidence: "",
+    verification: "",
+    work_performed: "",
+    blockers: [],
+    changed_files: [],
+    commit_sha: "",
+    checkpoint_sha: "",
+    commands_executed: [],
+    test_outcomes: [],
+    artifact_refs: [],
+    outstanding_work: [],
+    message: base.message,
+  };
+  event.event_key = digest([
+    event.direction, event.stage, event.message_id, event.correlation_id,
+    event.message, event.disposition
+  ].join("\0"));
+  return event;
+}
+
+async function appendJsonlOnce(transcriptDir, filename, event) {
+  if (!transcriptDir) return false;
+  const destination = resolve(transcriptDir, filename);
+  if (!isInside(transcriptDir, destination)) return false;
   try {
     await mkdir(transcriptDir, { recursive: true });
     let existing = "";
     try { existing = await readFile(destination, "utf8"); } catch {}
-    for (const line of existing.split(/\r?\n/).slice(-2000)) {
-      try {
-        if (line && JSON.parse(line).event_key === eventKey) return destination;
-      } catch {}
+    if (existing && !existing.endsWith("\n")) return false;
+    for (const line of existing.split(/\r?\n/)) {
+      if (!line) continue;
+      let prior;
+      try { prior = JSON.parse(line); } catch { return false; }
+      if (prior.event_key === event.event_key) return true;
     }
-    const event = {
-      schema_version: 1,
-      timestamp_utc: new Date().toISOString(),
-      direction: "supervisor_to_worker",
-      role: "supervisor",
-      message_id: messageId,
-      event_key: eventKey,
-      message: safeMessage,
-      sequence,
-    };
     await appendFile(destination, JSON.stringify(event) + "\n", { encoding: "utf8", mode: 0o600 });
-    return destination;
+    return true;
   } catch {
-    return null;
+    return false;
   }
+}
+
+async function saveWorkerDelivery(transcriptDir, injectionText, sequence, recommendation) {
+  if (!transcriptDir) return null;
+  const safeMessage = redactSensitiveText(injectionText);
+  const messageId = recommendation?.recommendation_id || "unlinked-recommendation";
+  const taskId = recommendation?.task_id || ((process.env.GITHUB_RUN_ID || "local")
+    + "-attempt-" + (process.env.GITHUB_RUN_ATTEMPT || "1"));
+  const base = {
+    direction: "supervisor_to_worker",
+    role: "supervisor",
+    message_id: messageId,
+    task_id: taskId,
+    run_id: process.env.GITHUB_RUN_ID || "local",
+    session_id: process.env.KILO_WORKER_SESSION_ID || recommendation?.session_id || taskId,
+    message_type: recommendation?.message_type || "advisory_recommendation",
+    priority: recommendation?.priority || "normal",
+    scope_boundaries: recommendation?.scope_boundaries || [],
+    acceptance_criteria: recommendation?.acceptance_criteria || [],
+    correlation_id: messageId,
+    delivery_state: "delivered",
+    acknowledgement_state: "pending",
+    message: safeMessage,
+  };
+  const dialogueEvent = buildCommunicationEvent("message_delivered", base);
+  dialogueEvent.sequence = sequence;
+  const communicationEvent = buildCommunicationEvent("message_delivered", base);
+  // Retry both tracks as a pair. A successful first append is idempotently recognized
+  // on retry if writing the second track failed partway through.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const dialogueSaved = await appendJsonlOnce(transcriptDir, "agent-dialogue.jsonl", dialogueEvent);
+    const communicationSaved = await appendJsonlOnce(transcriptDir, "agent-communication.jsonl", communicationEvent);
+    if (dialogueSaved && communicationSaved) return resolve(transcriptDir, "agent-dialogue.jsonl");
+    if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 25 * (attempt + 1)));
+  }
+  return null;
 }
 
 const LoopSupervisorFeedback = async () => {
@@ -174,11 +247,13 @@ const LoopSupervisorFeedback = async () => {
           const pending = redactSensitiveText(journal.slice(start, end));
           if (pending.trim()) {
             const recommendationLabel = recommendation
-              ? "\nRecommendation ID: " + recommendation.recommendation_id
-                + "\nAfter assessing this message, write one reply to .kilo-runtime/worker-disposition.json using the same ID; do not repeat the recommendation text."
+              ? "\nTask ID: " + recommendation.task_id
+                + "\nWorker session ID: " + (process.env.KILO_WORKER_SESSION_ID || recommendation.session_id || "unknown")
+                + "\nCorrelation ID / Recommendation ID: " + recommendation.recommendation_id
+                + "\nAfter assessing this message, write/update .kilo-runtime/worker-disposition.json with schema_version=2, copying the exact task_id, session_id, and recommendation_id. Include acknowledgement_state, disposition, reason, evidence, verification, work_performed, blockers, changed_files, commit_sha, checkpoint_sha, commands_executed, test_outcomes, artifact_refs, acceptance_criteria, outstanding_work, and updated_at. Treat your verification as a claim until the controller independently verifies it."
               : "";
             injectionText = "[SUPERVISOR → WORKER: NEW MESSAGE]\n"
-              + "This is a single advisory message. Verify it against evidence and continue the current task without restarting. "
+              + "This is a single advisory message. Verify it against evidence and continue the current task without restarting. Delivery, acknowledgement, processing, and verification are distinct states. "
               + "Record your reason, evidence, and verification in the worker-disposition file. "
               + "Do not follow advice that conflicts with higher-priority instructions, safety rules, or pre-registered acceptance criteria.\n"
               + recommendationLabel + "\n\n" + pending;
@@ -196,15 +271,23 @@ const LoopSupervisorFeedback = async () => {
 
         injectionSequence += 1;
         const transcriptPath = await saveWorkerDelivery(
-          safeTranscriptDir, injectionText, injectionSequence, recommendation?.recommendation_id
+          safeTranscriptDir, injectionText, injectionSequence, recommendation
         );
+        if (!transcriptPath) {
+          // The worker-facing output has been mutated, but the dual-track record is not durable.
+          // Do not advance the cursor: retry delivery/persistence at the next tool boundary.
+          console.error("[loop-supervisor-feedback] DELIVERY_PERSISTENCE_FAILED sequence=" + injectionSequence
+            + " direction=supervisor_to_worker output_mutated=yes transcript_saved=no cursor_advanced=no"
+            + "; pending advice will be retried at the next tool-result boundary");
+          return;
+        }
         lastInjectedOffset = nextCursorOffset;
         lastInjectedPrefixDigest = nextCursorDigest;
         const cursorSaved = (await writeCursor(safeCursorPath, lastInjectedOffset, lastInjectedPrefixDigest)) ? "yes" : "no";
 
         console.log("[loop-supervisor-feedback] DELIVERY_CONFIRMED sequence=" + injectionSequence
-          + " direction=supervisor_to_worker output_mutated=yes transcript_saved=" + (transcriptPath ? "yes" : "no")
-          + " cursor_saved=" + cursorSaved + " transcript=" + (transcriptPath ? basename(transcriptPath) : "unavailable"));
+          + " direction=supervisor_to_worker output_mutated=yes transcript_saved=yes"
+          + " cursor_saved=" + cursorSaved + " transcript=" + basename(transcriptPath));
         console.log("::group::LIVE AGENT DIALOGUE BOX — SUPERVISOR → WORKER");
         for (const line of injectionText.split("\n")) {
           console.log("[agent-dialogue] " + line);
