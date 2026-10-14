@@ -1,15 +1,16 @@
-# Next Agent Task: Cycle 34 — Continue Paper Trading Monitoring & Data Acquisition
+# Next Agent Task: Cycle 35 — Continue Paper Trading Monitoring & Data Acquisition
 
 ## Context
 
-Cycle 33 re-attempted data acquisition from Yahoo Finance to extend the paper-trading track record for the incumbent TSMOM strategy (tsmomentum_spytrend_001) beyond the previous date of 2026-10-12.
+Cycle 34 re-attempted data acquisition from Yahoo Finance to extend the paper-trading track record for the incumbent TSMOM strategy (tsmomentum_spytrend_001) beyond the previous date of 2026-10-12.
 
-**Key findings from Cycle 33:**
+**Key findings from Cycle 34:**
 - All primary go/no-go gates from Cycle 22 still pass: track record 445 days (≫126), Sharpe 2.0404 (≫0.9), max DD -1.59% (≪15%), 6 regime flips (>1)
-- **DRIFT FLAG PERSISTS**: `low_rolling_sharpe` triggered on 2026-10-12 continues to be active (rolling 63-day Sharpe = 0.4892 < 0.5 threshold). Duration remains at 1 day below threshold since no new trading days were available.
+- **DRIFT FLAG PERSISTS**: `low_rolling_sharpe` triggered on 2026-10-12 continues to be active (rolling 63-day Sharpe = 0.4892 < 0.5 threshold). Duration remains at 1 day since no new trading days were available.
 - Current regime: Risk-on (SPY ≥ 200-day SMA) for 130 consecutive days
-- Data availability: No new trading days were available from Yahoo Finance at fetch time (2026-10-14). Equity data extends to 2026-10-12; ^VIX extends to 2026-10-13.
-- **Data integrity note**: The ^VIX.parquet cache was truncated to only 2 rows (2026-10-12 to 2026-10-13) during the force=True re-fetch. This does not affect the incumbent strategy (which does not use VIX) but should be restored from git history if future cycles require VIX data.
+- Data availability: No new trading days were available from Yahoo Finance at fetch time (2026-10-14). The 7-symbol incumbent universe (SPY, QQQ, IWM, TLT, GLD, EFA, EEM) ends at 2026-10-12; ^VIX extends to 2026-10-13 but is not used by the incumbent strategy.
+- **Data integrity verified**: ^VIX.parquet has 8,505 rows (1993-01-04 → 2026-10-13), matching git HEAD exactly. No truncation present.
+- **Reproducibility confirmed**: Re-running `research/run_paper_trading_replay.py` reproduced the existing 445-day track record exactly (NAV $136,905.02, max DD -1.59%, Sharpe 2.0404).
 
 ## Objective
 
@@ -22,10 +23,10 @@ Re-attempt data acquisition from Yahoo Finance to extend the paper trading track
 - [ ] Re-run `research/run_paper_trading_replay.py` to extend the paper trading track record
 - [ ] Verify track record extended (target: any additional trading days; document actual count)
 - [ ] Update `research/reports/paper_trading_rolling.md` with latest state
-- [ ] Create `research/reports/paper_trading_validation_007.md` with extended validation results
+- [ ] Create `research/reports/paper_trading_validation_008.md` with extended validation results
 - [ ] Document drift flag status: if `low_rolling_sharpe` persists, analyze trajectory and duration
-- [ ] Update README.md with Cycle 34 summary (track record length, last date, NAV, max DD, drift status)
-- [ ] Prepare NEXT_AGENT_TASK.md for Cycle 35 (continue monitoring or reassess based on regime stability and drift flag persistence)
+- [ ] Update README.md with Cycle 35 summary (track record length, last date, NAV, max DD, drift status)
+- [ ] Prepare NEXT_AGENT_TASK.md for Cycle 36 (continue monitoring or reassess based on regime stability and drift flag persistence)
 
 ## Scope Boundaries
 
