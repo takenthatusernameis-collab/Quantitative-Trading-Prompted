@@ -619,6 +619,7 @@ jobs:
           PY
           echo "Pinned Kilo CLI discovered loop-supervisor and its resolved permissions passed the boundary checks."
 
+          controller=.github/scripts/kilo-controller.sh
           literal_dollar="$(printf '%b' '\044')"
           expected_interval="--interval-seconds \"${literal_dollar}SUPERVISOR_INTERVAL_SECONDS\""
           expected_review_timeout="--review-timeout-seconds \"${literal_dollar}SUPERVISOR_REVIEW_TIMEOUT_SECONDS\""
