@@ -310,15 +310,15 @@ def append_agent_dialogue(
     if not within_directory(path, transcript_dir):
         return None
     block = (
-        f"## {role}\\n\\n"
-        f"Recommendation ID: {recommendation_id}\\n\\n"
-        f"{safe_message}\\n\\n---\\n\\n"
+        f"## {role}\n\n"
+        f"Recommendation ID: {recommendation_id}\n\n"
+        f"{safe_message}\n\n---\n\n"
     )
     try:
         existing = path.read_text(encoding="utf-8", errors="replace") if path.exists() else ""
         if block in existing:
             return path
-        with path.open("a", encoding="utf-8", newline="\\n") as handle:
+        with path.open("a", encoding="utf-8", newline="\n") as handle:
             handle.write(block)
             handle.flush()
             os.fsync(handle.fileno())
@@ -771,9 +771,9 @@ def main() -> int:
             ).hexdigest()
             if disposition_fingerprint != last_worker_disposition_fingerprint:
                 new_worker_message = (
-                    f"Disposition: {current_disposition['disposition']}\\n"
-                    f"Reason: {current_disposition['reason']}\\n"
-                    f"Evidence: {current_disposition['evidence'] or '(none supplied)'}\\n"
+                    f"Disposition: {current_disposition['disposition']}\n"
+                    f"Reason: {current_disposition['reason']}\n"
+                    f"Evidence: {current_disposition['evidence'] or '(none supplied)'}\n"
                     f"Verification: {current_disposition['verification'] or '(not supplied)'}"
                 )
                 if append_agent_dialogue(
@@ -787,8 +787,8 @@ def main() -> int:
                     log("Worker → Supervisor message recorded.")
                 last_worker_disposition_fingerprint = disposition_fingerprint
         if new_worker_message:
-            log_delta = ((log_delta + "\\n\\n") if log_delta.strip() else "") + (
-                "NEW WORKER → SUPERVISOR MESSAGE:\\n" + new_worker_message
+            log_delta = ((log_delta + "\n\n") if log_delta.strip() else "") + (
+                "NEW WORKER → SUPERVISOR MESSAGE:\n" + new_worker_message
             )
 
         # Avoid spending reviewer calls to restate unchanged evidence.
@@ -828,16 +828,16 @@ def main() -> int:
                 log("Supervisor recommendation unchanged; no duplicate message was published.")
             else:
                 entry = (
-                    "--- SUPERVISOR ADVICE ENTRY ---\\n"
+                    "--- SUPERVISOR ADVICE ENTRY ---\n"
                     + report.strip()
-                    + "\\n--- END SUPERVISOR ADVICE ENTRY ---\\n"
+                    + "\n--- END SUPERVISOR ADVICE ENTRY ---\n"
                 )
                 try:
                     try:
                         existing = feedback_file.read_text(encoding="utf-8", errors="replace")
                     except FileNotFoundError:
                         existing = ""
-                    separator = "" if not existing or existing.endswith("\\n") else "\\n"
+                    separator = "" if not existing or existing.endswith("\n") else "\n"
                     atomic_write(feedback_file, existing + separator + entry)
                 except OSError as exc:
                     consecutive_unusable_reviews += 1
@@ -857,7 +857,7 @@ def main() -> int:
                             args.run_attempt,
                             cycle,
                             report,
-                            "\\n".join((objective, log_delta, git_snapshot)),
+                            "\n".join((objective, log_delta, git_snapshot)),
                         )
                         if recommendation_id:
                             log("Supervisor → Worker recommendation published; awaiting actual tool-boundary delivery.")
