@@ -426,10 +426,13 @@ PY
       review_failures=0
       supervisor_event="no supervisor log yet"
     fi
-    delivery_transcripts="$(find "$SUPERVISOR_TRANSCRIPT_DIR" -maxdepth 1 -type f -name 'worker-delivery-*.md' 2>/dev/null | wc -l | tr -d '[:space:]')"
-    dialogue_transcripts="$(find "$SUPERVISOR_TRANSCRIPT_DIR" -maxdepth 1 -type f -name 'review-*-agent-dialogue.md' 2>/dev/null | wc -l | tr -d '[:space:]')"
-    delivery_transcripts="${delivery_transcripts:-0}"
+    dialogue_file="$SUPERVISOR_TRANSCRIPT_DIR/agent-dialogue.jsonl"
+    dialogue_transcripts="$(grep -c '"direction":' "$dialogue_file" 2>/dev/null || true)"
+    delivery_transcripts="$(grep -c '"direction":"supervisor_to_worker"' "$dialogue_file" 2>/dev/null || true)"
+    worker_replies="$(grep -c '"direction":"worker_to_supervisor"' "$dialogue_file" 2>/dev/null || true)"
     dialogue_transcripts="${dialogue_transcripts:-0}"
+    delivery_transcripts="${delivery_transcripts:-0}"
+    worker_replies="${worker_replies:-0}"
     read -r journal_units cursor_offset advice_entries < <(python3 - "$SUPERVISOR_FEEDBACK_FILE" "$SUPERVISOR_FEEDBACK_CURSOR_FILE" <<'PY'
 import json
 import sys
@@ -904,13 +907,7 @@ if [ "$cutoff" -eq 1 ]; then
 else
   write_progress "controller-finished" "controller loop finished before cutoff"
 fi
-# Preserve final two-way protocol state inside the already-uploaded transcript artifact.
-mkdir -p "$SUPERVISOR_TRANSCRIPT_DIR/dialogue-protocol"
-for protocol_file in "$DIALOGUE_PROTOCOL_DIR/current-supervisor-recommendation.json" "$DIALOGUE_PROTOCOL_DIR/worker-disposition.json"; do
-  if [ -f "$protocol_file" ]; then
-    cp -f "$protocol_file" "$SUPERVISOR_TRANSCRIPT_DIR/dialogue-protocol/"
-  fi
-done
+# Publish only role-dialogue records; raw protocol state files remain runner-local.
 read -r final_journal_units final_cursor_offset final_advice_entries < <(python3 - "$SUPERVISOR_FEEDBACK_FILE" "$SUPERVISOR_FEEDBACK_CURSOR_FILE" <<'PY'
 import json
 import sys
@@ -934,10 +931,13 @@ final_review_count="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ started' "$SU
 final_completed_review_count="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ completed with usable report' "$SUPERVISOR_LOOP_LOG" || true)"
 final_timeout_count="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ timed out;' "$SUPERVISOR_LOOP_LOG" || true)"
 final_review_failure_count="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ (returned exit|returned without writing|wrote an empty report|report could not be sanitized|failed to launch or complete|feedback append failed)' "$SUPERVISOR_LOOP_LOG" || true)"
-final_delivery_count="$(find "$SUPERVISOR_TRANSCRIPT_DIR" -maxdepth 1 -type f -name 'worker-delivery-*.md' 2>/dev/null | wc -l | tr -d '[:space:]')"
-final_dialogue_count="$(find "$SUPERVISOR_TRANSCRIPT_DIR" -maxdepth 1 -type f -name 'review-*-agent-dialogue.md' 2>/dev/null | wc -l | tr -d '[:space:]')"
+dialogue_file="$SUPERVISOR_TRANSCRIPT_DIR/agent-dialogue.jsonl"
+final_dialogue_count="$(grep -c '"direction":' "$dialogue_file" 2>/dev/null || true)"
+final_delivery_count="$(grep -c '"direction":"supervisor_to_worker"' "$dialogue_file" 2>/dev/null || true)"
+final_worker_reply_count="$(grep -c '"direction":"worker_to_supervisor"' "$dialogue_file" 2>/dev/null || true)"
 final_delivery_count="${final_delivery_count:-0}"
 final_dialogue_count="${final_dialogue_count:-0}"
+final_worker_reply_count="${final_worker_reply_count:-0}"
 printf 'project_progress=%s\n' "$project_progress" >> "$GITHUB_OUTPUT"
 printf 'failed_sessions=%s\n' "$failed_sessions" >> "$GITHUB_OUTPUT"
 printf 'idle_timeout_retries=%s\n' "$idle_timeout_retry_count" >> "$GITHUB_OUTPUT"
@@ -952,6 +952,7 @@ printf 'supervisor_review_timeouts=%s\n' "$final_timeout_count" >> "$GITHUB_OUTP
 printf 'supervisor_review_failures=%s\n' "$final_review_failure_count" >> "$GITHUB_OUTPUT"
 printf 'supervisor_delivery_transcripts=%s\n' "$final_delivery_count" >> "$GITHUB_OUTPUT"
 printf 'supervisor_dialogue_transcripts=%s\n' "$final_dialogue_count" >> "$GITHUB_OUTPUT"
+printf 'supervisor_worker_replies=%s\n' "$final_worker_reply_count" >> "$GITHUB_OUTPUT"
 printf 'supervisor_advice_entries=%s\n' "$final_advice_entries" >> "$GITHUB_OUTPUT"
 printf 'supervisor_pending_units=%s\n' "$final_pending_units" >> "$GITHUB_OUTPUT"
 printf 'final_phase=%s\n' "$(progress_field phase)" >> "$GITHUB_OUTPUT"
