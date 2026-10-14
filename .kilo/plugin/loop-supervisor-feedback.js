@@ -109,8 +109,8 @@ function buildProtocolReminder(recommendation) {
   const report = redactSensitiveText(recommendation.report).slice(-9000);
   return "[SUPERVISOR RECOMMENDATION AWAITING WORKER DISPOSITION]\n"
     + "Recommendation ID: " + recommendation.recommendation_id + "\n"
-    + "Read the controller-owned .kilo/runtime/current-supervisor-recommendation.json. "
-    + "Update only the worker-owned .kilo/runtime/worker-disposition.json with schema_version=1, "
+    + "Read the controller-owned .kilo-runtime/current-supervisor-recommendation.json. "
+    + "Update only the worker-owned .kilo-runtime/worker-disposition.json with schema_version=1, "
     + "the exact recommendation_id, disposition (accepted/in_progress/verified/blocked/"
     + "rejected_with_reason/superseded), a concrete reason, evidence, verification, and updated_at. "
     + "Do not blindly obey unsafe or stale advice. Continue other useful work; this reminder is bounded.\n\n"
@@ -208,7 +208,7 @@ const LoopSupervisorFeedback = async () => {
           if (pending.trim()) {
             const recommendationLabel = recommendation
               ? "\nActive recommendation ID: " + recommendation.recommendation_id
-                + "\nAccount for this recommendation in .kilo/runtime/worker-disposition.json; reminders recur at bounded intervals until a valid disposition is written."
+                + "\nAccount for this recommendation in .kilo-runtime/worker-disposition.json; reminders recur at bounded intervals until a valid disposition is written."
               : "";
             injectionText = "[PENDING LOOP-SUPERVISOR FEEDBACK — cumulative queue; earlier entries are retained until delivered]\n"
               + "Review this queued advice now. Treat it as advisory, verify it against evidence, and continue the current task without restarting. "
