@@ -215,3 +215,10 @@ This is a research/backtesting system only. It never places live trades, accesse
 
 **Cycle 34**: Continue Paper Trading Monitoring & Data Acquisition — **NO NEW DATA AVAILABLE, REPLAY REPRODUCED**.
 - Re-attempted data acquisition from Yahoo Finance (force=True, end_date 2026-11-30). No new trading days available beyond 2026-10-12 for the 7-symbol incumbent universe; ^VIX extends to 2026-10-13 (not used by incumbent). Re-ran `research/run_paper_trading_replay.py` (end_date 2026-10-13): track record remains at **445 days** (2025-01-02 → 2026-10-12), reproduced exactly — NAV **$136,905.02** (+36.91%), max drawdown **-1.59%**, Sharpe **2.0404**, rolling 63-day Sharpe **0.4892**. **Drift flag persists**: `low_rolling_sharpe` on 2026-10-12 (0.4892 < 0.5 threshold), duration 1 day. All primary go/no-go gates still pass (track record 445 > 126, Sharpe 2.04 > 0.9, max DD -1.59% < 15%, 6 regime flips > 1). Regime unchanged (risk-on, 130 days). Data integrity verified: ^VIX.parquet 8,505 rows (1993-01-04 → 2026-10-13) matches git HEAD exactly. Artifacts: `data/processed/paper_trading_state.yaml`, `research/reports/paper_trading_rolling.md`, `research/reports/paper_trading_validation_007.md`. Next cycle should re-attempt data fetch when more trading days have elapsed and continue to monitor the rolling Sharpe trajectory.
+
+## Cycle 49 — 2026-10-14 (No new data)
+
+- Data check: No 2026-10-15 data yet for incumbent ETFs (SPY/QQQ/IWM/TLT/GLD/EFA/EEM) or ^VIX via yfinance. Raw max dates remain 2026-10-14.
+- Track record (unchanged): 447 days (2025-01-02 → 2026-10-14), NAV $135,057.00 (+35.06%), Sharpe 1.9302, max DD -2.92%, rolling 63d Sharpe 0.1185.
+- Drift: `low_rolling_sharpe` on 2026-10-12 (0.4892), 2026-10-13 (0.3669), 2026-10-14 (0.1185) — 3 consecutive days. Trajectory volatile over last 18d (-0.51..+1.19). Not >20d persistence threshold. All primary gates pass; risk-on 132d.
+- Action: No replay run. Reported blocker in validation_022.md. Strategy frozen.
