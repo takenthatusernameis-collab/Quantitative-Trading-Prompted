@@ -260,7 +260,8 @@ def evaluate_completion(
     dialogue, dialogue_errors = read_events(dialogue_path)
     communication, communication_errors = read_events(communication_path)
     errors = dialogue_errors + communication_errors
-    non_missing_errors = [item for item in errors if not item.startswith("missing transcript:")]
+    # A missing transcript is missing evidence, not a benign absence; never ignore it at the completion gate.
+    non_missing_errors = errors
     task_events = [e for e in communication if e.get("task_id") == task_id]
     dialogue_task = [e for e in dialogue if e.get("task_id") == task_id]
     written_ids = {
@@ -273,12 +274,31 @@ def evaluate_completion(
         and e["stage"] == "message_delivered"
         and e["message_id"] in written_ids
     }
+    dialogue_delivered_ids = {
+        e["message_id"] for e in dialogue_task
+        if e["direction"] == "supervisor_to_worker"
+        and e["stage"] == "message_delivered"
+        and e["message_id"] in delivered_ids
+    }
     replies = [
         e for e in task_events
         if e["direction"] == "worker_to_supervisor"
         and e["stage"] == "worker_processed"
         and e.get("correlation_id") in delivered_ids
     ]
+    dialogue_replies = [
+        e for e in dialogue_task
+        if e["direction"] == "worker_to_supervisor"
+        and e["stage"] == "worker_processed"
+        and e.get("correlation_id") in dialogue_delivered_ids
+    ]
+    dialogue_response_matches = bool(
+        replies and dialogue_replies
+        and replies[-1].get("correlation_id") == dialogue_replies[-1].get("correlation_id")
+        and replies[-1].get("message_id") == dialogue_replies[-1].get("message_id")
+        and replies[-1].get("disposition") == dialogue_replies[-1].get("disposition")
+        and replies[-1].get("message") == dialogue_replies[-1].get("message")
+    )
     status = "awaiting_independent_verification"
     reasons: list[str] = []
     if non_missing_errors:
@@ -287,9 +307,15 @@ def evaluate_completion(
     elif not delivered_ids:
         status = "awaiting_worker_response"
         reasons.append("No delivered supervisor message linked to a recorded written message exists for this task.")
+    elif not dialogue_delivered_ids:
+        status = "incomplete_evidence"
+        reasons.append("The lifecycle ledger records delivery, but the role-boundary dialogue record does not contain the correlated supervisor message.")
     elif not replies:
         status = "awaiting_worker_response"
         reasons.append("No correlated worker response is recorded; recommendation text is not a reply.")
+    elif not dialogue_response_matches:
+        status = "incomplete_evidence"
+        reasons.append("The lifecycle ledger's worker response is missing or does not match the correlated worker reply in the role-boundary dialogue record.")
     else:
         response = replies[-1]
         if response.get("disposition") in {"blocked", "rejected_with_reason", "superseded"}:
@@ -351,7 +377,7 @@ def evaluate_completion(
             reasons.append("At least one required artifact must be independently verified and referenced.")
         if not no_open_work:
             reasons.append("Controller verification manifest reports blockers or outstanding work.")
-        if manifest_ok and criteria_ok and tests_ok and artifacts_ok and remote_ok and no_open_work and not non_missing_errors and replies and replies[-1].get("disposition") == "verified" and not replies[-1].get("blockers") and not replies[-1].get("outstanding_work") and replies[-1].get("work_performed") and replies[-1].get("verification"):
+        if manifest_ok and criteria_ok and tests_ok and artifacts_ok and remote_ok and no_open_work and not non_missing_errors and replies and dialogue_response_matches and replies[-1].get("disposition") == "verified" and not replies[-1].get("blockers") and not replies[-1].get("outstanding_work") and replies[-1].get("work_performed") and replies[-1].get("verification"):
             status = "verified_completion"
             reasons = ["Worker response, task-scoped acceptance criteria, tests, artifacts, and exact remote checkpoint passed independent controller verification."]
 
