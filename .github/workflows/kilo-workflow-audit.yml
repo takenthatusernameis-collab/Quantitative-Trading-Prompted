@@ -395,7 +395,7 @@ jobs:
             process.env.KILO_SUPERVISOR_MODE = "1";
             const reviewerHooks = await pluginModule.default.server();
             assert.equal(Object.keys(reviewerHooks).length, 0, "reviewer CLI sessions must not receive worker feedback");
-            console.log("Exact worker delivery transcripts, durable cursor resume, path boundary, and reviewer isolation: OK");
+            console.log("Role-only dialogue, durable journal cursor resume, one-time reminders, path boundary, and reviewer isolation: OK");
           } finally {
             await rm(runtime, { recursive: true, force: true });
           }
