@@ -692,8 +692,8 @@ def main() -> int:
 
     report_dir.mkdir(parents=True, exist_ok=True)
     transcript_dir.mkdir(parents=True, exist_ok=True)
-    protocol_dir: Optional[Path] = repo_root / ".kilo" / "runtime"
-    if not within_directory(protocol_dir, repo_root / ".kilo"):
+    protocol_dir: Optional[Path] = repo_root / ".kilo-runtime"
+    if not within_directory(protocol_dir, repo_root / ".kilo-runtime"):
         log("file-backed dialogue protocol path escapes .kilo; protocol disabled fail-open")
         protocol_dir = None
     else:
