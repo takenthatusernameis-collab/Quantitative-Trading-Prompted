@@ -185,6 +185,54 @@ class DialogueProtocolTests(unittest.TestCase):
         self.write_exchange(task=other_task)
         self.assertEqual(self.evaluate(self.manifest(), task=self.task)["status"], "awaiting_worker_response")
 
+    def test_missing_dialogue_track_blocks_otherwise_verified_completion(self):
+        self.write_exchange()
+        self.dialogue.unlink()
+        result = self.evaluate(self.manifest())
+        self.assertEqual(result["status"], "incomplete_evidence")
+        self.assertTrue(any("missing transcript: agent-dialogue.jsonl" in error
+                            for error in result["transcript_errors"]))
+
+    def test_lifecycle_worker_reply_without_dialogue_reply_blocks_completion(self):
+        self.write_exchange()
+        events, errors = protocol.read_events(self.dialogue)
+        self.assertEqual(errors, [])
+        supervisor_only = [
+            event for event in events
+            if event["direction"] == "supervisor_to_worker"
+        ]
+        self.dialogue.write_text(
+            "".join(json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\\n"
+                    for event in supervisor_only),
+            encoding="utf-8",
+        )
+        result = self.evaluate(self.manifest())
+        self.assertEqual(result["status"], "incomplete_evidence")
+        self.assertTrue(any("worker response is missing" in reason
+                            for reason in result["reasons"]))
+
+    def test_dialogue_reply_must_match_lifecycle_response(self):
+        self.write_exchange(disposition="verified")
+        events, errors = protocol.read_events(self.dialogue)
+        self.assertEqual(errors, [])
+        for event in events:
+            if event["direction"] == "worker_to_supervisor":
+                event["disposition"] = "in_progress"
+                key_material = "\\0".join((
+                    event["direction"], event["stage"], event["message_id"],
+                    event["correlation_id"], event["message"], event["disposition"],
+                ))
+                import hashlib
+                event["event_key"] = hashlib.sha256(key_material.encode("utf-8")).hexdigest()
+        self.dialogue.write_text(
+            "".join(json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\\n"
+                    for event in events),
+            encoding="utf-8",
+        )
+        result = self.evaluate(self.manifest())
+        self.assertEqual(result["status"], "incomplete_evidence")
+        self.assertTrue(any("does not match" in reason for reason in result["reasons"]))
+
     def test_missing_artifacts_and_acceptance_criteria_never_pass(self):
         self.write_exchange()
         manifest = self.manifest()
