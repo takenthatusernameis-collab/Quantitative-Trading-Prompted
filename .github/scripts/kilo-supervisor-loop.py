@@ -106,11 +106,11 @@ def read_git_snapshot(repo_root: Path) -> str:
             if label == "status" and value:
                 # Supervisor report files are diagnostic output created by this monitor,
                 # not changes made by the worker; exclude them to prevent self-triggered review loops.
-                value = "\\n".join(
+                value = "\n".join(
                     line for line in value.splitlines()
-                    if not re.match(r"^\\?\\?\\s+\\.kilo/supervisor-reports(?:/|$)", line)
+                    if not re.match(r"^\?\?\s+\.kilo/supervisor-reports(?:/|$)", line)
                 ) or "(no worker-visible repository status changes)"
-            sections.append(f"{label}:\\n{value}")
+            sections.append(f"{label}:\n{value}")
         except (OSError, subprocess.TimeoutExpired):
             sections.append(f"{label}:\n(unavailable)")
     return redact_sensitive_text("\n\n".join(sections))[-2_500:]
@@ -810,6 +810,10 @@ def main() -> int:
                 )
                 previous_worker_disposition_digest = disposition_digest
                 log(f"worker replied to supervisor recommendation={current_recommendation['recommendation_id']} disposition={current_disposition['disposition']}")
+                print("::group::LIVE AGENT DIALOGUE BOX — WORKER → SUPERVISOR", flush=True)
+                for message_line in worker_reply.splitlines() or ["(empty worker reply)"]:
+                    print("[agent-dialogue] " + message_line, flush=True)
+                print("::endgroup::", flush=True)
                 log_delta = (log_delta.rstrip() + "\n\nNEW WORKER-TO-SUPERVISOR MESSAGE\n" + worker_reply).strip()
         else:
             previous_worker_disposition_digest = None
