@@ -506,6 +506,7 @@ class SupervisorLoopTests(unittest.TestCase):
             ):
                 self.assertIn(expected, prompt)
 
+            transcripts.mkdir(parents=True, exist_ok=True)
             self.assertTrue(monitor.append_dialogue_event(
                 transcripts, "worker_to_supervisor", "worker",
                 recommendation_id, worker_reply,
