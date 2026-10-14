@@ -27,6 +27,18 @@ class E2EVerificationTests(unittest.TestCase):
              "stage": "worker_processed", "correlation_id": recommendation, "disposition": "verified",
              "work_performed": disposition["work_performed"], "verification": disposition["verification"]}]
         return task, session, disposition, events
+    def test_startup_gate_uses_real_shell_variables(self):
+        # Guard against escaped ${...} expressions making the shell if-condition
+        # compare a literal string and silently bypass the E2E startup barrier.
+        controller = SCRIPT.with_name("kilo-controller.sh").read_text(encoding="utf-8")
+        start = controller.index('if [ "${KILO_E2E_MODE:-0}" = "1" ]; then')
+        end = controller.index("# Project changes exclude workflow definitions and control-only markers.", start)
+        gate = controller[start:end]
+        self.assertNotRegex(gate, r"\\\\\$\\{")
+        self.assertIn("current-supervisor-recommendation.json", gate)
+        self.assertIn('"message_written"', gate)
+        self.assertIn("no worker was started", gate)
+
     def test_only_non_default_infra_branch_allowed(self):
         self.assertTrue(verifier.isolated_target_branch("infra/e2e-test", "main"))
         self.assertFalse(verifier.isolated_target_branch("main", "main"))
