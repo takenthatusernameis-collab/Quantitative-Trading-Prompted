@@ -7,12 +7,6 @@ on:
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
-    inputs:
-      sessions:
-        description: "Maximum number of sequential Kilo agent sessions (1-1000). Hard cutoff: 355 minutes."
-        type: number
-        required: true
-        default: 1000
 
 permissions:
   contents: write
@@ -37,7 +31,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           KILO_TRIGGER_EVENT: ${{ github.event_name }}
           KILO_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-          KILO_MAX_SESSIONS: ${{ inputs.sessions }}
         run: bash .github/scripts/kilo-controller.sh
       - name: Summarize controller outcome
         if: always()
@@ -47,7 +40,6 @@ jobs:
           PROJECT_PROGRESS: ${{ steps.kilo_controller.outputs.project_progress }}
           FAILED_SESSIONS: ${{ steps.kilo_controller.outputs.failed_sessions }}
           IDLE_TIMEOUT_RETRIES: ${{ steps.kilo_controller.outputs.idle_timeout_retries }}
-          SESSION_LIMIT: ${{ steps.kilo_controller.outputs.session_limit }}
           SESSIONS_STARTED: ${{ steps.kilo_controller.outputs.sessions_started }}
           SESSIONS_COMPLETED: ${{ steps.kilo_controller.outputs.sessions_completed }}
           PERSISTED_CHECKPOINTS: ${{ steps.kilo_controller.outputs.persisted_checkpoints }}
@@ -68,7 +60,7 @@ jobs:
           {
             echo "## Kilo controller health"
             echo "- Controller step outcome: \`$CONTROLLER_OUTCOME\`"
-            echo "- Session policy: stop at the selected cap (${SESSION_LIMIT:-unknown} sessions) or the global 355-minute hard cutoff, whichever comes first."
+            echo "- Session policy: no count cap on worker sessions, transient retries, or corrective attempts; stop at the global 355-minute hard cutoff (or platform termination)."
             echo "- Worker sessions started: ${SESSIONS_STARTED:-unknown}; completed: ${SESSIONS_COMPLETED:-unknown}"
             echo "- Last phase: ${FINAL_PHASE:-unknown} — ${FINAL_PHASE_DETAIL:-unknown}"
             echo "- Controller-verified persisted checkpoints: ${PERSISTED_CHECKPOINTS:-0}"
