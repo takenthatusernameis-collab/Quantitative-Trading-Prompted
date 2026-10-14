@@ -524,6 +524,7 @@ class SupervisorLoopTests(unittest.TestCase):
             self.assertEqual(events[0]["message"], worker_reply)
 
             disposition["recommendation_id"] = "stale-recommendation-id"
+            (protocol / "worker-disposition.json").write_text(json.dumps(disposition), encoding="utf-8")
             stale = monitor.read_worker_disposition(protocol)
             self.assertIsNotNone(stale)
             self.assertEqual(monitor.format_worker_disposition(current, stale), "")
