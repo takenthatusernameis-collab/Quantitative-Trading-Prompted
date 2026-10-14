@@ -359,7 +359,7 @@ python3 .github/scripts/kilo-supervisor-loop.py \
   > >(tee -a "$SUPERVISOR_LOOP_LOG") 2>&1 &
 supervisor_loop_pid=$!
 echo "[loop-supervisor] Started alongside the Kilo worker; immediate review plus a 150-second cadence (PID $supervisor_loop_pid)."
-echo "[loop-supervisor] Exact redacted review requests, reviewer reports, CLI diagnostics, and worker-delivery messages are printed in the logs and saved under: $SUPERVISOR_TRANSCRIPT_DIR"
+echo "[loop-supervisor] Only actual Supervisor ↔ Worker messages are included in agent-dialogue.md; repeated review prompts, state reads, and CLI bodies are not echoed. Dialogue path: $SUPERVISOR_TRANSCRIPT_DIR/agent-dialogue.md"
 echo "::notice title=Live agent dialogue::Expand the 'Run bash .github/scripts/kilo-controller.sh' step logs and search for 'LIVE AGENT DIALOGUE BOX' to view each redacted supervisor exchange as it finishes. The end-of-run Summary box appears only after this controller step completes."
 write_progress "supervisor-running" "review loop launched"
 
