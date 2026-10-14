@@ -40,7 +40,7 @@ async function readCursor(cursorPath) {
 }
 
 async function writeCursor(cursorPath, offset, prefixDigest) {
-  if (!cursorPath) return;
+  if (!cursorPath) return false;
   const temporaryPath = cursorPath + "." + process.pid + ".tmp";
   try {
     await writeFile(temporaryPath, JSON.stringify({ offset, prefixDigest }), {
@@ -48,9 +48,11 @@ async function writeCursor(cursorPath, offset, prefixDigest) {
       mode: 0o600,
     });
     await rename(temporaryPath, cursorPath);
+    return true;
   } catch {
     try { await unlink(temporaryPath); } catch {}
     // Cursor persistence is best-effort; advice remains in the append-only journal.
+    return false;
   }
 }
 
@@ -98,6 +100,10 @@ const LoopSupervisorFeedback = async () => {
   let { offset: lastInjectedOffset, prefixDigest: lastInjectedPrefixDigest } =
       await readCursor(safeCursorPath);
   let injectionSequence = 0;
+  console.log("[loop-supervisor-feedback] HOOK_READY journal="
+    + (safeFeedbackPath ? "configured" : "disabled")
+    + " cursor=" + (safeCursorPath ? "configured" : "disabled")
+    + " transcript=" + (safeTranscriptDir ? "configured" : "disabled"));
 
   return {
     "tool.execute.after": async (input, output) => {
@@ -129,9 +135,17 @@ const LoopSupervisorFeedback = async () => {
 
         injectionSequence += 1;
         const transcriptPath = await saveWorkerDelivery(safeTranscriptDir, injectionText, injectionSequence);
+        // The output is already amended; advance this process's cursor and persist
+        // the acknowledgement before reporting the delivery result.
+        lastInjectedOffset = end;
+        lastInjectedPrefixDigest = digest(journal.slice(0, end));
+        const cursorSaved = await writeCursor(safeCursorPath, lastInjectedOffset, lastInjectedPrefixDigest);
+
         console.log("[loop-supervisor-feedback] Exact supervisor-to-worker message appended to tool result; transcript="
           + (transcriptPath ? basename(transcriptPath) : "unavailable"));
         console.log("[loop-supervisor-feedback] DELIVERY_CONFIRMED sequence=" + injectionSequence
+          + " output_mutated=yes transcript_saved=" + (transcriptPath ? "yes" : "no")
+          + " cursor_saved=" + (cursorSaved ? "yes" : "no")
           + " transcript=" + (transcriptPath ? basename(transcriptPath) : "unavailable")
           + " injected_chars=" + injectionText.length);
         console.log("[loop-supervisor-feedback-content] BEGIN exact injected content");
@@ -139,14 +153,11 @@ const LoopSupervisorFeedback = async () => {
           console.log("[loop-supervisor-feedback-content] " + line);
         }
         console.log("[loop-supervisor-feedback-content] END exact injected content");
-
-        // The output has been modified now; persist the journal cursor after delivery.
-        lastInjectedOffset = end;
-        lastInjectedPrefixDigest = digest(journal.slice(0, end));
-        await writeCursor(safeCursorPath, lastInjectedOffset, lastInjectedPrefixDigest);
-      } catch {
-        // Feedback injection must never fail the worker's tool invocation.
-        return;
+      } catch (error) {
+        // Fail open, but leave evidence that this tool-result hook did not complete.
+        const errorType = error instanceof Error ? error.name : typeof error;
+        console.error("[loop-supervisor-feedback] HOOK_ERROR type=" + errorType
+          + "; worker continues and pending advice may be retried at the next tool-result boundary");
       }
     },
   };

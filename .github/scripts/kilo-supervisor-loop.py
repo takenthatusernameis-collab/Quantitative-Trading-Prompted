@@ -131,21 +131,16 @@ CURRENT REPOSITORY STATE:
 PREVIOUS SUPERVISOR FEEDBACK (cumulative journal tail; newer entries do not erase older ones):
 {previous_feedback[-MAX_PREVIOUS_FEEDBACK_CHARS:]}
 
-REQUIRED ACTION:
-1. Read only relevant task/research/source files as needed. Do not inspect secrets.
-2. Detect progress, blockers, repeated or alternating failures, ineffective repeated approaches, invalid assumptions, verification gaps, and risks to acceptance criteria.
-3. Recommend only a small, evidence-supported change. Do not tell the worker to restart, stop the workflow, weaken checks, or alter the existing 355-minute cutoff-only policy.
-4. Distinguish confirmed evidence from hypotheses. If no intervention is warranted, say so.
-5. Write a concise report to this exact path inside the repository:
+REQUIRED ACTION — REPORT-FIRST, BOUNDED REVIEW:
+1. Treat the supplied worker log delta, objective, repository snapshot, and prior advice as your primary evidence. Do not rebuild inventories, run backtests, install dependencies, or inspect unrelated files.
+2. If one relevant detail is needed, make no more than two targeted read/search calls. Mark anything else unverified instead of continuing exploration.
+3. Write the report to this exact path on your first available write operation, no later than your fourth tool call:
 REPORT_PATH: {report_relative_path}
-6. Use this report structure:
-   - STATUS: CONTINUE, ATTENTION, or CRITICAL
-   - Evidence since prior review
-   - Recommended next action (or “no change; continue”)
-   - Verification needed
-   - Uncertainty / limitations
-7. Do not put credentials, tokens, passwords, or other secrets into the report. Do not include a timestamp or cycle counter in the report body unless it materially matters.
-8. Your tool permissions are read/search plus report-path-scoped edit/write only. Do not execute commands, browse the web, delegate to agents, or control workflows.
+4. Use these exact headings, in order: STATUS: CONTINUE/ATTENTION/CRITICAL; Observed evidence; Previous approaches; Likely cause; Different next step; Verification; Limitations. Keep it concise (about 150–250 words). An Alternative section is optional only when the main step is blocked or materially uncertain.
+5. If no intervention is warranted, say “no change; continue” and identify the evidence supporting that decision.
+6. Do not tell the worker to restart, stop the workflow, weaken checks, or alter the existing 355-minute cutoff-only policy. Separate facts from hypotheses and do not claim unverified tests or file state.
+7. Do not include credentials, tokens, passwords, timestamps, or cycle counters in the report unless materially necessary. Your permissions remain read/search plus report-path-scoped edit/write only; do not execute commands, browse the web, delegate, or control workflows.
+8. If you cannot write the report or are about to exhaust the eight-step limit, return the same concise report in your final response prefixed by a standalone “REPORT_FALLBACK:” line. Include one evidence-supported next action and a focused verification check so the controller can recover it safely.
 
 Review cadence target: {cadence_seconds} seconds. Your feedback is advisory. The worker must independently verify it and retains responsibility for all changes.
 """
@@ -240,6 +235,69 @@ def write_agent_dialogue(
         "The exact text appended to the worker tool result is also saved in a worker-delivery-*.md transcript.\n"
     )
     return transcript_file(transcript_dir, cycle, "agent-dialogue.md", body)
+
+
+def recover_report_from_cli_output(cli_output: str) -> Optional[str]:
+    """Recover a substantive final answer when Kilo exits successfully without writing its report."""
+    cleaned = redact_sensitive_text(cli_output or "").replace("\r\n", "\n").replace("\r", "\n")
+    candidate = ""
+
+    # Prefer an explicit structured fallback; require a report heading so an
+    # echoed copy of the prompt cannot be mistaken for advice.
+    explicit = list(re.finditer(r"(?im)^\s*REPORT_FALLBACK:\s*", cleaned))
+    if explicit:
+        possible = cleaned[explicit[-1].end():].strip()
+        has_report_heading = re.search(
+            r"(?im)^\s*(?:STATUS:\s*(?:CONTINUE|ATTENTION|CRITICAL)|"
+            r"(?:#{1,3}\s*)?(?:Observed evidence|Previous approaches|Likely cause|"
+            r"Different next step|Verification|Limitations)\s*(?:[:—-]|$))",
+            possible,
+        )
+        if has_report_heading:
+            candidate = possible
+
+    # Older Kilo runs can exhaust the agent step budget yet still return a
+    # substantive final answer with a stable summary heading.
+    if not candidate:
+        summaries = list(re.finditer(r"(?im)^\s*Summary of work done:\s*", cleaned))
+        if summaries:
+            possible = cleaned[summaries[-1].end():].strip()
+            if re.search(
+                r"(?i)(recommendations? for next steps|recommended next action|"
+                r"different next step|verification needed|next task)",
+                possible,
+            ):
+                candidate = possible
+
+    # Some CLI versions omit the summary heading but expose a final recommendation section.
+    if not candidate:
+        recommendations = list(re.finditer(
+            r"(?im)^\s*Recommendations for next steps:\s*$", cleaned
+        ))
+        if recommendations:
+            candidate = cleaned[recommendations[-1].start():].strip()
+
+    candidate = redact_sensitive_text(candidate).strip()
+    if len(candidate) < 120:
+        return None
+    if not re.search(
+        r"(?i)\b(recommend\w*|next step|next action|should|must|verify|verification|"
+        r"priority|check|continue|proceed|blocked|task)\b",
+        candidate,
+    ):
+        return None
+
+    # Preserve the actionable tail if the CLI response is unusually verbose.
+    candidate = candidate[-(MAX_REPORT_CHARS - 650):]
+    return (
+        "STATUS: ATTENTION\n\n"
+        "## Report recovery\n"
+        "The reviewer CLI exited successfully but did not create the required report file. "
+        "The content below was recovered from its final response; it remains advisory and "
+        "must be verified independently before action.\n\n"
+        "## Recovered reviewer response\n"
+        + candidate
+    )
 
 
 def terminate_process_group(process: subprocess.Popen[str]) -> None:
@@ -385,34 +443,62 @@ def run_review(
     finally:
         ACTIVE_REVIEW = None
 
+    recovered_from_cli = False
     try:
         report = report_path.read_text(encoding="utf-8", errors="replace").strip()
     except OSError:
-        outcome = "MISSING REPORT: the reviewer CLI returned without writing the required report; previous advice was retained."
-        write_outcome(outcome)
-        save_dialogue(output or "", "", outcome)
-        log(f"review {cycle} returned without writing its report; previous advice retained")
-        return None
-    report = redact_sensitive_text(report)[:MAX_REPORT_CHARS].strip()
+        report = ""
+
+    if not report:
+        recovered = recover_report_from_cli_output(output or "")
+        if recovered:
+            report = recovered
+            recovered_from_cli = True
+            try:
+                atomic_write(report_path, report)
+                log(f"review {cycle} recovered a substantive final response into the report file")
+            except OSError as exc:
+                # The in-memory advice can still be published to the worker journal
+                # when the diagnostic report file cannot be persisted.
+                log(f"review {cycle} recovered advice but report-file persistence failed ({type(exc).__name__}); attempting journal delivery")
+        else:
+            outcome = "MISSING/EMPTY REPORT: the reviewer CLI returned successfully but produced neither a report file nor a recoverable actionable final response; previous advice was retained."
+            write_outcome(outcome)
+            save_dialogue(output or "", "", outcome)
+            log(f"review {cycle} produced no report file or recoverable final response; previous advice retained")
+            return None
+
+    report = redact_sensitive_text(report).strip()
+    if len(report) > MAX_REPORT_CHARS:
+        head = (MAX_REPORT_CHARS - 140) // 2
+        tail = MAX_REPORT_CHARS - head - 100
+        report = report[:head] + "\n\n...[middle of report truncated for bounded delivery]...\n\n" + report[-tail:]
     if not report:
         outcome = "EMPTY REPORT: no advice was published; previous advice was retained."
         write_outcome(outcome)
         save_dialogue(output or "", "", outcome)
-        log(f"review {cycle} wrote an empty report; previous advice retained")
+        log(f"review {cycle} report was empty after sanitization; previous advice retained")
         return None
+
     try:
-        report_path.write_text(report + "\n", encoding="utf-8")
-    except OSError:
-        outcome = "REPORT SANITIZATION FAILURE: feedback was not delivered; previous advice was retained."
-        write_outcome(outcome)
-        save_dialogue(output or "", "", outcome)
-        log(f"review {cycle} report could not be sanitized; feedback not delivered")
-        return None
+        atomic_write(report_path, report)
+    except OSError as exc:
+        # Report files are diagnostic; the sanitized in-memory response is enough
+        # to continue through the append-only journal and delivery plugin.
+        log(f"review {cycle} could not persist sanitized report file ({type(exc).__name__}); continuing with in-memory advice")
+
     response_path = transcript_file(transcript_dir, cycle, "response-from-supervisor.md", report)
     if response_path:
         log(f"review {cycle} actual advice saved to {response_path}")
     log_content_block(f"ACTUAL ADVICE RETURNED BY SUPERVISOR — review {cycle}", report)
-    outcome = "USABLE REPORT GENERATED: redacted advice was accepted; the report is ready for journal publication; delivery can occur only after publication, at the worker's next tool-result boundary."
+    outcome = (
+        "USABLE REPORT RECOVERED: the successful reviewer CLI omitted its report file; "
+        "the final response was recovered, sanitized, and is ready for journal publication; "
+        "worker delivery occurs at the next tool-result boundary."
+        if recovered_from_cli else
+        "USABLE REPORT GENERATED: redacted advice was accepted; the report is ready for journal publication; "
+        "delivery can occur only after publication, at the worker's next tool-result boundary."
+    )
     write_outcome(outcome)
     save_dialogue(output or "", report, outcome)
     return report
@@ -507,40 +593,46 @@ def main() -> int:
                 f"(consecutive unusable reviews: {consecutive_unusable_reviews}/"
                 f"{circuit_breaker_threshold}); worker continues independently"
             )
-        else:
+        elif report == previous_report:
             consecutive_unusable_reviews = 0
-            log(f"review {cycle} completed with usable report")
-            if report != previous_report:
-                entry = (
-                    f"--- SUPERVISOR ADVICE ENTRY cycle={cycle:04d} ---\n"
-                    "INDEPENDENT LOOP-SUPERVISOR FEEDBACK\n"
-                    "This is an append-only cumulative journal. Preserve earlier advice unless newer evidence explicitly supersedes it. "
-                    "Verify recommendations independently before changing code.\n\n"
-                    + report.strip()
-                    + f"\n--- END SUPERVISOR ADVICE ENTRY cycle={cycle:04d} ---\n"
-                )
+            log(f"review {cycle} completed with usable report; recommendation unchanged, no duplicate journal entry added")
+        else:
+            entry = (
+                f"--- SUPERVISOR ADVICE ENTRY cycle={cycle:04d} ---\n"
+                "INDEPENDENT LOOP-SUPERVISOR FEEDBACK\n"
+                "This is an append-only cumulative journal. Preserve earlier advice unless newer evidence explicitly supersedes it. "
+                "Verify recommendations independently before changing code.\n\n"
+                + report.strip()
+                + f"\n--- END SUPERVISOR ADVICE ENTRY cycle={cycle:04d} ---\n"
+            )
+            try:
                 try:
-                    try:
-                        existing = feedback_file.read_text(encoding="utf-8", errors="replace")
-                    except FileNotFoundError:
-                        existing = ""
-                    separator = "" if not existing or existing.endswith("\n") else "\n"
-                    atomic_write(feedback_file, existing + separator + entry)
-                    previous_report = report
-                    previous_feedback = read_bounded(feedback_file, MAX_PREVIOUS_FEEDBACK_CHARS).strip()
-                    status_match = re.search(r"(?im)^STATUS:\s*(CONTINUE|ATTENTION|CRITICAL)\s*$", report)
-                    status = status_match.group(1) if status_match else "REVIEW"
-                    first_recommendation = next(
-                        (line.strip() for line in report.splitlines()
-                         if line.strip() and not line.lstrip().startswith("#")),
-                        "Review ready",
-                    )
-                    log(f"review {cycle} appended cumulative advice status={status}: {first_recommendation[:180]}")
-                except OSError as exc:
-                    log(f"review {cycle} feedback append failed ({type(exc).__name__}); existing advice retained; worker continues")
+                    existing = feedback_file.read_text(encoding="utf-8", errors="replace")
+                except FileNotFoundError:
+                    existing = ""
+                separator = "" if not existing or existing.endswith("\n") else "\n"
+                atomic_write(feedback_file, existing + separator + entry)
+            except OSError as exc:
+                consecutive_unusable_reviews += 1
+                log(
+                    f"review {cycle} feedback journal publication failed ({type(exc).__name__}); "
+                    f"advice was not delivered (consecutive unusable reviews: "
+                    f"{consecutive_unusable_reviews}/{circuit_breaker_threshold}); worker continues"
+                )
             else:
-                log(f"review {cycle} complete; recommendation unchanged, no duplicate journal entry added")
-        if consecutive_unusable_reviews >= circuit_breaker_threshold:
+                consecutive_unusable_reviews = 0
+                previous_report = report
+                previous_feedback = read_bounded(feedback_file, MAX_PREVIOUS_FEEDBACK_CHARS).strip()
+                status_match = re.search(r"(?im)^STATUS:\s*(CONTINUE|ATTENTION|CRITICAL)\s*$", report)
+                status = status_match.group(1) if status_match else "REVIEW"
+                first_recommendation = next(
+                    (line.strip() for line in report.splitlines()
+                     if line.strip() and not line.lstrip().startswith("#")),
+                    "Review ready",
+                )
+                log(f"review {cycle} appended cumulative advice status={status}: {first_recommendation[:180]}")
+                log(f"review {cycle} advice queued for worker delivery at the next tool-result boundary")
+                log(f"review {cycle} completed with usable report")        if consecutive_unusable_reviews >= circuit_breaker_threshold:
             log(
                 f"SUPERVISOR_CIRCUIT_BREAKER_OPEN: {consecutive_unusable_reviews} consecutive "
                 "reviews produced no usable report; no further reviewer model calls will be launched "
