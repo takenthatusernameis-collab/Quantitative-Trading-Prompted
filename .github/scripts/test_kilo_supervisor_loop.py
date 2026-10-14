@@ -120,28 +120,10 @@ class SupervisorLoopTests(unittest.TestCase):
             self.assertNotIn("ghp_123456789012345678901234567890", prompts)
             self.assertEqual(len(list(report_dir.glob("run-test-run-attempt-1-review-*.md"))), 1, "supervisor-generated reports must not trigger a second review")
 
-            first_prompt = prompts.split("\n---PROMPT-END---\n", 1)[0]
-            request_file = transcripts / "review-0001-request-to-supervisor.md"
-            response_file = transcripts / "review-0001-response-from-supervisor.md"
-            cli_file = transcripts / "review-0001-supervisor-cli-output.txt"
-            saved_request = request_file.read_text(encoding="utf-8")
-            self.assertEqual(saved_request.rstrip("\n"), first_prompt.rstrip("\n"),
-                             "saved request must match the exact redacted prompt sent to Kilo")
-            self.assertIn("worker started", saved_request)
-            self.assertNotIn("secret-value", saved_request)
             self.assertEqual(
-                response_file.read_text(encoding="utf-8"),
-                "STATUS: ATTENTION\nEvidence: worker review 1\nRecommended next action: verify changed evidence 1",
+                list(transcripts.iterdir()), [],
+                "reviewer prompts, CLI traces, status files, and undelivered advice must not be recorded as role dialogue",
             )
-            self.assertIn("mock reviewer CLI output for cycle 1", cli_file.read_text(encoding="utf-8"))
-            dialogue_file = transcripts / "review-0001-agent-dialogue.md"
-            dialogue = dialogue_file.read_text(encoding="utf-8")
-            self.assertIn("Worker/controller → supervisor", dialogue)
-            self.assertIn("worker started", dialogue)
-            self.assertIn("Supervisor → worker", dialogue)
-            self.assertIn("worker review 1", dialogue)
-            self.assertIn("USABLE REPORT GENERATED", dialogue)
-            self.assertIn("next tool-result boundary", dialogue)
 
     def test_failed_review_records_request_and_cli_output_without_erasing_feedback(self):
         with tempfile.TemporaryDirectory(prefix="kilo-supervisor-failure-test-") as temp:
@@ -181,15 +163,10 @@ class SupervisorLoopTests(unittest.TestCase):
             ])
             self.assertEqual(code, 0)
             self.assertEqual(feedback.read_text(encoding="utf-8"), "Prior actionable advice.\n")
-            self.assertTrue((transcripts / "review-0001-request-to-supervisor.md").is_file())
-            self.assertIn(
-                "mock CLI failure body",
-                (transcripts / "review-0001-supervisor-cli-output.txt").read_text(encoding="utf-8"),
+            self.assertEqual(
+                list(transcripts.iterdir()), [],
+                "CLI failures are operational diagnostics, not messages between the two agent roles",
             )
-            dialogue = (transcripts / "review-0001-agent-dialogue.md").read_text(encoding="utf-8")
-            self.assertIn("CLI EXIT 7", dialogue)
-            self.assertIn("mock CLI failure body", dialogue)
-            self.assertIn("No usable advice returned", dialogue)
 
 
     def test_report_missing_recovers_final_response_and_publishes_advice(self):
@@ -250,11 +227,10 @@ class SupervisorLoopTests(unittest.TestCase):
             self.assertIn("STATUS: ATTENTION", published)
             self.assertIn("Different next step: write the concise diagnostic report", published)
             self.assertIn("Verification: confirm the next review creates a report", published)
-            response = (transcripts / "review-0001-response-from-supervisor.md").read_text(encoding="utf-8")
-            self.assertIn("Recovered reviewer response", response)
-            dialogue = (transcripts / "review-0001-agent-dialogue.md").read_text(encoding="utf-8")
-            self.assertIn("USABLE REPORT RECOVERED", dialogue)
-            self.assertIn("Different next step: write the concise diagnostic report", dialogue)
+            self.assertEqual(
+                list(transcripts.iterdir()), [],
+                "an undelivered report is not a supervisor-to-worker dialogue message",
+            )
 
     def test_missing_report_without_actionable_final_response_is_not_published(self):
         with tempfile.TemporaryDirectory(prefix="kilo-supervisor-empty-recovery-test-") as temp:
@@ -301,9 +277,9 @@ class SupervisorLoopTests(unittest.TestCase):
             self.assertIn("produced no report file or recoverable final response; previous advice retained", captured.getvalue())
             self.assertEqual(feedback.read_text(encoding="utf-8"), "Previously published advice.\n")
             self.assertFalse((report_dir / "run-test-empty-recovery-attempt-1-review-0001.md").exists())
-            self.assertIn(
-                "MISSING/EMPTY REPORT",
-                (transcripts / "review-0001-outcome.txt").read_text(encoding="utf-8"),
+            self.assertEqual(
+                list(transcripts.iterdir()), [],
+                "outcome files are not part of role-dialogue records",
             )
 
     def test_single_timeout_does_not_repeat_without_new_evidence(self):
@@ -358,8 +334,10 @@ class SupervisorLoopTests(unittest.TestCase):
             self.assertNotIn("mock slow reviewer started", output)
             self.assertEqual(output.count("(consecutive unusable reviews:"), 1)
             self.assertIn("review skipped: no new worker output", output)
-            dialogues = list(transcripts.glob("review-*-agent-dialogue.md"))
-            self.assertEqual(len(dialogues), 1, "a timeout with unchanged evidence should not trigger repeated reviews")
+            self.assertEqual(
+                list(transcripts.iterdir()), [],
+                "timeouts are operational status, not role-to-role dialogue",
+            )
             self.assertEqual(feedback.read_text(encoding="utf-8"), "")
 
 
