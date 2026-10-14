@@ -7,6 +7,12 @@ on:
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
+    inputs:
+      agents:
+        description: "Number of sequential Kilo worker sessions"
+        required: false
+        default: "1000"
+        type: number
 
 permissions:
   contents: write
@@ -31,6 +37,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           KILO_TRIGGER_EVENT: ${{ github.event_name }}
           KILO_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          KILO_INPUT_AGENTS: ${{ inputs.agents }}
         run: bash .github/scripts/kilo-controller.sh
       - name: Summarize controller outcome
         if: always()
@@ -60,7 +67,7 @@ jobs:
           {
             echo "## Kilo controller health"
             echo "- Controller step outcome: \`$CONTROLLER_OUTCOME\`"
-            echo "- Session policy: no count cap on worker sessions, transient retries, or corrective attempts; stop at the global 355-minute hard cutoff (or platform termination)."
+            echo "- Requested session target: ${{ inputs.agents || '1000' }} (one-shot marker overrides to exactly 2); transient retries and corrective attempts remain count-unbounded under the 355-minute cutoff."
             echo "- Worker sessions started: ${SESSIONS_STARTED:-unknown}; completed: ${SESSIONS_COMPLETED:-unknown}"
             echo "- Last phase: ${FINAL_PHASE:-unknown} — ${FINAL_PHASE_DETAIL:-unknown}"
             echo "- Controller-verified persisted checkpoints: ${PERSISTED_CHECKPOINTS:-0}"
@@ -68,7 +75,7 @@ jobs:
             echo "- Supervisor reviews started: ${SUPERVISOR_REVIEW_COUNT:-0}"
             echo "- Supervisor reviews completed with usable reports: ${SUPERVISOR_REVIEWS_COMPLETED:-0}"
             echo "- Supervisor timeouts: ${SUPERVISOR_REVIEW_TIMEOUTS:-0}; other review failures: ${SUPERVISOR_REVIEW_FAILURES:-0}"
-            echo "- Exact worker-delivery transcripts saved: ${SUPERVISOR_DELIVERY_TRANSCRIPTS:-0}; combined agent-dialogue transcripts saved: ${SUPERVISOR_DIALOGUE_TRANSCRIPTS:-0}"
+            echo "- Recorded Supervisor → Worker messages: ${SUPERVISOR_DELIVERY_TRANSCRIPTS:-0}; total actual role messages: ${SUPERVISOR_DIALOGUE_TRANSCRIPTS:-0}"
             echo "- Cumulative supervisor advice entries: ${SUPERVISOR_ADVICE_ENTRIES:-0}"
             echo "- Advice journal units queued but not yet injected at shutdown: ${SUPERVISOR_PENDING_UNITS:-0}"
             echo "- Full redacted supervisor request/CLI trace/response and exact worker-delivery transcripts: download artifact kilo-progress-trace-${GITHUB_RUN_ID}."
