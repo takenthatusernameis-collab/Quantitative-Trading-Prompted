@@ -280,11 +280,23 @@ def evaluate_completion(
         and e["stage"] == "message_delivered"
         and e["message_id"] in delivered_ids
     }
-    replies = [
+    acknowledged_ids = {
+        e["correlation_id"] for e in task_events
+        if e["direction"] == "worker_to_supervisor"
+        and e["stage"] == "worker_acknowledged"
+        and e.get("correlation_id") in delivered_ids
+        and e.get("message_id") in delivered_ids
+        and e.get("acknowledgement_state") in {"acknowledged", "rejected"}
+    }
+    processed_candidates = [
         e for e in task_events
         if e["direction"] == "worker_to_supervisor"
         and e["stage"] == "worker_processed"
         and e.get("correlation_id") in delivered_ids
+    ]
+    replies = [
+        e for e in processed_candidates
+        if e.get("correlation_id") in acknowledged_ids
     ]
     dialogue_replies = [
         e for e in dialogue_task
@@ -311,8 +323,12 @@ def evaluate_completion(
         status = "incomplete_evidence"
         reasons.append("The lifecycle ledger records delivery, but the role-boundary dialogue record does not contain the correlated supervisor message.")
     elif not replies:
-        status = "awaiting_worker_response"
-        reasons.append("No correlated worker response is recorded; recommendation text is not a reply.")
+        if processed_candidates:
+            status = "incomplete_evidence"
+            reasons.append("A worker processing event exists, but its distinct correlated acknowledgement/rejection event is missing or invalid.")
+        else:
+            status = "awaiting_worker_response"
+            reasons.append("No correlated worker response is recorded; recommendation text is not a reply.")
     elif not dialogue_response_matches:
         status = "incomplete_evidence"
         reasons.append("The lifecycle ledger's worker response is missing or does not match the correlated worker reply in the role-boundary dialogue record.")
