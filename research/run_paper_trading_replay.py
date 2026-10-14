@@ -46,8 +46,8 @@ def main() -> None:
     all_market_data = fetch_universe(config.universe, config.history_start, end_date, force=False)
     print(f"Loaded market data: {len(all_market_data)} rows, {all_market_data.index.min().date()} to {all_market_data.index.max().date()}")
 
-    # Get trading days from 2026-07-02 to 2026-10-09 (70 trading days)
-    start_replay_date = "2026-07-02"
+    # Get trading days from 2025-01-01 to 2026-10-09 (captures 2025 regime flips)
+    start_replay_date = "2025-01-01"
     replay_dates = all_market_data.index[(all_market_data.index >= start_replay_date) & (all_market_data.index <= end_date)]
     replay_dates = replay_dates[replay_dates.weekday < 5]  # Ensure weekdays only
     print(f"Replay period: {start_replay_date} to {end_date} ({len(replay_dates)} trading days)")
