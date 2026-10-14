@@ -270,23 +270,29 @@ jobs:
             process.env.KILO_SUPERVISOR_FEEDBACK_CURSOR_FILE = cursorPath;
             process.env.KILO_SUPERVISOR_TRANSCRIPT_DIR = transcripts;
             delete process.env.KILO_SUPERVISOR_MODE;
-            const firstMinute = "--- SUPERVISOR ADVICE ENTRY cycle=0001 ---\nSTATUS: ATTENTION\nCheck the first failing assertion.\n--- END SUPERVISOR ADVICE ENTRY cycle=0001 ---\n";
-            const secondMinute = "--- SUPERVISOR ADVICE ENTRY cycle=0002 ---\nSTATUS: CRITICAL\nThe error pattern changed; verify input parsing.\n--- END SUPERVISOR ADVICE ENTRY cycle=0002 ---\n";
+            const firstMinute = "--- SUPERVISOR ADVICE ENTRY cycle=0001 ---\\nSTATUS: ATTENTION\\nCheck the first failing assertion.\\n--- END SUPERVISOR ADVICE ENTRY cycle=0001 ---\\n";
+            const secondMinute = "--- SUPERVISOR ADVICE ENTRY cycle=0002 ---\\nSTATUS: CRITICAL\\nThe error pattern changed; verify input parsing.\\n--- END SUPERVISOR ADVICE ENTRY cycle=0002 ---\\n";
             await writeFile(feedbackPath, firstMinute, "utf8");
             const hooks = await pluginModule.default.server();
             const after = hooks["tool.execute.after"];
             const first = { output: "original tool output" };
             await after({ tool: "read" }, first);
             assert.match(first.output, /Check the first failing assertion/);
-            assert.ok(first.output.startsWith("original tool output\n\n"));
-            const exactFirstDelivery = first.output.slice("original tool output\n\n".length);
-            const deliveryFiles1 = (await readdir(transcripts)).filter(name => name.startsWith("worker-delivery-"));
-            assert.equal(deliveryFiles1.length, 1, "first injection should create one transcript");
-            assert.equal(await readFile(join(transcripts, deliveryFiles1[0]), "utf8"), exactFirstDelivery,
-              "delivery transcript must exactly match the content appended to worker tool output");
+            assert.match(first.output, /## Supervisor → Worker/);
+            assert.doesNotMatch(first.output, /SUPERVISOR ADVICE ENTRY cycle=/);
+            assert.ok(first.output.startsWith("original tool output\\n\\n"));
+            const dialoguePath = join(transcripts, "agent-dialogue.md");
+            let dialogue = await readFile(dialoguePath, "utf8");
+            assert.equal((dialogue.match(/## Supervisor → Worker/g) || []).length, 1);
+            assert.match(dialogue, /Check the first failing assertion/);
+            assert.doesNotMatch(dialogue, /worker-delivery-|mock reviewer CLI output/);
+            assert.equal((await readdir(transcripts)).filter(name => name.startsWith("worker-delivery-")).length, 0,
+              "role-only dialogue must not produce individual delivery dumps");
+
             const firstOutput = first.output;
             await after({ tool: "read" }, first);
             assert.equal(first.output, firstOutput, "delivered advice must not be appended twice");
+            assert.equal((dialogue.match(/## Supervisor → Worker/g) || []).length, 1);
 
             await writeFile(feedbackPath, firstMinute + secondMinute, "utf8");
             const second = { output: "next tool output" };
@@ -294,10 +300,12 @@ jobs:
             assert.match(second.output, /verify input parsing/);
             assert.doesNotMatch(second.output, /Check the first failing assertion/,
               "only new journal entries should be injected during the same worker process");
-            assert.equal((await readdir(transcripts)).filter(name => name.startsWith("worker-delivery-")).length, 2,
-              "each actual delivery should have its own transcript");
+            dialogue = await readFile(dialoguePath, "utf8");
+            assert.equal((dialogue.match(/## Supervisor → Worker/g) || []).length, 2);
+            assert.equal((dialogue.match(/Check the first failing assertion/g) || []).length, 1);
+            assert.equal((await readdir(transcripts)).filter(name => name.startsWith("worker-delivery-")).length, 0);
 
-            const thirdMinute = "--- SUPERVISOR ADVICE ENTRY cycle=0003 ---\nSTATUS: ATTENTION\nConfirm the fix using the regression test.\n--- END SUPERVISOR ADVICE ENTRY cycle=0003 ---\n";
+            const thirdMinute = "--- SUPERVISOR ADVICE ENTRY cycle=0003 ---\\nSTATUS: ATTENTION\\nConfirm the fix using the regression test.\\n--- END SUPERVISOR ADVICE ENTRY cycle=0003 ---\\n";
             await writeFile(feedbackPath, firstMinute + secondMinute + thirdMinute, "utf8");
             const reloadedHooks = await pluginModule.default.server();
             const reloaded = { output: "output after worker session rollover" };
@@ -305,7 +313,9 @@ jobs:
             assert.match(reloaded.output, /Confirm the fix using the regression test/);
             assert.doesNotMatch(reloaded.output, /Check the first failing assertion/,
               "a restarted session should resume the persisted cursor, not replay already delivered entries");
-            assert.equal((await readdir(transcripts)).filter(name => name.startsWith("worker-delivery-")).length, 3);
+            dialogue = await readFile(dialoguePath, "utf8");
+            assert.equal((dialogue.match(/## Supervisor → Worker/g) || []).length, 3);
+            assert.equal((dialogue.match(/Confirm the fix using the regression test/g) || []).length, 1);
 
             process.env.KILO_SUPERVISOR_FEEDBACK_FILE = join(tmpdir(), "outside-feedback.md");
             const outsideHooks = await pluginModule.default.server();
@@ -327,24 +337,28 @@ jobs:
               recommendation_id: "run-test-review-0002-deadbeef0000",
               review_cycle: 2,
               source_worker_state_sha256: "a".repeat(64),
-              report: "STATUS: ATTENTION\nObserved evidence: test evidence.\nDifferent next step: run the regression test.\nVerification: check assertion.\nLimitations: limited test context.",
+              report: "STATUS: ATTENTION\\nObserved evidence: test evidence.\\nDifferent next step: run the regression test.\\nVerification: check assertion.\\nLimitations: limited test context.",
               created_at: "2026-10-14T00:00:00Z"
             };
             await writeFile(join(protocolDir, "current-supervisor-recommendation.json"), JSON.stringify(recommendation), "utf8");
             await rm(join(protocolDir, "worker-disposition.json"), { force: true });
+            const dialogueBeforeReminder = await readFile(dialoguePath, "utf8");
             const protocolHooks = await pluginModule.default.server();
-            for (let i = 0; i < 3; i++) {
+            for (let i = 0; i < 7; i++) {
               const noReminder = { output: "tool output " + i };
               await protocolHooks["tool.execute.after"]({ tool: "read" }, noReminder);
-              assert.doesNotMatch(noReminder.output, /SUPERVISOR RECOMMENDATION AWAITING WORKER DISPOSITION/);
+              assert.doesNotMatch(noReminder.output, /Please write a valid \.kilo-runtime\/worker-disposition\.json/);
             }
-            const reminder = { output: "fourth tool output" };
+            const reminder = { output: "eighth tool output" };
             await protocolHooks["tool.execute.after"]({ tool: "read" }, reminder);
-            assert.match(reminder.output, /SUPERVISOR RECOMMENDATION AWAITING WORKER DISPOSITION/);
+            assert.match(reminder.output, /Please write a valid \.kilo-runtime\/worker-disposition\.json/);
             assert.match(reminder.output, /run-test-review-0002-deadbeef0000/);
-            assert.equal((await readdir(transcripts)).filter(name => name.startsWith("worker-delivery-")).length, 4,
-              "an outstanding recommendation reminder must be preserved as an exact delivery transcript");
+            assert.equal(await readFile(dialoguePath, "utf8"), dialogueBeforeReminder,
+              "protocol reminders are not additional role-to-role messages; only an actual recommendation is dialogue");
+            assert.equal((await readdir(transcripts)).filter(name => name.startsWith("worker-delivery-")).length, 0);
 
+            recommendation.recommendation_id = "run-test-review-0003-cafefeed0000";
+            await writeFile(join(protocolDir, "current-supervisor-recommendation.json"), JSON.stringify(recommendation), "utf8");
             await writeFile(join(protocolDir, "worker-disposition.json"), JSON.stringify({
               schema_version: 1,
               recommendation_id: recommendation.recommendation_id,
@@ -354,25 +368,30 @@ jobs:
               verification: "",
               updated_at: "2026-10-14T00:00:01Z"
             }), "utf8");
-            for (let i = 0; i < 4; i++) {
+            const acknowledgedHooks = await pluginModule.default.server();
+            for (let i = 0; i < 12; i++) {
               const acked = { output: "acknowledged tool output " + i };
-              await protocolHooks["tool.execute.after"]({ tool: "read" }, acked);
-              assert.doesNotMatch(acked.output, /SUPERVISOR RECOMMENDATION AWAITING WORKER DISPOSITION/,
-                "a matching valid disposition must stop repeated reminders");
+              await acknowledgedHooks["tool.execute.after"]({ tool: "read" }, acked);
+              assert.doesNotMatch(acked.output, /Please write a valid \.kilo-runtime\/worker-disposition\.json/,
+                "a matching worker disposition suppresses reminders");
             }
 
-            recommendation.recommendation_id = "run-test-review-0003-cafefeed0000";
+            recommendation.recommendation_id = "run-test-review-0004-feedface0000";
             await writeFile(join(protocolDir, "current-supervisor-recommendation.json"), JSON.stringify(recommendation), "utf8");
-            for (let i = 0; i < 3; i++) {
+            await rm(join(protocolDir, "worker-disposition.json"), { force: true });
+            const freshHooks = await pluginModule.default.server();
+            for (let i = 0; i < 7; i++) {
               const noFreshReminder = { output: "new ID boundary " + i };
-              await protocolHooks["tool.execute.after"]({ tool: "read" }, noFreshReminder);
-              assert.doesNotMatch(noFreshReminder.output, /SUPERVISOR RECOMMENDATION AWAITING WORKER DISPOSITION/);
+              await freshHooks["tool.execute.after"]({ tool: "read" }, noFreshReminder);
+              assert.doesNotMatch(noFreshReminder.output, /Please write a valid \.kilo-runtime\/worker-disposition\.json/);
             }
-            const freshReminder = { output: "new ID fourth boundary" };
-            await protocolHooks["tool.execute.after"]({ tool: "read" }, freshReminder);
-            assert.match(freshReminder.output, /run-test-review-0003-cafefeed0000/,
+            const freshReminder = { output: "new ID eighth boundary" };
+            await freshHooks["tool.execute.after"]({ tool: "read" }, freshReminder);
+            assert.match(freshReminder.output, /run-test-review-0004-feedface0000/,
               "a fresh recommendation ID must not be masked by an old acknowledgement");
-
+            assert.match(freshReminder.output, /Please write a valid \.kilo-runtime\/worker-disposition\.json/);
+            assert.equal(await readFile(dialoguePath, "utf8"), dialogueBeforeReminder,
+              "reminders stay out of dialogue history");
             process.env.KILO_SUPERVISOR_MODE = "1";
             const reviewerHooks = await pluginModule.default.server();
             assert.equal(Object.keys(reviewerHooks).length, 0, "reviewer CLI sessions must not receive worker feedback");
