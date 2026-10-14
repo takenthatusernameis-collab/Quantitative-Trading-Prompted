@@ -1,49 +1,81 @@
-# Next Agent Task: Analyze recent paper trading performance drift (Bounded)
+# Next Agent Task: Sync paper_trading_state.yaml with latest replay data (Bounded)
 
 ## Context
 
-The paper trading strategy (TSMOM incumbent, simulation_candidate_001) has a drift flag for low rolling Sharpe. The paper trading state (data/processed/paper_trading_state.yaml) shows:
-- last_run_date: 2026-07-16
-- drift_flags.low_rolling_sharpe.value: 0.3495 (threshold 0.5)
-- peak_nav: 139120.07, current_nav: 134844.60, max_dd: -0.03073
-- cumulative_returns has 384 values
+The drift flag analysis (research/reports/paper_trading_drift_analysis_001.md)
+found the `low_rolling_sharpe` drift flag (value 0.3495 on 2026-07-16, threshold
+0.5) is **not** a strategy malfunction — it is market-driven. GLD (-11.3%),
+EEM (-8.4%), and QQQ (-5.0%) declined June-July 2026 while the SPY SMA200 regime
+filter stayed risk-on. The strategy mechanics were verified correct per
+config/simulation_candidate_001.yaml.
 
-The microcap hypothesis remains blocked by data infrastructure; other opportunity shortlist hypotheses have been rejected/failed. Strategy is frozen (no logic/parameter changes).
+The full analysis report shows the state YAML is stale: it records 384 days
+through 2026-07-16, but daily P&L parquet files extend to 2026-10-14 (447 days).
+The first 384 daily returns match exactly, so the state was partially generated
+by the same replay but not updated after the later runs described in README.md
+(Cycle 48–52, 447 days through 2026-10-14, rolling Sharpe 0.1185).
 
 ## Objective
 
-Analyze recent paper trading performance to understand the drift flag source without modifying strategy logic. Produce a concise, evidence-backed analysis.
+Synchronize `data/processed/paper_trading_state.yaml` with the latest replay
+artifacts so the drift flag is evaluated against complete data, then re-assess
+the drift flag status.
 
-## Acceptance criteria
+## Acceptance Criteria
 
-1. **Performance decomposition:** Examine recent P&L/returns vs prior period; identify when rolling Sharpe declined and magnitude.
-2. **Market context:** Brief context on conditions around the flagged period using available data/config.
-3. **Strategy mechanics check:** Verify execution per documented specs (config/simulation_candidate_001.yaml) - universe, regime filter, costs, rebalance.
-4. **No strategy modifications:** Do not change logic/parameters, do not backtest new variants.
-5. **Document findings:** Record observations in research/reports/ with clear summary and evidence references.
-6. **Minimal verification:** Run existing tests to ensure nothing is broken.
+1. **State sync**: Re-run `research/run_paper_trading_replay.py` (or rebuild
+   state from existing daily P&L parquet files if yfinance unavailable) so that
+   `last_run_date`, `cumulative_returns`, `run_history`, and summary metrics
+   reflect all 447 days through 2026-10-14.
+2. **Drift flag re-evaluation**: After sync, confirm `last_run_date` = 2026-10-14,
+   `cumulative_returns` count = 447, and recompute rolling 63-day Sharpe at the
+   final date.
+3. **No strategy modifications**: Do not change `config/simulation_candidate_001.yaml`
+   or any simulation logic. Only regenerate state metrics.
+4. **Verify consistency**: State file's `peak_nav`, `current_nav`, and `rolling_sharpe_63d`
+   must match the daily P&L parquet files (`data/processed/paper_trading/daily_pnl_*.parquet`).
+5. **Document outcome**: Record sync results and any discrepancies in
+   `research/reports/paper_trading_state_sync_001.md`.
+6. **Run existing tests**: `python3 -m pytest .github/scripts/test_kilo_supervisor_loop.py -v`
 
-## Validation commands
+## Validation Commands
 
 ```bash
-# Inspect paper trading state
-cat data/processed/paper_trading_state.yaml
+# Verify latest daily P&L date
+ls data/processed/paper_trading/daily_pnl_*.parquet | wc -l
+ls data/processed/paper_trading/daily_pnl_20261014.parquet
 
-# Inspect strategy config
-cat config/simulation_candidate_001.yaml
+# Sync state by re-running replay
+python3 research/run_paper_trading_replay.py
 
-# Run existing tests
+# Verify synced state
+python3 -c "
+import yaml
+with open('data/processed/paper_trading_state.yaml') as f:
+    s = yaml.safe_load(f)
+print('last_run_date:', s['last_run_date'])
+print('cum_returns:', len(s['cumulative_returns']))
+print('peak_nav:', s.get('peak_nav'))
+print('current_nav:', s.get('current_nav'))
+print('rolling_sharpe_63d:', s.get('rolling_sharpe_63d'))
+print('drift_flags:', s.get('drift_flags'))
+"
+
+# Run tests
 python3 -m pytest .github/scripts/test_kilo_supervisor_loop.py -v
 ```
 
-## Scope boundaries
+## Scope Boundaries
 
-- **No strategy modifications.** Read-only analysis.
-- **No new backtests constituting strategy changes.** Do not create new candidate configs.
+- **No strategy modifications.** Only regenerate state metrics from existing data.
+- **No new backtests.** Re-run the same replay with the same config.
 - **Research/backtesting only.** No live trading.
-- **Preserve evidence.** Be precise about what the data shows.
-- **Do not fabricate market data.** Work with what exists.
+- If yfinance network fetch fails, fall back to rebuilding state from existing
+  daily P&L parquet files without re-fetching.
+- Do not commit unless explicitly requested.
 
-## Completion standard
+## Completion Standard
 
-Concise evidence-backed analysis of recent performance drift including decomposition, market context, strategy mechanics verification, confirmation no modifications made, with references to files inspected and test results.
+State file synchronized to 447 days through 2026-10-14, drift flag re-evaluated
+with complete data, consistency verified against parquet files, test suite passing,
+findings documented.
