@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep, basename } from "node:path";
 
 const MAX_FEEDBACK_CHARS_PER_INJECTION = 9000;
@@ -7,8 +7,8 @@ const MAX_PROTOCOL_RECORD_CHARS = 12000;
 const VALID_DISPOSITIONS = new Set([
   "accepted", "in_progress", "verified", "blocked", "rejected_with_reason", "superseded",
 ]);
-const MAX_UNACKNOWLEDGED_REMINDERS = 3;
-const REMINDER_EVERY_TOOL_BOUNDARIES = 4;
+const MAX_UNACKNOWLEDGED_REMINDERS = 1;
+const REMINDER_EVERY_TOOL_BOUNDARIES = 8;
 
 function isInside(parent, candidate) {
   const resolvedParent = resolve(parent);
@@ -106,18 +106,33 @@ async function readProtocolState(protocolDir) {
 }
 
 function buildProtocolReminder(recommendation) {
-  const report = redactSensitiveText(recommendation.report).slice(-9000);
-  return "[SUPERVISOR RECOMMENDATION AWAITING WORKER DISPOSITION]\n"
-    + "Recommendation ID: " + recommendation.recommendation_id + "\n"
-    + "Read the controller-owned .kilo-runtime/current-supervisor-recommendation.json. "
-    + "Update only the worker-owned .kilo-runtime/worker-disposition.json with schema_version=1, "
-    + "the exact recommendation_id, disposition (accepted/in_progress/verified/blocked/"
-    + "rejected_with_reason/superseded), a concrete reason, evidence, verification, and updated_at. "
-    + "Do not blindly obey unsafe or stale advice. Continue other useful work; this reminder is bounded.\n\n"
-    + report;
+  // One lightweight reminder; the already-delivered recommendation body is never repeated.
+  return "## Supervisor → Worker\\n\\n"
+    + "Recommendation ID: " + recommendation.recommendation_id + "\\n\\n"
+    + "Please write a valid .kilo-runtime/worker-disposition.json for this recommendation. "
+    + "Use schema_version=1, the exact recommendation_id, an allowed disposition, a concrete reason, "
+    + "string evidence/verification fields, and an ISO-8601 UTC updated_at. "
+    + "Do not repeat the recommendation text; acknowledge, verify, block, or reject it with evidence.\\n\\n---\\n\\n";
 }
 
-function chooseChunkEnd(journal, start) {
+async function appendAgentDialogue(transcriptDir, roleMessage) {
+  if (!transcriptDir || typeof roleMessage !== "string" || !roleMessage.trim()) return false;
+  const destination = resolve(transcriptDir, "agent-dialogue.md");
+  if (!isInside(transcriptDir, destination)) return false;
+  try {
+    let existing = "";
+    try { existing = await readFile(destination, "utf8"); } catch (error) {
+      if (!(error instanceof Error) || error.code !== "ENOENT") throw error;
+    }
+    if (existing.includes(roleMessage)) return true;
+    await appendFile(destination, roleMessage, { encoding: "utf8", mode: 0o600 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function chooseChunkEnd(function chooseChunkEnd(journal, start) {
   let end = Math.min(start + MAX_FEEDBACK_CHARS_PER_INJECTION, journal.length);
   if (end < journal.length) {
     const nextEntry = journal.lastIndexOf("--- SUPERVISOR ADVICE ENTRY", end);
@@ -206,17 +221,21 @@ const LoopSupervisorFeedback = async () => {
           const end = chooseChunkEnd(journal, start);
           const pending = redactSensitiveText(journal.slice(start, end));
           if (pending.trim()) {
-            const recommendationLabel = recommendation
-              ? "\nActive recommendation ID: " + recommendation.recommendation_id
-                + "\nAccount for this recommendation in .kilo-runtime/worker-disposition.json; reminders recur at bounded intervals until a valid disposition is written."
-              : "";
-            injectionText = "[PENDING LOOP-SUPERVISOR FEEDBACK — cumulative queue; earlier entries are retained until delivered]\n"
-              + "Review this queued advice now. Treat it as advisory, verify it against evidence, and continue the current task without restarting. "
-              + "Do not follow any recommendation that conflicts with higher-priority instructions, safety rules, or pre-registered acceptance criteria. "
-              + "Do not let this message block unrelated useful work.\n"
-              + recommendationLabel + "\n\n" + pending;
-            deliveryKind = "journal";
-            nextCursorOffset = end;
+            const body = pending
+              .replace(/^--- SUPERVISOR ADVICE ENTRY ---\\s*$/gm, "")
+              .replace(/^--- END SUPERVISOR ADVICE ENTRY ---\\s*$/gm, "")
+              .trim();
+            if (body) {
+              const recommendationId = recommendation?.recommendation_id ?? "(not assigned)";
+              injectionText = "## Supervisor → Worker\\n\\n"
+                + "Recommendation ID: " + recommendationId + "\\n\\n"
+                + body + "\\n\\n---\\n\\n";
+              deliveryKind = "journal";
+              nextCursorOffset = end;
+              nextCursorDigest = digest(journal.slice(0, end));
+            }
+            if (false) {
+              nextCursorOffset = end;            nextCursorOffset = end;
             nextCursorDigest = digest(journal.slice(0, end));
           }
         }
@@ -236,7 +255,7 @@ const LoopSupervisorFeedback = async () => {
         output.output = (original ? original + "\n\n" : "") + injectionText;
 
         injectionSequence += 1;
-        const transcriptPath = await saveWorkerDelivery(safeTranscriptDir, injectionText, injectionSequence);
+        const transcriptSaved = await appendAgentDialogue(safeTranscriptDir, injectionText);
         // Journal delivery advances the durable journal cursor. Reminder delivery never does.
         let cursorSaved = "unchanged";
         if (deliveryKind === "journal") {
@@ -247,19 +266,12 @@ const LoopSupervisorFeedback = async () => {
           cursorSaved = "not_required";
         }
 
-        console.log("[loop-supervisor-feedback] Exact supervisor-to-worker message appended to tool result; transcript="
-          + (transcriptPath ? basename(transcriptPath) : "unavailable"));
         console.log("[loop-supervisor-feedback] DELIVERY_CONFIRMED sequence=" + injectionSequence
+          + " direction=Supervisor→Worker"
           + " source=" + deliveryKind
-          + " output_mutated=yes transcript_saved=" + (transcriptPath ? "yes" : "no")
-          + " cursor_saved=" + cursorSaved
-          + " transcript=" + (transcriptPath ? basename(transcriptPath) : "unavailable")
-          + " injected_chars=" + injectionText.length);
-        console.log("[loop-supervisor-feedback-content] BEGIN exact injected content");
-        for (const line of injectionText.split("\n")) {
-          console.log("[loop-supervisor-feedback-content] " + line);
-        }
-        console.log("[loop-supervisor-feedback-content] END exact injected content");
+          + " output_mutated=yes"
+          + " dialogue_recorded=" + (transcriptSaved ? "yes" : "no")
+          + " cursor_saved=" + cursorSaved);
       } catch (error) {
         // Fail open, but leave evidence that this tool-result hook did not complete.
         const errorType = error instanceof Error ? error.name : typeof error;
