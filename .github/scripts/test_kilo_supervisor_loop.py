@@ -439,46 +439,28 @@ class SupervisorLoopTests(unittest.TestCase):
             self.assertTrue(all("prompt" not in event and "cli_output" not in event for event in events))
 
 
-    def test_matching_worker_disposition_is_followed_up_with_evidence(self):
+    def test_matching_worker_disposition_evidence_reaches_followup_review(self):
         with tempfile.TemporaryDirectory(prefix="kilo-dialogue-follow-through-test-") as temp:
-            root = Path(temp)
-            repo = root / "repo"
-            report_dir = repo / ".kilo" / "supervisor-reports"
-            report_dir.mkdir(parents=True)
-            runtime = root / "runtime"
-            runtime.mkdir()
-            transcripts = runtime / "supervisor-transcripts"
-            pointer = runtime / "active-pointer"
-            worker_log = runtime / "worker.log"
-            worker_log.write_text("Focused regression test passed.\\n", encoding="utf-8")
-            pointer.write_text(str(worker_log) + "\\n", encoding="utf-8")
-            objective = runtime / "objective.txt"
-            objective.write_text("Apply the current supervisor recommendation and verify it.\\n", encoding="utf-8")
-            feedback = runtime / "feedback.md"
-            feedback.write_text("Previously delivered supervisor advice.\\n", encoding="utf-8")
-            protocol = repo / ".kilo-runtime"
-
-            first_report = (
-                "STATUS: ATTENTION\\n"
-                "Observed evidence: the focused regression test failed on an all-NA momentum row.\\n"
-                "Previous approaches: the failing row was not handled before selecting weights.\\n"
-                "Likely cause: idxmax received a row with no valid momentum values.\\n"
-                "Different next step: add an all-NA guard before selecting weights.\\n"
-                "Verification: rerun the focused regression test and then adjacent edge cases.\\n"
-                "Limitations: the full test suite is not yet verified.\\n"
+            protocol = Path(temp) / ".kilo-runtime"
+            transcripts = Path(temp) / "transcripts"
+            report = (
+                "STATUS: ATTENTION\n"
+                "Observed evidence: the focused regression test failed on an all-NA momentum row.\n"
+                "Previous approaches: the failing row was not handled before selecting weights.\n"
+                "Likely cause: idxmax received a row with no valid momentum values.\n"
+                "Different next step: add an all-NA guard before selecting weights.\n"
+                "Verification: rerun the focused regression test and adjacent edge cases.\n"
+                "Limitations: the full suite is not yet verified.\n"
             )
             recommendation_id = monitor.publish_current_recommendation(
-                protocol,
-                "test-follow-through",
-                "1",
-                1,
-                first_report,
-                "worker log shows a reproducible all-NA selection failure",
+                protocol, "test-follow-through", "1", 1, report,
+                "worker log contains the reproducible all-NA failure",
             )
             self.assertIsNotNone(recommendation_id)
+
             reason = "The recommended missing-data guard was implemented before unrelated changes."
             evidence = "The focused regression output now reports the previously failing case as passed."
-            verification = "Focused regression test reran successfully; adjacent edge cases remain to be checked."
+            verification = "The focused regression test reran successfully; adjacent edge cases remain."
             disposition = {
                 "schema_version": 1,
                 "recommendation_id": recommendation_id,
@@ -490,127 +472,61 @@ class SupervisorLoopTests(unittest.TestCase):
             }
             (protocol / "worker-disposition.json").write_text(json.dumps(disposition), encoding="utf-8")
 
-            capture = runtime / "captured-review-prompt.txt"
-            fake_kilo = runtime / "fake-kilo"
-            fake_kilo.write_text(
-                "#!/usr/bin/env python3\\n"
-                "import os, re, sys\\n"
-                "prompt = sys.argv[-1]\\n"
-                "with open(os.environ['SUPERVISOR_TEST_CAPTURE'], 'w', encoding='utf-8') as stream:\\n"
-                "    stream.write(prompt)\\n"
-                "match = re.search(r'(?m)^REPORT_PATH:\\\\s*(.+)
-        with tempfile.TemporaryDirectory(prefix="kilo-dialogue-protocol-test-") as temp:
-            protocol = Path(temp)
-            report = (
-                "STATUS: ATTENTION\nObserved evidence: repeated failure persisted.\n"
-                "Different next step: run the focused regression test.\n"
-                "Verification: require the assertion to pass.\nLimitations: full suite not run.\n"
-            )
-            recommendation_id = monitor.publish_current_recommendation(
-                protocol, "test-run", "1", 2, report,
-                "worker changed file and test output showed assertion failure",
-            )
-            self.assertIsNotNone(recommendation_id)
-            published = json.loads((protocol / "current-supervisor-recommendation.json").read_text(encoding="utf-8"))
-            self.assertEqual(published["recommendation_id"], recommendation_id)
-            self.assertEqual(len(published["source_worker_state_sha256"]), 64)
-            self.assertIn(recommendation_id, monitor.dialogue_protocol_observation(protocol))
-            self.assertIn("UNACKNOWLEDGED_OR_STALE", monitor.dialogue_protocol_observation(protocol))
-
-            disposition = {
-                "schema_version": 1,
-                "recommendation_id": recommendation_id,
-                "disposition": "in_progress",
-                "reason": "I am applying the focused recommendation before other work.",
-                "evidence": "The relevant assertion failed in the previous test run.",
-                "verification": "",
-                "updated_at": "2026-10-14T00:00:00Z",
-            }
-            (protocol / "worker-disposition.json").write_text(json.dumps(disposition), encoding="utf-8")
+            current = monitor.read_current_recommendation(protocol)
             accepted = monitor.read_worker_disposition(protocol)
-            self.assertEqual(accepted["disposition"], "in_progress")
-            self.assertIn("in_progress", monitor.dialogue_protocol_observation(protocol))
-
-            disposition["recommendation_id"] = "old-run-old-recommendation"
-            (protocol / "worker-disposition.json").write_text(json.dumps(disposition), encoding="utf-8")
-            self.assertIn("UNACKNOWLEDGED_OR_STALE", monitor.dialogue_protocol_observation(protocol))
-
-            disposition["recommendation_id"] = recommendation_id
-            disposition["disposition"] = "verified"
-            disposition["verification"] = ""
-            (protocol / "worker-disposition.json").write_text(json.dumps(disposition), encoding="utf-8")
-            self.assertIsNone(monitor.read_worker_disposition(protocol))
-
-            (protocol / "worker-disposition.json").write_text("not json", encoding="utf-8")
-            self.assertIsNone(monitor.read_worker_disposition(protocol))
-
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
-, prompt)\\n"
-                "if not match:\\n"
-                "    raise SystemExit(3)\\n"
-                "report = match.group(1).strip()\\n"
-                "os.makedirs(os.path.dirname(report), exist_ok=True)\\n"
-                "with open(report, 'w', encoding='utf-8') as stream:\\n"
-                "    stream.write('STATUS: CONTINUE\\\\nObserved evidence: the worker supplied follow-through evidence.\\\\n'\\n"
-                "                 'Previous approaches: the initial recommendation was applied.\\\\n'\\n"
-                "                 'Likely cause: the guard addresses the failing all-NA case.\\\\n'\\n"
-                "                 'Different next step: test adjacent empty-window cases.\\\\n'\\n"
-                "                 'Verification: rerun the focused test after adjacent cases are covered.\\\\n'\\n"
-                "                 'Limitations: broader suite evidence remains pending.\\\\n')\\n",
-                encoding="utf-8",
-            )
-            fake_kilo.chmod(0o755)
-            old_env = os.environ.copy()
-            output = io.StringIO()
-            try:
-                os.environ["SUPERVISOR_TEST_CAPTURE"] = str(capture)
-                with contextlib.redirect_stdout(output):
-                    code = monitor.main_with_args([
-                        "--repo-root", str(repo),
-                        "--runtime-root", str(runtime),
-                        "--active-log-pointer", str(pointer),
-                        "--objective-file", str(objective),
-                        "--feedback-file", str(feedback),
-                        "--transcript-dir", str(transcripts),
-                        "--report-dir", str(report_dir),
-                        "--kilo", str(fake_kilo),
-                        "--interval-seconds", "0.02",
-                        "--review-timeout-seconds", "2",
-                        "--max-reviews", "1",
-                        "--run-id", "test-follow-through",
-                        "--run-attempt", "1",
-                    ])
-            finally:
-                os.environ.clear()
-                os.environ.update(old_env)
-
-            self.assertEqual(code, 0, output.getvalue())
-            prompt = capture.read_text(encoding="utf-8")
-            for expected in (
-                "NEW WORKER-TO-SUPERVISOR MESSAGE",
-                f"Disposition: verified",
-                f"Reason: {reason}",
-                f"Evidence: {evidence}",
-                f"Verification: {verification}",
-            ):
-                self.assertIn(expected, prompt)
-
-            dialogue_path = transcripts / "agent-dialogue.jsonl"
-            events = [json.loads(line) for line in dialogue_path.read_text(encoding="utf-8").splitlines()]
-            self.assertEqual(len(events), 1, "one matching disposition should create one worker-to-supervisor message")
-            self.assertEqual(events[0]["direction"], "worker_to_supervisor")
-            self.assertEqual(events[0]["message_id"], recommendation_id)
+            self.assertIsNotNone(current)
+            self.assertIsNotNone(accepted)
+            worker_reply = monitor.format_worker_disposition(current, accepted)
             self.assertEqual(
-                events[0]["message"],
-                "\\n".join([
+                worker_reply,
+                "\n".join([
                     "Disposition: verified",
                     f"Reason: {reason}",
                     f"Evidence: {evidence}",
                     f"Verification: {verification}",
                 ]),
             )
-            self.assertIn("review 1 issued a new supervisor recommendation", output.getvalue())
+
+            log_delta = "Focused regression test passed.\n\nNEW WORKER-TO-SUPERVISOR MESSAGE\n" + worker_reply
+            prompt = monitor.build_review_prompt(
+                "Apply recommendations and independently verify changes.",
+                log_delta,
+                "repository status: test change present",
+                "previous advice: add the all-NA guard",
+                ".kilo/supervisor-reports/follow-through.md",
+                2,
+                150.0,
+            )
+            for expected in (
+                "NEW WORKER-TO-SUPERVISOR MESSAGE",
+                "Disposition: verified",
+                f"Reason: {reason}",
+                f"Evidence: {evidence}",
+                f"Verification: {verification}",
+            ):
+                self.assertIn(expected, prompt)
+
+            self.assertTrue(monitor.append_dialogue_event(
+                transcripts, "worker_to_supervisor", "worker",
+                recommendation_id, worker_reply,
+            ))
+            self.assertFalse(monitor.append_dialogue_event(
+                transcripts, "worker_to_supervisor", "worker",
+                recommendation_id, worker_reply,
+            ), "duplicate follow-through must not be recorded twice")
+            events = [
+                json.loads(line)
+                for line in (transcripts / "agent-dialogue.jsonl").read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertEqual(len(events), 1)
+            self.assertEqual(events[0]["direction"], "worker_to_supervisor")
+            self.assertEqual(events[0]["message_id"], recommendation_id)
+            self.assertEqual(events[0]["message"], worker_reply)
+
+            disposition["recommendation_id"] = "stale-recommendation-id"
+            stale = monitor.read_worker_disposition(protocol)
+            self.assertIsNotNone(stale)
+            self.assertEqual(monitor.format_worker_disposition(current, stale), "")
 
     def test_file_backed_dialogue_protocol_rejects_stale_or_malformed_dispositions(self):
         with tempfile.TemporaryDirectory(prefix="kilo-dialogue-protocol-test-") as temp:

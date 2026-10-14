@@ -293,6 +293,23 @@ def append_dialogue_event(
         return False
 
 
+def format_worker_disposition(recommendation: Optional[dict], disposition: Optional[dict]) -> str:
+    """Format an explicit worker reply only when it acknowledges the active recommendation."""
+    if recommendation is None or disposition is None:
+        return ""
+    recommendation_id = recommendation.get("recommendation_id")
+    if not isinstance(recommendation_id, str) or not recommendation_id.strip():
+        return ""
+    if disposition.get("recommendation_id") != recommendation_id:
+        return ""
+    return "\n".join((
+        f"Disposition: {disposition['disposition']}",
+        f"Reason: {disposition['reason']}",
+        f"Evidence: {disposition['evidence'] or '(none supplied)'}",
+        f"Verification: {disposition['verification'] or '(not supplied)'}",
+    ))
+
+
 def dialogue_protocol_observation(protocol_dir: Optional[Path]) -> str:
     """Return a compact audit view for the supervisor; the worker never owns controller state."""
     recommendation = read_current_recommendation(protocol_dir)
@@ -658,18 +675,8 @@ def main() -> int:
 
         current_recommendation = read_current_recommendation(protocol_dir)
         current_disposition = read_worker_disposition(protocol_dir)
-        worker_reply = ""
-        if (
-            current_recommendation is not None
-            and current_disposition is not None
-            and current_disposition["recommendation_id"] == current_recommendation["recommendation_id"]
-        ):
-            worker_reply = (
-                f"Disposition: {current_disposition['disposition']}\n"
-                f"Reason: {current_disposition['reason']}\n"
-                f"Evidence: {current_disposition['evidence'] or '(none supplied)'}\n"
-                f"Verification: {current_disposition['verification'] or '(not supplied)'}"
-            )
+        worker_reply = format_worker_disposition(current_recommendation, current_disposition)
+        if worker_reply:
             disposition_digest = hashlib.sha256(
                 json.dumps(
                     [
