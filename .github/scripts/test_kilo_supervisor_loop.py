@@ -479,6 +479,7 @@ class SupervisorLoopTests(unittest.TestCase):
             disposition = {
                 "schema_version": 1,
                 "recommendation_id": recommendation_id,
+                "acknowledgement_state": "acknowledged",
                 "disposition": "verified",
                 "reason": reason,
                 "evidence": evidence,
@@ -574,6 +575,7 @@ class SupervisorLoopTests(unittest.TestCase):
             disposition = {
                 "schema_version": 1,
                 "recommendation_id": recommendation_id,
+                "acknowledgement_state": "acknowledged",
                 "disposition": "in_progress",
                 "reason": "I am applying the focused recommendation before other work.",
                 "evidence": "The relevant assertion failed in the previous test run.",
@@ -583,7 +585,14 @@ class SupervisorLoopTests(unittest.TestCase):
             (protocol / "worker-disposition.json").write_text(json.dumps(disposition), encoding="utf-8")
             accepted = monitor.read_worker_disposition(protocol)
             self.assertEqual(accepted["disposition"], "in_progress")
+            self.assertEqual(accepted["acknowledgement_state"], "acknowledged")
             self.assertIn("in_progress", monitor.dialogue_protocol_observation(protocol))
+
+            # A disposition without an explicit acknowledgement must not synthesize one.
+            disposition.pop("acknowledgement_state")
+            (protocol / "worker-disposition.json").write_text(json.dumps(disposition), encoding="utf-8")
+            self.assertIsNone(monitor.read_worker_disposition(protocol))
+            disposition["acknowledgement_state"] = "acknowledged"
 
             disposition["recommendation_id"] = "old-run-old-recommendation"
             (protocol / "worker-disposition.json").write_text(json.dumps(disposition), encoding="utf-8")
