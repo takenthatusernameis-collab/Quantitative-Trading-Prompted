@@ -190,6 +190,120 @@ class SupervisorLoopTests(unittest.TestCase):
             self.assertIn("No usable advice returned", dialogue)
 
 
+    def test_report_missing_recovers_final_response_and_publishes_advice(self):
+        with tempfile.TemporaryDirectory(prefix="kilo-supervisor-recovery-test-") as temp:
+            root = Path(temp)
+            repo = root / "repo"
+            report_dir = repo / ".kilo" / "supervisor-reports"
+            report_dir.mkdir(parents=True)
+            runtime = root / "runtime"
+            runtime.mkdir()
+            transcripts = runtime / "supervisor-transcripts"
+            pointer = runtime / "active-pointer"
+            pointer.write_text("", encoding="utf-8")
+            objective = runtime / "objective.txt"
+            objective.write_text("Review the active worker and recommend one safe next step.\n", encoding="utf-8")
+            feedback = runtime / "feedback.md"
+            feedback.write_text("", encoding="utf-8")
+            fake_kilo = runtime / "reportless-kilo"
+            fake_kilo.write_text(
+                "#!/usr/bin/env python3\n"
+                "print('Maximum steps for this agent have been reached.')\n"
+                "print('REPORT_FALLBACK:')\n"
+                "print('STATUS: CONTINUE')\n"
+                "print('Observed evidence: the reviewer inspected worker logs but did not write its report file.')\n"
+                "print('Previous approaches: additional file reads exhausted the limited review steps.')\n"
+                "print('Likely cause: report creation was deferred until after exploration.')\n"
+                "print('Different next step: write the concise diagnostic report before optional file inspection.')\n"
+                "print('Verification: confirm the next review creates a report and the delivery plugin appends this advice to a worker tool result.')\n"
+                "print('Limitations: the worker must independently verify evidence before changing code.')\n",
+                encoding="utf-8",
+            )
+            fake_kilo.chmod(0o755)
+            captured = io.StringIO()
+            with contextlib.redirect_stdout(captured):
+                code = monitor.main_with_args([
+                    "--repo-root", str(repo),
+                    "--runtime-root", str(runtime),
+                    "--active-log-pointer", str(pointer),
+                    "--objective-file", str(objective),
+                    "--feedback-file", str(feedback),
+                    "--transcript-dir", str(transcripts),
+                    "--report-dir", str(report_dir),
+                    "--kilo", str(fake_kilo),
+                    "--interval-seconds", "0.02",
+                    "--review-timeout-seconds", "2",
+                    "--max-reviews", "1",
+                    "--run-id", "test-recovery",
+                    "--run-attempt", "1",
+                ])
+
+            self.assertEqual(code, 0)
+            output = captured.getvalue()
+            self.assertIn("recovered a substantive final response into the report file", output)
+            self.assertIn("review 1 advice queued for worker delivery", output)
+            self.assertNotIn("SUPERVISOR_CIRCUIT_BREAKER_OPEN", output)
+            self.assertTrue((report_dir / "run-test-recovery-attempt-1-review-0001.md").is_file())
+            published = feedback.read_text(encoding="utf-8")
+            self.assertIn("STATUS: ATTENTION", published)
+            self.assertIn("Different next step: write the concise diagnostic report", published)
+            self.assertIn("Verification: confirm the next review creates a report", published)
+            response = (transcripts / "review-0001-response-from-supervisor.md").read_text(encoding="utf-8")
+            self.assertIn("Recovered reviewer response", response)
+            dialogue = (transcripts / "review-0001-agent-dialogue.md").read_text(encoding="utf-8")
+            self.assertIn("USABLE REPORT RECOVERED", dialogue)
+            self.assertIn("Different next step: write the concise diagnostic report", dialogue)
+
+    def test_missing_report_without_actionable_final_response_is_not_published(self):
+        with tempfile.TemporaryDirectory(prefix="kilo-supervisor-empty-recovery-test-") as temp:
+            root = Path(temp)
+            repo = root / "repo"
+            report_dir = repo / ".kilo" / "supervisor-reports"
+            report_dir.mkdir(parents=True)
+            runtime = root / "runtime"
+            runtime.mkdir()
+            transcripts = runtime / "supervisor-transcripts"
+            pointer = runtime / "active-pointer"
+            pointer.write_text("", encoding="utf-8")
+            objective = runtime / "objective.txt"
+            objective.write_text("Review the active worker safely.\n", encoding="utf-8")
+            feedback = runtime / "feedback.md"
+            feedback.write_text("Previously published advice.\n", encoding="utf-8")
+            fake_kilo = runtime / "nonreporting-kilo"
+            fake_kilo.write_text(
+                "#!/usr/bin/env python3\n"
+                "print('Inspection started but no report or final recommendation was returned.')\n",
+                encoding="utf-8",
+            )
+            fake_kilo.chmod(0o755)
+            captured = io.StringIO()
+            with contextlib.redirect_stdout(captured):
+                code = monitor.main_with_args([
+                    "--repo-root", str(repo),
+                    "--runtime-root", str(runtime),
+                    "--active-log-pointer", str(pointer),
+                    "--objective-file", str(objective),
+                    "--feedback-file", str(feedback),
+                    "--transcript-dir", str(transcripts),
+                    "--report-dir", str(report_dir),
+                    "--kilo", str(fake_kilo),
+                    "--interval-seconds", "0.02",
+                    "--review-timeout-seconds", "2",
+                    "--max-reviews", "1",
+                    "--run-id", "test-empty-recovery",
+                    "--run-attempt", "1",
+                ])
+
+            self.assertEqual(code, 0)
+            self.assertIn("MISSING/EMPTY REPORT", captured.getvalue())
+            self.assertIn("previous advice retained", captured.getvalue())
+            self.assertEqual(feedback.read_text(encoding="utf-8"), "Previously published advice.\n")
+            self.assertFalse((report_dir / "run-test-empty-recovery-attempt-1-review-0001.md").exists())
+            self.assertIn(
+                "MISSING/EMPTY REPORT",
+                (transcripts / "review-0001-outcome.txt").read_text(encoding="utf-8"),
+            )
+
     def test_three_consecutive_timeouts_open_circuit_breaker_without_worker_failure(self):
         import contextlib
         import io
