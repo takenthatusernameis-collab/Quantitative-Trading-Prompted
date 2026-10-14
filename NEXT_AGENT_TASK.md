@@ -1,47 +1,74 @@
-# Next Agent Task: Cycle 52 - Continue Paper Trading Monitoring & Data Acquisition
+# Next Agent Task: Microcap 12–1 Momentum — Data Audit, Clean Walk-Forward, and Net OOS Test
 
-## Context
+## Prompt refinement record
 
-Cycle 51 checked for 2026-10-15 data. No new real trading days are available yet (yfinance returned 0 rows for incumbents and ^VIX for 2026-10-15 and later dates; raw parquet dates remain 2026-10-14). Track record is unchanged: 447 days, NAV $135,057.00, Sharpe 1.9302, max DD -2.92%, rolling 63d Sharpe 0.1185.
+- **Iteration 1 — Hypothesis:** Test whether a 12-month equity momentum signal that skips the latest month produces a real microcap edge.
+- **Iteration 2 — Operational definition:** Freeze the point-in-time universe, the exact 12–1 formula, monthly formation/execution timing, long-only baseline, and comparable benchmarks before examining OOS outcomes.
+- **Iteration 3 — Failure-mode controls from the Extreme Quant mom121 work:** Explicitly audit universe construction and fold boundaries; isolate cash/position/equity state across folds; prevent zero-trade folds from inheriting returns; verify signal implementation, realistic frictions, and reproducibility.
+- **Iteration 4 — Decision discipline:** Require delisted-stock / point-in-time controls and net OOS evidence. Treat missing data as a blocker, not permission to use survivorship-biased proxies or invent results.
 
-**Drift status:** `low_rolling_sharpe` flagged on 2026-10-12 (0.4892), 2026-10-13 (0.3669), 2026-10-14 (0.1185) — 3 consecutive trading days. Trajectory over last 18 days volatile (-0.51 to +1.19). Persistence < 20 days. All primary gates pass; regime risk-on for 132 consecutive days.
+The final task below is the execution prompt; do not restart an endless prompt-rewriting loop.
 
-**Current state:** 2026-10-14 is latest real trading day for incumbents. Next expected is 2026-10-15. Yahoo Finance has not yet published 2026-10-15 data as of Cycle 51.
+## Context and priority
+
+The user explicitly prioritizes this microcap study over the prior ETF paper-trading monitoring task. The previous NEXT_AGENT_TASK.md is preserved at research/tasks/archive/cycle52-paper-trading-monitoring-2026-10-14.md.
+
+The Extreme Quant mom121 work identified fold-state contamination and universe-construction as material risks to resolve before judging an edge. Prior artifacts referenced in conversation include research_journal/signal-construct-mom121.json and research_journal/backtest-verification-mom121-iter1.json; that repository is not currently accessible through this connection, so do not invent or assume unobserved metrics or findings beyond those known failure modes.
+
+This repository's visible historical-data inventory is ETF/sector-oriented. Its existing momentum module implements cross-sectional ranking on the cached investable universe, not a point-in-time microcap stock universe. Verify the checked-out working tree and every available data source before deciding that an executable confirmatory test is possible.
 
 ## Objective
 
-Re-attempt data acquisition from Yahoo Finance to detect whether 2026-10-15 (or later) real trading data has arrived for the incumbent ETF universe (SPY, QQQ, IWM, TLT, GLD, EFA, EEM) and ^VIX. If new data exists, re-run the paper-trading replay to extend track record, update reports, and document drift flag status. If not, document blocker and prepare Cycle 53 task with updated context.
+Execute the deepest useful, evidence-led research cycle available in the current Kilo runtime: audit data and existing implementations, write/verify the preregistration, repair only material test/engine defects required for a trustworthy experiment, run the fixed baseline plus bounded predeclared cost and stability tests when valid data permit, independently red-team the result, and persist a reproducible decision.
 
-## Acceptance Criteria
+Read AGENTS.md, PROMPT.MD, this task, the archived task only where useful, the existing cross-sectional momentum hypothesis/results, src/features/momentum.py, src/backtest/engine.py, relevant data code/configuration/tests, and available prior experiment artifacts. Reuse working infrastructure; do not rebuild the stack merely to create activity.
 
-- [ ] Fetch updated YFinance data for the universe using `src/data/yfinance_fetcher.py` (force=True)
-- [ ] **Verify per-symbol raw parquet dates** (do not rely only on aligned frame). Confirm all 7 incumbent ETF parquet files end at the same latest date; detect real trading days vs placeholder (^VIX).
-- [ ] If new real trading days exist (e.g. 2026-10-15 for all 7 ETFs):
-  - Update `research/run_paper_trading_replay.py`: bump `end_date` to `"2026-10-16"` (or later) and replay-date upper bound to `"2026-10-15"` (or later) to capture new day(s)
-  - Re-run `research/run_paper_trading_replay.py`
-  - Verify track record extended; document day count
-  - Update `research/reports/paper_trading_rolling.md`
-  - Create `research/reports/paper_trading_validation_025.md`
-  - Update README.md with Cycle 52 summary (metrics, drift status/trajectory/duration)
-- [ ] If no new real trading days exist: document blocker clearly in validation report and README; do not fabricate metrics; prepare NEXT_AGENT_TASK.md for Cycle 53 with same monitoring objective and updated context
-- [ ] Do not modify incumbent strategy logic (`config/simulation_candidate_001.yaml` is frozen)
-- [ ] Report findings honestly; research/backtesting only
+## Acceptance criteria
 
-## Scope Boundaries
+### A. Data/universe gate — do this first
 
-- Data ingestion only using existing dependencies
-- No new dependencies, services, workflows, agents, permissions, infrastructure
-- Preserve working behavior; no unrelated refactors
-- No data/metrics fabrication
-- Only update hardcoded dates in replay script if new data arrives; do not change replay logic/engine
+1. Inventory all available historical stock/market data and candidate providers. Validate fields, dates, corporate actions, historical listings/delistings, identifier continuity, contemporaneous market cap, exchange/security type, volume, and quoted-spread availability.
+2. Require point-in-time universe membership and adequate delisting treatment for a confirmatory microcap result. Do not use today's survivors, current index constituents, or current market caps applied retrospectively as the confirmatory universe.
+3. If the data gate fails, classify the study Blocked by data/infrastructure; explain the exact missing fields/sources and the lowest-friction credible path to resolve it. You may run clearly labelled exploratory diagnostics on imperfect data to test code, but never present them as evidence of a true microcap edge.
+4. Do not fetch or commit huge raw files blindly; keep data provenance, cache paths, observation counts, and hashes where feasible. No credentials/secrets, live trading, paid services, or new dependencies without explicit authorization.
 
-## Validation Commands
+### B. Strategy and preregistration
 
-- `python -c "from src.data.yfinance_fetcher import fetch_universe; data=fetch_universe(['SPY','QQQ','IWM','TLT','GLD','EFA','EEM','^VIX'],'1993-01-01','2026-11-30',force=True); print(data.index.max().date())"`
-- `python -c "import pandas as pd; from pathlib import Path; inc=['EEM','EFA','GLD','IWM','QQQ','SPY','TLT']; [print(s, pd.read_parquet(Path('data/raw')/f'{s}.parquet').index.max()) for s in inc]"`
-- `python -c "import yfinance as yf; [print(s, yf.download(s,start='2026-10-15',end='2026-10-18',progress=False,auto_adjust=False,group_by='ticker').index.size) for s in ['SPY','QQQ','IWM','TLT','GLD','EFA','EEM','^VIX']]"`
-- `python research/run_paper_trading_replay.py` (only when new ETF data exists)
+Use research/hypotheses/mom121_microcap_001.md as the frozen primary specification. Primary signal: monthly canonical 12–1 adjusted-close momentum, AdjClose(t−1 month) / AdjClose(t−12 months) − 1; long-only equal-weight top decile of point-in-time US microcap common stocks; monthly rebalance; next-session execution; no leverage. Clarify any repository implementation that instead computes a full 252-day return and then skips another 21 days. Primary benchmark is the matching eligible-universe equal-weight portfolio; use an investable microcap index only when data support a fair comparison.
 
-## Handoff Notes
+Do not tune primary choices after looking at OOS performance. Bounded sensitivity testing may cover predeclared cost scenarios, liquidity/participation constraints, fold/regime stability, and a small set of clearly labelled signal/portfolio variants; log every trial and preserve null and negative results.
 
-State: 447 trading days (2025-01-02 → 2026-10-14), NAV $135,057.00, Sharpe 1.9302, max DD -2.92%, rolling 63d Sharpe 0.1185, drift 3 consecutive days (2026-10-12..14), risk-on 132d. No new 2026-10-15 data as of Cycle 51. Key question for Cycle 52: has 2026-10-15 data published? If not, continue monitoring.
+### C. Backtest correctness and Extreme mom121 regression lessons
+
+1. Inspect the actual walk-forward implementation and data/universe construction. Confirm every fold uses a fresh initial portfolio state: cash, equity, holdings, orders, and P&L accounting cannot leak from train or prior test folds.
+2. Add tests that fail if zero-trade folds inherit returns or prior positions; include empty/zero-return folds, fold starts after a profitable/loss-making prior fold, missing histories, delisted assets, and signal-date alignment.
+3. Prove that each return uses only information available by the signal timestamp, execution occurs no earlier than the next tradable session, corporate actions are handled consistently, and each pooled OOS date is counted once even if fold windows overlap.
+4. Validate missing data, duplicate security/date rows, survivorship, stale-price handling, weight normalization, turnover, and realistic cost deductions. Fix the smallest material defect, not unrelated infrastructure.
+5. Run the relevant existing tests plus new targeted regression tests and a deterministic replay. Quote only commands that actually ran and their observed outcomes.
+
+### D. Heavy but bounded empirical work, if the data gate passes
+
+1. Run the frozen baseline first and preserve it before testing sensitivities.
+2. Use chronological development/validation/final OOS partitions, then walk-forward folds with non-duplicated pooled OOS dates, fixed primary parameters, and appropriate boundary treatment. Do not tune on the final holdout.
+3. Benchmark net returns versus the matching equal-weight microcap universe. Apply transparent commissions, spread, slippage, and impact/participation assumptions; where quote data are absent, disclose the proxy and test at least 50, 100, and 200 bps round-trip unless source evidence supports a better calibrated schedule.
+4. Report cumulative return, CAGR, annualized volatility, Sharpe/Sortino, max drawdown and duration, profit factor, turnover, trade/position counts, exposure, tail risk, benchmark-relative performance, fold/year/regime stability, liquidity participation, and capacity where estimable. Track every configuration/hypothesis.
+5. Use block-bootstrap confidence intervals and multiple-testing-aware metrics only when sample size and implementation support them; disclose uncertainty and limitations.
+
+### E. Decision thresholds and stopping rules
+
+The repository's net OOS Sharpe >= 0.9 and >100 pooled OOS trades are preliminary screening gates, not proof and not universal laws. A credible candidate must also have positive net benchmark-relative OOS performance, plausible execution, stable performance across independent periods, and no material data/control failure. Show whether results survive stressed costs. If adequate independent observations do not exist, classify as exploratory/provisional rather than stretching significance.
+
+Stop confirmatory claims immediately if point-in-time microcap membership or delisted-stock handling cannot be verified. Do not burn sessions repeating the same broken backtest, restating the task, or expanding parameter search. Correct the root cause once, run independent verification, or document the blocker and make the next task resolve the specific missing evidence.
+
+### F. Durable outputs and handoff
+
+- Maintain research/hypotheses/mom121_microcap_001.md as the preregistered hypothesis; update it only to correct documented ambiguities, with version history.
+- Create research/experiments/mom121_microcap_001.md containing data gate, methods, trial count, fold design, cost assumptions, results, red-team findings, limitations, classification, and exact reproduction commands.
+- Add targeted tests and minimal code/config changes only as justified by evidence. Keep the baseline and all negative/null results.
+- Update README research status with a factual summary only after verification.
+- Prepare exactly one next-task handoff based on the strongest evidence or the precise blocker.
+- Research/backtesting only. Do not place trades, enable live execution, expose credentials, alter workflow schedules/permissions/agent definitions, or create recursive task dispatch.
+
+## Completion standard
+
+Return a concise, evidence-backed decision: credible candidate for further validation, exploratory signal, rejected/failed, or blocked by data/infrastructure. Separate observed results from hypotheses; never fabricate data, metrics, tests, or successful execution.
