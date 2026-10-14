@@ -135,13 +135,13 @@ def build_review_prompt(
     if require_initial_recommendation:
         bootstrap_instruction = """BOOTSTRAP REQUIREMENT:
 No valid recommendation has yet been published. The initial recommendation is mandatory before worker startup in this bounded run. Produce one concise, evidence-based initial recommendation using only the supplied objective and repository snapshot. Do not invent defects, failures, or results. If evidence is insufficient to justify a code change, recommend the narrowest safe evidence-gathering step or explicitly recommend keeping completion blocked until evidence exists. For this required initial exchange, do not return NO_NEW_DIALOGUE."""
-        no_new_dialogue_rule = "5. This is the required initial recommendation; do not return NO_NEW_DIALOGUE. If evidence is insufficient, issue STATUS: ATTENTION and state the missing evidence and safe next step."
+        no_new_dialogue_rule = "This is the required initial recommendation; do not return NO_NEW_DIALOGUE. If evidence is insufficient, issue STATUS: ATTENTION and state the missing evidence and safe next step."
     else:
         bootstrap_instruction = ""
-        no_new_dialogue_rule = "{no_new_dialogue_rule}"
+        no_new_dialogue_rule = "If no new action or materially changed recommendation is warranted, write exactly NO_NEW_DIALOGUE with no other text; the controller will not send or record a duplicate message."
     return f"""CONTINUOUS KILO WORKER REVIEW — CYCLE {cycle}
 
-You are the supervisor role in a two-role dialogue with an active worker. Review only new evidence, material repository-state changes, or a new worker disposition. Do not restate files, snapshots, old recommendations, or unchanged observations. If nothing material warrants a new worker message, write exactly NO_NEW_DIALOGUE on one line and do not produce the standard report. Never invent novelty just to fill a review cycle.
+You are the supervisor role in a two-role dialogue with an active worker. Review only new evidence, material repository-state changes, or a new worker disposition. Do not restate files, snapshots, old recommendations, or unchanged observations. For routine reviews, if nothing material warrants a new worker message, write exactly NO_NEW_DIALOGUE on one line and do not produce the standard report. During a mandatory initial bootstrap, the BOOTSTRAP REQUIREMENT overrides this routine no-change rule and you must produce the initial report. Never invent novelty to fill a routine review cycle.
 
 CURRENT WORKER OBJECTIVE / INSTRUCTIONS (redacted, truncated):
 {objective[-MAX_OBJECTIVE_CHARS:]}
@@ -163,7 +163,7 @@ REQUIRED ACTION — REPORT-FIRST, BOUNDED REVIEW:
 3. Write the report to this exact path on your first available write operation, no later than your fourth tool call:
 REPORT_PATH: {report_relative_path}
 4. The report's first line must be exactly one of `STATUS: CONTINUE`, `STATUS: ATTENTION`, or `STATUS: CRITICAL`. Do not add a title. Then use plain, unnumbered headings with colons in this order: `Observed evidence:`, `Previous approaches:`, `Likely cause:`, `Different next step:`, `Verification:`, and `Limitations:`. Do not number or bold headings. Keep the report concise (about 150–250 words). `Alternative:` is optional only when the main step is blocked or materially uncertain.
-5. If no new action or materially changed recommendation is warranted, write exactly NO_NEW_DIALOGUE with no other text; the controller will not send or record a duplicate message.
+5. {no_new_dialogue_rule}
 6. Do not tell the worker to restart, stop the workflow, weaken checks, or alter the existing 355-minute cutoff-only policy. Separate facts from hypotheses and do not claim unverified tests or file state.
 7. Do not include credentials, tokens, passwords, timestamps, or cycle counters in the report unless materially necessary. Your permissions remain read/search plus report-path-scoped edit/write only; do not execute commands, browse the web, delegate, or control workflows.
 8. If you cannot write the report or are about to exhaust the eight-step limit, return the same concise report in your final response prefixed by a standalone “REPORT_FALLBACK:” line. Include one evidence-supported next action and a focused verification check so the controller can recover it safely.

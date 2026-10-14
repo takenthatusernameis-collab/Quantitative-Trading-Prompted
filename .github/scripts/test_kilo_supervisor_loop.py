@@ -51,8 +51,12 @@ class SupervisorLoopTests(unittest.TestCase):
             require_initial_recommendation=True,
         )
         self.assertIn("BOOTSTRAP REQUIREMENT", bootstrap)
-        self.assertIn("do not return NO_NEW_DIALOGUE", bootstrap)
         self.assertIn("initial recommendation is mandatory", bootstrap.lower())
+        self.assertIn("During a mandatory initial bootstrap", bootstrap)
+        self.assertIn("5. This is the required initial recommendation; do not return NO_NEW_DIALOGUE.", bootstrap)
+        self.assertNotIn("5. If no new action or materially changed recommendation is warranted", bootstrap)
+        self.assertIn("5. If no new action or materially changed recommendation is warranted", prompt)
+        self.assertNotIn("{no_new_dialogue_rule}", bootstrap + prompt)
 
     def test_bootstrap_requires_written_event_and_repairs_half_published_recommendation(self):
         with tempfile.TemporaryDirectory(prefix="kilo-bootstrap-repair-test-") as temp:
