@@ -381,7 +381,7 @@ jobs:
             "SUPERVISOR_TRANSCRIPT_DIR" \
             "KILO_SUPERVISOR_TRANSCRIPT_DIR" \
             "--transcript-dir" \
-            "Exact redacted review requests" \
+            "Only actual supervisor-to-worker and worker-to-supervisor messages are emitted" \
             "Started alongside the Kilo worker" \
             "supervisor_loop_pid" \
             "title=Live agent dialogue" \
