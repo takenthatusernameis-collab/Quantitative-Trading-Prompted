@@ -134,10 +134,10 @@ jobs:
           grep -Fq 'duplicate review skipped' .github/scripts/kilo-supervisor-loop.py
           grep -Fq 'appendAgentDialogue' .kilo/plugin/loop-supervisor-feedback.js
           if grep -Fq '[loop-supervisor-feedback-content]' .kilo/plugin/loop-supervisor-feedback.js; then
-            echo "::error::Supervisor feedback still echoes entire message bodies into operational logs."
+            echo "::error::Supervisor feedback still echoes whole messages into operational logs."
             exit 1
           fi
-          echo "Customizable session target with cutoff-bounded retries, valid protocol path, and role-only dialogue: OK"
+          echo "Customizable session target, count-unbounded retries, valid dialogue protocol and role-only transcript: OK"
           for marker in \
             "write_progress()" \
             'write_progress "invocation-start"' \
