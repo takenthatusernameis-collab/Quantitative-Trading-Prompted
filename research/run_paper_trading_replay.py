@@ -40,13 +40,13 @@ def main() -> None:
     config = PaperTradingConfig.from_paper_config_yaml(config_path)
 
     # Load ALL market data once (from history_start to latest available)
-    # The latest available date from SPY data is 2026-10-09
-    end_date = "2026-10-09"
+    # The latest available date from SPY data is 2026-10-13
+    end_date = "2026-10-13"
     print(f"Fetching market data from {config.history_start} to {end_date}...")
-    all_market_data = fetch_universe(config.universe, config.history_start, end_date, force=False)
+    all_market_data = fetch_universe(config.universe, config.history_start, end_date, force=True)
     print(f"Loaded market data: {len(all_market_data)} rows, {all_market_data.index.min().date()} to {all_market_data.index.max().date()}")
 
-    # Get trading days from 2025-01-01 to 2026-10-09 (captures 2025 regime flips)
+    # Get trading days from 2025-01-01 to 2026-10-13 (captures 2025 regime flips)
     start_replay_date = "2025-01-01"
     replay_dates = all_market_data.index[(all_market_data.index >= start_replay_date) & (all_market_data.index <= end_date)]
     replay_dates = replay_dates[replay_dates.weekday < 5]  # Ensure weekdays only

@@ -1,26 +1,30 @@
-# Next Agent Task: Cycle 31 — Extend Paper Trading Track Record with New Data
+# Next Agent Task: Cycle 32 — Continue Paper Trading Monitoring & Data Acquisition
 
 ## Context
 
-Cycle 30 ran a reproducibility check of the incumbent TSMOM strategy (tsmomentum_spytrend_001). The replay script (`research/run_paper_trading_replay.py`) was executed on cached data only (no new fetching), reproducing the 444-day track record exactly (2025-01-02 to 2026-10-09, NAV $137,376.42, Sharpe 2.0686, max DD -1.25%, 6 regime flips, no drift flags). All go/no-go gates from Cycle 22 remain passing.
+Cycle 31 extended the paper-trading track record for the incumbent TSMOM strategy (tsmomentum_spytrend_001) by fetching new market data from Yahoo Finance. The track record was extended by **1 trading day** (from 444 to 445 days, to 2026-10-12). The objective of extending by ≥20 trading days was **not achievable** — Yahoo Finance only provided data through 2026-10-12/13 at fetch time (2026-10-14).
 
-**Key blocker identified in Cycle 30:** Cached raw data (`data/raw/*.parquet` for SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX`) is exhausted at **2026-10-09**. The track record already covers all available cached trading days. The objective of extending by 20 additional trading days could not be met with cached data only. The incumbent remains in "ready" state pending new data acquisition.
+**Key findings from Cycle 31:**
+- All primary go/no-go gates from Cycle 22 still pass: track record 445 days (≫126), Sharpe 2.0404 (≫0.9), max DD -1.59% (≪15%), 6 regime flips (>1)
+- **NEW DRIFT FLAG**: `low_rolling_sharpe` triggered on 2026-10-12 (rolling 63-day Sharpe = 0.4892 < 0.5 threshold), down from 0.9356 in Cycle 30
+- Current regime: Risk-on (SPY ≥ 200-day SMA) for 130 consecutive days
+- Data availability: Only 1 new trading day was available; cache now extends to 2026-10-12
 
 ## Objective
 
-Acquire new market data for the 7-ETF universe + SPY beyond 2026-10-09, update the replay script's end_date to the latest available data, and re-run the replay to extend the paper trading track record by at least 20 additional trading days (target: >= 464 total days).
+Re-attempt data acquisition from Yahoo Finance to extend the paper trading track record further. Monitor the rolling 63-day Sharpe trajectory — if it remains below 0.5 for an extended period (>20 trading days), assess whether the strategy's momentum signal is degrading in the current low-volatility risk-on regime.
 
 ## Acceptance Criteria
 
-- [ ] Fetch updated YFinance data for the universe + SPY using the existing `src/data/yfinance_fetcher.py` (force=True) to extend `data/raw/*.parquet` beyond 2026-10-09
+- [ ] Fetch updated YFinance data for the universe + SPY + ^VIX using `src/data/yfinance_fetcher.py` (force=True) to extend `data/raw/*.parquet` beyond 2026-10-12
 - [ ] Update `research/run_paper_trading_replay.py` `end_date` to the latest available data date
 - [ ] Re-run `research/run_paper_trading_replay.py` to extend the paper trading track record
-- [ ] Verify track record extended by at least 20 trading days (target: >= 464 days)
+- [ ] Verify track record extended (target: any additional trading days; document actual count)
 - [ ] Update `research/reports/paper_trading_rolling.md` with latest state
-- [ ] Create `research/reports/paper_trading_validation_004.md` with extended validation results
-- [ ] Verify no drift flags triggered; document any flags with analysis if triggered
-- [ ] Update README.md with Cycle 31 summary (track record length, last date, NAV, max DD)
-- [ ] Prepare NEXT_AGENT_TASK.md for Cycle 32 (continue monitoring or reassess based on regime stability)
+- [ ] Create `research/reports/paper_trading_validation_005.md` with extended validation results
+- [ ] Document drift flag status: if `low_rolling_sharpe` persists, analyze trajectory and duration
+- [ ] Update README.md with Cycle 32 summary (track record length, last date, NAV, max DD, drift status)
+- [ ] Prepare NEXT_AGENT_TASK.md for Cycle 33 (continue monitoring or reassess based on regime stability and drift flag persistence)
 
 ## Scope Boundaries
 
@@ -36,7 +40,7 @@ Acquire new market data for the 7-ETF universe + SPY beyond 2026-10-09, update t
 # Fetch new data (updates data/raw/*.parquet cache)
 python3 -c "
 from src.data.yfinance_fetcher import fetch_universe
-data = fetch_universe(['SPY','QQQ','IWM','TLT','GLD','EFA','EEM','^VIX'], '1993-01-01', '2026-10-20', force=True)
+data = fetch_universe(['SPY','QQQ','IWM','TLT','GLD','EFA','EEM','^VIX'], '1993-01-01', '2026-10-31', force=True)
 print('Loaded:', len(data), 'rows,', data.index.min().date(), 'to', data.index.max().date())
 "
 
@@ -49,5 +53,6 @@ import yaml
 with open('data/processed/paper_trading_state.yaml') as f:
     s=yaml.safe_load(f)
 print('days', len(s['run_history']), 'last', s['last_run_date'], 'nav', s['current_nav'], 'dd', s['max_drawdown'])
+print('drift_flags:', s.get('drift_flags', {}))
 "
 ```
