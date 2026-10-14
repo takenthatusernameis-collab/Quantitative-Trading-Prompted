@@ -222,8 +222,8 @@ const LoopSupervisorFeedback = async () => {
           const pending = redactSensitiveText(journal.slice(start, end));
           if (pending.trim()) {
             const body = pending
-              .replace(/^--- SUPERVISOR ADVICE ENTRY ---\s*$/gm, "")
-              .replace(/^--- END SUPERVISOR ADVICE ENTRY ---\s*$/gm, "")
+              .replace(/^--- SUPERVISOR ADVICE ENTRY(?: cycle=\d+)? ---\s*$/gm, "")
+              .replace(/^--- END SUPERVISOR ADVICE ENTRY(?: cycle=\d+)? ---\s*$/gm, "")
               .trim();
             if (body) {
               const recommendationId = recommendation?.recommendation_id ?? "(not assigned)";
