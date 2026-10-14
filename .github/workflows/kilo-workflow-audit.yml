@@ -44,7 +44,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v6
       - name: Validate workflow syntax and schema
@@ -127,6 +127,7 @@ jobs:
         run: |
           set -euo pipefail
           controller=.github/scripts/kilo-controller.sh
+          persist=.github/scripts/kilo-persist-checkpoint.sh
           grep -Fq 'kilo-invoke-with-idle-timeout.py' "$controller"
           grep -Fq 'KILO_IDLE_TIMEOUT_SECONDS:-600' "$controller"
           grep -Fq 'output_silence=%ss idle_watchdog_remaining=%ss' "$controller"
@@ -199,9 +200,9 @@ jobs:
             'kilo-supervisor-transcripts-*/agent-dialogue.jsonl' \
             'kilo-progress-trace-' \
             'supervisor_pending_units' \
-            'persisted_checkpoints' \\
-            'kilo-terminal-outcome.py' \\
-            'terminal_status' \\
+            'persisted_checkpoints' \
+            'kilo-terminal-outcome.py' \
+            'terminal_status' \
             'intentional_noop'; do
             grep -Fq -- "$marker" "$controller" "$workflow" "$persist" .github/scripts/kilo-supervisor-loop.py .kilo/plugin/loop-supervisor-feedback.js || {
               echo "::error::Missing live-transparency marker: $marker"
@@ -515,7 +516,7 @@ jobs:
           echo "Pinned Kilo CLI discovered loop-supervisor and its resolved permissions passed the boundary checks."
  requirements.txt
           python3 -m venv "$RUNNER_TEMP/parquet-smoke-venv"
-          "$RUNNER_TEMP/parquet-smoke-venv/bin/python" -m pip install --disable-pip-version-check --quiet "pandas>=2.0.0" "pyarrow>=12.0.0"
+          timeout 150s "$RUNNER_TEMP/parquet-smoke-venv/bin/python" -m pip install --disable-pip-version-check --quiet "pandas>=2.0.0" "pyarrow>=12.0.0"
           "$RUNNER_TEMP/parquet-smoke-venv/bin/python" - <<'PY'
           import tempfile
           from pathlib import Path
@@ -609,8 +610,11 @@ jobs:
             'kilo-supervisor-transcripts-*/agent-dialogue.jsonl' \
             'kilo-progress-trace-' \
             'supervisor_pending_units' \
-            'persisted_checkpoints'; do
-            grep -Fq -- "$marker" "$controller" "$workflow" .github/scripts/kilo-supervisor-loop.py .kilo/plugin/loop-supervisor-feedback.js || {
+            'persisted_checkpoints' \\
+            'kilo-terminal-outcome.py' \\
+            'terminal_status' \\
+            'intentional_noop'; do
+            grep -Fq -- "$marker" "$controller" "$workflow" "$persist" .github/scripts/kilo-supervisor-loop.py .kilo/plugin/loop-supervisor-feedback.js || {
               echo "::error::Missing live-transparency marker: $marker"
               exit 1
             }
