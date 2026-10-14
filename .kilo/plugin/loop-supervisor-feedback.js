@@ -154,7 +154,7 @@ const LoopSupervisorFeedback = async () => {
   const configuredTranscriptDir = process.env.KILO_SUPERVISOR_TRANSCRIPT_DIR;
   const configuredProtocolDir = process.env.KILO_SUPERVISOR_PROTOCOL_DIR;
   const workspaceRoot = process.env.GITHUB_WORKSPACE;
-  const expectedProtocolDir = workspaceRoot ? resolve(workspaceRoot, ".kilo", "runtime") : null;
+  const expectedProtocolDir = workspaceRoot ? resolve(workspaceRoot, ".kilo-runtime") : null;
   const safeProtocolDir = configuredProtocolDir && workspaceRoot && isAbsolute(configuredProtocolDir)
       && resolve(configuredProtocolDir) === expectedProtocolDir
       && isInside(workspaceRoot, configuredProtocolDir) ? configuredProtocolDir : null;
