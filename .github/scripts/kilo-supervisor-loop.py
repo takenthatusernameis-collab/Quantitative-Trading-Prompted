@@ -763,7 +763,7 @@ def initial_recommendation_is_ready(
         return False
 
     first_line = report.splitlines()[0] if report.splitlines() else ""
-    if not re.fullmatch(r"STATUS: (?:CONTINUE|ATTENTION|CRITICAL)\\s*", first_line):
+    if not re.fullmatch(r"STATUS: (?:CONTINUE|ATTENTION|CRITICAL)\s*", first_line):
         return False
 
     events, errors = read_protocol_events(Path(transcript_dir) / "agent-communication.jsonl")

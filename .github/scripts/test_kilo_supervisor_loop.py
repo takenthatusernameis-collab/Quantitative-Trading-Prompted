@@ -60,13 +60,13 @@ class SupervisorLoopTests(unittest.TestCase):
             protocol_dir = root / ".kilo-runtime"
             transcript_dir = root / "transcripts"
             report = (
-                "STATUS: ATTENTION\\n"
-                "Observed evidence: the initial recommendation file exists without its lifecycle event.\\n"
-                "Previous approaches: the file-backed state was published before the event append completed.\\n"
-                "Likely cause: the readiness check must validate both independently persisted records.\\n"
-                "Different next step: retry publication until the exact written event is durable.\\n"
-                "Verification: require the event task, session, message, correlation, and report to match.\\n"
-                "Limitations: worker delivery remains a separate later lifecycle stage.\\n"
+                "STATUS: ATTENTION\n"
+                "Observed evidence: the initial recommendation file exists without its lifecycle event.\n"
+                "Previous approaches: the file-backed state was published before the event append completed.\n"
+                "Likely cause: the readiness check must validate both independently persisted records.\n"
+                "Different next step: retry publication until the exact written event is durable.\n"
+                "Verification: require the event task, session, message, correlation, and report to match.\n"
+                "Limitations: worker delivery remains a separate later lifecycle stage.\n"
             )
             first_id = monitor.publish_current_recommendation(
                 protocol_dir, "bootstrap-run", "2", 1, report, "observed worker and repository state",
