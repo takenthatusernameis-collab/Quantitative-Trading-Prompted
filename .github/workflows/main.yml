@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && format('kilo-e2e-{0}', github.ref_name) || 'kilo-repository' }}
