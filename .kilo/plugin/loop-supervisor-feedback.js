@@ -186,9 +186,15 @@ async function saveWorkerDelivery(transcriptDir, injectionText, sequence, recomm
   const dialogueEvent = buildCommunicationEvent("message_delivered", base);
   dialogueEvent.sequence = sequence;
   const communicationEvent = buildCommunicationEvent("message_delivered", base);
-  const dialogueSaved = await appendJsonlOnce(transcriptDir, "agent-dialogue.jsonl", dialogueEvent);
-  const communicationSaved = await appendJsonlOnce(transcriptDir, "agent-communication.jsonl", communicationEvent);
-  return dialogueSaved && communicationSaved ? resolve(transcriptDir, "agent-dialogue.jsonl") : null;
+  // Retry both tracks as a pair. A successful first append is idempotently recognized
+  // on retry if writing the second track failed partway through.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const dialogueSaved = await appendJsonlOnce(transcriptDir, "agent-dialogue.jsonl", dialogueEvent);
+    const communicationSaved = await appendJsonlOnce(transcriptDir, "agent-communication.jsonl", communicationEvent);
+    if (dialogueSaved && communicationSaved) return resolve(transcriptDir, "agent-dialogue.jsonl");
+    if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 25 * (attempt + 1)));
+  }
+  return null;
 }
 
 const LoopSupervisorFeedback = async () => {
@@ -267,13 +273,21 @@ const LoopSupervisorFeedback = async () => {
         const transcriptPath = await saveWorkerDelivery(
           safeTranscriptDir, injectionText, injectionSequence, recommendation
         );
+        if (!transcriptPath) {
+          // The worker-facing output has been mutated, but the dual-track record is not durable.
+          // Do not advance the cursor: retry delivery/persistence at the next tool boundary.
+          console.error("[loop-supervisor-feedback] DELIVERY_PERSISTENCE_FAILED sequence=" + injectionSequence
+            + " direction=supervisor_to_worker output_mutated=yes transcript_saved=no cursor_advanced=no"
+            + "; pending advice will be retried at the next tool-result boundary");
+          return;
+        }
         lastInjectedOffset = nextCursorOffset;
         lastInjectedPrefixDigest = nextCursorDigest;
         const cursorSaved = (await writeCursor(safeCursorPath, lastInjectedOffset, lastInjectedPrefixDigest)) ? "yes" : "no";
 
         console.log("[loop-supervisor-feedback] DELIVERY_CONFIRMED sequence=" + injectionSequence
-          + " direction=supervisor_to_worker output_mutated=yes transcript_saved=" + (transcriptPath ? "yes" : "no")
-          + " cursor_saved=" + cursorSaved + " transcript=" + (transcriptPath ? basename(transcriptPath) : "unavailable"));
+          + " direction=supervisor_to_worker output_mutated=yes transcript_saved=yes"
+          + " cursor_saved=" + cursorSaved + " transcript=" + basename(transcriptPath));
         console.log("::group::LIVE AGENT DIALOGUE BOX — SUPERVISOR → WORKER");
         for (const line of injectionText.split("\n")) {
           console.log("[agent-dialogue] " + line);
