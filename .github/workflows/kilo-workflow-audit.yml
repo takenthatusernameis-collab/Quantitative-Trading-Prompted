@@ -8,6 +8,8 @@ on:
       - ".github/workflows/kilo-workflow-audit.yml"
       - ".github/workflows/kilo-two-agent-dispatch.yml"
       - ".github/scripts/kilo-controller.sh"
+      - ".github/scripts/test_kilo_checkpoint_recovery.sh"
+      - ".github/scripts/test_kilo_checkpoint_recovery.sh"
       - ".github/scripts/kilo-invoke-with-idle-timeout.py"
       - ".github/scripts/kilo-supervisor-loop.py"
       - ".github/scripts/test_kilo_supervisor_loop.py"
@@ -95,6 +97,9 @@ jobs:
           grep -Fq 'same checkpoint conflicted with the same remote head again' "$controller"
           grep -Fq 'rebase_abort_succeeded=' "$controller"
           echo "Recoverable checkpoint, verified backup, and repeated-conflict guard: OK"
+      - name: Exercise checkpoint recovery after a rebase conflict
+        shell: bash
+        run: bash .github/scripts/test_kilo_checkpoint_recovery.sh
       - name: Guard cutoff-bounded unbounded retry and correction policy
         shell: bash
         run: |
