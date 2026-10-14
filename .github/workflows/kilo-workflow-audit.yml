@@ -92,7 +92,7 @@ jobs:
           grep -Fq 'CORRECTIVE_VERIFICATION=PASS' "$controller"
           grep -Fq 'did not provide verified-success evidence' "$controller"
           grep -Fq 'while true; do' "$controller"
-          if grep -Eq 'MAX_TRANSIENT_ATTEMPTS|KILO_MAX_SESSIONS|session_limit_reached|This is the single bounded corrective pass|bounded to \$MAX_TRANSIENT_ATTEMPTS|Configured session limit of' "$controller"; then
+          if grep -Eq 'MAX_TRANSIENT_ATTEMPTS|KILO_MAX_SESSIONS|session_limit_reached|This is the single bounded corrective pass|Configured session limit of' "$controller"; then
             echo "::error::A session-count, transient-attempt, or one-pass corrective limit remains in the controller."
             exit 1
           fi
