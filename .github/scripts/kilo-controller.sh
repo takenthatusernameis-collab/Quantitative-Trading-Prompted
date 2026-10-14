@@ -8,10 +8,15 @@ if ! [[ "$KILO_IDLE_TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]]; then
   exit 1
 fi
 
-# No attempt-count cap: sequential worker sessions, transient retries, and corrective
-# invocations continue until verified project progress or the global hard cutoff.
-SESSION_LIMIT_POLICY="unlimited"
-echo "::notice::No count cap on worker sessions, transient retries, or corrective attempts; global 355-minute hard cutoff governs duration."
+# Manual dispatch sets the session target; scheduled activation defaults to 1000.
+# This target does not cap transient retries or corrective attempts inside a session.
+agents="${KILO_INPUT_AGENTS:-1000}"
+if ! [[ "$agents" =~ ^[1-9][0-9]*$ ]]; then
+  echo "::error::KILO_INPUT_AGENTS must be a positive whole number."
+  exit 1
+fi
+SESSION_LIMIT_POLICY="$agents"
+echo "::notice::Configured session target: $agents; retries and corrective invocations have no count cap before the 355-minute cutoff."
 WORKFLOW_STARTED_EPOCH="$(date +%s)"
 KILO_PROGRESS_STATE_FILE="$RUNNER_TEMP/kilo-progress-state-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.txt"
 KILO_PROGRESS_LOG="$RUNNER_TEMP/kilo-progress-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.log"
@@ -94,7 +99,9 @@ done
 one_shot_mode=0
 if [ -f ".kilo/TWO_AGENT_ONCE" ]; then
   one_shot_mode=1
-  echo "::notice::One-shot marker detected; authorizing a validation-gated activation."
+  agents=2
+  SESSION_LIMIT_POLICY="2 (one-shot validation)"
+  echo "::notice::One-shot marker detected; overriding the configurable target to exactly two validation sessions."
 fi
 # A queued schedule may check out an older commit containing the sentinel.
 # Require it to exist on the live default branch before spending the allowance.
@@ -487,6 +494,10 @@ cutoff=0
 
 agent_index=0
 while true; do
+  if [ "$agent_index" -ge "$agents" ]; then
+    echo "::notice::Configured session target reached ($agents); transient retries and corrective invocations remained count-unbounded under the 355-minute cutoff."
+    break
+  fi
   remaining=$((cutoff_epoch - $(date +%s)))
   if [ "$remaining" -le 0 ]; then
     cutoff=1
@@ -954,5 +965,5 @@ fi
 if [ "$cutoff" -eq 1 ]; then
   echo "Kilo controller reached the global 355-minute safety cutoff. Sessions started: $agent_index; failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
 else
-  echo "Kilo controller finished without a count cap. Sessions started: $agent_index; failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
+  echo "Kilo controller finished at the configured session target or cutoff. Target: $agents; sessions started: $agent_index; failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
 fi
