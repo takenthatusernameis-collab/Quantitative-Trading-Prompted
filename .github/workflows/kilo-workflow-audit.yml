@@ -96,7 +96,7 @@ jobs:
           grep -Fq 'KILO_INPUT_AGENTS:' "$workflow"
           grep -Fq 'type: number' "$workflow"
           grep -Fq 'default: "1000"' "$workflow"
-          grep -Fq 'agent_index -ge' "$controller"
+          grep -Fq 'Configured session target reached' "$controller"
           grep -Fq '355-minute cutoff' "$controller"
           if grep -Eq 'MAX_TRANSIENT_ATTEMPTS|KILO_MAX_SESSIONS|session_limit_reached|single bounded corrective pass|agents.{0,12}-gt[[:space:]]+1000|inputs[.]sessions' "$controller" "$workflow"; then
             echo "::error::A retry cap or invalid session hard maximum remains."
