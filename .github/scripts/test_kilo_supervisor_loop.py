@@ -54,22 +54,69 @@ class SupervisorLoopTests(unittest.TestCase):
         self.assertIn("do not return NO_NEW_DIALOGUE", bootstrap)
         self.assertIn("initial recommendation is mandatory", bootstrap.lower())
 
+    def test_bootstrap_requires_written_event_and_repairs_half_published_recommendation(self):
+        with tempfile.TemporaryDirectory(prefix="kilo-bootstrap-repair-test-") as temp:
+            root = Path(temp)
+            protocol_dir = root / ".kilo-runtime"
+            transcript_dir = root / "transcripts"
+            report = (
+                "STATUS: ATTENTION\\n"
+                "Observed evidence: the initial recommendation file exists without its lifecycle event.\\n"
+                "Previous approaches: the file-backed state was published before the event append completed.\\n"
+                "Likely cause: the readiness check must validate both independently persisted records.\\n"
+                "Different next step: retry publication until the exact written event is durable.\\n"
+                "Verification: require the event task, session, message, correlation, and report to match.\\n"
+                "Limitations: worker delivery remains a separate later lifecycle stage.\\n"
+            )
+            first_id = monitor.publish_current_recommendation(
+                protocol_dir, "bootstrap-run", "2", 1, report, "observed worker and repository state",
+            )
+            self.assertIsNotNone(first_id)
+            partial = monitor.read_current_recommendation(protocol_dir)
+            self.assertFalse(monitor.initial_recommendation_is_ready(
+                protocol_dir, transcript_dir, partial, "bootstrap-run", "2",
+            ))
+            self.assertTrue(monitor.should_run_review(
+                has_new_worker_output=False, repository_changed=False,
+                require_initial_recommendation=True, recommendation_ready=False,
+            ))
+
+            repaired_id = monitor.publish_current_recommendation(
+                protocol_dir, "bootstrap-run", "2", 2, report, "observed worker and repository state",
+                transcript_dir=transcript_dir,
+            )
+            self.assertIsNotNone(repaired_id)
+            self.assertNotEqual(first_id, repaired_id)
+            repaired = monitor.read_current_recommendation(protocol_dir)
+            self.assertTrue(monitor.initial_recommendation_is_ready(
+                protocol_dir, transcript_dir, repaired, "bootstrap-run", "2",
+            ))
+            events, errors = monitor.read_protocol_events(transcript_dir / "agent-communication.jsonl")
+            self.assertEqual(errors, [])
+            self.assertTrue(any(
+                event.get("stage") == "message_written"
+                and event.get("message_id") == repaired_id
+                and event.get("correlation_id") == repaired_id
+                and event.get("message") == report
+                for event in events
+            ))
+
     def test_required_initial_recommendation_retries_without_new_evidence(self):
         self.assertTrue(monitor.should_run_review(
             has_new_worker_output=False, repository_changed=False,
-            require_initial_recommendation=True, recommendation_present=False,
+            require_initial_recommendation=True, recommendation_ready=False,
         ))
         self.assertFalse(monitor.should_run_review(
             has_new_worker_output=False, repository_changed=False,
-            require_initial_recommendation=True, recommendation_present=True,
+            require_initial_recommendation=True, recommendation_ready=True,
         ))
         self.assertFalse(monitor.should_run_review(
             has_new_worker_output=False, repository_changed=False,
-            require_initial_recommendation=False, recommendation_present=False,
+            require_initial_recommendation=False, recommendation_ready=False,
         ))
         self.assertTrue(monitor.should_run_review(
             has_new_worker_output=True, repository_changed=False,
-            require_initial_recommendation=False, recommendation_present=False,
+            require_initial_recommendation=False, recommendation_ready=False,
         ))
 
     def test_report_fallback_requires_status_on_first_line(self):

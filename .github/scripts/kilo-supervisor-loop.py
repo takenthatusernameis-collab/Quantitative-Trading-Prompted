@@ -737,18 +737,65 @@ def run_review(
     return report
 
 
+def initial_recommendation_is_ready(
+    protocol_dir: Optional[Path],
+    transcript_dir: Optional[Path],
+    recommendation: Optional[dict],
+    run_id: str,
+    run_attempt: str,
+) -> bool:
+    """Require both a run-scoped v2 recommendation and its matching durable written event."""
+    if protocol_dir is None or transcript_dir is None or recommendation is None:
+        return False
+
+    task_id = f"{run_id}-attempt-{run_attempt}"
+    recommendation_id = recommendation.get("recommendation_id")
+    report = recommendation.get("report")
+    if (
+        recommendation.get("schema_version") != 2
+        or recommendation.get("task_id") != task_id
+        or recommendation.get("session_id") != task_id
+        or not isinstance(recommendation_id, str)
+        or not recommendation_id.startswith(task_id + "-review-")
+        or not isinstance(report, str)
+        or len(report.strip()) < 80
+    ):
+        return False
+
+    first_line = report.splitlines()[0] if report.splitlines() else ""
+    if not re.fullmatch(r"STATUS: (?:CONTINUE|ATTENTION|CRITICAL)\\s*", first_line):
+        return False
+
+    events, errors = read_protocol_events(Path(transcript_dir) / "agent-communication.jsonl")
+    if errors:
+        return False
+    return any(
+        event.get("task_id") == task_id
+        and event.get("run_id") == run_id
+        and event.get("session_id") == task_id
+        and event.get("direction") == "supervisor_to_worker"
+        and event.get("role") == "supervisor"
+        and event.get("stage") == "message_written"
+        and event.get("message_id") == recommendation_id
+        and event.get("correlation_id") == recommendation_id
+        and event.get("delivery_state") == "written"
+        and event.get("message") == report
+        for event in events
+    )
+
+
 def should_run_review(
     *,
     has_new_worker_output: bool,
     repository_changed: bool,
     require_initial_recommendation: bool,
-    recommendation_present: bool,
+    recommendation_ready: bool,
 ) -> bool:
-    """Keep bootstrapping a required first recommendation even before a worker starts."""
+    """Keep bootstrapping until the run-scoped recommendation and written event both exist."""
     return bool(
         has_new_worker_output
         or repository_changed
-        or (require_initial_recommendation and not recommendation_present)
+        or (require_initial_recommendation and not recommendation_ready)
     )
 
 
@@ -926,14 +973,17 @@ def main() -> int:
             previous_worker_disposition_digest = None
 
         has_new_worker_output = bool(log_delta.strip())
+        recommendation_ready = initial_recommendation_is_ready(
+            protocol_dir, transcript_dir, current_recommendation, args.run_id, args.run_attempt,
+        )
         needs_initial_recommendation = bool(
-            args.require_initial_recommendation and current_recommendation is None
+            args.require_initial_recommendation and not recommendation_ready
         )
         review_required = should_run_review(
             has_new_worker_output=has_new_worker_output,
             repository_changed=repository_changed,
             require_initial_recommendation=args.require_initial_recommendation,
-            recommendation_present=current_recommendation is not None,
+            recommendation_ready=recommendation_ready,
         )
         if not review_required:
             if not quiet_notice_logged:
@@ -967,7 +1017,7 @@ def main() -> int:
                 f"(consecutive unusable reviews: {consecutive_unusable_reviews}/"
                 f"{circuit_breaker_threshold}); worker continues independently"
             )
-        elif report == previous_report:
+        elif report == previous_report and not needs_initial_recommendation:
             no_new_dialogue_count += 1
             consecutive_unusable_reviews = 0
             if no_new_dialogue_count == 1:
