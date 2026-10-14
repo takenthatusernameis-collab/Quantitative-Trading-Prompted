@@ -34,7 +34,7 @@ class E2EVerificationTests(unittest.TestCase):
         start = controller.index('if [ "${KILO_E2E_MODE:-0}" = "1" ]; then')
         end = controller.index("# Project changes exclude workflow definitions and control-only markers.", start)
         gate = controller[start:end]
-        self.assertNotRegex(gate, r"\\\\\$\\{")
+        self.assertNotIn("\\${", gate)
         self.assertIn("current-supervisor-recommendation.json", gate)
         self.assertIn('"message_written"', gate)
         self.assertIn("no worker was started", gate)
