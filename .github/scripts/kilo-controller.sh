@@ -228,6 +228,7 @@ MANDATORY LOOP-SUPERVISOR PROTOCOL
 A. CONTINUOUS SUPERVISION FROM WORKER START
 - The controller starts a separate read/write-restricted `loop-supervisor` review process immediately before the first worker invocation. It reviews the current task and the latest worker/repository evidence immediately, then on a 150-second cadence.
 - New or materially changed supervisor feedback is injected into the next worker tool result by the `loop-supervisor-feedback` plugin. Read it, assess it against current evidence, and either take the smallest safe verified action or explicitly explain why it is unsuitable.
+- FILE-BACKED TWO-WAY DIALOGUE (mandatory, lightweight, non-blocking): the controller owns `.kilo/runtime/current-supervisor-recommendation.json`; never edit or replace it. When advice arrives, read that file and write/replace `.kilo/runtime/worker-disposition.json` within the next two tool calls, before unrelated exploration when practical. Use JSON fields `schema_version: 1`, `recommendation_id` copied exactly from the current recommendation, `disposition` (one of `accepted`, `in_progress`, `verified`, `blocked`, `rejected_with_reason`, `superseded`), `reason`, `evidence`, `verification`, and `updated_at`. Include a concrete reason of at least one sentence; `verified` requires the actual verification result. Update the worker-owned disposition file as work progresses. If advice is unsafe, stale, technically incorrect, or conflicts with higher-priority requirements, record `rejected_with_reason` or `superseded` and explain why; never obey blindly. These runtime files are ignored locally and must not be committed. If the protocol file cannot be written, continue work safely; the controller will expose the outstanding recommendation again at bounded intervals.
 - A scheduled review is not a promise that the model can interrupt a tool call or active generation. Feedback arrives at the next tool-result boundary. The monitor still records its scheduled review and status; the controller heartbeat reports status every 30 seconds.
 - Do not spawn an additional background startup review; the controller-managed continuous monitor is authoritative. You may still invoke a targeted foreground supervisor task for a failure loop, using a unique report path.
 - If the plugin, monitor, or supervisor is unavailable, continue the assigned task using the best available evidence. No supervisor failure may terminate or restart the worker.
@@ -320,7 +321,15 @@ SUPERVISOR_ACTIVE_LOG_POINTER="$RUNNER_TEMP/kilo-supervisor-active-attempt"
 SUPERVISOR_OBJECTIVE_FILE="$RUNNER_TEMP/kilo-supervisor-objective-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.txt"
 SUPERVISOR_LOOP_LOG="$RUNNER_TEMP/kilo-supervisor-loop-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.log"
 SUPERVISOR_TRANSCRIPT_DIR="$RUNNER_TEMP/kilo-supervisor-transcripts-${GITHUB_RUN_ID:-local}-attempt-${GITHUB_RUN_ATTEMPT:-1}"
-mkdir -p "$SUPERVISOR_TRANSCRIPT_DIR"
+DIALOGUE_PROTOCOL_DIR="$PWD/.kilo/runtime"
+mkdir -p "$SUPERVISOR_TRANSCRIPT_DIR" "$DIALOGUE_PROTOCOL_DIR"
+# This runner-local exclude prevents the worker's checkpoint sweep from committing
+# controller-owned recommendation state or worker-owned disposition state.
+if ! grep -qxF '/.kilo/runtime/' .git/info/exclude 2>/dev/null; then
+  printf '/.kilo/runtime/\n' >> .git/info/exclude
+fi
+rm -f "$DIALOGUE_PROTOCOL_DIR/current-supervisor-recommendation.json" "$DIALOGUE_PROTOCOL_DIR/worker-disposition.json"
+export KILO_SUPERVISOR_PROTOCOL_DIR="$DIALOGUE_PROTOCOL_DIR"
 : > "$SUPERVISOR_ACTIVE_LOG_POINTER"
 : > "$SUPERVISOR_FEEDBACK_FILE"
 rm -f "$SUPERVISOR_FEEDBACK_CURSOR_FILE"
@@ -888,6 +897,13 @@ elif [ "$cutoff" -eq 1 ]; then
 else
   write_progress "controller-finished" "controller loop finished"
 fi
+# Preserve final two-way protocol state inside the already-uploaded transcript artifact.
+mkdir -p "$SUPERVISOR_TRANSCRIPT_DIR/dialogue-protocol"
+for protocol_file in "$DIALOGUE_PROTOCOL_DIR/current-supervisor-recommendation.json" "$DIALOGUE_PROTOCOL_DIR/worker-disposition.json"; do
+  if [ -f "$protocol_file" ]; then
+    cp -f "$protocol_file" "$SUPERVISOR_TRANSCRIPT_DIR/dialogue-protocol/"
+  fi
+done
 read -r final_journal_units final_cursor_offset final_advice_entries < <(python3 - "$SUPERVISOR_FEEDBACK_FILE" "$SUPERVISOR_FEEDBACK_CURSOR_FILE" <<'PY'
 import json
 import sys
