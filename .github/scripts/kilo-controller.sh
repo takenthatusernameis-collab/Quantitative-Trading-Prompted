@@ -17,6 +17,10 @@ fi
 KILO_INPUT_SESSIONS="${KILO_INPUT_SESSIONS:-1000}"
 KILO_TARGET_BRANCH="${KILO_TARGET_BRANCH:-${KILO_DEFAULT_BRANCH:-}}"
 if [ "${KILO_E2E_MODE:-0}" = "1" ]; then
+  if [ "$KILO_HARD_CUTOFF_MINUTES" != "10" ]; then
+    echo "::error::Bounded E2E mode requires an exact 10-minute controller cutoff."
+    exit 1
+  fi
   repository_default="${KILO_REPOSITORY_DEFAULT_BRANCH:-${KILO_DEFAULT_BRANCH:-main}}"
   if [ "${KILO_TRIGGER_EVENT:-}" != "workflow_dispatch" ] ||
      [ -z "$KILO_TARGET_BRANCH" ] || [ "$KILO_TARGET_BRANCH" = "$repository_default" ] ||

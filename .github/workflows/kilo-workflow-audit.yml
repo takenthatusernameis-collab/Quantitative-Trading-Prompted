@@ -125,13 +125,14 @@ jobs:
         run: |
           set -Eeuo pipefail
           grep -Fq 'KILO_HARD_CUTOFF_MINUTES' .github/scripts/kilo-controller.sh
+          grep -Fq 'KILO_HARD_CUTOFF_MINUTES" != "10"' .github/scripts/kilo-controller.sh
           grep -Fq 'KILO_E2E_MODE' .github/scripts/kilo-controller.sh
           grep -Fq 'KILO_TARGET_BRANCH' .github/scripts/kilo-controller.sh
           grep -Fq 'KILO_TASK_PROMPT_FILE' .github/scripts/kilo-controller.sh
           grep -Fq "format('kilo-e2e-{0}', github.ref_name)" .github/workflows/main.yml
           grep -Fq "KILO_HARD_CUTOFF_MINUTES:" .github/workflows/main.yml
           grep -Fq 'LAST_VERIFIED_CHECKPOINT_SHA' .github/workflows/main.yml
-          grep -Fq 'gh run download' .github/scripts/kilo-e2e-verification.py
+          grep -Fq '"gh", "run", "download"' .github/scripts/kilo-e2e-verification.py
           grep -Fq 'remote_checkpoint' .github/scripts/kilo-e2e-verification.py
           echo "Branch isolation, short cutoff, worker-scope override, artifact recovery and independent checkpoint gate: OK"
       - name: Exercise terminal outcome classification and CLI exit semantics
