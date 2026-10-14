@@ -267,7 +267,7 @@ jobs:
             assert.ok(first.output.startsWith("original tool output\n\n"));
             const exactFirstDelivery = first.output.slice("original tool output\n\n".length);
             const dialoguePath = join(transcripts, "agent-dialogue.jsonl");
-            let dialogueEvents = (await readFile(dialoguePath, "utf8")).trim().split("\\n").map(line => JSON.parse(line));
+            let dialogueEvents = (await readFile(dialoguePath, "utf8")).trim().split("\n").map(line => JSON.parse(line));
             assert.equal(dialogueEvents.length, 1, "first delivery should create one role-dialogue event");
             assert.equal(dialogueEvents[0].direction, "supervisor_to_worker");
             assert.equal(dialogueEvents[0].message, exactFirstDelivery,
@@ -282,7 +282,7 @@ jobs:
             assert.match(second.output, /verify input parsing/);
             assert.doesNotMatch(second.output, /Check the first failing assertion/,
               "only new journal entries should be injected during the same worker process");
-            dialogueEvents = (await readFile(dialoguePath, "utf8")).trim().split("\\n").map(line => JSON.parse(line));
+            dialogueEvents = (await readFile(dialoguePath, "utf8")).trim().split("\n").map(line => JSON.parse(line));
             assert.equal(dialogueEvents.length, 2, "second distinct message should add exactly one role-dialogue event");
 
             const thirdMinute = "--- SUPERVISOR ADVICE ENTRY cycle=0003 ---\nSTATUS: ATTENTION\nConfirm the fix using the regression test.\n--- END SUPERVISOR ADVICE ENTRY cycle=0003 ---\n";
@@ -293,7 +293,7 @@ jobs:
             assert.match(reloaded.output, /Confirm the fix using the regression test/);
             assert.doesNotMatch(reloaded.output, /Check the first failing assertion/,
               "a restarted session should resume the persisted cursor, not replay already delivered entries");
-            dialogueEvents = (await readFile(dialoguePath, "utf8")).trim().split("\\n").map(line => JSON.parse(line));
+            dialogueEvents = (await readFile(dialoguePath, "utf8")).trim().split("\n").map(line => JSON.parse(line));
             assert.equal(dialogueEvents.length, 3, "session rollover must resume the cursor without replaying old messages");
 
             process.env.KILO_SUPERVISOR_FEEDBACK_FILE = join(tmpdir(), "outside-feedback.md");
@@ -328,7 +328,7 @@ jobs:
             await protocolHooks["tool.execute.after"]({ tool: "read" }, delivered);
             assert.match(delivered.output, /new worker-specific recommendation/);
             assert.match(delivered.output, /run-test-review-0004-deadbeef0000/);
-            dialogueEvents = (await readFile(dialoguePath, "utf8")).trim().split("\\n").map(line => JSON.parse(line));
+            dialogueEvents = (await readFile(dialoguePath, "utf8")).trim().split("\n").map(line => JSON.parse(line));
             assert.equal(dialogueEvents.length, 4);
             assert.equal(dialogueEvents[3].message_id, recommendation.recommendation_id);
             for (let i = 0; i < 8; i++) {
@@ -362,7 +362,7 @@ jobs:
             await protocolHooks["tool.execute.after"]({ tool: "read" }, fresh);
             assert.match(fresh.output, /materially new recommendation/);
             assert.match(fresh.output, /run-test-review-0005-cafefeed0000/);
-            dialogueEvents = (await readFile(dialoguePath, "utf8")).trim().split("\\n").map(line => JSON.parse(line));
+            dialogueEvents = (await readFile(dialoguePath, "utf8")).trim().split("\n").map(line => JSON.parse(line));
             assert.equal(dialogueEvents.length, 5, "a fresh ID yields exactly one additional supervisor-to-worker message");
             process.env.KILO_SUPERVISOR_MODE = "1";
             const reviewerHooks = await pluginModule.default.server();
