@@ -632,7 +632,8 @@ def main() -> int:
                 )
                 log(f"review {cycle} appended cumulative advice status={status}: {first_recommendation[:180]}")
                 log(f"review {cycle} advice queued for worker delivery at the next tool-result boundary")
-                log(f"review {cycle} completed with usable report")        if consecutive_unusable_reviews >= circuit_breaker_threshold:
+                log(f"review {cycle} completed with usable report")
+        if consecutive_unusable_reviews >= circuit_breaker_threshold:
             log(
                 f"SUPERVISOR_CIRCUIT_BREAKER_OPEN: {consecutive_unusable_reviews} consecutive "
                 "reviews produced no usable report; no further reviewer model calls will be launched "
