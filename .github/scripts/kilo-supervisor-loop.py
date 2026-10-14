@@ -103,6 +103,13 @@ def read_git_snapshot(repo_root: Path) -> str:
             value = result.stdout.strip() or "(none)"
             if result.returncode:
                 value = f"(unavailable; exit {result.returncode})"
+            if label == "status" and value:
+                # Supervisor report files are diagnostic output created by this monitor,
+                # not changes made by the worker; exclude them to prevent self-triggered review loops.
+                value = "\n".join(
+                    line for line in value.splitlines()
+                    if not re.match(r"^\?\?\s+\.kilo/supervisor-reports(?:/|$)", line)
+                ) or "(no worker-visible repository status changes)"
             sections.append(f"{label}:\n{value}")
         except (OSError, subprocess.TimeoutExpired):
             sections.append(f"{label}:\n(unavailable)")
@@ -124,7 +131,7 @@ def build_review_prompt(
         previous_feedback = "(No previous supervisor recommendation.)"
     return f"""CONTINUOUS KILO WORKER REVIEW — CYCLE {cycle}
 
-You are reviewing an active worker, not replacing or restarting it. Analyze the actual evidence below. Every scheduled review must be concise, specific, and useful. If there is no new evidence or recommendation change, explicitly say that the current recommendation remains unchanged; do not invent findings just to create novelty.
+You are the supervisor role in a two-role dialogue with an active worker. Review only new evidence, material repository-state changes, or a new worker disposition. Do not restate files, snapshots, old recommendations, or unchanged observations. If nothing material warrants a new worker message, write exactly NO_NEW_DIALOGUE on one line and do not produce the standard report. Never invent novelty just to fill a review cycle.
 
 CURRENT WORKER OBJECTIVE / INSTRUCTIONS (redacted, truncated):
 {objective[-MAX_OBJECTIVE_CHARS:]}
@@ -135,7 +142,7 @@ NEW OR MOST RELEVANT WORKER OUTPUT (redacted, truncated):
 CURRENT REPOSITORY STATE:
 {git_snapshot}
 
-PREVIOUS SUPERVISOR FEEDBACK (cumulative journal tail; newer entries do not erase older ones):
+PREVIOUS SUPERVISOR MESSAGE (context only; the worker receives only the latest pending message):
 {previous_feedback[-MAX_PREVIOUS_FEEDBACK_CHARS:]}
 
 REQUIRED ACTION — REPORT-FIRST, BOUNDED REVIEW:
@@ -144,7 +151,7 @@ REQUIRED ACTION — REPORT-FIRST, BOUNDED REVIEW:
 3. Write the report to this exact path on your first available write operation, no later than your fourth tool call:
 REPORT_PATH: {report_relative_path}
 4. Use these exact headings, in order: STATUS: CONTINUE/ATTENTION/CRITICAL; Observed evidence; Previous approaches; Likely cause; Different next step; Verification; Limitations. Keep it concise (about 150–250 words). An Alternative section is optional only when the main step is blocked or materially uncertain.
-5. If no intervention is warranted, say “no change; continue” and identify the evidence supporting that decision.
+5. If no new action or materially changed recommendation is warranted, write exactly NO_NEW_DIALOGUE with no other text; the controller will not send or record a duplicate message.
 6. Do not tell the worker to restart, stop the workflow, weaken checks, or alter the existing 355-minute cutoff-only policy. Separate facts from hypotheses and do not claim unverified tests or file state.
 7. Do not include credentials, tokens, passwords, timestamps, or cycle counters in the report unless materially necessary. Your permissions remain read/search plus report-path-scoped edit/write only; do not execute commands, browse the web, delegate, or control workflows.
 8. If you cannot write the report or are about to exhaust the eight-step limit, return the same concise report in your final response prefixed by a standalone “REPORT_FALLBACK:” line. Include one evidence-supported next action and a focused verification check so the controller can recover it safely.
@@ -238,6 +245,52 @@ def read_current_recommendation(protocol_dir: Optional[Path]) -> Optional[dict]:
         "report": redact_sensitive_text(report).strip(),
         "created_at": str(value.get("created_at", ""))[:80],
     }
+
+
+def append_dialogue_event(
+    transcript_dir: Path,
+    direction: str,
+    role: str,
+    message_id: str,
+    message: str,
+) -> bool:
+    """Record only an actual role-to-role message, deduplicated by exact content."""
+    if direction not in {"supervisor_to_worker", "worker_to_supervisor"}:
+        return False
+    safe_message = redact_sensitive_text(message).strip()
+    if not safe_message:
+        return False
+    path = (transcript_dir / "agent-dialogue.jsonl").resolve()
+    if not within_directory(path, transcript_dir):
+        log("refusing dialogue event path outside the configured transcript directory")
+        return False
+    event_key = hashlib.sha256(
+        (direction + "\0" + message_id + "\0" + safe_message).encode("utf-8")
+    ).hexdigest()
+    try:
+        if path.is_file():
+            for raw in path.read_text(encoding="utf-8", errors="replace").splitlines()[-2_000:]:
+                try:
+                    if json.loads(raw).get("event_key") == event_key:
+                        return False
+                except (ValueError, AttributeError):
+                    continue
+        event = {
+            "schema_version": 1,
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+            "direction": direction,
+            "role": role,
+            "message_id": message_id,
+            "event_key": event_key,
+            "message": safe_message,
+        }
+        with path.open("a", encoding="utf-8") as stream:
+            stream.write(json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n")
+            stream.flush()
+        return True
+    except OSError as exc:
+        log(f"could not record role dialogue ({type(exc).__name__}); worker continues")
+        return False
 
 
 def dialogue_protocol_observation(protocol_dir: Optional[Path]) -> str:
@@ -361,7 +414,7 @@ def write_agent_dialogue(
         "## Review outcome\n\n"
         f"{quote_block(outcome)}\n\n"
         "## When the worker receives the advice\n\n"
-        "A usable report is added to the cumulative feedback journal by the controller. "
+        "A usable recommendation is queued as the current supervisor message by the controller. "
         "The worker receives pending advice at its next tool-result boundary; this does not interrupt an operation already in progress. "
         "The exact text appended to the worker tool result is also saved in a worker-delivery-*.md transcript.\n"
     )
@@ -499,8 +552,8 @@ def run_review(
     ))
     request_path = transcript_file(transcript_dir, cycle, "request-to-supervisor.md", prompt)
     if request_path:
-        log(f"review {cycle} exact request saved to {request_path}")
-    log_content_block(f"ACTUAL REQUEST SENT TO SUPERVISOR — review {cycle}", prompt)
+        log(f"review {cycle} request prepared")
+    # Full prompts are diagnostic input, not a role-to-role message; never echo them to the live log.
 
     def save_cli_output(value: str) -> Optional[Path]:
         return transcript_file(
@@ -512,16 +565,9 @@ def run_review(
         transcript_file(transcript_dir, cycle, "outcome.txt", value)
 
     def save_dialogue(cli_output: str, advice: str, outcome: str) -> None:
-        path = write_agent_dialogue(transcript_dir, cycle, prompt, cli_output, advice, outcome)
-        if path:
-            try:
-                # Emit the box into the live Actions log immediately after each review,
-                # including timeouts/failures. The workflow Summary step runs only at job end.
-                dialogue = path.read_text(encoding="utf-8", errors="replace")
-                log_live_dialogue_box(cycle, dialogue)
-                log(f"review {cycle} combined agent dialogue saved to {path}")
-            except OSError as exc:
-                log(f"review {cycle} transcript saved but live dialogue rendering failed ({type(exc).__name__})")
+        # Per-review diagnostics stay runner-local; published dialogue is emitted only
+        # when advice is actually injected or a worker disposition is observed.
+        write_agent_dialogue(transcript_dir, cycle, prompt, cli_output, advice, outcome)
 
     output = ""
     env = os.environ.copy()
@@ -545,8 +591,6 @@ def run_review(
             cli_path = save_cli_output(output or "")
             if cli_path:
                 log(f"review {cycle} CLI diagnostic output saved to {cli_path}")
-            if output:
-                log_content_block(f"SUPERVISOR CLI OUTPUT BEFORE TIMEOUT — review {cycle}", bounded_cli_transcript(output))
             outcome = "TIMED OUT: no usable report was produced before the reviewer timeout; worker was not interrupted and previous advice remains available."
             write_outcome(outcome)
             save_dialogue(output or "", "", outcome)
@@ -558,12 +602,10 @@ def run_review(
             log(f"review {cycle} CLI diagnostic output saved to {cli_path}")
         if rc != 0:
             safe_tail = bounded_cli_transcript(output or "")[-MAX_REVIEW_OUTPUT_CHARS:]
-            detail = safe_tail.replace("\n", " | ").strip()
             outcome = f"CLI EXIT {rc}: advice was not published for this cycle; previous advice was retained."
             write_outcome(f"{outcome}\n\n{safe_tail}")
             save_dialogue(output or "", "", outcome)
-            log_content_block(f"SUPERVISOR CLI ERROR OUTPUT — review {cycle}", safe_tail)
-            log(f"review {cycle} returned exit {rc}; worker continues. {detail[:500]}")
+            log(f"review {cycle} returned exit {rc}; worker continues; prior advice remains active")
             return None
     except (OSError, subprocess.SubprocessError) as exc:
         outcome = f"LAUNCH/PROCESS FAILURE: {type(exc).__name__}; worker continues and previous advice remains available."
@@ -600,6 +642,9 @@ def run_review(
             return None
 
     report = redact_sensitive_text(report).strip()
+    if report == "NO_NEW_DIALOGUE":
+        write_outcome("NO_NEW_DIALOGUE: no materially new recommendation; no worker message will be published")
+        return "NO_NEW_DIALOGUE"
     if len(report) > MAX_REPORT_CHARS:
         head = (MAX_REPORT_CHARS - 140) // 2
         tail = MAX_REPORT_CHARS - head - 100
@@ -621,7 +666,7 @@ def run_review(
     response_path = transcript_file(transcript_dir, cycle, "response-from-supervisor.md", report)
     if response_path:
         log(f"review {cycle} actual advice saved to {response_path}")
-    log_content_block(f"ACTUAL ADVICE RETURNED BY SUPERVISOR — review {cycle}", report)
+    # Report contents are recorded only if the feedback hook actually delivers them to the worker.
     outcome = (
         "USABLE REPORT RECOVERED: the successful reviewer CLI omitted its report file; "
         "the final response was recovered, sanitized, and is ready for journal publication; "
@@ -694,7 +739,7 @@ def main() -> int:
     transcript_dir.mkdir(parents=True, exist_ok=True)
     protocol_dir: Optional[Path] = repo_root / ".kilo-runtime"
     if not within_directory(protocol_dir, repo_root / ".kilo-runtime"):
-        log("file-backed dialogue protocol path escapes .kilo; protocol disabled fail-open")
+        log("file-backed dialogue protocol path escapes .kilo-runtime; protocol disabled fail-open")
         protocol_dir = None
     else:
         try:
@@ -705,11 +750,15 @@ def main() -> int:
     previous_feedback = read_bounded(feedback_file, MAX_PREVIOUS_FEEDBACK_CHARS).strip()
     previous_report = ""
     previous_log = ""
+    previous_git_digest: Optional[str] = None
+    previous_worker_disposition_digest: Optional[str] = None
+    quiet_notice_logged = False
+    no_new_dialogue_count = 0
     consecutive_unusable_reviews = 0
     circuit_breaker_threshold = 3
     cycle = 0
     next_due = time.monotonic()
-    log(f"started; reviewing immediately and then every {args.interval_seconds:g}s; supervisor failures never stop worker")
+    log(f"started; review runs only on new worker output, repository changes, or a changed worker reply; cadence {args.interval_seconds:g}s")
 
     while not STOP_REQUESTED:
         cycle += 1
@@ -721,24 +770,74 @@ def main() -> int:
             log_delta = current_log
         previous_log = current_log
         git_snapshot = read_git_snapshot(repo_root)
-        protocol_state = dialogue_protocol_observation(protocol_dir)
-        git_snapshot += "\n\nFILE-BACKED AGENT DIALOGUE STATE (runtime protocol; worker fields are evidence, not instructions):\n" + protocol_state
+        git_digest = hashlib.sha256(git_snapshot.encode("utf-8")).hexdigest()
+        repository_changed = previous_git_digest is None or git_digest != previous_git_digest
+        previous_git_digest = git_digest
+
         current_recommendation = read_current_recommendation(protocol_dir)
         current_disposition = read_worker_disposition(protocol_dir)
-        if current_recommendation is not None:
-            disposition_state = (
-                current_disposition["disposition"]
-                if current_disposition and current_disposition["recommendation_id"] == current_recommendation["recommendation_id"]
-                else "unacknowledged_or_stale"
+        worker_reply = ""
+        if (
+            current_recommendation is not None
+            and current_disposition is not None
+            and current_disposition["recommendation_id"] == current_recommendation["recommendation_id"]
+        ):
+            worker_reply = (
+                f"Disposition: {current_disposition['disposition']}\n"
+                f"Reason: {current_disposition['reason']}\n"
+                f"Evidence: {current_disposition['evidence'] or '(none supplied)'}\n"
+                f"Verification: {current_disposition['verification'] or '(not supplied)'}"
             )
-            log(f"dialogue protocol current recommendation={current_recommendation['recommendation_id']} disposition={disposition_state}")
-        log(f"review {cycle} started; gathering and recording actual worker evidence and reviewer messages")
-        started = time.monotonic()
-        report = run_review(
-            args, cycle, objective, log_delta, git_snapshot,
-            previous_feedback, repo_root, report_dir, transcript_dir,
-        )
-        if report is None:
+            disposition_digest = hashlib.sha256(
+                json.dumps(
+                    [
+                        current_recommendation["recommendation_id"],
+                        current_disposition["disposition"],
+                        current_disposition["reason"],
+                        current_disposition["evidence"],
+                        current_disposition["verification"],
+                    ],
+                    ensure_ascii=False,
+                ).encode("utf-8")
+            ).hexdigest()
+            if disposition_digest != previous_worker_disposition_digest:
+                append_dialogue_event(
+                    transcript_dir,
+                    "worker_to_supervisor",
+                    "worker",
+                    current_recommendation["recommendation_id"],
+                    worker_reply,
+                )
+                previous_worker_disposition_digest = disposition_digest
+                log(f"worker replied to supervisor recommendation={current_recommendation['recommendation_id']} disposition={current_disposition['disposition']}")
+                print("::group::LIVE AGENT DIALOGUE BOX — WORKER → SUPERVISOR", flush=True)
+                for message_line in worker_reply.splitlines() or ["(empty worker reply)"]:
+                    print("[agent-dialogue] " + message_line, flush=True)
+                print("::endgroup::", flush=True)
+                log_delta = (log_delta.rstrip() + "\n\nNEW WORKER-TO-SUPERVISOR MESSAGE\n" + worker_reply).strip()
+        else:
+            previous_worker_disposition_digest = None
+
+        has_new_worker_output = bool(log_delta.strip())
+        if not has_new_worker_output and not repository_changed:
+            if not quiet_notice_logged:
+                log("review skipped: no new worker output, repository change, or role dialogue; no duplicate message recorded")
+                quiet_notice_logged = True
+            report = "NO_NEW_DIALOGUE"
+        else:
+            quiet_notice_logged = False
+            log(f"review {cycle} started; new worker/repository evidence available")
+            report = run_review(
+                args, cycle, objective, log_delta, git_snapshot,
+                previous_feedback, repo_root, report_dir, transcript_dir,
+            )
+        if report == "NO_NEW_DIALOGUE":
+            consecutive_unusable_reviews = 0
+            no_new_dialogue_count += 1
+            if no_new_dialogue_count == 1:
+                log("no new actionable supervisor message; existing advice remains unchanged")
+        elif report is None:
+            no_new_dialogue_count = 0
             consecutive_unusable_reviews += 1
             log(
                 f"review {cycle} produced no usable report "
@@ -746,24 +845,22 @@ def main() -> int:
                 f"{circuit_breaker_threshold}); worker continues independently"
             )
         elif report == previous_report:
+            no_new_dialogue_count += 1
             consecutive_unusable_reviews = 0
-            log(f"review {cycle} completed with usable report; recommendation unchanged, no duplicate journal entry added")
+            if no_new_dialogue_count == 1:
+                log("review output matches the active supervisor message; duplicate delivery and recording suppressed")
         else:
+            no_new_dialogue_count = 0
             entry = (
                 f"--- SUPERVISOR ADVICE ENTRY cycle={cycle:04d} ---\n"
-                "INDEPENDENT LOOP-SUPERVISOR FEEDBACK\n"
-                "This is an append-only cumulative journal. Preserve earlier advice unless newer evidence explicitly supersedes it. "
-                "Verify recommendations independently before changing code.\n\n"
+                "CURRENT SUPERVISOR MESSAGE — this file contains only the latest undelivered recommendation. "
+                "Older messages are kept in the role-dialogue record only. Verify recommendations independently before changing code.\n\n"
                 + report.strip()
                 + f"\n--- END SUPERVISOR ADVICE ENTRY cycle={cycle:04d} ---\n"
             )
             try:
-                try:
-                    existing = feedback_file.read_text(encoding="utf-8", errors="replace")
-                except FileNotFoundError:
-                    existing = ""
-                separator = "" if not existing or existing.endswith("\n") else "\n"
-                atomic_write(feedback_file, existing + separator + entry)
+                # Replace the queue with the latest message; never replay a cumulative history to the worker.
+                atomic_write(feedback_file, entry)
             except OSError as exc:
                 consecutive_unusable_reviews += 1
                 log(

@@ -104,20 +104,21 @@ class SupervisorLoopTests(unittest.TestCase):
 
             self.assertEqual(code, 0)
             live_text = live_output.getvalue()
-            self.assertIn("::group::LIVE AGENT DIALOGUE BOX — review 0001", live_text)
-            self.assertIn("Worker/controller → supervisor: actual request and evidence", live_text)
-            self.assertIn("Supervisor → worker: advice returned by the reviewer", live_text)
-            self.assertIn("Recommended next action: verify changed evidence 1", live_text)
-            self.assertIn("::endgroup::", live_text)
+            # Internal review inputs/reports are not echoed into Actions logs.
+            self.assertNotIn("::group::LIVE AGENT DIALOGUE BOX — review 0001", live_text)
+            self.assertNotIn("Worker/controller → supervisor: actual request and evidence", live_text)
+            self.assertNotIn("Recommended next action: verify changed evidence 1", live_text)
+            self.assertIn("review skipped: no new worker output", live_text)
             published = feedback.read_text(encoding="utf-8")
             self.assertIn("worker review 1", published)
-            self.assertIn("worker review 2", published)
+            self.assertNotIn("worker review 2", published)
             prompts = capture.read_text(encoding="utf-8")
-            self.assertIn("worker review 1", prompts)
+            self.assertNotIn("worker review 2", prompts)
+            self.assertEqual(prompts.count("---PROMPT-END---"), 1, "unchanged worker state should not launch repeated reviews")
             self.assertIn("[REDACTED]", prompts)
             self.assertNotIn("secret-value", prompts)
             self.assertNotIn("ghp_123456789012345678901234567890", prompts)
-            self.assertEqual(len(list(report_dir.glob("run-test-run-attempt-1-review-*.md"))), 2)
+            self.assertEqual(len(list(report_dir.glob("run-test-run-attempt-1-review-*.md"))), 1, "supervisor-generated reports must not trigger a second review")
 
             first_prompt = prompts.split("\n---PROMPT-END---\n", 1)[0]
             request_file = transcripts / "review-0001-request-to-supervisor.md"
@@ -296,8 +297,8 @@ class SupervisorLoopTests(unittest.TestCase):
                 ])
 
             self.assertEqual(code, 0)
-            self.assertIn("MISSING/EMPTY REPORT", captured.getvalue())
-            self.assertIn("previous advice retained", captured.getvalue())
+            self.assertNotIn("MISSING/EMPTY REPORT", captured.getvalue(), "internal supervisor diagnostics must not be echoed into live logs")
+            self.assertIn("produced no report file or recoverable final response; previous advice retained", captured.getvalue())
             self.assertEqual(feedback.read_text(encoding="utf-8"), "Previously published advice.\n")
             self.assertFalse((report_dir / "run-test-empty-recovery-attempt-1-review-0001.md").exists())
             self.assertIn(
@@ -305,7 +306,7 @@ class SupervisorLoopTests(unittest.TestCase):
                 (transcripts / "review-0001-outcome.txt").read_text(encoding="utf-8"),
             )
 
-    def test_three_consecutive_timeouts_open_circuit_breaker_without_worker_failure(self):
+    def test_single_timeout_does_not_repeat_without_new_evidence(self):
         import contextlib
         import io
 
@@ -351,14 +352,14 @@ class SupervisorLoopTests(unittest.TestCase):
                 ])
             self.assertEqual(code, 0)
             output = captured.getvalue()
-            self.assertIn("SUPERVISOR_CIRCUIT_BREAKER_OPEN", output)
-            self.assertIn("::group::LIVE AGENT DIALOGUE BOX — review 0001", output)
-            self.assertIn("TIMED OUT", output)
-            self.assertIn("No usable advice returned", output)
-            self.assertIn("worker remains unaffected", output)
-            self.assertEqual(output.count("(consecutive unusable reviews:"), 3)
+            self.assertNotIn("SUPERVISOR_CIRCUIT_BREAKER_OPEN", output)
+            self.assertNotIn("::group::LIVE AGENT DIALOGUE BOX — review 0001", output)
+            self.assertIn("timed out; worker remains unaffected", output)
+            self.assertNotIn("mock slow reviewer started", output)
+            self.assertEqual(output.count("(consecutive unusable reviews:"), 1)
+            self.assertIn("review skipped: no new worker output", output)
             dialogues = list(transcripts.glob("review-*-agent-dialogue.md"))
-            self.assertEqual(len(dialogues), 3)
+            self.assertEqual(len(dialogues), 1, "a timeout with unchanged evidence should not trigger repeated reviews")
             self.assertEqual(feedback.read_text(encoding="utf-8"), "")
 
 
