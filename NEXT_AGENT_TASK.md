@@ -1,10 +1,10 @@
-# Next Agent Task: Cycle 41 — Continue Paper Trading Monitoring & Data Acquisition
+# Next Agent Task: Cycle 42 — Continue Paper Trading Monitoring & Data Acquisition
 
 ## Context
 
-Cycle 40 maintained the paper-trading track record for the incumbent TSMOM strategy (`tsmomentum_spytrend_001`) at **446 days** (2025-01-02 → 2026-10-13) with no new trading data available.
+Cycle 41 maintained the paper-trading track record for the incumbent TSMOM strategy (`tsmomentum_spytrend_001`) at **446 days** (2025-01-02 → 2026-10-13) with no new trading data available.
 
-**Key findings from Cycle 40:**
+**Key findings from Cycle 41:**
 - Data fetch (force=True, end_date 2026-11-30) completed. Latest available for the 7 incumbent ETFs (SPY, QQQ, IWM, TLT, GLD, EFA, EEM): **2026-10-13** (no new trading days beyond prior cycle). ^VIX extends to 2026-10-13.
 - **Root-cause fix preserved**: yfinance treats `end` as EXCLUSIVE. The replay script's `end_date="2026-10-14"` correctly captures data through 2026-10-13 due to yfinance exclusive-end semantics, with replay-date upper bound hardcoded to `"2026-10-13"`.
 - Track record remains at **446 days** (2025-01-02 → 2026-10-13). Replay showed: NAV **$136,593.98** (+36.59%), max DD **-1.82%**, Sharpe **2.0210**, rolling 63-day Sharpe **0.3669**.
@@ -12,7 +12,7 @@ Cycle 40 maintained the paper-trading track record for the incumbent TSMOM strat
 - All primary go/no-go gates from Cycle 22 still pass: track record 446 days (≫126), Sharpe 2.0210 (≫0.9), max DD -1.82% (≪15%), 6 regime flips (>1).
 - Current regime: Risk-on (SPY ≥ 200-day SMA) for **131 consecutive days**.
 - Data integrity verified: all 7 incumbent ETF parquet files end at 2026-10-13; ^VIX ends at 2026-10-13 (8,505 rows, 1993-01-04 → 2026-10-13).
-- Created `research/reports/paper_trading_validation_013.md`.
+- Created `research/reports/paper_trading_validation_014.md`.
 
 ## Objective
 
@@ -21,8 +21,8 @@ Re-attempt data acquisition from Yahoo Finance when/if more trading days become 
 ## Acceptance Criteria
 
 - [ ] Fetch updated YFinance data for the universe + SPY + ^VIX using `src/data/yfinance_fetcher.py` (force=True) to extend `data/raw/*.parquet` beyond 2026-10-13
-- [ ] If new trading days exist: re-run `research/run_paper_trading_replay.py` (end_date is now correctly `"2026-10-14"` to capture the latest trading day due to yfinance exclusive-end semantics), verify track record extended (document actual count), update `research/reports/paper_trading_rolling.md`, create `research/reports/paper_trading_validation_014.md`, update README.md with Cycle 41 summary, document drift flag status/trajectory/duration
-- [ ] If no new trading days exist: document blocker clearly in validation report and README, do not fabricate metrics; prepare NEXT_AGENT_TASK.md for Cycle 42 with same monitoring objective and updated context
+- [ ] If new trading days exist: re-run `research/run_paper_trading_replay.py` (end_date is now correctly `"2026-10-14"` to capture the latest trading day due to yfinance exclusive-end semantics), verify track record extended (document actual count), update `research/reports/paper_trading_rolling.md`, create `research/reports/paper_trading_validation_015.md`, update README.md with Cycle 42 summary, document drift flag status/trajectory/duration
+- [ ] If no new trading days exist: document blocker clearly in validation report and README, do not fabricate metrics; prepare NEXT_AGENT_TASK.md for Cycle 43 with same monitoring objective and updated context
 - [ ] Do not modify incumbent strategy logic (`config/simulation_candidate_001.yaml` is frozen)
 - [ ] Report findings honestly; research/backtesting only
 
