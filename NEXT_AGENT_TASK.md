@@ -1,14 +1,15 @@
-# Next Agent Task: Cycle 33 — Continue Paper Trading Monitoring & Data Acquisition
+# Next Agent Task: Cycle 34 — Continue Paper Trading Monitoring & Data Acquisition
 
 ## Context
 
-Cycle 32 re-attempted data acquisition from Yahoo Finance to extend the paper-trading track record for the incumbent TSMOM strategy (tsmomentum_spytrend_001) beyond the previous date of 2026-10-12. No additional trading days were available; the track record remains at **445 days**.
+Cycle 33 re-attempted data acquisition from Yahoo Finance to extend the paper-trading track record for the incumbent TSMOM strategy (tsmomentum_spytrend_001) beyond the previous date of 2026-10-12.
 
-**Key findings from Cycle 32:**
+**Key findings from Cycle 33:**
 - All primary go/no-go gates from Cycle 22 still pass: track record 445 days (≫126), Sharpe 2.0404 (≫0.9), max DD -1.59% (≪15%), 6 regime flips (>1)
-- **DRIFT FLAG PERSISTS**: `low_rolling_sharpe` triggered on 2026-10-12 continues to be active (rolling 63-day Sharpe = 0.4892 < 0.5 threshold)
+- **DRIFT FLAG PERSISTS**: `low_rolling_sharpe` triggered on 2026-10-12 continues to be active (rolling 63-day Sharpe = 0.4892 < 0.5 threshold). Duration remains at 1 day below threshold since no new trading days were available.
 - Current regime: Risk-on (SPY ≥ 200-day SMA) for 130 consecutive days
-- Data availability: No new trading days were available from Yahoo Finance at fetch time (2026-10-14)
+- Data availability: No new trading days were available from Yahoo Finance at fetch time (2026-10-14). Equity data extends to 2026-10-12; ^VIX extends to 2026-10-13.
+- **Data integrity note**: The ^VIX.parquet cache was truncated to only 2 rows (2026-10-12 to 2026-10-13) during the force=True re-fetch. This does not affect the incumbent strategy (which does not use VIX) but should be restored from git history if future cycles require VIX data.
 
 ## Objective
 
@@ -21,10 +22,10 @@ Re-attempt data acquisition from Yahoo Finance to extend the paper trading track
 - [ ] Re-run `research/run_paper_trading_replay.py` to extend the paper trading track record
 - [ ] Verify track record extended (target: any additional trading days; document actual count)
 - [ ] Update `research/reports/paper_trading_rolling.md` with latest state
-- [ ] Create `research/reports/paper_trading_validation_006.md` with extended validation results
+- [ ] Create `research/reports/paper_trading_validation_007.md` with extended validation results
 - [ ] Document drift flag status: if `low_rolling_sharpe` persists, analyze trajectory and duration
-- [ ] Update README.md with Cycle 33 summary (track record length, last date, NAV, max DD, drift status)
-- [ ] Prepare NEXT_AGENT_TASK.md for Cycle 34 (continue monitoring or reassess based on regime stability and drift flag persistence)
+- [ ] Update README.md with Cycle 34 summary (track record length, last date, NAV, max DD, drift status)
+- [ ] Prepare NEXT_AGENT_TASK.md for Cycle 35 (continue monitoring or reassess based on regime stability and drift flag persistence)
 
 ## Scope Boundaries
 
@@ -54,4 +55,5 @@ with open('data/processed/paper_trading_state.yaml') as f:
     s=yaml.safe_load(f)
 print('days', len(s['run_history']), 'last', s['last_run_date'], 'nav', s['current_nav'], 'dd', s['max_drawdown'])
 print('drift_flags:', s.get('drift_flags', {}))
+"
 ```

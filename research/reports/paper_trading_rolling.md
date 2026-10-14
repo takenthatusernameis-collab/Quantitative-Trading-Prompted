@@ -1,6 +1,6 @@
 # Paper-Trading Rolling Report
 
-**Generated:** 2026-10-14 03:30:00 UTC
+**Generated:** 2026-10-14 03:29:06 UTC
 **Last Run Date:** 2026-10-12
 **Days Tracked:** 445
 
@@ -25,7 +25,7 @@
 
 ## Drift Monitoring
 
-- **low_rolling_sharpe**: {'value': 0.48917289692364996, 'threshold': 0.5, 'date': '2026-10-12'}
+- **low_rolling_sharpe**: {'value': np.float64(0.48917289692364996), 'threshold': 0.5, 'date': '2026-10-12'}
 
 ## Enhanced Drift Monitoring
 
