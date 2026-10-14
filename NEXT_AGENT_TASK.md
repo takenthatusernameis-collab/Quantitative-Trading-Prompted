@@ -1,49 +1,50 @@
-# Next Agent Task: Analyze recent paper trading performance drift (Bounded)
+# Next Agent Task: Continue Paper Trading Monitoring & Data Acquisition (Bounded)
 
 ## Context
 
-The paper trading strategy (TSMOM incumbent, simulation_candidate_001) has a drift flag for low rolling Sharpe. The paper trading state (data/processed/paper_trading_state.yaml) shows:
-- last_run_date: 2026-07-16
-- drift_flags.low_rolling_sharpe.value: 0.3495 (threshold 0.5)
-- peak_nav: 139120.07, current_nav: 134844.60, max_dd: -0.03073
-- cumulative_returns has 384 values
+The paper trading drift analysis (`research/reports/paper_trading_drift_analysis_001.md`) confirms:
+- Low rolling Sharpe (0.3495 vs 0.5 threshold) triggered on 2026-07-16 — **1 day duration**
+- Root cause: concentrated drawdown cluster in Jun–Jul 2026 during risk-on regime
+- Strategy mechanics verified against frozen config (`config/simulation_candidate_001.yaml`) — **no deviations**
+- No strategy modifications made or warranted
+- >20-day persistence threshold for action **not met**
 
-The microcap hypothesis remains blocked by data infrastructure; other opportunity shortlist hypotheses have been rejected/failed. Strategy is frozen (no logic/parameter changes).
+All primary go/no-go gates still pass (track record 384 > 126, full-period Sharpe > 0.9, max DD -3.07% < 15%, regime flips observed). Strategy remains frozen.
 
 ## Objective
 
-Analyze recent paper trading performance to understand the drift flag source without modifying strategy logic. Produce a concise, evidence-backed analysis.
+Re-attempt data acquisition from Yahoo Finance to extend the paper trading track record beyond 2026-07-16. Re-run deterministic replay if new trading days are available. Continue monitoring rolling Sharpe trajectory.
 
-## Acceptance criteria
+## Acceptance Criteria
 
-1. **Performance decomposition:** Examine recent P&L/returns vs prior period; identify when rolling Sharpe declined and magnitude.
-2. **Market context:** Brief context on conditions around the flagged period using available data/config.
-3. **Strategy mechanics check:** Verify execution per documented specs (config/simulation_candidate_001.yaml) - universe, regime filter, costs, rebalance.
-4. **No strategy modifications:** Do not change logic/parameters, do not backtest new variants.
-5. **Document findings:** Record observations in research/reports/ with clear summary and evidence references.
-6. **Minimal verification:** Run existing tests to ensure nothing is broken.
+1. **Data fetch:** Run `research/run_paper_trading_replay.py` with `force=True` to refresh raw parquet cache from Yahoo Finance
+2. **Replay execution:** If new trading days exist beyond 2026-07-16, extend the track record deterministically
+3. **Drift monitoring:** Record rolling 63-day Sharpe and drift flag status (duration, value)
+4. **Gate verification:** Confirm all primary go/no-go gates still pass
+5. **Artifacts:** Update `data/processed/paper_trading_state.yaml`, `research/reports/paper_trading_rolling.md`, and create `research/reports/paper_trading_validation_XXX.md`
+6. **No strategy changes:** Do not modify config, logic, or parameters
 
-## Validation commands
+## Validation Commands
 
 ```bash
-# Inspect paper trading state
+# Fetch new data and replay
+python3 research/run_paper_trading_replay.py --force --end-date 2026-11-30
+
+# Inspect updated state
 cat data/processed/paper_trading_state.yaml
 
-# Inspect strategy config
-cat config/simulation_candidate_001.yaml
-
-# Run existing tests
-python3 -m pytest .github/scripts/test_kilo_supervisor_loop.py -v
+# Check rolling Sharpe report
+cat research/reports/paper_trading_rolling.md
 ```
 
-## Scope boundaries
+## Scope Boundaries
 
-- **No strategy modifications.** Read-only analysis.
+- **No strategy modifications.** Read-only analysis and replay only.
 - **No new backtests constituting strategy changes.** Do not create new candidate configs.
 - **Research/backtesting only.** No live trading.
 - **Preserve evidence.** Be precise about what the data shows.
-- **Do not fabricate market data.** Work with what exists.
+- **Do not fabricate market data.** Work with what Yahoo Finance provides.
 
-## Completion standard
+## Completion Standard
 
-Concise evidence-backed analysis of recent performance drift including decomposition, market context, strategy mechanics verification, confirmation no modifications made, with references to files inspected and test results.
+Updated paper trading state with extended track record (if new data available) or confirmed current state (if no new data), including rolling Sharpe trajectory, drift flag status, gate verification, and evidence references.
