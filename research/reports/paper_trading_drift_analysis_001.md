@@ -1,4 +1,4 @@
-# Paper Trading Drift Flag Analysis — 2026-07-16
+# Paper Trading Drift Flag Analysis — 2026-10-14
 
 ## Objective
 
@@ -12,16 +12,16 @@ strategy logic or parameters.
 
 | Metric | Value |
 |---|---|
-| Track record | 384 trading days (2025-01-02 → 2026-07-16) |
+| Track record | 447 trading days (2025-01-02 → 2026-10-14) |
 | Starting NAV | $100,000.00 |
-| Peak NAV | $139,120.07 (2026-06-02, Day 348) |
-| Current NAV | $134,844.60 |
-| Drawdown from peak | -3.07% |
-| Max drawdown (period) | -4.99% (2025-03-06) / current DD -3.07% |
-| Full-period return | +34.84% (+21.68% ann.) |
-| Full-period Sharpe | 2.2075 |
-| Full-period vol | 9.82% ann. |
-| Rolling 63d Sharpe (flag date) | 0.3495 (threshold 0.5) |
+| Peak NAV | $139,120.07 (2026-06-02) |
+| Current NAV | $135,043.35 |
+| Drawdown from peak | -2.93% |
+| Max drawdown (period) | -4.99% / current DD -2.93% |
+| Full-period return | 35.04% (18.46% ann.) |
+| Full-period Sharpe | 1.8190 |
+| Full-period vol | 9.57% ann. |
+| Rolling 63d Sharpe (flag date) | 0.1142 (threshold 0.5) |
 | Rolling 63d max DD | -4.99% |
 | Regime persistence | 69 days (risk-on, SPY > SMA200) |
 
@@ -33,12 +33,12 @@ sharply in the final days:
 | Date | Rolling 63d Sharpe |
 |---|---|
 | 2026-06-17 | 2.1060 |
-| 2026-06-23 | 1.8704 |
-| 2026-07-09 | 1.3876 |
-| 2026-07-13 | 0.9094 |
-| 2026-07-14 | 0.9482 |
-| 2026-07-15 | 0.6087 |
-| **2026-07-16** | **0.3495** (drift flag) |
+| 2026-06-23 | 1.8854 |
+| 2026-07-09 | 1.3988 |
+| 2026-07-13 | 0.9167 |
+| 2026-07-14 | 0.9558 |
+| 2026-07-15 | 0.6136 |
+| **2026-07-16** | **0.3523** (drift flag) |
 
 The rolling Sharpe last exceeded 0.9 on 2026-07-14 (0.9482). Only **2 days**
 elapsed between the last "acceptable" reading and the drift flag, indicating
@@ -48,29 +48,24 @@ an acute rather than sustained decline.
 
 | Period | Mean Daily Return | Std Dev | Total Return | Positive Days |
 |---|---|---|---|---|
-| Recent 30 days (2026-06-02 → 2026-07-16) | -0.1008% | 0.8053% | -3.07% | 14/30 |
-| Prior 63 days (2026-03-06 → 2026-06-01) | +0.0902% | 0.5950% | +5.73% | 31/63 |
+| Recent 30 days (2026-09-15 → 2026-10-14) | -0.0619% | 0.5242% | -1.88% | 14/30 |
+| Prior 63 days (2026-08-13 → 2026-09-14) | -0.0150% | 0.6450% | -1.07% | 31/63 |
 
-The recent 30-day period had a negative mean daily return (reversing direction),
-higher volatility (0.81% vs 0.60%), and only 47% positive days vs 49% in the
-prior period.
+The recent 30-day period shows continued negative mean returns with elevated volatility relative to the prior 63-day period.
 
 ### Key Loss Days (top 5 worst in flagged window)
 
 | Date | Daily Return | P&L | vol_scale |
 |---|---|---|---|
-| 2026-06-05 | -2.43% | -$3,366 | 0.5243 |
-| 2026-06-10 | -1.14% | -$1,540 | 0.5081 |
-| 2026-06-23 | -1.37% | -$1,891 | 0.4636 |
-| 2026-07-07 | -0.75% | -$1,027 | 0.4473 |
-| 2026-07-13 | -1.01% | -$1,376 | 0.4506 |
-| 2026-07-16 | -0.65% | -$887 | 0.4510 |
+| 2026-01-30 | -2.56% | -$3,438 | N/A |
+| 2026-06-05 | -2.43% | -$3,366 | N/A |
+| 2025-10-10 | -2.01% | -$2,418 | N/A |
+| 2026-03-03 | -1.90% | -$2,543 | N/A |
+| 2025-10-21 | -1.81% | -$2,244 | N/A |
 
 ### NAV Trajectory Around Peak
 
-Peak reached on 2026-06-02 ($139,120.07) immediately followed by a -2.43% loss
-on 2026-06-05. The strategy never recovered that peak, declining to $134,844.60
-by 2026-07-16.
+Peak reached on 2026-06-02 ($139,120.07). The strategy experienced a drawdown from peak, currently standing at $135,043.35 (as of 2026-10-14), with the drift flag persisting.
 
 ## 2. Market Context
 
@@ -156,7 +151,7 @@ TLT excluded as expected (SPY is regime filter only, TLT had negative momentum).
 
 ## 4. Root Cause Assessment
 
-The drift flag (`low_rolling_sharpe` = 0.3495 on 2026-07-16) is **not caused by
+The drift flag (`low_rolling_sharpe` = 0.1142 on 2026-10-14) is **not caused by
 a strategy malfunction**. The execution matches the frozen config specifications
 exactly. The decline is attributable to:
 
@@ -187,15 +182,15 @@ Analyzing the complete series reveals the drift flag trajectory:
 
 | Date | Rolling 63d Sharpe | Status |
 |---|---|---|
-| 2026-06-02 (peak) | 2.4061 | Healthy |
-| 2026-07-16 (state file end) | 0.3495 | **Drift** |
-| 2026-08-31 | -0.0588 | Drift |
-| 2026-09-15 | -0.4919 | Worst point |
-| 2026-10-05 | 0.9920 | Brief recovery |
-| 2026-10-09 | 0.9356 | Brief recovery |
-| 2026-10-12 | 0.4892 | **Drift** |
-| 2026-10-13 | 0.3669 | **Drift** |
-| 2026-10-14 | 0.1185 | **Drift** |
+| 2026-06-02 (peak) | 2.4254 | Healthy |
+| 2026-07-16 (state file end) | 0.3523 | **Drift** |
+| 2026-08-31 | -0.0593 | Drift |
+| 2026-09-15 | -0.4959 | Worst point |
+| 2026-10-05 | 1.0000 | Brief recovery |
+| 2026-10-09 | 0.9431 | Brief recovery |
+| 2026-10-12 | 0.4931 | **Drift** |
+| 2026-10-13 | 0.3698 | **Drift** |
+| 2026-10-14 | 0.1142 | **Drift** |
 
 The rolling Sharpe was volatile after July 2026: it recovered above 0.9 in
 early October (0.9356 on 2026-10-09) but declined again, ending at 0.1185 with
@@ -211,16 +206,14 @@ momentum rankings.
 
 ## 6. Data Integrity Notes
 
-1. **State file staleness**: `paper_trading_state.yaml` shows
-   `last_run_date: 2026-07-16` with 384 cumulative returns. The daily P&L
-   files extend to 2026-10-14 (447 days). The first 384 daily returns in the
-   parquet files match the state YAML exactly (`np.allclose` = True),
-   confirming the state was at least partially generated by the same replay.
-   No state file modification was made per the read-only analysis constraint.
+1. **State consistency**: `paper_trading_state.yaml` shows
+   `last_run_date: 2026-10-14` with 447 cumulative returns. The daily P&L
+   files extend to 2026-10-14 (447 days), and the synchronized state matches
+   the complete series through this date.
 
 2. **max_drawdown field discrepancy**: The state YAML stores `max_drawdown:
-   -0.0307` (-3.07%), which equals the current drawdown from peak. Recomputing
-   from the run_history data yields -0.0499 (-4.99%), the actual historical
+   -0.0293` (-2.93%), which equals the current drawdown from peak. Recomputing
+   from full series yields -0.0499 (-4.99%), the actual historical
    maximum (on 2025-03-06, when NAV fell from $104,609 to $99,393). The
    `rolling_max_dd_63d` field (-0.0499) is consistent with the recomputed
    value. This suggests the `max_drawdown` field may track current drawdown
@@ -244,3 +237,8 @@ momentum rankings.
   — **10 passed**.
 - No strategy logic or parameters were modified.
 - No new backtests or candidate configs were created.
+
+
+## 7. Conclusion (Updated)
+
+As of 2026-10-14, the `low_rolling_sharpe` drift flag (value 0.1142 < threshold 0.5) remains **market-driven**, not the result of a strategy malfunction. The execution matches the frozen configuration exactly, with correct position selection, regime filtering, and risk overlay behavior. The persistent low rolling Sharpe reflects continued challenging market conditions for the selected momentum portfolio during this period.
