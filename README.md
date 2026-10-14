@@ -40,6 +40,14 @@ This repository implements a disciplined quantitative research process focused o
 
 ## Current Status
 
+**Cycle 40**: Continue Paper Trading Monitoring & Data Acquisition — **NO NEW DATA AVAILABLE, DRIFT FLAG PERSISTS (2 DAYS)**.
+- Fetched updated Yahoo Finance data for 7-ETF universe + SPY + ^VIX (force=True, end_date 2026-11-30). Latest available: **2026-10-13** (same as previous cycle). No new trading days available as of 2026-10-14 fetch.
+- **Root-cause fix remains**: yfinance treats `end` as EXCLUSIVE. The replay script's `end_date="2026-10-14"` correctly captures data through 2026-10-13 due to yfinance exclusive-end semantics; replay-date upper bound hardcoded to `"2026-10-13"`.
+- No new data to replay: track record remains at **446 days** (2025-01-02 → 2026-10-13). Results unchanged: NAV **$136,593.98** (+36.59%); max drawdown **-1.82%**; Sharpe **2.0210**; rolling 63-day Sharpe **0.3669**. All primary go/no-go gates still pass (track record 446 > 126, Sharpe 2.02 > 0.9, max DD -1.82% < 15%, 6 regime flips > 1). Regime unchanged (risk-on, 131 days).
+- **Drift flag persists**: `low_rolling_sharpe` on 2026-10-12 (0.4892) and 2026-10-13 (0.3669) — **2 consecutive days**. Trajectory over last 10 days is volatile (0.18–1.00), consistent with single low-return days moving the 63-day window rather than sustained degradation. Not yet at the >20-day persistence threshold.
+- Data integrity verified: all 7 incumbent ETF parquet files end at 2026-10-13; ^VIX ends at 2026-10-13 (8,505 rows, 1993-01-04 → 2026-10-13). State YAML header matches final run_history entry (446 records).
+- Artifacts: `data/processed/paper_trading_state.yaml`, `research/reports/paper_trading_rolling.md`, `research/reports/paper_trading_validation_013.md`. Next cycle should re-attempt data fetch when more trading days elapse and continue monitoring the rolling Sharpe trajectory.
+
 **Cycle 39**: Continue Paper Trading Monitoring & Data Acquisition — **NO NEW DATA AVAILABLE, DRIFT FLAG PERSISTS (2 DAYS)**.
 - Fetched updated Yahoo Finance data for 7-ETF universe + SPY + ^VIX (force=True, end_date 2026-11-30). Latest available: **2026-10-13** (same as previous cycle). No new trading days available as of 2026-10-14 fetch.
 - **Root-cause fix remains**: yfinance treats `end` as EXCLUSIVE. The replay script's `end_date="2026-10-14"` correctly captures data through 2026-10-13 due to yfinance exclusive-end semantics; replay-date upper bound hardcoded to `"2026-10-13"`.
