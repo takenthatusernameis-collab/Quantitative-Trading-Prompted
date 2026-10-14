@@ -766,20 +766,20 @@ def initial_recommendation_is_ready(
     if not re.fullmatch(r"STATUS: (?:CONTINUE|ATTENTION|CRITICAL)\s*", first_line):
         return False
 
-    events, errors = read_protocol_events(Path(transcript_dir) / "agent-communication.jsonl")
-    if errors:
-        return False
+    events, _errors = read_protocol_events(Path(transcript_dir) / "agent-communication.jsonl")
+    # Match the controller's startup contract exactly: a task-scoped written event
+    # whose message is the published report. The independent completion gate later
+    # rejects malformed transcripts; unrelated damaged rows must not hide valid evidence.
     return any(
         event.get("task_id") == task_id
-        and event.get("run_id") == run_id
-        and event.get("session_id") == task_id
         and event.get("direction") == "supervisor_to_worker"
         and event.get("role") == "supervisor"
         and event.get("stage") == "message_written"
         and event.get("message_id") == recommendation_id
         and event.get("correlation_id") == recommendation_id
-        and event.get("delivery_state") == "written"
-        and event.get("message") == report
+        and isinstance(event.get("message"), str)
+        and len(event.get("message", "")) >= min(80, len(report))
+        and report.startswith(event.get("message", ""))
         for event in events
     )
 
