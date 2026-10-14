@@ -95,7 +95,7 @@ async function saveWorkerDelivery(transcriptDir, injectionText, sequence, recomm
   if (!transcriptDir) return null;
   const destination = resolve(transcriptDir, "agent-dialogue.jsonl");
   if (!isInside(transcriptDir, destination)) return null;
-  const safeMessage = redactSensitiveText(injectionText).trim();
+  const safeMessage = redactSensitiveText(injectionText);
   const messageId = recommendationId || "unlinked-recommendation";
   const eventKey = digest("supervisor_to_worker\0" + messageId + "\0" + safeMessage);
   try {
