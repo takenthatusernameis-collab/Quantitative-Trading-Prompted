@@ -135,7 +135,7 @@ NEW OR MOST RELEVANT WORKER OUTPUT (redacted, truncated):
 CURRENT REPOSITORY STATE:
 {git_snapshot}
 
-PREVIOUS SUPERVISOR FEEDBACK (cumulative journal tail; newer entries do not erase older ones):
+PREVIOUS SUPERVISOR MESSAGE (context only; the worker receives only the latest pending message):
 {previous_feedback[-MAX_PREVIOUS_FEEDBACK_CHARS:]}
 
 REQUIRED ACTION — REPORT-FIRST, BOUNDED REVIEW:
@@ -407,7 +407,7 @@ def write_agent_dialogue(
         "## Review outcome\n\n"
         f"{quote_block(outcome)}\n\n"
         "## When the worker receives the advice\n\n"
-        "A usable report is added to the cumulative feedback journal by the controller. "
+        "A usable recommendation is queued as the current supervisor message by the controller. "
         "The worker receives pending advice at its next tool-result boundary; this does not interrupt an operation already in progress. "
         "The exact text appended to the worker tool result is also saved in a worker-delivery-*.md transcript.\n"
     )
@@ -545,8 +545,8 @@ def run_review(
     ))
     request_path = transcript_file(transcript_dir, cycle, "request-to-supervisor.md", prompt)
     if request_path:
-        log(f"review {cycle} exact request saved to {request_path}")
-    log_content_block(f"ACTUAL REQUEST SENT TO SUPERVISOR — review {cycle}", prompt)
+        log(f"review {cycle} request prepared")
+    # Full prompts are diagnostic input, not a role-to-role message; never echo them to the live log.
 
     def save_cli_output(value: str) -> Optional[Path]:
         return transcript_file(
@@ -558,16 +558,9 @@ def run_review(
         transcript_file(transcript_dir, cycle, "outcome.txt", value)
 
     def save_dialogue(cli_output: str, advice: str, outcome: str) -> None:
-        path = write_agent_dialogue(transcript_dir, cycle, prompt, cli_output, advice, outcome)
-        if path:
-            try:
-                # Emit the box into the live Actions log immediately after each review,
-                # including timeouts/failures. The workflow Summary step runs only at job end.
-                dialogue = path.read_text(encoding="utf-8", errors="replace")
-                log_live_dialogue_box(cycle, dialogue)
-                log(f"review {cycle} combined agent dialogue saved to {path}")
-            except OSError as exc:
-                log(f"review {cycle} transcript saved but live dialogue rendering failed ({type(exc).__name__})")
+        # Per-review diagnostics stay runner-local; published dialogue is emitted only
+        # when advice is actually injected or a worker disposition is observed.
+        write_agent_dialogue(transcript_dir, cycle, prompt, cli_output, advice, outcome)
 
     output = ""
     env = os.environ.copy()
@@ -591,8 +584,6 @@ def run_review(
             cli_path = save_cli_output(output or "")
             if cli_path:
                 log(f"review {cycle} CLI diagnostic output saved to {cli_path}")
-            if output:
-                log_content_block(f"SUPERVISOR CLI OUTPUT BEFORE TIMEOUT — review {cycle}", bounded_cli_transcript(output))
             outcome = "TIMED OUT: no usable report was produced before the reviewer timeout; worker was not interrupted and previous advice remains available."
             write_outcome(outcome)
             save_dialogue(output or "", "", outcome)
@@ -604,12 +595,10 @@ def run_review(
             log(f"review {cycle} CLI diagnostic output saved to {cli_path}")
         if rc != 0:
             safe_tail = bounded_cli_transcript(output or "")[-MAX_REVIEW_OUTPUT_CHARS:]
-            detail = safe_tail.replace("\n", " | ").strip()
             outcome = f"CLI EXIT {rc}: advice was not published for this cycle; previous advice was retained."
             write_outcome(f"{outcome}\n\n{safe_tail}")
             save_dialogue(output or "", "", outcome)
-            log_content_block(f"SUPERVISOR CLI ERROR OUTPUT — review {cycle}", safe_tail)
-            log(f"review {cycle} returned exit {rc}; worker continues. {detail[:500]}")
+            log(f"review {cycle} returned exit {rc}; worker continues; prior advice remains active")
             return None
     except (OSError, subprocess.SubprocessError) as exc:
         outcome = f"LAUNCH/PROCESS FAILURE: {type(exc).__name__}; worker continues and previous advice remains available."
@@ -646,6 +635,9 @@ def run_review(
             return None
 
     report = redact_sensitive_text(report).strip()
+    if report == "NO_NEW_DIALOGUE":
+        write_outcome("NO_NEW_DIALOGUE: no materially new recommendation; no worker message will be published")
+        return "NO_NEW_DIALOGUE"
     if len(report) > MAX_REPORT_CHARS:
         head = (MAX_REPORT_CHARS - 140) // 2
         tail = MAX_REPORT_CHARS - head - 100
@@ -667,7 +659,7 @@ def run_review(
     response_path = transcript_file(transcript_dir, cycle, "response-from-supervisor.md", report)
     if response_path:
         log(f"review {cycle} actual advice saved to {response_path}")
-    log_content_block(f"ACTUAL ADVICE RETURNED BY SUPERVISOR — review {cycle}", report)
+    # Report contents are recorded only if the feedback hook actually delivers them to the worker.
     outcome = (
         "USABLE REPORT RECOVERED: the successful reviewer CLI omitted its report file; "
         "the final response was recovered, sanitized, and is ready for journal publication; "
