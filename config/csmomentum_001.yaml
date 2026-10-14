@@ -1,0 +1,72 @@
+# Frozen configuration for csmomentum_001 (Cycle 24, Option B)
+# Baseline cross-sectional momentum: 18-ETF universe, long-only top fraction, monthly
+# Signal: 12m lookback, 1m skip; 1-day lag; 3bps round-trip; no vol-target/DD-control/regime in baseline
+
+name: csmomentum_001
+hypothesis_ref: research/hypotheses/csmomentum_001.md
+code_revision: 8604ed1
+
+universe:
+  symbols:
+    - SPY
+    - QQQ
+    - IWM
+    - TLT
+    - GLD
+    - DBC
+    - VNQ
+    - EFA
+    - EEM
+    - XLB
+    - XLE
+    - XLF
+    - XLI
+    - XLK
+    - XLP
+    - XLU
+    - XLV
+    - XLY
+  n_assets: 18
+  common_start: 2006-02-06
+
+signal:
+  type: cross_sectional_momentum
+  lookback_days: 252
+  skip_days: 21
+  top_fraction: 0.5
+  signal_lag: 1
+  rebal_freq: monthly
+
+portfolio:
+  equal_weight: true
+  long_only: true
+  max_gross: 1.0
+  min_position: 0.0
+
+costs:
+  commission_bps: 1.0
+  slippage_bps: 2.0
+  roundtrip_bps: 3.0
+
+splits:
+  train_start: 1993-01-01
+  train_end: 2009-12-31
+  val_start: 2010-01-01
+  val_end: 2017-12-31
+  test_start: 2018-01-01
+  test_end: 2026-10-09
+
+walk_forward:
+  train_years: 10
+  test_years: 1
+  step_months: 6
+  purge_days: 21
+  embargo_days: 21
+  fixed_params: true
+  folds_expected: 48
+
+robustness_grid:
+  lookback: [189, 252, 315]
+  skip: [21, 42]
+  top_fraction: [0.3, 0.5, 0.7]
+  total: 27
