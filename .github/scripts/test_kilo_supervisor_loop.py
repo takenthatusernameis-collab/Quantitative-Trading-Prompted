@@ -330,7 +330,7 @@ class SupervisorLoopTests(unittest.TestCase):
             output = captured.getvalue()
             self.assertNotIn("SUPERVISOR_CIRCUIT_BREAKER_OPEN", output)
             self.assertNotIn("::group::LIVE AGENT DIALOGUE BOX — review 0001", output)
-            self.assertIn("timed out; worker remains unaffected", output)
+            self.assertIn("timed out; no role message was produced; worker remains unaffected", output)
             self.assertNotIn("mock slow reviewer started", output)
             self.assertEqual(output.count("(consecutive unusable reviews:"), 1)
             self.assertIn("review skipped: no new worker output", output)
