@@ -8,14 +8,10 @@ if ! [[ "$KILO_IDLE_TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]]; then
   exit 1
 fi
 
-# Manual runs can cap worker sessions; scheduled/automatically dispatched runs
-# use the backward-compatible high cap and still obey the global hard cutoff.
-KILO_MAX_SESSIONS="${KILO_MAX_SESSIONS:-1000}"
-if ! [[ "$KILO_MAX_SESSIONS" =~ ^[1-9][0-9]{0,3}$ ]] || [ "$KILO_MAX_SESSIONS" -gt 1000 ]; then
-  echo "::error::KILO_MAX_SESSIONS must be an integer from 1 through 1000."
-  exit 1
-fi
-echo "::notice::Configured maximum sequential Kilo worker sessions: $KILO_MAX_SESSIONS (355-minute hard cutoff also applies)."
+# No attempt-count cap: sequential worker sessions, transient retries, and corrective
+# invocations continue until verified project progress or the global hard cutoff.
+SESSION_LIMIT_POLICY="unlimited"
+echo "::notice::No count cap on worker sessions, transient retries, or corrective attempts; global 355-minute hard cutoff governs duration."
 WORKFLOW_STARTED_EPOCH="$(date +%s)"
 KILO_PROGRESS_STATE_FILE="$RUNNER_TEMP/kilo-progress-state-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.txt"
 KILO_PROGRESS_LOG="$RUNNER_TEMP/kilo-progress-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.log"
@@ -35,7 +31,7 @@ write_progress() {
     printf 'phase=%s\n' "$phase"
     printf 'detail=%s\n' "$detail"
     printf 'session=%s\n' "${agent_index:-0}"
-    printf 'session_limit=%s\n' "$KILO_MAX_SESSIONS"
+    printf 'session_limit=%s\n' "$SESSION_LIMIT_POLICY"
     printf 'attempt=%s\n' "${session_attempt:-0}"
     printf 'completed=%s\n' "${sessions_completed:-0}"
     printf 'failed=%s\n' "${failed_sessions:-0}"
@@ -52,7 +48,7 @@ write_progress() {
     rm -f "$tmp"
     return 0
   fi
-  line="[progress] $(date -u +%Y-%m-%dT%H:%M:%SZ) phase=${phase} session=${agent_index:-0}/${KILO_MAX_SESSIONS} attempt=${session_attempt:-0}/${MAX_TRANSIENT_ATTEMPTS:-5} completed=${sessions_completed:-0} failed=${failed_sessions:-0} checkpoints=${persisted_checkpoints:-0} verified_sha=${last_verified_checkpoint_sha:-none} head=${head_sha} elapsed=${elapsed}s remaining=${remaining}s detail=${detail}"
+  line="[progress] $(date -u +%Y-%m-%dT%H:%M:%SZ) phase=${phase} session=${agent_index:-0}/${SESSION_LIMIT_POLICY} attempt=${session_attempt:-0} completed=${sessions_completed:-0} failed=${failed_sessions:-0} checkpoints=${persisted_checkpoints:-0} verified_sha=${last_verified_checkpoint_sha:-none} head=${head_sha} elapsed=${elapsed}s remaining=${remaining}s detail=${detail}"
   printf '%s\n' "$line" | tee -a "$KILO_PROGRESS_LOG" || true
 }
 
@@ -62,7 +58,7 @@ progress_field() {
   awk -F= -v field="$field" '$1 == field { sub(/^[^=]*=/, ""); print; exit }' "$KILO_PROGRESS_STATE_FILE"
 }
 
-write_progress "controller-configured" "event=${KILO_TRIGGER_EVENT:-unknown}; cap=${KILO_MAX_SESSIONS}; hard_cutoff=355_minutes"
+write_progress "controller-configured" "event=${KILO_TRIGGER_EVENT:-unknown}; session_policy=${SESSION_LIMIT_POLICY}; hard_cutoff=355_minutes"
 
 # While the one-shot marker awaits its independent validation gate,
 # scheduled invocations must not consume it or start a duplicate run.
@@ -200,7 +196,7 @@ echo "::endgroup::"
 if [ "$one_shot_mode" -eq 1 ]; then
   echo "One-shot marker accepted; sequential Kilo sessions run up to the configured cap or global 355-minute cutoff."
 else
-  echo "Routine Kilo sessions run up to the configured cap or global 355-minute cutoff."
+  echo "Routine Kilo sessions continue without a count cap until the global 355-minute cutoff."
 fi
 command=$(cat <<'PROMPT'
 Execute the task assigned by the previous agent and prepare a task for the next agent!
@@ -378,9 +374,9 @@ heartbeat() {
     state_head="$(progress_field head)"
     state_time="$(progress_field updated_utc)"
     dirty_paths="$(git status --porcelain --untracked-files=all 2>/dev/null | wc -l | tr -d ' ' || printf 'unknown')"
-    printf '[heartbeat] %sZ elapsed=%ss remaining=%ss phase=%s last_phase_at=%s session=%s/%s attempt=%s/%s completed=%s failed=%s verified_checkpoints=%s verified_sha=%s head=%s dirty_paths=%s idle_watchdog=%ss detail="%s"\n' \
+    printf '[heartbeat] %sZ elapsed=%ss remaining=%ss phase=%s last_phase_at=%s session=%s/%s attempt=%s completed=%s failed=%s verified_checkpoints=%s verified_sha=%s head=%s dirty_paths=%s idle_watchdog=%ss detail="%s"\n' \
       "$stamp" "$elapsed" "$remaining" "${phase:-unknown}" "${state_time:-unknown}" \
-      "${current_session:-0}" "$KILO_MAX_SESSIONS" "${current_attempt:-0}" "${MAX_TRANSIENT_ATTEMPTS:-5}" \
+      "${current_session:-0}" "$SESSION_LIMIT_POLICY" "${current_attempt:-0}" \
       "${completed:-0}" "${failed:-0}" "${checkpoints:-0}" "${verified_sha:-none}" "${state_head:-unknown}" \
       "${dirty_paths:-unknown}" "$KILO_IDLE_TIMEOUT_SECONDS" "${detail:-unknown}"
     active_log=""
@@ -487,9 +483,7 @@ provider_pressure_streak=0
 hard_provider_block=0
 correction_failure_block=0
 no_progress_block=0
-MAX_TRANSIENT_ATTEMPTS=5
 cutoff=0
-session_limit_reached=0
 
 agent_index=0
 while true; do
@@ -509,7 +503,7 @@ while true; do
   transient_retry_backoff=15
   session_attempt=0
   echo "Starting sequential Kilo session ${agent_index}; remaining safety budget ${remaining}s."
-  write_progress "session-start" "starting session ${agent_index} of ${KILO_MAX_SESSIONS}"
+  write_progress "session-start" "starting session ${agent_index}; no session-count cap"
   while true; do
     session_attempt=$((session_attempt + 1))
     attempt_log="$RUNNER_TEMP/kilo-session-${agent_index}-attempt-${session_attempt}.log"
@@ -518,7 +512,7 @@ while true; do
     : > "$attempt_log"
     printf '%s\n' "$attempt_log" > "$HEARTBEAT_STATE_FILE"
     printf '%s\n' "$attempt_log" > "$SUPERVISOR_ACTIVE_LOG_POINTER"
-    echo "Kilo invocation attempt ${session_attempt} for session ${agent_index}; transient upstream failures use bounded retries."
+    echo "Kilo invocation attempt ${session_attempt} for session ${agent_index}; transient upstream failures retry without an attempt-count cap."
     write_progress "invocation-start" "Kilo worker process invoked"
     SESSION_REPORT_PREFIX=".kilo/supervisor-reports/run-${GITHUB_RUN_ID:-local}-attempt-${GITHUB_RUN_ATTEMPT:-1}-session-${agent_index}-invocation-${session_attempt}"
     session_command="${command}
@@ -563,14 +557,10 @@ PY
     fi
     if grep -Eiq 'Upstream idle timeout exceeded|upstream.{0,40}idle.{0,40}timeout|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|ENETUNREACH|EHOSTUNREACH|socket hang up|fetch failed|temporary failure in name resolution|gateway timeout|bad gateway|service unavailable|too many requests|rate[ _-]?limit|resource[_ -]?exhausted|temporarily unavailable|HTTP.{0,12}(429|500|502|503|504)|status.{0,12}(429|500|502|503|504)' "$normalized_attempt_log"; then
       idle_timeout_retry_count=$((idle_timeout_retry_count + 1))
-      if [ "$session_attempt" -ge "$MAX_TRANSIENT_ATTEMPTS" ]; then
-        echo "::warning::Transient provider/network failure persisted for $MAX_TRANSIENT_ATTEMPTS attempts; ending this invocation cycle after bounded retries."
-        break
-      fi
       retry_delay="$transient_retry_backoff"
       remaining_global=$((cutoff_epoch - $(date +%s)))
       if [ "$remaining_global" -le "$retry_delay" ]; then echo "::warning::Transient upstream/network failure detected, but insufficient workflow time remains for another retry."; break; fi
-      echo "::warning::Transient upstream/network/idle failure in session ${agent_index}; retry #${idle_timeout_retry_count} after ${retry_delay}s (bounded to $MAX_TRANSIENT_ATTEMPTS invocation attempts)."
+      echo "::warning::Transient upstream/network failure in session ${agent_index}; retry #${idle_timeout_retry_count} after ${retry_delay}s (no attempt-count cap; cutoff remains authoritative)."
       write_progress "retry-cooldown" "sleeping ${retry_delay}s before provider/network retry"
       sleep "$retry_delay"
       if [ "$transient_retry_backoff" -lt 300 ]; then
@@ -581,8 +571,8 @@ PY
     fi
     break
   done
-  # One bounded corrective pass for a non-transient invocation failure or no-progress success.
-  # It is intentionally outside the retry loop and cannot recurse.
+  # Keep corrective invocations running while time remains. Count attempts for traceability,
+  # not as a termination condition; only verified durable progress or the global cutoff ends this loop.
   correction_reason=""
   if [ "$rc" -ne 0 ] && [ "$rc" -ne 124 ] && [ "$rc" -ne 137 ] && [ "$hard_provider_block" -eq 0 ] && [ -f "$normalized_attempt_log" ] && ! grep -Eiq 'Upstream idle timeout exceeded|upstream.{0,40}idle.{0,40}timeout|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|ENETUNREACH|EHOSTUNREACH|socket hang up|fetch failed|temporary failure in name resolution|gateway timeout|bad gateway|service unavailable|too many requests|rate[ _-]?limit|resource[_ -]?exhausted|temporarily unavailable|HTTP.{0,12}(429|500|502|503|504)|status.{0,12}(429|500|502|503|504)' "$normalized_attempt_log"; then
     correction_reason="non-transient Kilo invocation failure"
@@ -592,57 +582,72 @@ PY
       correction_reason="successful invocation produced no durable project changes"
     fi
   fi
-  if [ -n "$correction_reason" ] && [ "$hard_provider_block" -eq 0 ] && [ "$(date +%s)" -lt "$cutoff_epoch" ]; then
-    recovery_command=$(cat <<'RECOVERY_PROMPT'
-This is the single bounded corrective pass for the previous Kilo invocation, which either failed or produced no durable project changes. Do not recurse or launch further corrective attempts. Inspect the current worktree and the failure record at "$KILO_PRIOR_FAILURE_LOG" when it is readable. Identify the smallest evidence-supported root cause, correct it if safe, and run the narrowest relevant verification. Record what changed, exact verification commands and outputs, and unresolved blockers in a durable handoff. Emit exactly one final machine-readable line CORRECTIVE_VERIFICATION=PASS only if the focused verification actually succeeded; otherwise emit CORRECTIVE_VERIFICATION=BLOCKED and explain the blocker. Preserve research pre-registrations and promotion gates, tests, security controls, workflow boundaries, user data, and all existing safety requirements. If no safe correction is supported, do not guess or weaken checks; preserve useful progress and write an evidence-based handoff.
+  correction_attempt=0
+  previous_recovery_log=""
+  while [ -n "$correction_reason" ] && [ "$hard_provider_block" -eq 0 ] && [ "$(date +%s)" -lt "$cutoff_epoch" ]; do
+    remaining_recovery=$((cutoff_epoch - $(date +%s)))
+    if [ "$remaining_recovery" -lt 60 ]; then
+      rc=1
+      correction_failure_block=1
+      echo "::warning::Less than 60 seconds remain for a useful corrective invocation; retaining evidence for the cutoff handoff."
+      break
+    fi
+    correction_attempt=$((correction_attempt + 1))
+    prior_record="${previous_recovery_log:-$session_log}"
+    recovery_command=$(cat <<RECOVERY_PROMPT
+Corrective invocation ${correction_attempt} for the ongoing Kilo task. The previous invocation failed or made no durable project changes. This is not a one-pass allowance: keep trying materially different, evidence-supported corrections until verified durable project progress is produced or the global 355-minute cutoff is reached.
+Latest observed blocker: ${correction_reason}
+Inspect the current worktree and the latest diagnostic record at: ${prior_record}
+If this is not the first corrective invocation, inspect its previous corrective log and choose an approach materially different from prior failed approaches. Do not simply repeat the same operation with unchanged assumptions. Do not invent changes merely to create activity. Identify the smallest justified correction, implement it when safe, and run the narrowest relevant verification. Record what changed, the exact verification commands and outputs, and unresolved blockers in a durable handoff. Emit exactly one final machine-readable line CORRECTIVE_VERIFICATION=PASS only if focused verification actually succeeded; otherwise emit CORRECTIVE_VERIFICATION=BLOCKED and explain the blocker. Preserve research pre-registrations and promotion gates, tests, security controls, workflow boundaries, user data, and all safety requirements. If no safe correction is supported, preserve useful evidence and explain the next distinct investigation needed.
 RECOVERY_PROMPT
 )
-    remaining_recovery=$((cutoff_epoch - $(date +%s)))
-    if [ "$remaining_recovery" -ge 60 ]; then
-      recovery_log="$RUNNER_TEMP/kilo-session-${agent_index}-recovery.log"
-      echo "::warning::${correction_reason}; starting one bounded corrective pass."
-      write_progress "corrective-pass-start" "${correction_reason}; bounded corrective pass"
-      : > "$recovery_log"
-      printf '%s\n' "$recovery_log" > "$HEARTBEAT_STATE_FILE"
-      printf '%s\n' "$recovery_log" > "$SUPERVISOR_ACTIVE_LOG_POINTER"
-      set +e
-      KILO_PRIOR_FAILURE_LOG="$session_log" timeout --signal=TERM --kill-after=10s "${remaining_recovery}s" python3 .github/scripts/kilo-invoke-with-idle-timeout.py --idle-timeout-seconds "$KILO_IDLE_TIMEOUT_SECONDS" -- kilo run --model kilo/kilo-auto/free --auto "$recovery_command" 2>&1 | tee "$recovery_log" | tee -a "$session_log"
-      recovery_rc=${PIPESTATUS[0]}
-      set -e
-      rm -f "$HEARTBEAT_STATE_FILE"
-      write_progress "corrective-pass-exit" "corrective invocation returned exit_code=${recovery_rc}"
-      mkdir -p "$RUNNER_TEMP/kilo-failure-logs"
-      tail -n 2000 "$session_log" > "$RUNNER_TEMP/kilo-failure-logs/corrective-session-${agent_index}.log" || true
-      if [ "$recovery_rc" -eq 0 ]; then
-        if ! grep -Fxq 'CORRECTIVE_VERIFICATION=PASS' "$recovery_log"; then
-          rc=1
-          correction_failure_block=1
-          echo "::error::Corrective pass exited successfully but did not provide the required successful-verification marker."
-        elif git diff --check && git diff --cached --check; then
-          corrected_project_changes="$(project_worktree_changes)"
-          if [ -z "$corrected_project_changes" ]; then
-            rc=1
-            no_progress_block=1
-            echo "::error::The bounded corrective pass also produced no durable project changes; stopping rather than repeating a no-progress loop."
-          else
-            rc=0
-            echo "::notice::The corrective pass returned success, produced durable project changes, passed git diff checks, and reported focused verification success."
-          fi
-        else
-          rc=1
-          correction_failure_block=1
-          echo "::error::Corrective pass did not pass git diff checks."
-        fi
-      else
-        rc="$recovery_rc"
+    recovery_log="$RUNNER_TEMP/kilo-session-${agent_index}-recovery-${correction_attempt}.log"
+    echo "::warning::${correction_reason}; starting corrective attempt ${correction_attempt} (no attempt-count cap before cutoff)."
+    write_progress "corrective-attempt-start" "attempt=${correction_attempt}; ${correction_reason}"
+    : > "$recovery_log"
+    printf '%s\n' "$recovery_log" > "$HEARTBEAT_STATE_FILE"
+    printf '%s\n' "$recovery_log" > "$SUPERVISOR_ACTIVE_LOG_POINTER"
+    set +e
+    KILO_PRIOR_FAILURE_LOG="$prior_record" timeout --signal=TERM --kill-after=10s "${remaining_recovery}s" python3 .github/scripts/kilo-invoke-with-idle-timeout.py --idle-timeout-seconds "$KILO_IDLE_TIMEOUT_SECONDS" -- kilo run --model kilo/kilo-auto/free --auto "$recovery_command" 2>&1 | tee "$recovery_log" | tee -a "$session_log"
+    recovery_rc=${PIPESTATUS[0]}
+    set -e
+    rm -f "$HEARTBEAT_STATE_FILE"
+    write_progress "corrective-attempt-exit" "attempt=${correction_attempt}; exit_code=${recovery_rc}"
+    mkdir -p "$RUNNER_TEMP/kilo-failure-logs"
+    tail -n 2000 "$session_log" > "$RUNNER_TEMP/kilo-failure-logs/corrective-session-${agent_index}.log" || true
+    previous_recovery_log="$recovery_log"
+    if [ "$recovery_rc" -eq 0 ]; then
+      if ! grep -Fxq 'CORRECTIVE_VERIFICATION=PASS' "$recovery_log"; then
+        rc=1
         correction_failure_block=1
-        echo "::warning::The single corrective pass did not recover (exit $recovery_rc); no recursive correction will be attempted."
+        correction_reason="corrective invocation did not provide verified-success evidence"
+        echo "::error::Corrective invocation exited successfully but lacked the required successful-verification marker; another evidence-led attempt may try a different approach."
+      elif ! git diff --check || ! git diff --cached --check; then
+        rc=1
+        correction_failure_block=1
+        correction_reason="corrective invocation failed git diff checks"
+        echo "::error::Corrective invocation failed git diff checks; retaining diagnostic evidence and trying a distinct correction."
+      else
+        corrected_project_changes="$(project_worktree_changes)"
+        if [ -z "$corrected_project_changes" ]; then
+          rc=1
+          no_progress_block=1
+          correction_reason="successful invocation produced no durable project changes"
+          echo "::warning::Corrective invocation produced no durable project changes; evidence is retained and another corrective attempt will use it to choose a different approach."
+        else
+          rc=0
+          correction_reason=""
+          echo "::notice::Corrective invocation produced durable project changes, passed git diff checks, and reported focused verification success."
+          break
+        fi
       fi
     else
+      rc="$recovery_rc"
       correction_failure_block=1
-      echo "::warning::Insufficient workflow time remains for the bounded corrective pass; preserving the failure for the handoff."
+      correction_reason="corrective invocation exited with status ${recovery_rc}"
+      echo "::warning::Corrective invocation ${correction_attempt} failed (exit ${recovery_rc}); the next attempt will inspect its output and change approach."
     fi
-  fi
+  done
   if [ "$rc" -ne 0 ]; then
     mkdir -p "$RUNNER_TEMP/kilo-failure-logs"
     tail -n 2000 "$session_log" > "$RUNNER_TEMP/kilo-failure-logs/session-${agent_index}.log" || true
@@ -684,7 +689,7 @@ RECOVERY_PROMPT
 
   # Consume the one-shot trigger after session two, if a smaller configured
   # cap ends the activation earlier, or at the global cutoff.
-  if [ "$one_shot_mode" -eq 1 ] && { [ "$agent_index" -ge 2 ] || [ "$agent_index" -ge "$KILO_MAX_SESSIONS" ] || [ "$(date +%s)" -ge "$cutoff_epoch" ]; }; then
+  if [ "$one_shot_mode" -eq 1 ] && { [ "$agent_index" -ge 2 ] || [ "$(date +%s)" -ge "$cutoff_epoch" ]; }; then
     mkdir -p .kilo
     if printf '%s\n' 'Skip one routine Kilo activation after the one-shot validation-gated activation.' > .kilo/SKIP_NEXT_ROUTINE_KILO; then
       rm -f -- .kilo/TWO_AGENT_ONCE || echo "::warning::Could not remove the one-shot marker; routine activations remain safely gated."
@@ -840,7 +845,7 @@ PY
   elif [ "$provider_pressure_streak" -ge 3 ]; then
     echo "::warning::Provider rate-limit/capacity errors have recurred across sessions. Continuing with the existing session-level cooldown policy until the global cutoff."
   elif [ "$correction_failure_block" -eq 1 ]; then
-    echo "::warning::The bounded corrective pass failed. Its evidence and checkpoint are preserved; the next session will continue."
+    echo "::warning::Corrective attempts did not verify durable progress in this session; evidence and checkpoints are preserved, and later sessions may continue until cutoff."
   elif [ "$no_progress_block" -eq 1 ]; then
     echo "::warning::The corrective session produced no durable project progress. Preserving the evidence and starting another session while time remains."
   fi
@@ -852,13 +857,6 @@ PY
   if [ "$cutoff" -eq 1 ]; then
     break
   fi
-  if [ "$agent_index" -ge "$KILO_MAX_SESSIONS" ]; then
-    session_limit_reached=1
-    write_progress "session-limit-reached" "configured cap reached after checkpoint handling"
-    echo "::notice::Configured session limit of ${KILO_MAX_SESSIONS} reached after the session checkpoint."
-    break
-  fi
-
   if [ "$provider_pressure" -eq 1 ]; then
     case "$provider_pressure_streak" in
       1) backoff_seconds=300 ;;
@@ -890,12 +888,10 @@ done
 if [ "$cutoff" -eq 1 ]; then
   echo "::warning::The 355-minute safety cutoff was reached; see checkpoint verification messages above."
 fi
-if [ "$session_limit_reached" -eq 1 ]; then
-  write_progress "controller-finished" "selected session cap reached"
-elif [ "$cutoff" -eq 1 ]; then
+if [ "$cutoff" -eq 1 ]; then
   write_progress "controller-finished" "355-minute hard cutoff reached"
 else
-  write_progress "controller-finished" "controller loop finished"
+  write_progress "controller-finished" "controller loop finished before cutoff"
 fi
 # Preserve final two-way protocol state inside the already-uploaded transcript artifact.
 mkdir -p "$SUPERVISOR_TRANSCRIPT_DIR/dialogue-protocol"
@@ -934,7 +930,7 @@ final_dialogue_count="${final_dialogue_count:-0}"
 printf 'project_progress=%s\n' "$project_progress" >> "$GITHUB_OUTPUT"
 printf 'failed_sessions=%s\n' "$failed_sessions" >> "$GITHUB_OUTPUT"
 printf 'idle_timeout_retries=%s\n' "$idle_timeout_retry_count" >> "$GITHUB_OUTPUT"
-printf 'session_limit=%s\n' "$KILO_MAX_SESSIONS" >> "$GITHUB_OUTPUT"
+printf 'session_limit=%s\n' "$SESSION_LIMIT_POLICY" >> "$GITHUB_OUTPUT"
 printf 'sessions_started=%s\n' "$agent_index" >> "$GITHUB_OUTPUT"
 printf 'sessions_completed=%s\n' "$sessions_completed" >> "$GITHUB_OUTPUT"
 printf 'persisted_checkpoints=%s\n' "$persisted_checkpoints" >> "$GITHUB_OUTPUT"
@@ -955,10 +951,8 @@ fi
 if [ "$project_progress" -ne 1 ]; then
   echo "::warning::No meaningful repository change was confirmed before the action ended. Review the preserved session logs and checkpoints."
 fi
-if [ "$session_limit_reached" -eq 1 ]; then
-  echo "Kilo controller reached the configured session limit ($KILO_MAX_SESSIONS). Sessions started: $agent_index; failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
-elif [ "$cutoff" -eq 1 ]; then
+if [ "$cutoff" -eq 1 ]; then
   echo "Kilo controller reached the global 355-minute safety cutoff. Sessions started: $agent_index; failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
 else
-  echo "Kilo controller finished after $agent_index session(s). Configured maximum: $KILO_MAX_SESSIONS; failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
+  echo "Kilo controller finished without a count cap. Sessions started: $agent_index; failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
 fi

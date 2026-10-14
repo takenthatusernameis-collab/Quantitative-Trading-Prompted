@@ -72,17 +72,17 @@ jobs:
           grep -Fq "process_group_members:" "$idle_log"
           grep -Fq "loadavg:" "$idle_log"
           echo "Kilo idle watchdog healthy-command, stalled-command and diagnostic-capture tests: OK"
-      - name: Guard bounded retry and correction policy
+      - name: Guard cutoff-bounded unbounded retry and correction policy
         shell: bash
         run: |
           set -euo pipefail
           controller=.github/scripts/kilo-controller.sh
-          grep -Fq 'MAX_TRANSIENT_ATTEMPTS=5' "$controller"
           grep -Fq 'kilo-invoke-with-idle-timeout.py' "$controller"
           grep -Fq 'KILO_IDLE_TIMEOUT_SECONDS:-600' "$controller"
-          grep -Fq 'ending this invocation and preserving progress before the next session' "$controller"
           grep -Fq 'output_silence=%ss idle_watchdog_remaining=%ss' "$controller"
-          grep -Fq 'This is the single bounded corrective pass' "$controller"
+          grep -Fq 'No attempt-count cap' "$controller"
+          grep -Fq 'no attempt-count cap before cutoff' "$controller"
+          grep -Fq 'only verified durable progress or the global cutoff ends this loop' "$controller"
           grep -Fq 'Hard provider quota/capacity limit detected' "$controller"
           grep -Fq 'project_worktree_changes()' "$controller"
           grep -Fq 'git diff --name-only' "$controller"
@@ -90,29 +90,27 @@ jobs:
           grep -Fq 'correction_failure_block=1' "$controller"
           grep -Fq 'no_progress_block=1' "$controller"
           grep -Fq 'CORRECTIVE_VERIFICATION=PASS' "$controller"
-          grep -Fq 'did not provide the required successful-verification marker' "$controller"
+          grep -Fq 'did not provide verified-success evidence' "$controller"
           grep -Fq 'while true; do' "$controller"
+          if grep -Eq 'MAX_TRANSIENT_ATTEMPTS|KILO_MAX_SESSIONS|session_limit_reached|This is the single bounded corrective pass|Configured session limit of' "$controller"; then
+            echo "::error::A session-count, transient-attempt, or one-pass corrective limit remains in the controller."
+            exit 1
+          fi
           if grep -Eq 'Five consecutive Kilo sessions failed; stopping|Three consecutive provider rate-limit/capacity failures; stopping|activation stopped because of hard provider limits|No meaningful repository change or durable handoff was committed and verified in this activation' "$controller"; then
             echo "::error::A failure-count or no-progress guard still terminates the action before the global cutoff."
             exit 1
           fi
-          if grep -Fq "for agent_index in \$(seq 1 \"\$agents\"); do" "$controller" || grep -Eq 'agents=2|agent_index.*-gt.*agents' "$controller"; then
-            echo "::error::A hard-coded session count has replaced the configurable session cap."
+          workflow=.github/workflows/main.yml
+          if grep -Eq 'KILO_MAX_SESSIONS|inputs\.sessions|default: 1000|Maximum number of sequential Kilo agent sessions' "$workflow"; then
+            echo "::error::Workflow dispatch still exposes a session-count cap."
             exit 1
           fi
-          workflow=.github/workflows/main.yml
-          grep -Fq 'sessions:' "$workflow"
-          grep -Fq 'type: number' "$workflow"
-          grep -Fq 'default: 1000' "$workflow"
-          grep -Fq 'KILO_MAX_SESSIONS:' "$workflow"
-          grep -Fq 'inputs.sessions' "$workflow"
-          grep -Fq "KILO_MAX_SESSIONS=\"\${KILO_MAX_SESSIONS:-1000}\"" "$controller"
-          grep -Fq 'KILO_MAX_SESSIONS must be an integer from 1 through 1000.' "$controller"
-          grep -Fq "[ \"\$agent_index\" -ge \"\$KILO_MAX_SESSIONS\" ]" "$controller"
-          grep -Fq 'session_limit_reached=1' "$controller"
+          grep -Fq 'workflow_dispatch:' "$workflow"
+          grep -Fq 'no count cap on worker sessions, transient retries, or corrective attempts' "$workflow"
           grep -Fq "printf 'session_limit=%s" "$controller"
+          grep -Fq 'SESSION_LIMIT_POLICY="unlimited"' "$controller"
           grep -Fq "printf 'sessions_started=%s" "$controller"
-          echo "Kilo bounded recovery, configurable session count, and 355-minute cutoff guardrails: OK"
+          echo "Unlimited retry/session/correction policy and 355-minute cutoff guardrails: OK"
           for marker in \
             "write_progress()" \
             'write_progress "invocation-start"' \
