@@ -1,17 +1,17 @@
-# Next Agent Task: Cycle 46 — Continue Paper Trading Monitoring & Data Acquisition
+# Next Agent Task: Cycle 47 — Continue Paper Trading Monitoring & Data Acquisition
 
 ## Context
 
-Cycle 45 re-attempted data acquisition on 2026-10-14 (session date) and confirmed **no new real trading day** for the 7 incumbent ETFs (SPY, QQQ, IWM, TLT, GLD, EFA, EEM), which all remain anchored at **2026-10-13**. The aligned-frame max of 2026-10-14 is driven solely by a zero-volume ^VIX placeholder row. A direct `yfinance.download()` query confirmed no 2026-10-14 row is published for the ETFs.
+Cycle 46 re-attempted data acquisition on 2026-10-14 (session date) and confirmed **no new real trading day** for the 7 incumbent ETFs (SPY, QQQ, IWM, TLT, GLD, EFA, EEM), which all remain anchored at **2026-10-13**. The aligned-frame max of 2026-10-14 is driven solely by a zero-volume ^VIX placeholder row. A direct `yfinance.download()` query confirmed no 2026-10-14 row is published for the ETFs.
 
-**Key findings from Cycle 45:**
+**Key findings from Cycle 46:**
 - Track record remains at **446 days** (2025-01-02 → 2026-10-13), reproduced exactly — NAV **$136,593.98** (+36.59%), max DD **-1.82%**, Sharpe **2.0210**, rolling 63-day Sharpe **0.3669**.
 - **DRIFT FLAG PERSISTS**: `low_rolling_sharpe` on 2026-10-12 (0.4892) and 2026-10-13 (0.3669) — **2 consecutive trading days**. Trajectory over last 10 days is volatile (range 0.18–1.00), consistent with single low-return days moving the 63-day window rather than sustained degradation. Not yet at the >20-day persistence threshold.
 - All primary go/no-go gates from Cycle 22 still pass: track record 446 ≫ 126, Sharpe 2.021 ≫ 0.9, max DD -1.82% ≪ 15%, 6 regime flips > 1.
 - Current regime: Risk-on (SPY ≥ 200-day SMA) for **131 consecutive days**.
 - Data integrity verified: all 7 incumbent ETF parquet files end at 2026-10-13; ^VIX.parquet ends at 2026-10-14 (8,506 rows) with placeholder row; state YAML matches 446 run_history records.
 
-**Critical detail**: The session date is 2026-10-14 (Wednesday). The market closed on 2026-10-14, so the 7-ETF data for that day *should* be published by Yahoo Finance in the next session (2026-10-15+). Cycle 46 should detect whether 2026-10-14 data has arrived for the ETFs. If it has, the replay script's `end_date` and replay-date upper bound must be bumped (yfinance treats `end` as exclusive: to capture 2026-10-14 data, request `end_date="2026-10-15"` and set replay bound to `"2026-10-14"`).
+**Critical detail**: The session date is 2026-10-14 (Wednesday). The market closed on 2026-10-14, so the 7-ETF data for that day *should* be published by Yahoo Finance in the next session (2026-10-15+). Cycle 47 should detect whether 2026-10-14 data has arrived for the ETFs. If it has, the replay script's `end_date` and replay-date upper bound must be bumped (yfinance treats `end` as exclusive: to capture 2026-10-14 data, request `end_date="2026-10-15"` and set replay bound to `"2026-10-14"`).
 
 ## Objective
 
@@ -26,10 +26,10 @@ Re-attempt data acquisition from Yahoo Finance to detect whether 2026-10-14 (or 
     - Re-run `research/run_paper_trading_replay.py`
     - Verify track record extended (document actual day count)
     - Update `research/reports/paper_trading_rolling.md`
-    - Create `research/reports/paper_trading_validation_019.md`
-    - Update README.md with Cycle 46 summary (include new metrics, drift flag status/trajectory/duration)
+    - Create `research/reports/paper_trading_validation_020.md`
+    - Update README.md with Cycle 47 summary (include new metrics, drift flag status/trajectory/duration)
     - Document drift flag status, trajectory, and duration
-- [ ] If no new real trading days exist: document blocker clearly in validation report and README, do not fabricate metrics; prepare NEXT_AGENT_TASK.md for Cycle 47 with same monitoring objective and updated context
+- [ ] If no new real trading days exist: document blocker clearly in validation report and README, do not fabricate metrics; prepare NEXT_AGENT_TASK.md for Cycle 48 with same monitoring objective and updated context
 - [ ] Do not modify incumbent strategy logic (`config/simulation_candidate_001.yaml` is frozen)
 - [ ] Report findings honestly; research/backtesting only
 
