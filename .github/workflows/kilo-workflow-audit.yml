@@ -300,7 +300,7 @@ jobs:
           RUBY
           controller=.github/scripts/kilo-controller.sh
           # Construct literal dollar references without ShellCheck SC2016 false positives.
-          literal_dollar='
+          literal_dollar="$(printf '\\044')"
           grep -Fq -- '"--agent", "loop-supervisor"' .github/scripts/kilo-supervisor-loop.py
           grep -Fq -- "mode: all" .kilo/agents/loop-supervisor.md
           for marker in \
