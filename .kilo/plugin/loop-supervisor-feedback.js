@@ -252,7 +252,7 @@ const LoopSupervisorFeedback = async () => {
         output.output = (original ? original + "\n\n" : "") + injectionText;
 
         injectionSequence += 1;
-        const transcriptSaved = await appendAgentDialogue(safeTranscriptDir, injectionText);
+        const transcriptSaved = deliveryKind === "journal"\n          ? await appendAgentDialogue(safeTranscriptDir, injectionText)\n          : false;
         // Journal delivery advances the durable journal cursor. Reminder delivery never does.
         let cursorSaved = "unchanged";
         if (deliveryKind === "journal") {
