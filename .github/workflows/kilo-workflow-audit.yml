@@ -129,6 +129,12 @@ jobs:
           grep -Fq 'KILO_E2E_MODE' .github/scripts/kilo-controller.sh
           grep -Fq 'KILO_TARGET_BRANCH' .github/scripts/kilo-controller.sh
           grep -Fq 'KILO_TASK_PROMPT_FILE' .github/scripts/kilo-controller.sh
+          grep -Fq -- '--require-initial-recommendation' .github/scripts/kilo-controller.sh
+          grep -Fq 'E2E_STARTUP_TIMEOUT_SECONDS=240' .github/scripts/kilo-controller.sh
+          grep -Fq 'require_initial_recommendation' .github/scripts/kilo-supervisor-loop.py
+          grep -Fq 'should_run_review' .github/scripts/kilo-supervisor-loop.py
+          grep -Fq 'KILO_SUPERVISOR_INTERVAL_SECONDS:' .github/workflows/main.yml
+          grep -Fq 'KILO_SUPERVISOR_REVIEW_TIMEOUT_SECONDS:' .github/workflows/main.yml
           grep -Fq "format('kilo-e2e-{0}', github.ref_name)" .github/workflows/main.yml
           grep -Fq "KILO_HARD_CUTOFF_MINUTES:" .github/workflows/main.yml
           grep -Fq 'actions: read' .github/workflows/main.yml

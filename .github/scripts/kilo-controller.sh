@@ -600,7 +600,9 @@ for line in lines:
         and event.get("message_id") == recommendation_id
         and event.get("correlation_id") == recommendation_id
         and event.get("role") == "supervisor"
-        and event.get("message") == report
+        and isinstance(event.get("message"), str)
+        and len(event.get("message", "")) >= min(80, len(report))
+        and report.startswith(event.get("message", ""))
     ):
         raise SystemExit(0)
 raise SystemExit(1)

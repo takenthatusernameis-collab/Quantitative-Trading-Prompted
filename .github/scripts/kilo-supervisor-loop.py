@@ -134,7 +134,7 @@ def build_review_prompt(
         previous_feedback = "(No previous supervisor recommendation.)"
     if require_initial_recommendation:
         bootstrap_instruction = """BOOTSTRAP REQUIREMENT:
-No valid recommendation has yet been published, and this bounded run cannot start its worker until an initial recommendation exists. Produce one concise, evidence-based initial recommendation using only the supplied objective and repository snapshot. Do not invent defects, failures, or results. If evidence is insufficient to justify a code change, recommend the narrowest safe evidence-gathering step or explicitly recommend keeping completion blocked until evidence exists. For this required initial exchange, do not return NO_NEW_DIALOGUE."""
+No valid recommendation has yet been published. The initial recommendation is mandatory before worker startup in this bounded run. Produce one concise, evidence-based initial recommendation using only the supplied objective and repository snapshot. Do not invent defects, failures, or results. If evidence is insufficient to justify a code change, recommend the narrowest safe evidence-gathering step or explicitly recommend keeping completion blocked until evidence exists. For this required initial exchange, do not return NO_NEW_DIALOGUE."""
         no_new_dialogue_rule = "5. This is the required initial recommendation; do not return NO_NEW_DIALOGUE. If evidence is insufficient, issue STATUS: ATTENTION and state the missing evidence and safe next step."
     else:
         bootstrap_instruction = ""
