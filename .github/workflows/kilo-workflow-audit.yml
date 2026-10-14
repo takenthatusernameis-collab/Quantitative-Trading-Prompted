@@ -110,15 +110,18 @@ jobs:
             exit 1
           fi
           workflow=.github/workflows/main.yml
-          if grep -Eq 'KILO_MAX_SESSIONS|inputs\.sessions|default: 1000|Maximum number of sequential Kilo agent sessions' "$workflow"; then
-            echo "::error::Workflow dispatch still exposes a session-count cap."
+          grep -Fq 'workflow_dispatch:' "$workflow"
+          grep -Fq 'KILO_INPUT_AGENTS' "$controller"
+          grep -Fq 'SESSION_LIMIT_POLICY=' "$controller"
+          grep -Fq 'KILO_INPUT_AGENTS:' "$workflow"
+          grep -Fq 'type: number' "$workflow"
+          grep -Fq 'default: "1000"' "$workflow"
+          grep -Fq 'Configured session target reached' "$controller"
+          if grep -Eq 'agents.{0,12}-gt[[:space:]]+1000|MAX_TRANSIENT_ATTEMPTS|KILO_MAX_SESSIONS|session_limit_reached|This is the single bounded corrective pass' "$controller" "$workflow"; then
+            echo "::error::An arbitrary session maximum or attempt-count retry cap remains."
             exit 1
           fi
-          grep -Fq 'workflow_dispatch:' "$workflow"
-          grep -Fq 'no count cap on worker sessions, transient retries, or corrective attempts' "$workflow"
           grep -Fq "printf 'session_limit=%s" "$controller"
-          grep -Fq 'SESSION_LIMIT_POLICY="unlimited"' "$controller"
-          grep -Fq "printf 'sessions_started=%s" "$controller"
           if grep -Fq '.kilo/runtime' "$controller" .github/scripts/kilo-supervisor-loop.py .kilo/plugin/loop-supervisor-feedback.js; then
             echo "::error::Supervisor protocol files must stay outside .kilo/ so they are not validated as Kilo configuration."
             exit 1
@@ -126,8 +129,15 @@ jobs:
           grep -Fq 'DIALOGUE_PROTOCOL_DIR=' "$controller"
           grep -Fq '.kilo-runtime' "$controller"
           grep -Fq 'const protocolDir = join(workspace, ".kilo-runtime");' .github/workflows/kilo-workflow-audit.yml
-          echo "Supervisor dialogue state is outside Kilo's config directory: OK"
-          echo "Unlimited retry/session/correction policy and 355-minute cutoff guardrails: OK"
+          grep -Fq 'agent-dialogue.md' .github/workflows/main.yml
+          grep -Fq 'append_agent_dialogue' .github/scripts/kilo-supervisor-loop.py
+          grep -Fq 'duplicate review skipped' .github/scripts/kilo-supervisor-loop.py
+          grep -Fq 'appendAgentDialogue' .kilo/plugin/loop-supervisor-feedback.js
+          if grep -Fq '[loop-supervisor-feedback-content]' .kilo/plugin/loop-supervisor-feedback.js; then
+            echo "::error::Supervisor feedback still echoes entire message bodies into operational logs."
+            exit 1
+          fi
+          echo "Customizable session target with cutoff-bounded retries, valid protocol path, and role-only dialogue: OK"
           for marker in \
             "write_progress()" \
             'write_progress "invocation-start"' \
