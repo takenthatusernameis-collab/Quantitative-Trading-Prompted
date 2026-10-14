@@ -8,10 +8,15 @@ if ! [[ "$KILO_IDLE_TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]]; then
   exit 1
 fi
 
-# No attempt-count cap: sequential worker sessions, transient retries, and corrective
-# invocations continue until verified project progress or the global hard cutoff.
-SESSION_LIMIT_POLICY="unlimited"
-echo "::notice::No count cap on worker sessions, transient retries, or corrective attempts; global 355-minute hard cutoff governs duration."
+# The configurable target counts normal worker sessions; retries and corrective invocations within
+# each session remain count-unbounded under the global hard cutoff.
+agents="${KILO_INPUT_AGENTS:-1000}"
+if ! [[ "$agents" =~ ^[1-9][0-9]*$ ]]; then
+  echo "::error::KILO_INPUT_AGENTS must be a positive whole number."
+  exit 1
+fi
+SESSION_LIMIT_POLICY="$agents"
+echo "::notice::Configured worker session target: $agents; retries and corrective invocations remain count-unbounded under the 355-minute cutoff."
 WORKFLOW_STARTED_EPOCH="$(date +%s)"
 KILO_PROGRESS_STATE_FILE="$RUNNER_TEMP/kilo-progress-state-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.txt"
 KILO_PROGRESS_LOG="$RUNNER_TEMP/kilo-progress-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.log"
@@ -94,7 +99,9 @@ done
 one_shot_mode=0
 if [ -f ".kilo/TWO_AGENT_ONCE" ]; then
   one_shot_mode=1
-  echo "::notice::One-shot marker detected; authorizing a validation-gated activation."
+  agents=2
+  SESSION_LIMIT_POLICY="2 (one-shot validation)"
+  echo "::notice::One-shot marker detected; overriding the configured target to exactly two validation sessions."
 fi
 # A queued schedule may check out an older commit containing the sentinel.
 # Require it to exist on the live default branch before spending the allowance.
@@ -352,7 +359,7 @@ python3 .github/scripts/kilo-supervisor-loop.py \
   > >(tee -a "$SUPERVISOR_LOOP_LOG") 2>&1 &
 supervisor_loop_pid=$!
 echo "[loop-supervisor] Started alongside the Kilo worker; immediate review plus a 150-second cadence (PID $supervisor_loop_pid)."
-echo "[loop-supervisor] Exact redacted review requests, reviewer reports, CLI diagnostics, and worker-delivery messages are printed in the logs and saved under: $SUPERVISOR_TRANSCRIPT_DIR"
+echo "[loop-supervisor] Only actual Supervisor ↔ Worker messages appear in agent-dialogue.md; repeated review prompts, state reads, and CLI bodies are not echoed."
 echo "::notice title=Live agent dialogue::Expand the 'Run bash .github/scripts/kilo-controller.sh' step logs and search for 'LIVE AGENT DIALOGUE BOX' to view each redacted supervisor exchange as it finishes. The end-of-run Summary box appears only after this controller step completes."
 write_progress "supervisor-running" "review loop launched"
 
@@ -487,6 +494,10 @@ cutoff=0
 
 agent_index=0
 while true; do
+  if [ "$agent_index" -ge "$agents" ]; then
+    echo "::notice::Configured session target reached ($agents); retries and corrective attempts remained count-unbounded under the 355-minute cutoff."
+    break
+  fi
   remaining=$((cutoff_epoch - $(date +%s)))
   if [ "$remaining" -le 0 ]; then
     cutoff=1
@@ -893,13 +904,7 @@ if [ "$cutoff" -eq 1 ]; then
 else
   write_progress "controller-finished" "controller loop finished before cutoff"
 fi
-# Preserve final two-way protocol state inside the already-uploaded transcript artifact.
-mkdir -p "$SUPERVISOR_TRANSCRIPT_DIR/dialogue-protocol"
-for protocol_file in "$DIALOGUE_PROTOCOL_DIR/current-supervisor-recommendation.json" "$DIALOGUE_PROTOCOL_DIR/worker-disposition.json"; do
-  if [ -f "$protocol_file" ]; then
-    cp -f "$protocol_file" "$SUPERVISOR_TRANSCRIPT_DIR/dialogue-protocol/"
-  fi
-done
+# Only actual role-to-role messages are included in the dialogue artifact; raw protocol state stays private.
 read -r final_journal_units final_cursor_offset final_advice_entries < <(python3 - "$SUPERVISOR_FEEDBACK_FILE" "$SUPERVISOR_FEEDBACK_CURSOR_FILE" <<'PY'
 import json
 import sys
@@ -923,8 +928,10 @@ final_review_count="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ started' "$SU
 final_completed_review_count="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ completed with usable report' "$SUPERVISOR_LOOP_LOG" || true)"
 final_timeout_count="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ timed out;' "$SUPERVISOR_LOOP_LOG" || true)"
 final_review_failure_count="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ (returned exit|returned without writing|wrote an empty report|report could not be sanitized|failed to launch or complete|feedback append failed)' "$SUPERVISOR_LOOP_LOG" || true)"
-final_delivery_count="$(find "$SUPERVISOR_TRANSCRIPT_DIR" -maxdepth 1 -type f -name 'worker-delivery-*.md' 2>/dev/null | wc -l | tr -d '[:space:]')"
-final_dialogue_count="$(find "$SUPERVISOR_TRANSCRIPT_DIR" -maxdepth 1 -type f -name 'review-*-agent-dialogue.md' 2>/dev/null | wc -l | tr -d '[:space:]')"
+final_delivery_count=0
+final_dialogue_count=0
+if [ -f "$SUPERVISOR_TRANSCRIPT_DIR/agent-dialogue.md" ]; then
+  final_delivery_count="$(grep -c '^## Supervisor → Worker
 final_delivery_count="${final_delivery_count:-0}"
 final_dialogue_count="${final_dialogue_count:-0}"
 printf 'project_progress=%s\n' "$project_progress" >> "$GITHUB_OUTPUT"
@@ -954,5 +961,71 @@ fi
 if [ "$cutoff" -eq 1 ]; then
   echo "Kilo controller reached the global 355-minute safety cutoff. Sessions started: $agent_index; failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
 else
-  echo "Kilo controller finished without a count cap. Sessions started: $agent_index; failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
+  echo "Kilo controller finished at the configured session target or cutoff. Target: $agents; sessions started: $agent_index; failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
+fi
+ "$SUPERVISOR_TRANSCRIPT_DIR/agent-dialogue.md" || true)"
+  final_dialogue_count="$(grep -Ec '^## (Supervisor → Worker|Worker → Supervisor)
+final_delivery_count="${final_delivery_count:-0}"
+final_dialogue_count="${final_dialogue_count:-0}"
+printf 'project_progress=%s\n' "$project_progress" >> "$GITHUB_OUTPUT"
+printf 'failed_sessions=%s\n' "$failed_sessions" >> "$GITHUB_OUTPUT"
+printf 'idle_timeout_retries=%s\n' "$idle_timeout_retry_count" >> "$GITHUB_OUTPUT"
+printf 'session_limit=%s\n' "$SESSION_LIMIT_POLICY" >> "$GITHUB_OUTPUT"
+printf 'sessions_started=%s\n' "$agent_index" >> "$GITHUB_OUTPUT"
+printf 'sessions_completed=%s\n' "$sessions_completed" >> "$GITHUB_OUTPUT"
+printf 'persisted_checkpoints=%s\n' "$persisted_checkpoints" >> "$GITHUB_OUTPUT"
+printf 'last_verified_checkpoint_sha=%s\n' "$last_verified_checkpoint_sha" >> "$GITHUB_OUTPUT"
+printf 'supervisor_review_count=%s\n' "$final_review_count" >> "$GITHUB_OUTPUT"
+printf 'supervisor_reviews_completed=%s\n' "$final_completed_review_count" >> "$GITHUB_OUTPUT"
+printf 'supervisor_review_timeouts=%s\n' "$final_timeout_count" >> "$GITHUB_OUTPUT"
+printf 'supervisor_review_failures=%s\n' "$final_review_failure_count" >> "$GITHUB_OUTPUT"
+printf 'supervisor_delivery_transcripts=%s\n' "$final_delivery_count" >> "$GITHUB_OUTPUT"
+printf 'supervisor_dialogue_transcripts=%s\n' "$final_dialogue_count" >> "$GITHUB_OUTPUT"
+printf 'supervisor_advice_entries=%s\n' "$final_advice_entries" >> "$GITHUB_OUTPUT"
+printf 'supervisor_pending_units=%s\n' "$final_pending_units" >> "$GITHUB_OUTPUT"
+printf 'final_phase=%s\n' "$(progress_field phase)" >> "$GITHUB_OUTPUT"
+printf 'final_phase_detail=%s\n' "$(progress_field detail)" >> "$GITHUB_OUTPUT"
+if [ "$failed_sessions" -gt 0 ]; then
+  echo "::warning::$failed_sessions Kilo session(s) failed during this activation. Session-level failures did not stop the action; upstream idle/network retries: $idle_timeout_retry_count."
+fi
+if [ "$project_progress" -ne 1 ]; then
+  echo "::warning::No meaningful repository change was confirmed before the action ended. Review the preserved session logs and checkpoints."
+fi
+if [ "$cutoff" -eq 1 ]; then
+  echo "Kilo controller reached the global 355-minute safety cutoff. Sessions started: $agent_index; failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
+else
+  echo "Kilo controller finished at the configured session target or cutoff. Target: $agents; sessions started: $agent_index; failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
+fi
+ "$SUPERVISOR_TRANSCRIPT_DIR/agent-dialogue.md" || true)"
+fi
+final_delivery_count="${final_delivery_count:-0}"
+final_dialogue_count="${final_dialogue_count:-0}"
+printf 'project_progress=%s\n' "$project_progress" >> "$GITHUB_OUTPUT"
+printf 'failed_sessions=%s\n' "$failed_sessions" >> "$GITHUB_OUTPUT"
+printf 'idle_timeout_retries=%s\n' "$idle_timeout_retry_count" >> "$GITHUB_OUTPUT"
+printf 'session_limit=%s\n' "$SESSION_LIMIT_POLICY" >> "$GITHUB_OUTPUT"
+printf 'sessions_started=%s\n' "$agent_index" >> "$GITHUB_OUTPUT"
+printf 'sessions_completed=%s\n' "$sessions_completed" >> "$GITHUB_OUTPUT"
+printf 'persisted_checkpoints=%s\n' "$persisted_checkpoints" >> "$GITHUB_OUTPUT"
+printf 'last_verified_checkpoint_sha=%s\n' "$last_verified_checkpoint_sha" >> "$GITHUB_OUTPUT"
+printf 'supervisor_review_count=%s\n' "$final_review_count" >> "$GITHUB_OUTPUT"
+printf 'supervisor_reviews_completed=%s\n' "$final_completed_review_count" >> "$GITHUB_OUTPUT"
+printf 'supervisor_review_timeouts=%s\n' "$final_timeout_count" >> "$GITHUB_OUTPUT"
+printf 'supervisor_review_failures=%s\n' "$final_review_failure_count" >> "$GITHUB_OUTPUT"
+printf 'supervisor_delivery_transcripts=%s\n' "$final_delivery_count" >> "$GITHUB_OUTPUT"
+printf 'supervisor_dialogue_transcripts=%s\n' "$final_dialogue_count" >> "$GITHUB_OUTPUT"
+printf 'supervisor_advice_entries=%s\n' "$final_advice_entries" >> "$GITHUB_OUTPUT"
+printf 'supervisor_pending_units=%s\n' "$final_pending_units" >> "$GITHUB_OUTPUT"
+printf 'final_phase=%s\n' "$(progress_field phase)" >> "$GITHUB_OUTPUT"
+printf 'final_phase_detail=%s\n' "$(progress_field detail)" >> "$GITHUB_OUTPUT"
+if [ "$failed_sessions" -gt 0 ]; then
+  echo "::warning::$failed_sessions Kilo session(s) failed during this activation. Session-level failures did not stop the action; upstream idle/network retries: $idle_timeout_retry_count."
+fi
+if [ "$project_progress" -ne 1 ]; then
+  echo "::warning::No meaningful repository change was confirmed before the action ended. Review the preserved session logs and checkpoints."
+fi
+if [ "$cutoff" -eq 1 ]; then
+  echo "Kilo controller reached the global 355-minute safety cutoff. Sessions started: $agent_index; failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
+else
+  echo "Kilo controller finished at the configured session target or cutoff. Target: $agents; sessions started: $agent_index; failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
 fi
