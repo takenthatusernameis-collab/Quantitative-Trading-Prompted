@@ -198,6 +198,7 @@ jobs:
             .kilo-runtime/worker-disposition.json
             docs/verification/kilo-e2e-run-*.md
           if-no-files-found: ignore
+          include-hidden-files: true
           retention-days: 14
 
 

@@ -139,6 +139,7 @@ jobs:
           grep -Fq "KILO_HARD_CUTOFF_MINUTES:" .github/workflows/main.yml
           grep -Fq 'actions: read' .github/workflows/main.yml
           grep -Fq 'LAST_VERIFIED_CHECKPOINT_SHA' .github/workflows/main.yml
+          grep -Fq 'include-hidden-files: true' .github/workflows/main.yml
           grep -Fq '"gh", "run", "download"' .github/scripts/kilo-e2e-verification.py
           grep -Fq 'remote_checkpoint' .github/scripts/kilo-e2e-verification.py
           echo "Branch isolation, short cutoff, worker-scope override, artifact recovery and independent checkpoint gate: OK"
