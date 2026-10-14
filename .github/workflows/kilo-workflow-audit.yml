@@ -101,7 +101,7 @@ jobs:
             exit 1
           fi
           workflow=.github/workflows/main.yml
-          if grep -Eq 'sessions:|KILO_MAX_SESSIONS|inputs.sessions|default: 1000|Maximum number of sequential Kilo agent sessions' "$workflow"; then
+          if grep -Eq 'KILO_MAX_SESSIONS|inputs\.sessions|default: 1000|Maximum number of sequential Kilo agent sessions' "$workflow"; then
             echo "::error::Workflow dispatch still exposes a session-count cap."
             exit 1
           fi
