@@ -447,6 +447,9 @@ jobs:
             await (await import("node:fs/promises")).mkdir(
               join(failureTranscripts, "agent-communication.jsonl"), { recursive: true }
             );
+            recommendation.recommendation_id = "run-test-review-0006-deadbeef0000";
+            recommendation.report = "STATUS: ATTENTION\nObserved evidence: the prior transcript append failed.\nDifferent next step: Retry persistence after recovering the dialogue ledger.\nVerification: confirm both ledgers contain the correlated message.\nLimitations: first attempt is not a durable delivery.\n";
+            await writeFile(join(protocolDir, "current-supervisor-recommendation.json"), JSON.stringify(recommendation), "utf8");
             const failureAdvice = "--- SUPERVISOR ADVICE ENTRY cycle=0006 ---\nSTATUS: ATTENTION\nRetry persistence after recovering the dialogue ledger.\n--- END SUPERVISOR ADVICE ENTRY cycle=0006 ---\n";
             await writeFile(failureFeedbackPath, failureAdvice, "utf8");
             process.env.KILO_SUPERVISOR_FEEDBACK_FILE = failureFeedbackPath;
@@ -473,6 +476,8 @@ jobs:
               .trim().split("\n").map(line => JSON.parse(line));
             assert.equal(recoveredDialogue.length, 1, "retry must not duplicate the first successful track append");
             assert.equal(recoveredCommunication.length, 1, "retry must persist the missing lifecycle event");
+            assert.equal(recoveredDialogue[0].message_id, recommendation.recommendation_id);
+            assert.equal(recoveredCommunication[0].correlation_id, recommendation.recommendation_id);
 
             process.env.KILO_SUPERVISOR_MODE = "1";
             const reviewerHooks = await pluginModule.default.server();
