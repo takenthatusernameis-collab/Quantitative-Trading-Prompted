@@ -107,5 +107,6 @@ jobs:
             exit 1
           fi
           grep -Fq '.kilo-runtime' "$controller"
-          grep -Fq 'const protocolDir = join(workspace, ".kilo-runtime");' .kilo/plugin/loop-supervisor-feedback.js
+          grep -Fq 'KILO_SUPERVISOR_PROTOCOL_DIR' .kilo/plugin/loop-supervisor-feedback.js
+          grep -Fq 'repo_root / ".kilo-runtime"' .github/scripts/kilo-supervisor-loop.py
           echo "Configurable session target, cutoff-bounded unbounded retries, and valid supervisor protocol path: OK"
