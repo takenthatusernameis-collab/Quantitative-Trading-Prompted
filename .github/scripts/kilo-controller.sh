@@ -328,9 +328,11 @@ DIALOGUE_PROTOCOL_DIR="$PWD/.kilo-runtime"
 mkdir -p "$SUPERVISOR_TRANSCRIPT_DIR" "$DIALOGUE_PROTOCOL_DIR"
 # This runner-local exclude prevents the worker's checkpoint sweep from committing
 # controller-owned recommendation state or worker-owned disposition state.
-if ! grep -qxF '/.kilo-runtime/' .git/info/exclude 2>/dev/null; then
-  printf '/.kilo-runtime/\n' >> .git/info/exclude
-fi
+for ignore_pattern in '/.kilo-runtime/' '/.kilo/supervisor-reports/'; do
+  if ! grep -qxF "$ignore_pattern" .git/info/exclude 2>/dev/null; then
+    printf '%s\n' "$ignore_pattern" >> .git/info/exclude
+  fi
+done
 rm -f "$DIALOGUE_PROTOCOL_DIR/current-supervisor-recommendation.json" "$DIALOGUE_PROTOCOL_DIR/worker-disposition.json"
 export KILO_SUPERVISOR_PROTOCOL_DIR="$DIALOGUE_PROTOCOL_DIR"
 : > "$SUPERVISOR_ACTIVE_LOG_POINTER"
@@ -359,8 +361,8 @@ python3 .github/scripts/kilo-supervisor-loop.py \
   > >(tee -a "$SUPERVISOR_LOOP_LOG") 2>&1 &
 supervisor_loop_pid=$!
 echo "[loop-supervisor] Started alongside the Kilo worker; immediate review plus a 150-second cadence (PID $supervisor_loop_pid)."
-echo "[loop-supervisor] Exact redacted review requests, reviewer reports, CLI diagnostics, and worker-delivery messages are printed in the logs and saved under: $SUPERVISOR_TRANSCRIPT_DIR"
-echo "::notice title=Live agent dialogue::Expand the 'Run bash .github/scripts/kilo-controller.sh' step logs and search for 'LIVE AGENT DIALOGUE BOX' to view each redacted supervisor exchange as it finishes. The end-of-run Summary box appears only after this controller step completes."
+echo "[loop-supervisor] Only actual supervisor-to-worker and worker-to-supervisor messages are emitted as live dialogue and saved to agent-dialogue.jsonl; review prompts, repository snapshots, and CLI diagnostics are not published."
+echo "::notice title=Live agent dialogue::Expand the 'Run bash .github/scripts/kilo-controller.sh' step logs and search for 'LIVE AGENT DIALOGUE BOX — SUPERVISOR → WORKER' or 'LIVE AGENT DIALOGUE BOX — WORKER → SUPERVISOR'. Only new messages actually crossing a role boundary are shown."
 write_progress "supervisor-running" "review loop launched"
 
 heartbeat() {
