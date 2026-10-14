@@ -48,6 +48,19 @@ Persist the preregistration, data audit, source/config/code revision, universe c
 
 ## Version history
 
+### v0.3 (2026-10-14) — Free-data-source survey and exploratory diagnostic
+
+- **Free-data-source survey:** Examined yfinance, ccxt, FRED (via pandas_datareader), and SEC EDGAR (via sec-edgar-downloader). yfinance provides only OHLCV, dividends, splits; current snapshot market cap and shares outstanding (not historical); no delisting events; no point-in-time universe screening. ccxt provides cryptocurrency data only, not applicable to US stocks. FRED provides macroeconomic time series, not stock fundamental data. SEC EDGAR provides corporate filings; extracting point-in-time market cap/shares outstanding requires parsing 10-Q/10-K filings and is not straightforward for monthly intervals; no ready-to-use point-in-time universe or delisting feed.
+- **Exploratory diagnostic:** Using today's microcap snapshot (market cap $50M–300M) from yfinance info, fetched historical prices for a basket of 10 tickers meeting the criteria. Tested the `compute_momentum` / `build_weights` pipeline from `src/features/momentum.py` on the fetched data. Verified the pipeline runs without errors and produces weights. Explicitly tested both daily convention (lookback=252, skip=21) and monthly calendar-month-end convention (approx. 252 lookback, 21 skip) and documented the difference. No performance metrics reported as evidence of an edge; only code-verification output saved. Results labeled "EXPLORATORY — NOT CONFIRMATORY — SURVIVORSHIP BIASED — CURRENT TICKERS APPLIED RETROSPECTIVELY".
+- **Data acquisition path:** Surveyed potential paid data sources that could resolve the blocker. Ranked shortlist:
+  1. **CRSP US Stock Database** (historical market cap, shares outstanding, delisting flags, point-in-time universe construction) — estimated cost: $10,000–$50,000/year depending on subscription; requires direct licensing or via WRDS.
+  2. **Compustat via WRDS** (fundamentals including market cap and shares outstanding; point-in-time available via monthly files; delisting information) — estimated cost: $5,000–$20,000/year via WRDS.
+  3. **Polygon.io** (aggregated market data; offers historical OHLCV, market cap via aggregates, shares outstanding via reference data, delisting flags) — estimated cost: $500–$2,000/month for required data tiers.
+  4. **Tiingo** (similar to Polygon, with fundamental data) — estimated cost: $10–$50/month for essentials, $100–$200/month for premium.
+  5. **IEX Cloud** (delayed fundamental data; market cap and shares outstanding available, but point-in-time universe construction may require additional processing) — estimated cost: $0–$500/month depending on data needs.
+- **Lowest-friction credible path:** For a research environment seeking minimal friction and credible point-in-time microcap universe, **Polygon.io** offers the best balance of cost, ease of API integration, and availability of required fields (historical OHLCV, market cap, shares outstanding, delisting flags) with point-in-time accuracy. Effort estimate: 2–3 days to integrate API, adjust data pipeline, and validate point-in-time membership.
+- **Verdict:** No point-in-time microcap universe can be constructed from available free data. The economic hypothesis remains untested due to data limitation. The exploratory diagnostic confirmed code mechanics work but cannot be used for alpha claims due to survivorship bias. The recommended path forward is to evaluate paid data sources, with Polygon.io as the lowest-friction credible option.
+
 ### v0.2 (2026-10-14) — Data gate audit; Blocked by data
 
 - **Data audit result:** Data gate **FAILED**. Repository cache contains 19 parquet files, all ETFs/indices (DBC, EEM, EFA, GLD, IWM, QQQ, SPY, TLT, VNQ, XLB–XLY, ^VIX) with only OHLCV columns. Zero individual stock data files exist.

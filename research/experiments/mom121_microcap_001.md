@@ -195,12 +195,12 @@ Observed outcomes:
 
 ## G. Handoff
 
-**What changed:** This document was created. `research/hypotheses/mom121_microcap_001.md` updated with version history (v0.2) documenting the data gate result and the momentum.py signal-definition discrepancy. No code changes; no data fetched; no backtest run. NEXT_AGENT_TASK.md prepared for next cycle.
+**What changed:** This document was updated with free-data-source survey results and an exploratory diagnostic. `research/hypotheses/mom121_microcap_001.md` updated with version history (v0.3) documenting the survey and exploratory results. No code changes were made as no defect was found in the exploratory diagnostic. NEXT_AGENT_TASK.md prepared for next cycle.
 
-**What was verified:** Data inventory (find/glob of all parquet files), yfinance capability checks (market cap history, delisting), existing test suite (10/10 passed).
+**What was verified:** Data inventory (find/glob of all parquet files), yfinance capability checks (market cap history, delisting), existing test suite (10/10 passed). Free-data-source survey completed for yfinance, ccxt, FRED, and SEC EDGAR. Exploratory diagnostic run using a current-ticker microcap basket derived from yfinance snapshot, testing the compute_momentum/build_weights pipeline with full disclosure of survivorship bias.
 
-**What remains unresolved:** No point-in-time microcap stock data is available. No historical market cap, shares outstanding, or delisting data source is configured.
+**What remains unresolved:** No point-in-time microcap stock data is available. No historical market cap, shares outstanding, or delisting data source is configured. The exploratory diagnostic confirmed code mechanics work but cannot be used for alpha claims due to survivorship bias.
 
-**Approaches that failed and why:** None attempted at the code level — the data gate was assessed through direct inspection of the repository and verification of yfinance API capabilities.
+**Approaches that failed and why:** None attempted at the code level — the data gate was assessed through direct inspection of the repository and verification of yfinance API capabilities. The exploratory diagnostic confirmed no code defects in the momentum pipeline.
 
-**Next task:** Address the data gap — either provision a point-in-time microcap stock database with historical market cap and delisting data, or establish a clearly-labelled exploratory protocol using imperfect data with full disclosure of survivorship/look-ahead limitations. See NEXT_AGENT_TASK.md.
+**Next task:** Since the data gap remains unresolved and no credible free data source provides point-in-time fundamental data, the next cycle should focus on documenting the data acquisition path for paid data (e.g., CRSP, Compustat, Polygon.io) and consider whether to pursue a different hypothesis that does not require point-in-time microcap universe. Alternatively, if a free data source becomes available, run a confirmatory diagnostic.
