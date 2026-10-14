@@ -1,94 +1,54 @@
-# Next Agent Task: Cycle 22 — Go/No-Go Evaluation for Live Deployment
+# Next Agent Task: Cycle 23 — Deployment Preparation Steps for Live Trading
 
 ## Context
-
-Cycle 21 executed the extended paper-trading validation (Option A continuation) via modified `research/run_paper_trading_replay.py`. The deterministic historical replay on cached data (2025-01-02 → 2026-10-09, 444 trading days) produced:
-
-- **Track-record length:** 444 days (exceeds 126-day minimum for regime diversity) ✅
-- **Regime flips observed:** 6 (3 DOWN, 3 UP) across March–May 2025 and March–April 2026 ✅
-- **Full-period Sharpe:** 2.0548 (exceeds 0.9 target) ✅
-- **Rolling 63-day Sharpe:** 0.9356 (exceeds 0.9 target) ✅
-- **Max drawdown:** -4.99% (well within 15% threshold) ✅
-- **Regime-segmented performance:** Risk-on periods (389 days) generated all returns; risk-off periods (55 days) preserved capital perfectly
-- **Net return:** +37.11% (19.62% ann.), volatility 9.55% ann.
-
-Artifacts: `data/processed/paper_trading_state.yaml`, 444 daily parquet files, `research/reports/paper_trading_rolling.md`, `research/reports/paper_trading_validation_002.md`.
-
-**Key finding:** The SPY-trend filter has been validated across three full market regime cycles (risk-on → risk-off → risk-on). The candidate `tsmomentum_spytrend_001` has satisfied all pre-registered gates with significant margin.
+Cycle 22 evaluated go/no-go for live deployment of `tsmomentum_spytrend_001` based on the accumulated evidence (Cycle 6 walk-forward, Cycles 8-21 paper trading). The go/no-go evaluation report at `research/reports/go_nogo_evaluation_001.md` recommended a **GO** decision with conditions for continued monitoring and operational controls.
 
 ## Objective
-
-Evaluate go/no-go for live deployment of `tsmomentum_spytrend_001` based on the accumulated evidence (Cycle 6 walk-forward, Cycle 8–21 paper trading). Produce a formal go/no-go decision document with clear criteria, risk assessment, and operational requirements.
+Define deployment preparation steps for transitioning the candidate `tsmomentum_spytrend_001` to live trading, given the research/backtesting-only constraint of this system. Since live trading is not permitted in this environment, the steps will focus on finalizing the research validation, documenting the live trading protocol, and preparing the necessary infrastructure specifications.
 
 ### Action Required
-
-Create a go/no-go evaluation report that:
-1. Synthesizes all evidence from Cycle 6 (walk-forward), Cycles 8–21 (paper trading)
-2. Assesses operational readiness (data pipeline, execution infrastructure, monitoring)
-3. Identifies remaining risks and mitigation strategies
-4. Makes a clear go/no-go recommendation with conditions
+Create a deployment preparation plan that:
+1. Documents the final validated strategy specification and parameters
+2. Specifies the live trading infrastructure requirements (data feeds, execution, risk controls)
+3. Outlines the monitoring and validation protocol for live trading
+4. Documents the decision audit trail and evidence base
+5. Prepares the final research handoff for potential live deployment outside this system
 
 ### Implementation Steps
-
-1. **Review all evidence artifacts** from Cycle 6 WF, Cycles 8–21 paper trading
-2. **Synthesize performance** across backtest, walk-forward, and paper trading
-3. **Assess operational readiness** — data freshness, execution assumptions, cost model validity
-4. **Identify key risks** — regime filter lag, turnover costs, capacity, model decay
-5. **Produce go/no-go report** at `research/reports/go_nogo_evaluation_001.md`
-6. **Update README.md** with go/no-go decision summary
-7. **Prepare NEXT_AGENT_TASK.md** for subsequent cycle based on decision
+1. **Finalize strategy specification** — document the exact parameters, risk overlays, and execution rules from `config/simulation_candidate_001.yaml` and the paper trading configuration
+2. **Specify live trading infrastructure** — define requirements for market data feed, brokerage integration, order execution, and risk management systems
+3. **Outline live monitoring protocol** — adapt the paper trading monitoring system for live trading, including real-time drift alerts and performance tracking
+4. **Document evidence base** — compile all validation artifacts (walk-forward, paper trading, go/no-go report) into a comprehensive deployment dossier
+5. **Update README.md** with deployment preparation summary
+6. **Prepare NEXT_AGENT_TASK.md** for the subsequent cycle (which would be live trading monitoring if permitted, or a new research cycle)
 
 ## Acceptance Criteria
-
-- [ ] Review Cycle 6 walk-forward results (mean OOS Sharpe 0.9473, 91.7% positive folds)
-- [ ] Review Cycles 8–21 paper trading results (70-day + 444-day extended)
-- [ ] Confirm all pre-registered gates passed in paper trading
-- [ ] Assess operational readiness (data pipeline, execution, monitoring)
-- [ ] Document key risks and mitigations
-- [ ] Produce go/no-go report (`research/reports/go_nogo_evaluation_001.md`)
-- [ ] Update README.md Current Status with go/no-go decision
-- [ ] Prepare `NEXT_AGENT_TASK.md` for next cycle
+- [ ] Document final strategy specification and parameters
+- [ ] Specify live trading infrastructure requirements (data, execution, risk controls)
+- [ ] Outline live monitoring and validation protocol
+- [ ] Compile evidence base into deployment dossier (`research/reports/deployment_dossier_001.md`)
+- [ ] Update README.md with deployment preparation summary
+- [ ] Prepare NEXT_AGENT_TASK.md for subsequent cycle
 
 ## Scope Boundaries
-
-- Research/analysis only. No live trading, no credentials, no network access.
-- Reuse existing evidence artifacts — do not re-run backtests or paper trading.
-- Decision must be based on documented evidence, not speculation.
-- If "go": next task defines deployment preparation steps.
-- If "no-go": next task defines additional validation or research direction.
-- If "conditional go": next task defines specific conditions to resolve.
+- Research/analysis and documentation only. No live trading, no credentials, no network access within this system.
+- Focus on preparing the research handoff for potential live deployment outside this environment.
+- Decision must be based on documented evidence from Cycle 22 go/no-go evaluation.
 
 ## Validation Commands
-
 ```bash
-# Review key evidence artifacts
-cat research/experiments/tsmomentum_regime_filter_wf_001.md
-cat research/reports/paper_trading_validation_001.md
-cat research/reports/paper_trading_validation_002.md
+# Verify strategy specification
+cat config/simulation_candidate_001.yaml
 
-# Verify paper trading state
-python3 -c "
-import yaml
-with open('data/processed/paper_trading_state.yaml') as f:
-    state = yaml.safe_load(f)
-print(f'Track record: {len(state[\"run_history\"])} days')
-regimes = [r['regime_exposure'] for r in state['run_history']]
-flips = sum(1 for i in range(1, len(regimes)) if regimes[i] != regimes[i-1])
-print(f'Regime flips: {flips}')
-print(f'Current NAV: \${state[\"current_nav\"]:,.2f}')
-print(f'Max DD: {state[\"max_drawdown\"]:.2%}')
-"
+# Verify paper trading configuration (if exists)
+ls -la config/paper_trading_*.yaml 2>/dev/null || echo "No paper trading config file"
 
-# Check go/no-go report exists
-cat research/reports/go_nogo_evaluation_001.md
+# Verify go/no-go report exists and recommends GO
+grep -i "decision:.*go" research/reports/go_nogo_evaluation_001.md
+
+# Verify deployment dossier will be created
+ls -la research/reports/deployment_dossier_001.md 2>/dev/null || echo "Deployment dossier not yet created"
+
+# Check README.md for deployment preparation summary
+grep -A 10 -B 2 "Cycle 23" README.md
 ```
-
-## Decision Protocol
-
-1. **Go:** All gates passed, operational readiness confirmed, risks accepted → next cycle prepares deployment
-2. **Conditional Go:** Gates passed but specific conditions required (e.g., extended monitoring, reduced size) → next cycle resolves conditions
-3. **No-Go:** Material gap identified (e.g., cost model invalid, regime filter failure mode) → next cycle addresses gap or pivots to new research
-
-The decision must be evidence-based and documented with specific criteria.
-
-(End of file - total 96 lines)
