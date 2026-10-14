@@ -1,52 +1,49 @@
-# Next Agent Task: Microcap mom121 — Data Acquisition Planning (Bounded)
+# Next Agent Task: Analyze recent paper trading performance drift (Bounded)
 
 ## Context
 
-The microcap 12–1 momentum hypothesis (`mom121_microcap_001`) is **BLOCKED by data/infrastructure**. Previous work completed:
+The paper trading strategy (TSMOM incumbent, simulation_candidate_001) has a drift flag for low rolling Sharpe. The paper trading state (data/processed/paper_trading_state.yaml) shows:
+- last_run_date: 2026-07-16
+- drift_flags.low_rolling_sharpe.value: 0.3495 (threshold 0.5)
+- peak_nav: 139120.07, current_nav: 134844.60, max_dd: -0.03073
+- cumulative_returns has 384 values
 
-1. **Data gate audit:** Confirmed absence of point-in-time microcap data in repository cache and configured data sources (yfinance). Zero individual stock data files exist; yfinance lacks historical market cap, shares outstanding, and delisting data.
-
-2. **Exploratory diagnostic:** Verified pipeline mechanics using ETF proxy (clearly labeled as exploratory, not confirmatory) - `research/experiments/mom121_microcap_001_exploratory.md`.
-
-3. **Hypothesis status:** Updated to v0.3 documenting decision to pursue Path A (identify plan for proper data) while maintaining blocked status for confirmatory testing.
-
-4. **Alternative hypotheses:** All ETF-based candidates from the opportunity shortlist (C3, C4, C6) have been tested and rejected/failed. TSMOM incumbent (C1) is frozen due to lack of new market data.
+The microcap hypothesis remains blocked by data infrastructure; other opportunity shortlist hypotheses have been rejected/failed. Strategy is frozen (no logic/parameter changes).
 
 ## Objective
 
-Document specific, concrete requirements for point-in-time microcap data acquisition to enable future confirmatory testing of mom121_microcap_001, without acquiring data or violating constraints.
+Analyze recent paper trading performance to understand the drift flag source without modifying strategy logic. Produce a concise, evidence-backed analysis.
 
 ## Acceptance criteria
 
-1. **Identify data requirements:** Specify exact data fields needed for point-in-time microcap universe construction with delisting treatment.
-
-2. **Evaluate feasible sources:** Assess whether requirements can be met with accessible free data sources in this environment (yfinance, ccxt, etc.).
-
-3. **Document acquisition plan:** If feasible sources exist, outline minimal acquisition steps; if not, state clearly that proper confirmatory testing requires paid/institutional data not available here.
-
-4. **Update hypothesis status:** Maintain `research/hypotheses/mom121_microcap_001.md` status as blocked for confirmatory testing unless Path B becomes viable with ironclad disclosures (deemed not feasible).
-
-5. **Minimal verification:** Run existing tests to ensure nothing is broken.
+1. **Performance decomposition:** Examine recent P&L/returns vs prior period; identify when rolling Sharpe declined and magnitude.
+2. **Market context:** Brief context on conditions around the flagged period using available data/config.
+3. **Strategy mechanics check:** Verify execution per documented specs (config/simulation_candidate_001.yaml) - universe, regime filter, costs, rebalance.
+4. **No strategy modifications:** Do not change logic/parameters, do not backtest new variants.
+5. **Document findings:** Record observations in research/reports/ with clear summary and evidence references.
+6. **Minimal verification:** Run existing tests to ensure nothing is broken.
 
 ## Validation commands
 
 ```bash
-# 1. Verify hypothesis files exist and show updated status
-ls -la research/hypotheses/mom121_microcap_001.md
-grep -A5 "v0.3" research/hypotheses/mom121_microcap_001.md
+# Inspect paper trading state
+cat data/processed/paper_trading_state.yaml
 
-# 2. Run existing tests
+# Inspect strategy config
+cat config/simulation_candidate_001.yaml
+
+# Run existing tests
 python3 -m pytest .github/scripts/test_kilo_supervisor_loop.py -v
 ```
 
 ## Scope boundaries
 
-- **No paid data acquisition, no credentials, no new paid dependencies.**
-- **No confirmatory microcap backtest** - hypothesis remains blocked for confirmatory testing.
-- **No actual data fetching** - pure documentation/planning task.
+- **No strategy modifications.** Read-only analysis.
+- **No new backtests constituting strategy changes.** Do not create new candidate configs.
 - **Research/backtesting only.** No live trading.
-- **Preserve evidence.** Do not downplay data blocker or fabricate data availability.
+- **Preserve evidence.** Be precise about what the data shows.
+- **Do not fabricate market data.** Work with what exists.
 
 ## Completion standard
 
-Return a concise evidence-backed decision documenting requirements for point-in-time microcap data, confirmation that no feasible free sources exist in this environment, and the updated hypothesis status ready for the next agent.
+Concise evidence-backed analysis of recent performance drift including decomposition, market context, strategy mechanics verification, confirmation no modifications made, with references to files inspected and test results.
