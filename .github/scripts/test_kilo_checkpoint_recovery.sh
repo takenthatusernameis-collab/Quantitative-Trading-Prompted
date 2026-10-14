@@ -1,90 +1,107 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+persist_source=".github/scripts/kilo-persist-checkpoint.sh"
 controller=".github/scripts/kilo-controller.sh"
-capture_line="$(grep -nF 'checkpoint_sha_before="$(git rev-parse HEAD)"' "$controller" | head -n 1 | cut -d: -f1)"
-rebase_line="$(grep -nF 'git rebase --autostash "$remote_sha_before"' "$controller" | head -n 1 | cut -d: -f1)"
-if [[ -z "$capture_line" || -z "$rebase_line" || "$capture_line" -ge "$rebase_line" ]]; then
-  echo "::error::The original checkpoint SHA must be captured before starting rebase."
-  exit 1
-fi
+repo_root="$PWD"
+grep -Fq 'source .github/scripts/kilo-persist-checkpoint.sh' "$controller"
+grep -Fq 'persist_current_checkpoint' "$controller"
+grep -Fq 'git rebase --autostash "$remote_sha_before"' "$persist_source"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
+export RUNNER_TEMP="$tmp/runner"
+mkdir -p "$RUNNER_TEMP"
+export GITHUB_RUN_ID="persistence-integration-test"
+export GITHUB_RUN_ATTEMPT="1"
 
-remote="$tmp/origin.git"
-worker="$tmp/worker"
+write_progress() { :; }
+setup_remote() {
+  local remote="$1" seed="$2"
+  git init --quiet --bare --initial-branch=main "$remote"
+  git init --quiet --initial-branch=main "$seed"
+  git -C "$seed" config user.name "Kilo persistence integration test"
+  git -C "$seed" config user.email "kilo-persistence-test@example.invalid"
+  printf 'base version\n' > "$seed/shared.md"
+  git -C "$seed" add shared.md
+  git -C "$seed" commit --quiet -m "base"
+  git -C "$seed" remote add origin "$remote"
+  git -C "$seed" push --quiet --set-upstream origin main
+}
+configure_persistence_call() {
+  DEFAULT_BRANCH="main"
+  cutoff_epoch=$(( $(date +%s) + 90 ))
+  cutoff=0
+  project_progress=0
+  persisted_checkpoints=0
+  last_verified_checkpoint_sha="none"
+  agent_index=1
+  checkpoint_ready=1
+  committed_this_iteration=1
+  checkpoint_has_project_changes=1
+}
+
+# Case 1: a conflict-free local checkpoint must reach the remote and be verified.
+success_remote="$tmp/success.git"
+success_seed="$tmp/success-seed"
+success_worker="$tmp/success-worker"
+setup_remote "$success_remote" "$success_seed"
+git clone --quiet "$success_remote" "$success_worker"
+git -C "$success_worker" config user.name "Kilo persistence integration test"
+git -C "$success_worker" config user.email "kilo-persistence-test@example.invalid"
+printf 'verified worker version\n' > "$success_worker/shared.md"
+git -C "$success_worker" commit --quiet -am "worker checkpoint without conflict"
+expected_success_sha="$(git -C "$success_worker" rev-parse HEAD)"
+(
+  cd "$success_worker"
+  source "$repo_root/$persist_source"
+  configure_persistence_call
+  persist_current_checkpoint
+  [[ "$persisted" -eq 1 ]]
+  [[ "$persisted_checkpoints" -eq 1 ]]
+  [[ "$project_progress" -eq 1 ]]
+  [[ "$last_verified_checkpoint_sha" == "$(git rev-parse --short HEAD)" ]]
+  [[ "$(git ls-remote origin refs/heads/main | awk 'NR==1 {print $1}')" == "$expected_success_sha" ]]
+)
+echo "PASS: production persistence routine pushes and remotely verifies a clean checkpoint."
+
+# Case 2: divergent edits must preserve both versions, abort safely, and stop repeating an identical conflict.
+conflict_remote="$tmp/conflict.git"
+conflict_seed="$tmp/conflict-seed"
+conflict_worker="$tmp/conflict-worker"
 competitor="$tmp/competitor"
-git init --quiet --bare --initial-branch=main "$remote"
-git clone --quiet "$remote" "$worker"
-git -C "$worker" config user.name "Kilo persistence test"
-git -C "$worker" config user.email "kilo-persistence-test@example.invalid"
-
-printf 'base version\n' > "$worker/shared.md"
-git -C "$worker" add shared.md
-git -C "$worker" commit --quiet -m "base"
-git -C "$worker" push --quiet --set-upstream origin main
-
-# The worker checkpoints a change that will conflict with a concurrent writer.
-printf 'worker checkpoint version\n' > "$worker/shared.md"
-git -C "$worker" commit --quiet -am "worker checkpoint"
-checkpoint_expected="$(git -C "$worker" rev-parse HEAD)"
-
-git clone --quiet --branch main "$remote" "$competitor"
-git -C "$competitor" config user.name "Kilo persistence test"
+setup_remote "$conflict_remote" "$conflict_seed"
+git clone --quiet "$conflict_remote" "$conflict_worker"
+git -C "$conflict_worker" config user.name "Kilo persistence integration test"
+git -C "$conflict_worker" config user.email "kilo-persistence-test@example.invalid"
+printf 'worker checkpoint version\n' > "$conflict_worker/shared.md"
+git -C "$conflict_worker" commit --quiet -am "worker conflicting checkpoint"
+expected_checkpoint_sha="$(git -C "$conflict_worker" rev-parse HEAD)"
+git clone --quiet --branch main "$conflict_remote" "$competitor"
+git -C "$competitor" config user.name "Kilo persistence integration test"
 git -C "$competitor" config user.email "kilo-persistence-test@example.invalid"
 printf 'remote concurrent version\n' > "$competitor/shared.md"
-git -C "$competitor" commit --quiet -am "concurrent remote change"
+git -C "$competitor" commit --quiet -am "concurrent remote version"
 git -C "$competitor" push --quiet origin main
-
-git -C "$worker" fetch --quiet origin main
-remote_sha_before="$(git -C "$worker" rev-parse --verify 'origin/main^{commit}')"
-checkpoint_sha_before="$(git -C "$worker" rev-parse HEAD)"
-if [[ "$checkpoint_sha_before" != "$checkpoint_expected" ]]; then
-  echo "::error::Test setup did not capture the original local checkpoint."
-  exit 1
-fi
-
-if git -C "$worker" rebase --autostash "$remote_sha_before" > "$tmp/rebase.log" 2>&1; then
-  echo "::error::The simulated conflicting rebase unexpectedly succeeded."
-  exit 1
-fi
-
-# During a conflicted rebase, HEAD is the remote base, not the worker checkpoint.
-head_during_conflict="$(git -C "$worker" rev-parse HEAD)"
-if [[ "$head_during_conflict" != "$remote_sha_before" ]]; then
-  cat "$tmp/rebase.log"
-  echo "::error::Test did not reach the expected conflicted-rebase state."
-  exit 1
-fi
-
-checkpoint_ref="refs/kilo-recovery/checkpoint-$checkpoint_sha_before"
-recovery_ref="refs/heads/kilo-recovery/$checkpoint_sha_before"
-bundle="$tmp/checkpoint.bundle"
-git -C "$worker" update-ref "$checkpoint_ref" "$checkpoint_sha_before"
-git -C "$worker" bundle create "$bundle" "$checkpoint_ref" > "$tmp/bundle-create.log"
-git -C "$worker" bundle verify "$bundle" > "$tmp/bundle-verify.log"
-git -C "$worker" update-ref -d "$checkpoint_ref"
-
-git -C "$worker" push --quiet origin "$checkpoint_sha_before:$recovery_ref"
-remote_recovery_sha="$(git -C "$worker" ls-remote origin "$recovery_ref" | awk 'NR == 1 { print $1 }')"
-if [[ "$remote_recovery_sha" != "$checkpoint_expected" ]]; then
-  echo "::error::The remote recovery ref does not point to the exact worker checkpoint."
-  exit 1
-fi
-
-git -C "$worker" rebase --abort
-head_after_abort="$(git -C "$worker" rev-parse HEAD)"
-if [[ "$head_after_abort" != "$checkpoint_expected" ]]; then
-  echo "::error::Aborting the rebase did not restore the original checkpoint."
-  exit 1
-fi
-
-checkpoint_content="$(git -C "$worker" show "$remote_recovery_sha:shared.md")"
-remote_content="$(git -C "$worker" show "$remote_sha_before:shared.md")"
-if [[ "$checkpoint_content" != "worker checkpoint version" || "$remote_content" != "remote concurrent version" ]]; then
-  echo "::error::The recovered checkpoint or concurrent remote commit has unexpected content."
-  exit 1
-fi
-
-echo "PASS: recovery preserves and verifies the exact pre-rebase checkpoint, validates a Git bundle, confirms the remote recovery ref, and restores the worktree after rebase abort."
+expected_remote_sha="$(git -C "$competitor" rev-parse HEAD)"
+(
+  cd "$conflict_worker"
+  source "$repo_root/$persist_source"
+  configure_persistence_call
+  persist_current_checkpoint
+  [[ "$persisted" -eq 0 ]]
+  [[ "$cutoff" -eq 1 ]]
+  [[ "$project_progress" -eq 0 ]]
+  [[ "$(git rev-parse HEAD)" == "$expected_checkpoint_sha" ]]
+  recovery_ref="refs/heads/kilo-recovery/$expected_checkpoint_sha"
+  [[ "$(git ls-remote origin "$recovery_ref" | awk 'NR==1 {print $1}')" == "$expected_checkpoint_sha" ]]
+  [[ "$(git ls-remote origin refs/heads/main | awk 'NR==1 {print $1}')" == "$expected_remote_sha" ]]
+  [[ "$(git show "$expected_checkpoint_sha:shared.md")" == "worker checkpoint version" ]]
+  [[ "$(git show "$expected_remote_sha:shared.md")" == "remote concurrent version" ]]
+  bundle_path="$(find "$RUNNER_TEMP/kilo-failure-logs" -type f -name "kilo-persistence-checkpoint-$expected_checkpoint_sha.bundle" -print -quit)"
+  [[ -n "$bundle_path" ]]
+  git bundle verify "$bundle_path" >/dev/null
+  bundle_head="$(git bundle list-heads "$bundle_path" | awk 'NR==1 {print $1}')"
+  [[ "$bundle_head" == "$expected_checkpoint_sha" ]]
+)
+echo "PASS: production routine preserves both commits, verifies a recovery copy, restores HEAD after abort, and stops after identical conflict."

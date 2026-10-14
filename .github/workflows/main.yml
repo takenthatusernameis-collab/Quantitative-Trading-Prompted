@@ -44,6 +44,8 @@ jobs:
         continue-on-error: true
         env:
           CONTROLLER_OUTCOME: ${{ steps.kilo_controller.outcome }}
+          TERMINAL_STATUS: ${{ steps.kilo_controller.outputs.terminal_status }}
+          TERMINAL_CUTOFF_REACHED: ${{ steps.kilo_controller.outputs.cutoff_reached }}
           PROJECT_PROGRESS: ${{ steps.kilo_controller.outputs.project_progress }}
           FAILED_SESSIONS: ${{ steps.kilo_controller.outputs.failed_sessions }}
           IDLE_TIMEOUT_RETRIES: ${{ steps.kilo_controller.outputs.idle_timeout_retries }}
@@ -80,15 +82,43 @@ jobs:
             echo "- Current supervisor recommendation entries: ${SUPERVISOR_ADVICE_ENTRIES:-0}"
             echo "- Current recommendation units not yet injected at shutdown: ${SUPERVISOR_PENDING_UNITS:-0}"
             echo "- Artifact kilo-progress-trace-${GITHUB_RUN_ID} retains only role-dialogue messages plus controller health telemetry; repeated prompt echoes and raw reviewer traces are not published."
+            EFFECTIVE_TERMINAL_STATUS="${TERMINAL_STATUS:-}"
+            if [ -z "$EFFECTIVE_TERMINAL_STATUS" ]; then
+              if [ "$CONTROLLER_OUTCOME" = "success" ]; then
+                EFFECTIVE_TERMINAL_STATUS="unclassified_success"
+              else
+                EFFECTIVE_TERMINAL_STATUS="controller_failure"
+              fi
+            fi
+            echo "- Terminal outcome: $EFFECTIVE_TERMINAL_STATUS"
+            echo "- Cutoff reached: ${TERMINAL_CUTOFF_REACHED:-unknown}"
             echo "- Verified meaningful project progress: ${PROJECT_PROGRESS:-unknown}"
             echo "- Failed Kilo sessions: ${FAILED_SESSIONS:-unknown}"
             echo "- Upstream idle/network retries: ${IDLE_TIMEOUT_RETRIES:-unknown}"
-            if [ "$CONTROLLER_OUTCOME" = "success" ] && [ "$PROJECT_PROGRESS" = "1" ]; then
-              echo "- Controller completed with verified, durable project progress."
-            else
-              echo "- No verified project progress was confirmed before this action ended. Review session logs and checkpoint evidence."
-              echo "::warning::Session failures and no-progress outcomes are recorded, but do not terminate the routine action early."
-            fi
+            case "$EFFECTIVE_TERMINAL_STATUS" in
+              verified_progress)
+                if [ "$CONTROLLER_OUTCOME" = "success" ]; then
+                  echo "- Controller finished with meaningful progress and a verified durable checkpoint."
+                else
+                  echo "::error::Terminal status says verified_progress but the controller step failed."
+                fi
+                ;;
+              intentional_noop)
+                echo "- Controller intentionally did not start a worker; this is not classified as productive progress."
+                ;;
+              persistence_failure)
+                echo "::error::Checkpoint persistence or clean-worktree verification failed; inspect recovery refs, bundles, and failure transcripts."
+                ;;
+              no_progress_failure)
+                echo "::error::The worker activation ended without meaningful, durable project progress."
+                ;;
+              controller_failure)
+                echo "::error::The controller failed before it could publish a terminal outcome."
+                ;;
+              *)
+                echo "::error::The controller exited successfully without a recognized terminal outcome."
+                ;;
+            esac
           } >> "$GITHUB_STEP_SUMMARY"
           python3 - "$SUPERVISOR_TRANSCRIPT_DIR" >> "$GITHUB_STEP_SUMMARY" <<'PY'
           import html
