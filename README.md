@@ -222,3 +222,17 @@ This is a research/backtesting system only. It never places live trades, accesse
 - Track record (unchanged): 447 days (2025-01-02 → 2026-10-14), NAV $135,057.00 (+35.06%), Sharpe 1.9302, max DD -2.92%, rolling 63d Sharpe 0.1185.
 - Drift: `low_rolling_sharpe` on 2026-10-12 (0.4892), 2026-10-13 (0.3669), 2026-10-14 (0.1185) — 3 consecutive days. Trajectory volatile over last 18d (-0.51..+1.19). Not >20d persistence threshold. All primary gates pass; risk-on 132d.
 - Action: No replay run. Reported blocker in validation_022.md. Strategy frozen.
+
+## Cycle 50 — 2026-10-14 (No new data)
+
+- Data check: No 2026-10-15 data for incumbent ETFs (SPY/QQQ/IWM/TLT/GLD/EFA/EEM) or ^VIX via yfinance. All symbols returned 0 rows for 2026-10-15+. Raw max dates remain 2026-10-14.
+- Track record (unchanged): 447 days (2025-01-02 → 2026-10-14), NAV $135,057.00 (+35.06%), Sharpe 1.9302, max DD -2.92%, rolling 63d Sharpe 0.1185.
+- Drift: `low_rolling_sharpe` on 2026-10-12 (0.4892), 2026-10-13 (0.3669), 2026-10-14 (0.1185) — 3 consecutive days. Trajectory volatile over last 18d (-0.51..+1.19). Not >20d persistence threshold. All primary gates pass; risk-on 132d.
+- Action: No replay run. Reported blocker in validation_023.md. Strategy frozen.
+
+## Cycle 51 — 2026-10-14 (No new data)
+
+- Data check: No 2026-10-15 data for incumbent ETFs (SPY/QQQ/IWM/TLT/GLD/EFA/EEM) or ^VIX via yfinance. All symbols returned 0 rows for 2026-10-15+. Raw max dates remain 2026-10-14.
+- Track record (unchanged): 447 days (2025-01-02 → 2026-10-14), NAV $135,057.00 (+35.06%), Sharpe 1.9302, max DD -2.92%, rolling 63d Sharpe 0.1185.
+- Drift: `low_rolling_sharpe` on 2026-10-12 (0.4892), 2026-10-13 (0.3669), 2026-10-14 (0.1185) — 3 consecutive days. Trajectory volatile over last 18d (-0.51..+1.19). Not >20d persistence threshold. All primary gates pass; risk-on 132d.
+- Action: No replay run. Reported blocker in validation_024.md. Strategy frozen.
