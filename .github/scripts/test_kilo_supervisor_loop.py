@@ -97,7 +97,7 @@ class SupervisorLoopTests(unittest.TestCase):
                 event.get("stage") == "message_written"
                 and event.get("message_id") == repaired_id
                 and event.get("correlation_id") == repaired_id
-                and event.get("message") == report
+                and event.get("message") == report.strip()
                 for event in events
             ))
 
