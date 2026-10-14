@@ -193,7 +193,7 @@ def read_protocol_json(path: Optional[Path], maximum: int = MAX_WORKER_DISPOSITI
     return value if isinstance(value, dict) else None
 
 
-def read_worker_disposition(protocol_dir: Optional[Path]) -> Optional[dict]:
+def read_worker_disposition(protocol_dir: Optional[Path], recommendation: Optional[dict] = None) -> Optional[dict]:
     """Read one correlated worker disposition; a verified claim is not task completion."""
     if protocol_dir is None:
         return None
@@ -205,6 +205,17 @@ def read_worker_disposition(protocol_dir: Optional[Path]) -> Optional[dict]:
     reason = value.get("reason")
     if not isinstance(recommendation_id, str) or not recommendation_id.strip() or len(recommendation_id) > 180:
         return None
+    if recommendation is not None and recommendation_id != recommendation.get("recommendation_id"):
+        return None
+    task_id = value.get("task_id", "")
+    session_id = value.get("session_id", "")
+    if value.get("schema_version") == 2:
+        if not isinstance(task_id, str) or not task_id.strip() or len(task_id) > 220:
+            return None
+        if not isinstance(session_id, str) or not session_id.strip() or len(session_id) > 220:
+            return None
+        if recommendation is not None and task_id != recommendation.get("task_id"):
+            return None
     if disposition not in VALID_WORKER_DISPOSITIONS:
         return None
     if not isinstance(reason, str) or len(reason.strip()) < 8:
@@ -226,8 +237,8 @@ def read_worker_disposition(protocol_dir: Optional[Path]) -> Optional[dict]:
     return {
         "schema_version": 2,
         "recommendation_id": recommendation_id.strip(),
-        "task_id": str(value.get("task_id", ""))[:220],
-        "session_id": str(value.get("session_id", ""))[:220],
+        "task_id": task_id[:220] if isinstance(task_id, str) else "",
+        "session_id": session_id[:220] if isinstance(session_id, str) else "",
         "acknowledgement_state": acknowledgement,
         "disposition": disposition,
         "reason": redact_sensitive_text(reason)[:1_200],
@@ -399,7 +410,7 @@ def format_worker_disposition(recommendation: Optional[dict], disposition: Optio
 def dialogue_protocol_observation(protocol_dir: Optional[Path]) -> str:
     """Return a compact audit view; worker claims must be checked against independent evidence."""
     recommendation = read_current_recommendation(protocol_dir)
-    disposition = read_worker_disposition(protocol_dir)
+    disposition = read_worker_disposition(protocol_dir, recommendation)
     if recommendation is None:
         return "No valid current recommendation has been published to the file-backed dialogue protocol."
     matched = bool(disposition and disposition["recommendation_id"] == recommendation["recommendation_id"])
@@ -813,7 +824,7 @@ def main() -> int:
         previous_git_digest = git_digest
 
         current_recommendation = read_current_recommendation(protocol_dir)
-        current_disposition = read_worker_disposition(protocol_dir)
+        current_disposition = read_worker_disposition(protocol_dir, current_recommendation)
         worker_reply = format_worker_disposition(current_recommendation, current_disposition)
         if worker_reply:
             disposition_digest = hashlib.sha256(
