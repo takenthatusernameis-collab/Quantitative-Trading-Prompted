@@ -1,12 +1,12 @@
-last_run_date: '2026-10-12'
+last_run_date: '2026-10-13'
 current_positions:
-  SPY: 0.16314517337354414
-  QQQ: 0.16314517337354414
-  IWM: 0.16314517337354414
+  SPY: 0.16292999943612582
+  QQQ: 0.16292999943612582
+  IWM: 0.16292999943612582
   TLT: 0.0
   GLD: 0.0
   EFA: 0.0
-  EEM: 0.16314517337354414
+  EEM: 0.16292999943612582
 cumulative_returns:
 - 0.0019462434871237997
 - 0.006936972864723232
@@ -453,6 +453,7 @@ cumulative_returns:
 - -0.005788851257014354
 - 0.004183121975679133
 - -0.0034314775846174973
+- -0.002271913299493816
 cumulative_pnl:
 - 194.62434871237997
 - 695.0473902981554
@@ -899,6 +900,7 @@ cumulative_pnl:
 - -796.5499960153453
 - 572.2684540892667
 - -471.4041070280497
+- -311.0363271314465
 cumulative_dates:
 - '2025-01-02'
 - '2025-01-03'
@@ -1345,14 +1347,15 @@ cumulative_dates:
 - '2026-10-08'
 - '2026-10-09'
 - '2026-10-12'
+- '2026-10-13'
 peak_nav: 139120.07235486925
-current_nav: 136905.01622607943
-max_drawdown: -0.015921901788115922
+current_nav: 136593.979898948
+max_drawdown: -0.018157641907184052
 drift_flags:
   low_rolling_sharpe:
-    value: 0.48917289692364996
+    value: 0.3668744153541084
     threshold: 0.5
-    date: '2026-10-12'
+    date: '2026-10-13'
 run_history:
 - date: '2025-01-02'
   nav: 100194.62434871239
@@ -5359,13 +5362,22 @@ run_history:
   dd_scale: 1.0
   regime_exposure: 1.0
   n_positions: 4
+- date: '2026-10-13'
+  nav: 136593.979898948
+  daily_return: -0.002271913299493816
+  daily_pnl: -311.0363271314465
+  turnover: 0.0008606957496732903
+  vol_scale: 0.6517199977445033
+  dd_scale: 1.0
+  regime_exposure: 1.0
+  n_positions: 4
 previous_regime_exposure: 1.0
-rolling_sharpe_63d: 0.48917289692364996
+rolling_sharpe_63d: 0.3668744153541084
 rolling_max_dd_63d: -0.04985740111232129
-regime_persistence_days: 130
+regime_persistence_days: 131
 vol_scale_min: 0.43731674589035896
 vol_scale_max: 1.0
 dd_scale_min: 1.0
 dd_scale_max: 1.0
-turnover_median: 0.0012494892551145886
+turnover_median: 0.0012467838311122637
 turnover_p95: 0.5

@@ -39,16 +39,18 @@ def main() -> None:
     # Load config
     config = PaperTradingConfig.from_paper_config_yaml(config_path)
 
-    # Load ALL market data once (from history_start to latest available)
-    # The latest available date from SPY data is 2026-10-13
-    end_date = "2026-10-13"
+    # Load ALL market data once (from history_start to latest available).
+    # NOTE: yfinance treats ``end`` as EXCLUSIVE, so to capture trading day
+    # 2026-10-13 we must request end_date = 2026-10-14. Requesting
+    # end_date = 2026-10-13 silently truncates the cache to 2026-10-12.
+    end_date = "2026-10-14"
     print(f"Fetching market data from {config.history_start} to {end_date}...")
     all_market_data = fetch_universe(config.universe, config.history_start, end_date, force=True)
     print(f"Loaded market data: {len(all_market_data)} rows, {all_market_data.index.min().date()} to {all_market_data.index.max().date()}")
 
     # Get trading days from 2025-01-01 to 2026-10-13 (captures 2025 regime flips)
     start_replay_date = "2025-01-01"
-    replay_dates = all_market_data.index[(all_market_data.index >= start_replay_date) & (all_market_data.index <= end_date)]
+    replay_dates = all_market_data.index[(all_market_data.index >= start_replay_date) & (all_market_data.index <= "2026-10-13")]
     replay_dates = replay_dates[replay_dates.weekday < 5]  # Ensure weekdays only
     print(f"Replay period: {start_replay_date} to {end_date} ({len(replay_dates)} trading days)")
 
