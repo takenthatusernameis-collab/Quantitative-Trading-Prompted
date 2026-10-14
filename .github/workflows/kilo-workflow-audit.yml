@@ -82,7 +82,7 @@ jobs:
           grep -Fq 'output_silence=%ss idle_watchdog_remaining=%ss' "$controller"
           grep -Fq 'No attempt-count cap' "$controller"
           grep -Fq 'no attempt-count cap before cutoff' "$controller"
-          grep -Fq 'continue until verified durable progress or the global cutoff' "$controller"
+          grep -Fq 'only verified durable progress or the global cutoff ends this loop' "$controller"
           grep -Fq 'Hard provider quota/capacity limit detected' "$controller"
           grep -Fq 'project_worktree_changes()' "$controller"
           grep -Fq 'git diff --name-only' "$controller"
