@@ -202,8 +202,8 @@ class DialogueProtocolTests(unittest.TestCase):
             if event["direction"] == "supervisor_to_worker"
         ]
         self.dialogue.write_text(
-            "".join(json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\\n"
-                    for event in supervisor_only),
+            "\n".join(json.dumps(event, ensure_ascii=False, separators=(",", ":"))
+                      for event in supervisor_only) + "\n",
             encoding="utf-8",
         )
         result = self.evaluate(self.manifest())
@@ -218,15 +218,9 @@ class DialogueProtocolTests(unittest.TestCase):
         for event in events:
             if event["direction"] == "worker_to_supervisor":
                 event["disposition"] = "in_progress"
-                key_material = "\\0".join((
-                    event["direction"], event["stage"], event["message_id"],
-                    event["correlation_id"], event["message"], event["disposition"],
-                ))
-                import hashlib
-                event["event_key"] = hashlib.sha256(key_material.encode("utf-8")).hexdigest()
         self.dialogue.write_text(
-            "".join(json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\\n"
-                    for event in events),
+            "\n".join(json.dumps(event, ensure_ascii=False, separators=(",", ":"))
+                      for event in events) + "\n",
             encoding="utf-8",
         )
         result = self.evaluate(self.manifest())
