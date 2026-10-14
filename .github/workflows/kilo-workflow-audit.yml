@@ -143,6 +143,7 @@ jobs:
         run: |
           set -euo pipefail
           controller=.github/scripts/kilo-controller.sh
+          persist=.github/scripts/kilo-persist-checkpoint.sh
           grep -Fq 'kilo-invoke-with-idle-timeout.py' "$controller"
           grep -Fq 'KILO_IDLE_TIMEOUT_SECONDS:-600' "$controller"
           grep -Fq 'output_silence=%ss idle_watchdog_remaining=%ss' "$controller"
