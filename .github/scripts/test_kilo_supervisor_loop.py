@@ -607,5 +607,64 @@ class SupervisorLoopTests(unittest.TestCase):
             (protocol / "worker-disposition.json").write_text("not json", encoding="utf-8")
             self.assertIsNone(monitor.read_worker_disposition(protocol))
 
+    def test_schema_v2_worker_reply_must_match_active_task_and_message(self):
+        with tempfile.TemporaryDirectory(prefix="kilo-dialogue-correlation-test-") as temp:
+            protocol = Path(temp)
+            report = (
+                "STATUS: ATTENTION\n"
+                "Observed evidence: the focused regression test failed.\n"
+                "Different next step: rerun the failing input in isolation.\n"
+                "Verification: require the isolated regression to pass.\n"
+                "Limitations: broad suite not yet run.\n"
+            )
+            recommendation_id = monitor.publish_current_recommendation(
+                protocol, "correlation-run", "2", 1, report,
+                "the worker log contains the failing input",
+            )
+            recommendation = monitor.read_current_recommendation(protocol)
+            self.assertIsNotNone(recommendation)
+            disposition = {
+                "schema_version": 2,
+                "recommendation_id": recommendation_id,
+                "task_id": recommendation["task_id"],
+                "session_id": "correlation-run-attempt-2-session-1",
+                "acknowledgement_state": "acknowledged",
+                "disposition": "in_progress",
+                "reason": "I am reproducing the failure before changing code.",
+                "evidence": "The reported failing input is available.",
+                "verification": "",
+                "work_performed": "Started an isolated reproduction.",
+                "blockers": [],
+                "changed_files": [],
+                "commit_sha": "",
+                "checkpoint_sha": "",
+                "commands_executed": [],
+                "test_outcomes": [],
+                "artifact_refs": [],
+                "acceptance_criteria": [],
+                "outstanding_work": ["Confirm the regression locally."],
+                "updated_at": "2026-10-14T00:00:00Z",
+            }
+            path = protocol / "worker-disposition.json"
+            path.write_text(json.dumps(disposition), encoding="utf-8")
+            self.assertIsNotNone(monitor.read_worker_disposition(protocol, recommendation))
+
+            disposition["task_id"] = "different-run-attempt"
+            path.write_text(json.dumps(disposition), encoding="utf-8")
+            self.assertIsNone(monitor.read_worker_disposition(protocol, recommendation),
+                              "a response for a different task must not be attributed to the active recommendation")
+
+            disposition["task_id"] = recommendation["task_id"]
+            disposition["recommendation_id"] = "stale-message-id"
+            path.write_text(json.dumps(disposition), encoding="utf-8")
+            self.assertIsNone(monitor.read_worker_disposition(protocol, recommendation),
+                              "a response for a different message must not be attributed to the active recommendation")
+
+            disposition["recommendation_id"] = recommendation_id
+            disposition["session_id"] = ""
+            path.write_text(json.dumps(disposition), encoding="utf-8")
+            self.assertIsNone(monitor.read_worker_disposition(protocol, recommendation),
+                              "schema v2 requires the worker session identifier")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
