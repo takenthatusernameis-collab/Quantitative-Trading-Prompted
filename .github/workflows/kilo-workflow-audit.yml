@@ -89,7 +89,7 @@ jobs:
           grep -Fq 'kilo-invoke-with-idle-timeout.py' "$controller"
           grep -Fq 'KILO_IDLE_TIMEOUT_SECONDS:-600' "$controller"
           grep -Fq 'output_silence=%ss idle_watchdog_remaining=%ss' "$controller"
-          grep -Fq 'No attempt-count cap' "$controller"
+          grep -Fq 'without an attempt-count cap' "$controller"
           grep -Fq 'no attempt-count cap before cutoff' "$controller"
           grep -Fq 'only verified durable progress or the global cutoff ends this loop' "$controller"
           grep -Fq 'Hard provider quota/capacity limit detected' "$controller"
