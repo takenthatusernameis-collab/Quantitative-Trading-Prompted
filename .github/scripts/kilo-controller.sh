@@ -1,5 +1,10 @@
 set -Eeuo pipefail
-cutoff_epoch=$(($(date +%s) + 355 * 60))
+KILO_HARD_CUTOFF_MINUTES="${KILO_HARD_CUTOFF_MINUTES:-355}"
+if ! [[ "$KILO_HARD_CUTOFF_MINUTES" =~ ^[1-9][0-9]*$ ]] || [ "$KILO_HARD_CUTOFF_MINUTES" -gt 355 ]; then
+  echo "::error::KILO_HARD_CUTOFF_MINUTES must be a positive whole number no greater than 355."
+  exit 1
+fi
+cutoff_epoch=$(($(date +%s) + KILO_HARD_CUTOFF_MINUTES * 60))
 umask 077
 # A silent Kilo invocation is a stall; this does not shorten the global workflow cutoff.
 KILO_IDLE_TIMEOUT_SECONDS="${KILO_IDLE_TIMEOUT_SECONDS:-600}"
@@ -10,12 +15,40 @@ fi
 
 # Session target is user-configurable; transient attempts and corrective retries have no numeric cap.
 KILO_INPUT_SESSIONS="${KILO_INPUT_SESSIONS:-1000}"
+KILO_TARGET_BRANCH="${KILO_TARGET_BRANCH:-${KILO_DEFAULT_BRANCH:-}}"
+if [ "${KILO_E2E_MODE:-0}" = "1" ]; then
+  repository_default="${KILO_REPOSITORY_DEFAULT_BRANCH:-${KILO_DEFAULT_BRANCH:-main}}"
+  if [ "${KILO_TRIGGER_EVENT:-}" != "workflow_dispatch" ] ||
+     [ -z "$KILO_TARGET_BRANCH" ] || [ "$KILO_TARGET_BRANCH" = "$repository_default" ] ||
+     [[ "$KILO_TARGET_BRANCH" != infra/* ]]; then
+    echo "::error::Bounded E2E mode requires an explicit workflow_dispatch on a non-default infra/* branch."
+    exit 1
+  fi
+  if [ "${GITHUB_REF_TYPE:-branch}" != "branch" ] || [ "${GITHUB_REF_NAME:-}" != "$KILO_TARGET_BRANCH" ] ||
+     [ "$(git branch --show-current)" != "$KILO_TARGET_BRANCH" ]; then
+    echo "::error::Bounded E2E target branch does not match the checked-out workflow ref."
+    exit 1
+  fi
+  if ! git fetch origin "$KILO_TARGET_BRANCH"; then
+    echo "::error::Could not fetch the bounded E2E target branch."
+    exit 1
+  fi
+  if [ "$(git rev-parse HEAD)" != "$(git rev-parse "origin/$KILO_TARGET_BRANCH")" ]; then
+    echo "::error::Bounded E2E checkout is not at the current remote target head; refusing to run."
+    exit 1
+  fi
+  if [ -e .kilo/TWO_AGENT_ONCE ] || [ -e .kilo/SKIP_NEXT_ROUTINE_KILO ]; then
+    echo "::error::Bounded E2E mode refuses to consume or alter routine Kilo control markers."
+    exit 1
+  fi
+  KILO_INPUT_SESSIONS=1
+fi
 if ! [[ "$KILO_INPUT_SESSIONS" =~ ^[1-9][0-9]*$ ]]; then
   echo "::error::KILO_INPUT_SESSIONS must be a positive whole number."
   exit 1
 fi
 SESSION_LIMIT_POLICY="$KILO_INPUT_SESSIONS"
-echo "::notice::Configured worker session target: $SESSION_LIMIT_POLICY; transient retries and corrective attempts remain count-unbounded until the global 355-minute cutoff."
+echo "::notice::Configured worker session target: $SESSION_LIMIT_POLICY; transient retries and corrective attempts remain bounded by the configured ${KILO_HARD_CUTOFF_MINUTES}-minute hard cutoff."
 WORKFLOW_STARTED_EPOCH="$(date +%s)"
 KILO_PROGRESS_STATE_FILE="$RUNNER_TEMP/kilo-progress-state-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.txt"
 KILO_PROGRESS_LOG="$RUNNER_TEMP/kilo-progress-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.log"
@@ -69,12 +102,12 @@ record_intentional_noop() {
 # Shared production checkpoint routine: CI calls it directly against a local bare Git remote.
 source .github/scripts/kilo-persist-checkpoint.sh
 
-write_progress "controller-configured" "event=${KILO_TRIGGER_EVENT:-unknown}; session_policy=${SESSION_LIMIT_POLICY}; hard_cutoff=355_minutes"
+write_progress "controller-configured" "event=${KILO_TRIGGER_EVENT:-unknown}; session_policy=${SESSION_LIMIT_POLICY}; hard_cutoff=${KILO_HARD_CUTOFF_MINUTES}_minutes"
 
 # While the one-shot marker awaits its independent validation gate,
 # scheduled invocations must not consume it or start a duplicate run.
 if [ "$KILO_TRIGGER_EVENT" = "schedule" ]; then
-  DEFAULT_BRANCH="$KILO_DEFAULT_BRANCH"
+  DEFAULT_BRANCH="$KILO_TARGET_BRANCH"
   if [ -z "$DEFAULT_BRANCH" ] || ! git fetch origin "$DEFAULT_BRANCH"; then
     echo "::error::Could not verify the default branch; scheduled activation cannot safely continue."
     exit 1
@@ -104,7 +137,7 @@ done
 
 # A durable marker authorizes a validation-gated one-time activation; the active run remains cutoff-bound.
 one_shot_mode=0
-if [ -f ".kilo/TWO_AGENT_ONCE" ]; then
+if [ "${KILO_E2E_MODE:-0}" != "1" ] && [ -f ".kilo/TWO_AGENT_ONCE" ]; then
   one_shot_mode=1
   echo "::notice::One-shot marker detected; authorizing a validation-gated activation."
 fi
@@ -114,7 +147,7 @@ fi
 # A queued schedule may check out an older commit containing the sentinel.
 # Require it to exist on the live default branch before spending the allowance.
 if [ "$one_shot_mode" -eq 1 ]; then
-  DEFAULT_BRANCH="$KILO_DEFAULT_BRANCH"
+  DEFAULT_BRANCH="$KILO_TARGET_BRANCH"
   if [ -z "$DEFAULT_BRANCH" ] || ! git fetch origin "$DEFAULT_BRANCH"; then
     echo "::error::Could not verify the one-shot marker on the remote branch."
     exit 1
@@ -136,7 +169,7 @@ if [ "$one_shot_mode" -eq 0 ] && [ "${GITHUB_EVENT_NAME:-${KILO_TRIGGER_EVENT:-}
   echo "::notice::Consuming the one-time post-smoke skip; this activation will not start Kilo."
   git config user.name "kilo-autonomous"
   git config user.email "kilo-autonomous@users.noreply.github.com"
-  DEFAULT_BRANCH="$KILO_DEFAULT_BRANCH"
+  DEFAULT_BRANCH="$KILO_TARGET_BRANCH"
   if [ -z "$DEFAULT_BRANCH" ]; then
     echo "::error::Default branch is unavailable; retaining the skip marker for recovery."
     exit 1
@@ -317,7 +350,26 @@ DEFAULT OPERATING PRINCIPLE
 Make progress despite imperfection. Fix cheap, deterministic blockers. Tolerate isolated recoverable failures. Protect durable progress and critical invariants. Change approach when evidence shows the current one is not working.
 PROMPT
 )
-DEFAULT_BRANCH="$KILO_DEFAULT_BRANCH"
+if [ -n "${KILO_TASK_PROMPT_FILE:-}" ]; then
+  if [ ! -f "$KILO_TASK_PROMPT_FILE" ]; then
+    echo "::error::Configured task prompt file is missing: $KILO_TASK_PROMPT_FILE"
+    exit 1
+  fi
+  task_prompt="$(cat "$KILO_TASK_PROMPT_FILE")"
+  if [ -z "$task_prompt" ]; then
+    echo "::error::Configured task prompt file is empty: $KILO_TASK_PROMPT_FILE"
+    exit 1
+  fi
+  command="${command}
+
+TASK-SCOPED OBJECTIVE OVERRIDE
+For this activation, the bounded task below takes priority over the generic fallback that asks the worker to select a task. Do not broaden scope or select another task. Preserve all mandatory loop-supervisor acknowledgement and disposition rules from the general instructions above.
+
+$task_prompt"
+  command="${command//__RUN_ID__/${GITHUB_RUN_ID:-local}}"
+  command="${command//__RUN_ATTEMPT__/${GITHUB_RUN_ATTEMPT:-1}}"
+fi
+DEFAULT_BRANCH="$KILO_TARGET_BRANCH"
 
 if [ -z "$DEFAULT_BRANCH" ]; then
   echo "::error::GitHub did not provide the default branch; refusing to report a successful activation."
@@ -535,7 +587,7 @@ while true; do
     session_attempt=$((session_attempt + 1))
     attempt_log="$RUNNER_TEMP/kilo-session-${agent_index}-attempt-${session_attempt}.log"
     remaining_global=$((cutoff_epoch - $(date +%s)))
-    if [ "$remaining_global" -le 0 ]; then rc=124; echo "::warning::355-minute workflow cutoff reached before attempt ${session_attempt}."; break; fi
+    if [ "$remaining_global" -le 0 ]; then rc=124; echo "::warning::configured ${KILO_HARD_CUTOFF_MINUTES}-minute workflow cutoff reached before attempt ${session_attempt}."; break; fi
     : > "$attempt_log"
     printf '%s\n' "$attempt_log" > "$HEARTBEAT_STATE_FILE"
     printf '%s\n' "$attempt_log" > "$SUPERVISOR_ACTIVE_LOG_POINTER"
@@ -623,7 +675,7 @@ PY
     correction_attempt=$((correction_attempt + 1))
     prior_record="${previous_recovery_log:-$session_log}"
     recovery_command=$(cat <<RECOVERY_PROMPT
-Corrective invocation ${correction_attempt} for the ongoing Kilo task. The previous invocation failed or made no durable project changes. This is not a one-pass allowance: keep trying materially different, evidence-supported corrections until verified durable project progress is produced or the global 355-minute cutoff is reached.
+Corrective invocation ${correction_attempt} for the ongoing Kilo task. The previous invocation failed or made no durable project changes. This is not a one-pass allowance: keep trying materially different, evidence-supported corrections until verified durable project progress is produced or the configured ${KILO_HARD_CUTOFF_MINUTES}-minute hard cutoff is reached.
 Latest observed blocker: ${correction_reason}
 Inspect the current worktree and the latest diagnostic record at: ${prior_record}
 If this is not the first corrective invocation, inspect its previous corrective log and choose an approach materially different from prior failed approaches. Do not simply repeat the same operation with unchanged assumptions. Do not invent changes merely to create activity. Identify the smallest justified correction, implement it when safe, and run the narrowest relevant verification. Record what changed, the exact verification commands and outputs, and unresolved blockers in a durable handoff. Emit exactly one final machine-readable line CORRECTIVE_VERIFICATION=PASS only if focused verification actually succeeded; otherwise emit CORRECTIVE_VERIFICATION=BLOCKED and explain the blocker. Preserve research pre-registrations and promotion gates, tests, security controls, workflow boundaries, user data, and all safety requirements. If no safe correction is supported, preserve useful evidence and explain the next distinct investigation needed.
@@ -693,7 +745,7 @@ RECOVERY_PROMPT
   if [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ]; then
     if [ "$(date +%s)" -ge "$cutoff_epoch" ]; then
       cutoff=1
-      echo "::warning::355-minute safety cutoff reached; saving the last possible checkpoint."
+      echo "::warning::configured ${KILO_HARD_CUTOFF_MINUTES}-minute safety cutoff reached; saving the last possible checkpoint."
     else
       consecutive_failures=$((consecutive_failures + 1))
       failed_sessions=$((failed_sessions + 1))
@@ -860,10 +912,10 @@ PY
 done
 
 if [ "$cutoff" -eq 1 ]; then
-  echo "::warning::The 355-minute safety cutoff was reached; see checkpoint verification messages above."
+  echo "::warning::The configured ${KILO_HARD_CUTOFF_MINUTES}-minute safety cutoff was reached; see checkpoint verification messages above."
 fi
 if [ "$cutoff" -eq 1 ]; then
-  write_progress "controller-finished" "355-minute hard cutoff reached"
+  write_progress "controller-finished" "${KILO_HARD_CUTOFF_MINUTES}-minute hard cutoff reached"
 else
   write_progress "controller-finished" "controller loop finished before cutoff"
 fi

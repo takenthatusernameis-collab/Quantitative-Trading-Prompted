@@ -60,7 +60,7 @@ expected_success_sha="$(git -C "$success_worker" rev-parse HEAD)"
   [[ "$persisted" -eq 1 ]]
   [[ "$persisted_checkpoints" -eq 1 ]]
   [[ "$project_progress" -eq 1 ]]
-  [[ "$last_verified_checkpoint_sha" == "$(git rev-parse --short HEAD)" ]]
+  [[ "$last_verified_checkpoint_sha" == "$(git rev-parse HEAD)" ]]
   [[ "$(git ls-remote origin refs/heads/main | awk 'NR==1 {print $1}')" == "$expected_success_sha" ]]
 )
 echo "PASS: production persistence routine pushes and remotely verifies a clean checkpoint."

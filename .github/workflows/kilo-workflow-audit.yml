@@ -15,6 +15,9 @@ on:
       - "requirements.txt"
       - ".github/scripts/kilo-invoke-with-idle-timeout.py"
       - ".github/scripts/kilo-supervisor-loop.py"
+      - ".github/prompts/kilo-e2e-verification.md"
+      - ".github/scripts/kilo-e2e-verification.py"
+      - ".github/scripts/test_kilo_e2e_verification.py"
       - ".github/scripts/kilo_dialogue_protocol.py"
       - ".github/scripts/test_kilo_dialogue_protocol.py"
       - ".github/scripts/test_kilo_supervisor_loop.py"
@@ -35,6 +38,9 @@ on:
       - ".github/scripts/test_kilo_checkpoint_recovery.sh"
       - "requirements.txt"
       - ".github/scripts/kilo-supervisor-loop.py"
+      - ".github/prompts/kilo-e2e-verification.md"
+      - ".github/scripts/kilo-e2e-verification.py"
+      - ".github/scripts/test_kilo_e2e_verification.py"
       - ".github/scripts/kilo_dialogue_protocol.py"
       - ".github/scripts/test_kilo_dialogue_protocol.py"
       - ".github/scripts/test_kilo_supervisor_loop.py"
@@ -113,6 +119,21 @@ jobs:
           grep -Fq 'same checkpoint conflicted with the same remote head again' "$persist"
           grep -Fq 'rebase_abort_succeeded=' "$persist"
           echo "Production checkpoint routine is isolated for direct integration testing: OK"
+
+      - name: Validate branch-isolated bounded E2E controls
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          grep -Fq 'KILO_HARD_CUTOFF_MINUTES' .github/scripts/kilo-controller.sh
+          grep -Fq 'KILO_E2E_MODE' .github/scripts/kilo-controller.sh
+          grep -Fq 'KILO_TARGET_BRANCH' .github/scripts/kilo-controller.sh
+          grep -Fq 'KILO_TASK_PROMPT_FILE' .github/scripts/kilo-controller.sh
+          grep -Fq "format('kilo-e2e-{0}', github.ref_name)" .github/workflows/main.yml
+          grep -Fq "KILO_HARD_CUTOFF_MINUTES:" .github/workflows/main.yml
+          grep -Fq 'LAST_VERIFIED_CHECKPOINT_SHA' .github/workflows/main.yml
+          grep -Fq 'gh run download' .github/scripts/kilo-e2e-verification.py
+          grep -Fq 'remote_checkpoint' .github/scripts/kilo-e2e-verification.py
+          echo "Branch isolation, short cutoff, worker-scope override, artifact recovery and independent checkpoint gate: OK"
       - name: Exercise terminal outcome classification and CLI exit semantics
         shell: bash
         run: |
@@ -190,7 +211,7 @@ jobs:
           grep -Fq '.kilo-runtime' "$controller"
           grep -Fq 'const protocolDir = join(workspace, ".kilo-runtime");' .github/workflows/kilo-workflow-audit.yml
           echo "Supervisor dialogue state is outside Kilo's config directory: OK"
-          echo "Customizable session target, count-unbounded retries/corrections, and 355-minute cutoff guardrails: OK"
+          echo "Customizable session target, cutoff-bounded retries/corrections, and configurable hard-cutoff guardrails: OK"
           for marker in \
             "write_progress()" \
             'write_progress "invocation-start"' \
@@ -306,9 +327,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m py_compile .github/scripts/kilo-supervisor-loop.py .github/scripts/test_kilo_supervisor_loop.py .github/scripts/kilo_dialogue_protocol.py .github/scripts/test_kilo_dialogue_protocol.py
+          python3 -m py_compile .github/scripts/kilo-supervisor-loop.py .github/scripts/test_kilo_supervisor_loop.py .github/scripts/kilo_dialogue_protocol.py .github/scripts/test_kilo_dialogue_protocol.py .github/scripts/kilo-e2e-verification.py .github/scripts/test_kilo_e2e_verification.py
           python3 .github/scripts/test_kilo_supervisor_loop.py
           python3 .github/scripts/test_kilo_dialogue_protocol.py
+          python3 .github/scripts/test_kilo_e2e_verification.py
           node --check --input-type=module < .kilo/plugin/loop-supervisor-feedback.js
           node --input-type=module <<'JS'
           import assert from "node:assert/strict";

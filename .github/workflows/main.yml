@@ -18,12 +18,14 @@ permissions:
   contents: write
 
 concurrency:
-  group: kilo-repository
+  group: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && format('kilo-e2e-{0}', github.ref_name) || 'kilo-repository' }}
   cancel-in-progress: false
 
 jobs:
   kilo:
+    if: ${{ github.ref_name == github.event.repository.default_branch || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/')) }}
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && 12 || 360 }}
 
     steps:
       - uses: actions/checkout@v6
@@ -37,6 +39,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           KILO_TRIGGER_EVENT: ${{ github.event_name }}
           KILO_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          KILO_REPOSITORY_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          KILO_TARGET_BRANCH: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && github.ref_name || github.event.repository.default_branch }}
+          KILO_E2E_MODE: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && '1' || '0' }}
+          KILO_HARD_CUTOFF_MINUTES: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && '10' || '355' }}
+          KILO_TASK_PROMPT_FILE: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && '.github/prompts/kilo-e2e-verification.md' || '' }}
           KILO_INPUT_SESSIONS: ${{ inputs.sessions || '1000' }}
         run: bash .github/scripts/kilo-controller.sh
       - name: Summarize controller outcome
@@ -166,6 +173,7 @@ jobs:
           PY
 
       - name: Upload Kilo progress and supervisor trace
+        id: upload_kilo_trace
         if: always()
         continue-on-error: true
         uses: actions/upload-artifact@v4
@@ -178,8 +186,77 @@ jobs:
             ${{ runner.temp }}/kilo-supervisor-transcripts-*/agent-dialogue.jsonl
             ${{ runner.temp }}/kilo-supervisor-transcripts-*/agent-communication.jsonl
             ${{ runner.temp }}/kilo-supervisor-transcripts-*/task-completion-status.json
+            .kilo-runtime/worker-disposition.json
+            docs/verification/kilo-e2e-run-*.md
           if-no-files-found: ignore
           retention-days: 14
+
+
+      - name: Independently verify bounded Kilo E2E evidence
+        id: kilo_e2e_verification
+        if: \${{ always() && github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch }}
+        env:
+          GH_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: \${{ github.repository }}
+          RUN_ID: \${{ github.run_id }}
+          RUN_ATTEMPT: \${{ github.run_attempt }}
+          TARGET_BRANCH: \${{ github.ref_name }}
+          REPOSITORY_DEFAULT_BRANCH: \${{ github.event.repository.default_branch }}
+          CONTROLLER_OUTCOME: \${{ steps.kilo_controller.outcome }}
+          CONTROLLER_TERMINAL_STATUS: \${{ steps.kilo_controller.outputs.terminal_status }}
+          PERSISTED_CHECKPOINTS: \${{ steps.kilo_controller.outputs.persisted_checkpoints }}
+          LAST_VERIFIED_CHECKPOINT_SHA: \${{ steps.kilo_controller.outputs.last_verified_checkpoint_sha }}
+          RAW_ARTIFACT_ID: \${{ steps.upload_kilo_trace.outputs.artifact-id }}
+          RAW_ARTIFACT_URL: \${{ steps.upload_kilo_trace.outputs.artifact-url }}
+          RAW_ARTIFACT_UPLOAD_OUTCOME: \${{ steps.upload_kilo_trace.outcome }}
+          SUPERVISOR_TRANSCRIPT_DIR: \${{ runner.temp }}/kilo-supervisor-transcripts-\${{ github.run_id }}-attempt-\${{ github.run_attempt }}
+        shell: bash
+        run: python3 .github/scripts/kilo-e2e-verification.py
+
+      - name: Upload independent Kilo E2E verification manifest
+        if: \${{ always() && github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: kilo-e2e-verification-\${{ github.run_id }}
+          path: |
+            \${{ runner.temp }}/kilo-task-verification-\${{ github.run_id }}-attempt-\${{ github.run_attempt }}.json
+            \${{ runner.temp }}/kilo-e2e-verification-summary-\${{ github.run_id }}-attempt-\${{ github.run_attempt }}.json
+            \${{ runner.temp }}/kilo-supervisor-transcripts-\${{ github.run_id }}-attempt-\${{ github.run_attempt }}/task-completion-status.json
+            \${{ runner.temp }}/kilo-supervisor-transcripts-\${{ github.run_id }}-attempt-\${{ github.run_attempt }}/agent-communication.jsonl
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Publish bounded Kilo E2E verdict
+        if: \${{ always() && github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch }}
+        shell: bash
+        env:
+          STATUS_FILE: \${{ runner.temp }}/kilo-supervisor-transcripts-\${{ github.run_id }}-attempt-\${{ github.run_attempt }}/task-completion-status.json
+          MANIFEST_FILE: \${{ runner.temp }}/kilo-task-verification-\${{ github.run_id }}-attempt-\${{ github.run_attempt }}.json
+        run: |
+          python3 - "$STATUS_FILE" "$MANIFEST_FILE" "$GITHUB_STEP_SUMMARY" <<'PY'
+          import json, sys
+          from pathlib import Path
+          status_path, manifest_path, summary_path = map(Path, sys.argv[1:4])
+          try:
+              status = json.loads(status_path.read_text(encoding="utf-8"))
+          except (OSError, json.JSONDecodeError):
+              status = {"status": "incomplete_evidence", "reasons": ["completion status is missing or unreadable"]}
+          try:
+              manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          except (OSError, json.JSONDecodeError):
+              manifest = {"blockers": ["controller verification manifest is missing or unreadable"]}
+          with summary_path.open("a", encoding="utf-8") as out:
+              out.write("\\n## Bounded Kilo E2E independent verdict\\n")
+              out.write(f"- Status: {status.get('status', 'unknown')}\\n")
+              out.write(f"- Task: {status.get('task_id', 'unknown')}\\n")
+              out.write(f"- Verified remote checkpoint: {manifest.get('remote_checkpoint', {}).get('sha', 'none')}\\n")
+              out.write(f"- Blockers: {json.dumps(manifest.get('blockers', []), ensure_ascii=False)}\\n")
+          print(json.dumps({"status": status.get("status"), "blockers": manifest.get("blockers", [])}, indent=2))
+          if status.get("status") != "verified_completion":
+              raise SystemExit("Independent completion gate did not pass; task remains unverified.")
+          PY
 
       - name: Upload Kilo failure transcripts
         if: always()

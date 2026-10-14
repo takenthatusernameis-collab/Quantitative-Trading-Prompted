@@ -216,7 +216,7 @@ persist_current_checkpoint() {
   fi
   if [ "$persisted" -eq 1 ] && [ "$committed_this_iteration" -eq 1 ]; then
     persisted_checkpoints=$((persisted_checkpoints + 1))
-    last_verified_checkpoint_sha="$(git rev-parse --short HEAD)"
+    last_verified_checkpoint_sha="$(git rev-parse HEAD)"
   fi
   write_progress "checkpoint-result" "persisted=${persisted} committed=${committed_this_iteration} project_changes=${checkpoint_has_project_changes}"
   if [ "$persisted" -eq 1 ] && [ "$committed_this_iteration" -eq 1 ] && [ "$checkpoint_has_project_changes" -eq 1 ]; then
