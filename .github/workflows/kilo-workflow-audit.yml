@@ -299,8 +299,8 @@ jobs:
           puts "Supervisor frontmatter and deny-by-default path-scoped permissions: OK"
           RUBY
           controller=.github/scripts/kilo-controller.sh
-          grep -Fq -- "--interval-seconds 150" "$controller"
-          grep -Fq -- "--review-timeout-seconds 120" "$controller"
+          grep -Fq -- '--interval-seconds "$SUPERVISOR_INTERVAL_SECONDS"' "$controller"
+          grep -Fq -- '--review-timeout-seconds "$SUPERVISOR_REVIEW_TIMEOUT_SECONDS"' "$controller"
           grep -Fq -- '"--agent", "loop-supervisor"' .github/scripts/kilo-supervisor-loop.py
           grep -Fq -- "mode: all" .kilo/agents/loop-supervisor.md
           for marker in \
