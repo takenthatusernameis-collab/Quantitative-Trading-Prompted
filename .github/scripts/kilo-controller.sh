@@ -845,7 +845,7 @@ PY
   elif [ "$provider_pressure_streak" -ge 3 ]; then
     echo "::warning::Provider rate-limit/capacity errors have recurred across sessions. Continuing with the existing session-level cooldown policy until the global cutoff."
   elif [ "$correction_failure_block" -eq 1 ]; then
-    echo "::warning::The bounded corrective pass failed. Its evidence and checkpoint are preserved; the next session will continue."
+    echo "::warning::Corrective attempts did not verify durable progress in this session; evidence and checkpoints are preserved, and later sessions may continue until cutoff."
   elif [ "$no_progress_block" -eq 1 ]; then
     echo "::warning::The corrective session produced no durable project progress. Preserving the evidence and starting another session while time remains."
   fi
