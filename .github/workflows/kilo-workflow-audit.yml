@@ -17,6 +17,15 @@ on:
       - ".kilo/supervisor-reports/.gitkeep"
       - ".kilo/TWO_AGENT_ONCE"
       - ".kilo/SKIP_NEXT_ROUTINE_KILO"
+  pull_request:
+    paths:
+      - ".github/workflows/main.yml"
+      - ".github/workflows/kilo-workflow-audit.yml"
+      - ".github/scripts/kilo-controller.sh"
+      - ".github/scripts/kilo-supervisor-loop.py"
+      - ".github/scripts/test_kilo_supervisor_loop.py"
+      - ".kilo/plugin/loop-supervisor-feedback.js"
+      - ".gitignore"
   workflow_dispatch:
 
 permissions:
@@ -110,6 +119,14 @@ jobs:
           grep -Fq "printf 'session_limit=%s" "$controller"
           grep -Fq 'SESSION_LIMIT_POLICY="unlimited"' "$controller"
           grep -Fq "printf 'sessions_started=%s" "$controller"
+          if grep -Fq '.kilo/runtime' "$controller" .github/scripts/kilo-supervisor-loop.py .kilo/plugin/loop-supervisor-feedback.js; then
+            echo "::error::Supervisor protocol files must stay outside .kilo/ so they are not validated as Kilo configuration."
+            exit 1
+          fi
+          grep -Fq 'DIALOGUE_PROTOCOL_DIR=' "$controller"
+          grep -Fq '.kilo-runtime' "$controller"
+          grep -Fq 'const protocolDir = join(workspace, ".kilo-runtime");' .github/workflows/kilo-workflow-audit.yml
+          echo "Supervisor dialogue state is outside Kilo's config directory: OK"
           echo "Unlimited retry/session/correction policy and 355-minute cutoff guardrails: OK"
           for marker in \
             "write_progress()" \
@@ -285,7 +302,7 @@ jobs:
 
             // File-backed protocol: controller owns recommendations; worker owns disposition.
             const workspace = join(runtime, "workspace");
-            const protocolDir = join(workspace, ".kilo", "runtime");
+            const protocolDir = join(workspace, ".kilo-runtime");
             await (await import("node:fs/promises")).mkdir(protocolDir, { recursive: true });
             process.env.GITHUB_WORKSPACE = workspace;
             process.env.KILO_SUPERVISOR_PROTOCOL_DIR = protocolDir;
