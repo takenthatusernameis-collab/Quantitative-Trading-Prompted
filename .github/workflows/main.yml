@@ -61,6 +61,8 @@ jobs:
           SUPERVISOR_DELIVERY_TRANSCRIPTS: ${{ steps.kilo_controller.outputs.supervisor_delivery_transcripts }}
           SUPERVISOR_DIALOGUE_TRANSCRIPTS: ${{ steps.kilo_controller.outputs.supervisor_dialogue_transcripts }}
           SUPERVISOR_WORKER_REPLIES: ${{ steps.kilo_controller.outputs.supervisor_worker_replies }}
+          SUPERVISOR_COMMUNICATION_EVENTS: ${{ steps.kilo_controller.outputs.supervisor_communication_events }}
+          TASK_COMPLETION_STATUS: ${{ steps.kilo_controller.outputs.task_completion_status }}
           SUPERVISOR_TRANSCRIPT_DIR: ${{ runner.temp }}/kilo-supervisor-transcripts-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           SUPERVISOR_ADVICE_ENTRIES: ${{ steps.kilo_controller.outputs.supervisor_advice_entries }}
           SUPERVISOR_PENDING_UNITS: ${{ steps.kilo_controller.outputs.supervisor_pending_units }}
@@ -81,6 +83,8 @@ jobs:
             echo "- Supervisor reviews completed with usable reports: ${SUPERVISOR_REVIEWS_COMPLETED:-0}"
             echo "- Supervisor timeouts: ${SUPERVISOR_REVIEW_TIMEOUTS:-0}; other review failures: ${SUPERVISOR_REVIEW_FAILURES:-0}"
             echo "- Supervisor-to-worker messages delivered: ${SUPERVISOR_DELIVERY_TRANSCRIPTS:-0}; worker-to-supervisor replies: ${SUPERVISOR_WORKER_REPLIES:-0}; total role-dialogue messages: ${SUPERVISOR_DIALOGUE_TRANSCRIPTS:-0}"
+            echo "- Append-only communication lifecycle events: ${SUPERVISOR_COMMUNICATION_EVENTS:-0}"
+            echo "- Task completion gate: ${TASK_COMPLETION_STATUS:-unknown}. Advice delivery, acknowledgement, worker claims, green CI, and checkpoint persistence alone do not prove task completion."
             echo "- Current supervisor recommendation entries: ${SUPERVISOR_ADVICE_ENTRIES:-0}"
             echo "- Current recommendation units not yet injected at shutdown: ${SUPERVISOR_PENDING_UNITS:-0}"
             echo "- Artifact kilo-progress-trace-${GITHUB_RUN_ID} retains only role-dialogue messages plus controller health telemetry; repeated prompt echoes and raw reviewer traces are not published."
@@ -172,6 +176,8 @@ jobs:
             ${{ runner.temp }}/kilo-progress-state-*.txt
             ${{ runner.temp }}/kilo-supervisor-loop-*.log
             ${{ runner.temp }}/kilo-supervisor-transcripts-*/agent-dialogue.jsonl
+            ${{ runner.temp }}/kilo-supervisor-transcripts-*/agent-communication.jsonl
+            ${{ runner.temp }}/kilo-supervisor-transcripts-*/task-completion-status.json
           if-no-files-found: ignore
           retention-days: 14
 

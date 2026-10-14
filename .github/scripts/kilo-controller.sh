@@ -242,7 +242,7 @@ MANDATORY LOOP-SUPERVISOR PROTOCOL
 A. CONTINUOUS SUPERVISION FROM WORKER START
 - The controller starts a separate read/write-restricted `loop-supervisor` review process immediately before the first worker invocation. It reviews the current task and the latest worker/repository evidence immediately, then on a 150-second cadence.
 - New or materially changed supervisor feedback is injected into the next worker tool result by the `loop-supervisor-feedback` plugin. Read it, assess it against current evidence, and either take the smallest safe verified action or explicitly explain why it is unsuitable.
-- FILE-BACKED TWO-WAY DIALOGUE (mandatory, lightweight, non-blocking): the controller owns `.kilo-runtime/current-supervisor-recommendation.json`; never edit or replace it. The `.kilo-runtime/` directory is deliberately outside `.kilo/` because Kilo validates JSON files under `.kilo/` as configuration. When advice arrives, read that file and write/replace `.kilo-runtime/worker-disposition.json` within the next two tool calls, before unrelated exploration when practical. Use a JSON object with `schema_version: 1`, `recommendation_id` copied exactly from the current recommendation, `disposition` (one of `accepted`, `in_progress`, `verified`, `blocked`, `rejected_with_reason`, `superseded`), `reason`, `evidence`, `verification`, and `updated_at`. Include a concrete reason of at least one sentence; `verified` requires the actual verification result. `reason`, `evidence`, and `verification` must be JSON strings; `updated_at` should be an ISO-8601 UTC timestamp. Example: `{\"schema_version\":1,\"recommendation_id\":\"<exact id>\",\"disposition\":\"in_progress\",\"reason\":\"I reviewed the supervisor recommendation and am incorporating the relevant parts into this task.\",\"evidence\":\"Read the current recommendation file.\",\"verification\":\"\",\"updated_at\":\"<UTC timestamp>\"}`. Update the worker-owned disposition file as work progresses. If advice is unsafe, stale, technically incorrect, or conflicts with higher-priority requirements, record `rejected_with_reason` or `superseded` and explain why; never obey blindly. These runtime files are ignored locally and must not be committed. If the protocol file cannot be written, continue work safely; the controller will expose the outstanding recommendation again at bounded intervals.
+- FILE-BACKED TWO-WAY DIALOGUE (mandatory, lightweight, persistent for this run): the controller owns `.kilo-runtime/current-supervisor-recommendation.json`; never edit or replace it. The `.kilo-runtime/` directory is outside `.kilo/` because Kilo validates JSON files under `.kilo/` as configuration. When advice arrives, read that file and write/update `.kilo-runtime/worker-disposition.json` within the next two tool calls, before unrelated exploration when practical. Use JSON `schema_version: 2` and copy the exact `recommendation_id`, `task_id`, and `session_id` from the injected message. Include `acknowledgement_state` (`acknowledged` or `rejected`), `disposition` (`accepted`, `in_progress`, `verified`, `blocked`, `rejected_with_reason`, `superseded`), `reason`, `evidence`, `verification`, `work_performed`, `blockers` (array), `changed_files` (array), `commit_sha`, `checkpoint_sha`, `commands_executed` (array of objects including command and exit code when known), `test_outcomes` (array of objects including status and evidence reference when known), `artifact_refs` (array), `acceptance_criteria` (array of worker-reported criteria; never represent them as independently controller-verified), `outstanding_work` (array), and `updated_at` (ISO-8601 UTC). Empty arrays/strings are acceptable only when they accurately mean none or not yet available. Update the worker-owned disposition as work progresses. If advice is unsafe, stale, technically incorrect, or conflicts with higher-priority requirements, record a rejection and explain why; never obey blindly. A worker's `verified` value is a claim, not proof of task completion. The completion gate requires a task-scoped, controller-issued verification manifest with evidence-backed acceptance criteria, passing test results, verified artifacts, and the exact independently checked remote checkpoint SHA. The runner preserves append-only messages and lifecycle transitions in its progress-trace artifact. This supports review after a cutoff but does not automatically replay them into a new workflow run. If the protocol file cannot be written, continue safely and leave completion unverified.
 - A scheduled review is not a promise that the model can interrupt a tool call or active generation. Feedback arrives at the next tool-result boundary. The monitor still records its scheduled review and status; the controller heartbeat reports status every 30 seconds.
 - Do not spawn an additional background startup review; the controller-managed continuous monitor is authoritative. You may still invoke a targeted foreground supervisor task for a failure loop, using a unique report path.
 - If the plugin, monitor, or supervisor is unavailable, continue the assigned task using the best available evidence. No supervisor failure may terminate or restart the worker.
@@ -540,6 +540,7 @@ while true; do
     printf '%s\n' "$attempt_log" > "$HEARTBEAT_STATE_FILE"
     printf '%s\n' "$attempt_log" > "$SUPERVISOR_ACTIVE_LOG_POINTER"
     echo "Kilo invocation attempt ${session_attempt} for session ${agent_index}; transient upstream failures retry without an attempt-count cap."
+    export KILO_WORKER_SESSION_ID="${GITHUB_RUN_ID:-local}-attempt-${GITHUB_RUN_ATTEMPT:-1}-session-${agent_index}-try-${session_attempt}"
     write_progress "invocation-start" "Kilo worker process invoked"
     SESSION_REPORT_PREFIX=".kilo/supervisor-reports/run-${GITHUB_RUN_ID:-local}-attempt-${GITHUB_RUN_ATTEMPT:-1}-session-${agent_index}-invocation-${session_attempt}"
     session_command="${command}
@@ -897,6 +898,26 @@ final_worker_reply_count="$(grep -c '"direction":"worker_to_supervisor"' "$dialo
 final_delivery_count="${final_delivery_count:-0}"
 final_dialogue_count="${final_dialogue_count:-0}"
 final_worker_reply_count="${final_worker_reply_count:-0}"
+communication_file="$SUPERVISOR_TRANSCRIPT_DIR/agent-communication.jsonl"
+completion_status_file="$SUPERVISOR_TRANSCRIPT_DIR/task-completion-status.json"
+task_id="${GITHUB_RUN_ID:-local}-attempt-${GITHUB_RUN_ATTEMPT:-1}"
+verification_file="$RUNNER_TEMP/kilo-task-verification-${GITHUB_RUN_ID:-local}-attempt-${GITHUB_RUN_ATTEMPT:-1}.json"
+communication_count="$(grep -c '"stage":' "$communication_file" 2>/dev/null || true)"
+communication_count="${communication_count:-0}"
+checkpoint_persisted_arg=0
+if [ "${persisted:-0}" = "1" ] && [[ "${last_verified_checkpoint_sha:-}" =~ ^[0-9a-f]{40}$ ]]; then checkpoint_persisted_arg=1; fi
+python3 .github/scripts/kilo_dialogue_protocol.py completion-status \
+  --dialogue "$dialogue_file" \
+  --communication "$communication_file" \
+  --verification "$verification_file" \
+  --task-id "$task_id" \
+  --checkpoint-sha "${last_verified_checkpoint_sha:-}" \
+  --checkpoint-persisted "$checkpoint_persisted_arg" \
+  --output "$completion_status_file"
+task_completion_status="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8")).get("status", "unknown"))' "$completion_status_file")"
+echo "::notice::Task completion gate status: $task_completion_status. Advice delivery, acknowledgement, worker claims, green CI, and checkpoint persistence alone do not prove task completion."
+printf 'task_completion_status=%s\n' "$task_completion_status" >> "$GITHUB_OUTPUT"
+printf 'supervisor_communication_events=%s\n' "$communication_count" >> "$GITHUB_OUTPUT"
 printf 'project_progress=%s\n' "$project_progress" >> "$GITHUB_OUTPUT"
 printf 'failed_sessions=%s\n' "$failed_sessions" >> "$GITHUB_OUTPUT"
 printf 'idle_timeout_retries=%s\n' "$idle_timeout_retry_count" >> "$GITHUB_OUTPUT"

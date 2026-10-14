@@ -15,6 +15,8 @@ on:
       - "requirements.txt"
       - ".github/scripts/kilo-invoke-with-idle-timeout.py"
       - ".github/scripts/kilo-supervisor-loop.py"
+      - ".github/scripts/kilo_dialogue_protocol.py"
+      - ".github/scripts/test_kilo_dialogue_protocol.py"
       - ".github/scripts/test_kilo_supervisor_loop.py"
       - ".kilo/plugin/loop-supervisor-feedback.js"
       - ".gitignore"
@@ -33,6 +35,8 @@ on:
       - ".github/scripts/test_kilo_checkpoint_recovery.sh"
       - "requirements.txt"
       - ".github/scripts/kilo-supervisor-loop.py"
+      - ".github/scripts/kilo_dialogue_protocol.py"
+      - ".github/scripts/test_kilo_dialogue_protocol.py"
       - ".github/scripts/test_kilo_supervisor_loop.py"
       - ".kilo/plugin/loop-supervisor-feedback.js"
       - ".gitignore"
@@ -211,6 +215,11 @@ jobs:
             'consecutive_unusable_reviews' \
             'SUPERVISOR_REVIEWS_COMPLETED' \
             'append_dialogue_event(' \
+            "kilo_dialogue_protocol.py" \
+            "completion-status" \
+            "agent-communication.jsonl" \
+            "task-completion-status.json" \
+            "task_completion_status" \
             'supervisor_to_worker' \
             '--transcript-dir' \
             'kilo-supervisor-transcripts-*/agent-dialogue.jsonl' \
@@ -297,8 +306,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m py_compile .github/scripts/kilo-supervisor-loop.py .github/scripts/test_kilo_supervisor_loop.py
+          python3 -m py_compile .github/scripts/kilo-supervisor-loop.py .github/scripts/test_kilo_supervisor_loop.py .github/scripts/kilo_dialogue_protocol.py .github/scripts/test_kilo_dialogue_protocol.py
           python3 .github/scripts/test_kilo_supervisor_loop.py
+          python3 .github/scripts/test_kilo_dialogue_protocol.py
           node --check --input-type=module < .kilo/plugin/loop-supervisor-feedback.js
           node --input-type=module <<'JS'
           import assert from "node:assert/strict";
