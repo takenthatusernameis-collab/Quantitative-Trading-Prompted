@@ -40,6 +40,38 @@ class SupervisorLoopTests(unittest.TestCase):
         self.assertIn("The report's first line must be exactly one of", prompt)
         self.assertIn("Do not number or bold headings.", prompt)
 
+        bootstrap = monitor.build_review_prompt(
+            "Run the bounded E2E protocol test.",
+            "(No new worker output since the previous review; assess repository/task state without inventing progress.)",
+            "repository status: clean",
+            "",
+            ".kilo/supervisor-reports/bootstrap.md",
+            1,
+            60.0,
+            require_initial_recommendation=True,
+        )
+        self.assertIn("BOOTSTRAP REQUIREMENT", bootstrap)
+        self.assertIn("do not return NO_NEW_DIALOGUE", bootstrap)
+        self.assertIn("initial recommendation is mandatory", bootstrap.lower())
+
+    def test_required_initial_recommendation_retries_without_new_evidence(self):
+        self.assertTrue(monitor.should_run_review(
+            has_new_worker_output=False, repository_changed=False,
+            require_initial_recommendation=True, recommendation_present=False,
+        ))
+        self.assertFalse(monitor.should_run_review(
+            has_new_worker_output=False, repository_changed=False,
+            require_initial_recommendation=True, recommendation_present=True,
+        ))
+        self.assertFalse(monitor.should_run_review(
+            has_new_worker_output=False, repository_changed=False,
+            require_initial_recommendation=False, recommendation_present=False,
+        ))
+        self.assertTrue(monitor.should_run_review(
+            has_new_worker_output=True, repository_changed=False,
+            require_initial_recommendation=False, recommendation_present=False,
+        ))
+
     def test_report_fallback_requires_status_on_first_line(self):
         valid = (
             "Additional CLI narration.\n"

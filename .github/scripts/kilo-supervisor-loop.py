@@ -126,17 +126,27 @@ def build_review_prompt(
     report_relative_path: str,
     cycle: int,
     cadence_seconds: float,
+    require_initial_recommendation: bool = False,
 ) -> str:
     if not log_delta.strip():
         log_delta = "(No new worker output since the previous review; assess repository/task state without inventing progress.)"
     if not previous_feedback.strip():
         previous_feedback = "(No previous supervisor recommendation.)"
+    if require_initial_recommendation:
+        bootstrap_instruction = """BOOTSTRAP REQUIREMENT:
+No valid recommendation has yet been published, and this bounded run cannot start its worker until an initial recommendation exists. Produce one concise, evidence-based initial recommendation using only the supplied objective and repository snapshot. Do not invent defects, failures, or results. If evidence is insufficient to justify a code change, recommend the narrowest safe evidence-gathering step or explicitly recommend keeping completion blocked until evidence exists. For this required initial exchange, do not return NO_NEW_DIALOGUE."""
+        no_new_dialogue_rule = "5. This is the required initial recommendation; do not return NO_NEW_DIALOGUE. If evidence is insufficient, issue STATUS: ATTENTION and state the missing evidence and safe next step."
+    else:
+        bootstrap_instruction = ""
+        no_new_dialogue_rule = "{no_new_dialogue_rule}"
     return f"""CONTINUOUS KILO WORKER REVIEW — CYCLE {cycle}
 
 You are the supervisor role in a two-role dialogue with an active worker. Review only new evidence, material repository-state changes, or a new worker disposition. Do not restate files, snapshots, old recommendations, or unchanged observations. If nothing material warrants a new worker message, write exactly NO_NEW_DIALOGUE on one line and do not produce the standard report. Never invent novelty just to fill a review cycle.
 
 CURRENT WORKER OBJECTIVE / INSTRUCTIONS (redacted, truncated):
 {objective[-MAX_OBJECTIVE_CHARS:]}
+
+{bootstrap_instruction}
 
 NEW OR MOST RELEVANT WORKER OUTPUT (redacted, truncated):
 {log_delta[-MAX_LOG_CHARS:]}
@@ -632,6 +642,7 @@ def run_review(
     previous_feedback: str,
     repo_root: Path,
     report_dir: Path,
+    require_initial_recommendation: bool = False,
 ) -> Optional[str]:
     global ACTIVE_REVIEW
     report_name = f"run-{args.run_id}-attempt-{args.run_attempt}-review-{cycle:04d}.md"
@@ -647,6 +658,7 @@ def run_review(
     prompt = redact_sensitive_text(build_review_prompt(
         objective, log_delta, git_snapshot, previous_feedback,
         report_relative_path, cycle, args.interval_seconds,
+        require_initial_recommendation=require_initial_recommendation,
     ))
     # The generated prompt is reviewer input, not a message from either agent.
     # Keep it in memory for the model call only; do not write or echo it.
@@ -725,6 +737,21 @@ def run_review(
     return report
 
 
+def should_run_review(
+    *,
+    has_new_worker_output: bool,
+    repository_changed: bool,
+    require_initial_recommendation: bool,
+    recommendation_present: bool,
+) -> bool:
+    """Keep bootstrapping a required first recommendation even before a worker starts."""
+    return bool(
+        has_new_worker_output
+        or repository_changed
+        or (require_initial_recommendation and not recommendation_present)
+    )
+
+
 def main_with_args(argv: list[str]) -> int:
     """Testable entry point for deterministic CI tests."""
     global STOP_REQUESTED
@@ -754,6 +781,11 @@ def main() -> int:
     parser.add_argument("--interval-seconds", type=float, default=150.0)
     parser.add_argument("--review-timeout-seconds", type=float, default=120.0)
     parser.add_argument("--max-reviews", type=int, default=0, help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--require-initial-recommendation",
+        action="store_true",
+        help="Retry bootstrap reviews without new worker output until an initial recommendation is published.",
+    )
     args = parser.parse_args()
 
     if args.interval_seconds <= 0 or args.review_timeout_seconds <= 0:
@@ -894,18 +926,34 @@ def main() -> int:
             previous_worker_disposition_digest = None
 
         has_new_worker_output = bool(log_delta.strip())
-        if not has_new_worker_output and not repository_changed:
+        needs_initial_recommendation = bool(
+            args.require_initial_recommendation and current_recommendation is None
+        )
+        review_required = should_run_review(
+            has_new_worker_output=has_new_worker_output,
+            repository_changed=repository_changed,
+            require_initial_recommendation=args.require_initial_recommendation,
+            recommendation_present=current_recommendation is not None,
+        )
+        if not review_required:
             if not quiet_notice_logged:
                 log("review skipped: no new worker output, repository change, or role dialogue; no duplicate message recorded")
                 quiet_notice_logged = True
             report = "NO_NEW_DIALOGUE"
         else:
             quiet_notice_logged = False
-            log(f"review {cycle} started; new worker/repository evidence available")
+            if needs_initial_recommendation:
+                log(f"review {cycle} started; required initial recommendation is still missing")
+            else:
+                log(f"review {cycle} started; new worker/repository evidence available")
             report = run_review(
                 args, cycle, objective, log_delta, git_snapshot,
                 previous_feedback, repo_root, report_dir,
+                require_initial_recommendation=needs_initial_recommendation,
             )
+            if needs_initial_recommendation and report == "NO_NEW_DIALOGUE":
+                log(f"review {cycle} returned NO_NEW_DIALOGUE before the required initial recommendation; treating it as unusable")
+                report = None
         if report == "NO_NEW_DIALOGUE":
             consecutive_unusable_reviews = 0
             no_new_dialogue_count += 1

@@ -45,12 +45,16 @@ jobs:
           KILO_E2E_MODE: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && '1' || '0' }}
           KILO_HARD_CUTOFF_MINUTES: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && '10' || '355' }}
           KILO_TASK_PROMPT_FILE: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && '.github/prompts/kilo-e2e-verification.md' || '' }}
+          KILO_SUPERVISOR_INTERVAL_SECONDS: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && '60' || '150' }}
+          KILO_SUPERVISOR_REVIEW_TIMEOUT_SECONDS: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && '45' || '120' }}
           KILO_INPUT_SESSIONS: ${{ inputs.sessions || '1000' }}
         run: bash .github/scripts/kilo-controller.sh
       - name: Summarize controller outcome
         if: always()
         continue-on-error: true
         env:
+          KILO_E2E_MODE: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && '1' || '0' }}
+          KILO_HARD_CUTOFF_MINUTES: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/infra/') && github.ref_name != github.event.repository.default_branch && '10' || '355' }}
           CONTROLLER_OUTCOME: ${{ steps.kilo_controller.outcome }}
           TERMINAL_STATUS: ${{ steps.kilo_controller.outputs.terminal_status }}
           TERMINAL_CUTOFF_REACHED: ${{ steps.kilo_controller.outputs.cutoff_reached }}
@@ -81,7 +85,11 @@ jobs:
           {
             echo "## Kilo controller health"
             echo "- Controller step outcome: \`$CONTROLLER_OUTCOME\`"
-            echo "- Requested sequential worker sessions: ${{ inputs.sessions || '1000' }} (one-shot marker overrides to exactly 2). Transient retries and corrective attempts have no count cap and remain bounded by the global 355-minute cutoff."
+            if [ "${KILO_E2E_MODE:-0}" = "1" ]; then
+            echo "- Bounded E2E mode: one worker session; exact 10-minute hard cutoff; worker startup waits for a run-correlated supervisor recommendation."
+          else
+            echo "- Requested sequential worker sessions: ${{ inputs.sessions || '1000' }} (one-shot marker overrides to exactly 2). Transient retries and corrective attempts remain bounded by the configured ${KILO_HARD_CUTOFF_MINUTES:-355}-minute hard cutoff."
+          fi
             echo "- Worker sessions started: ${SESSIONS_STARTED:-unknown}; completed: ${SESSIONS_COMPLETED:-unknown}"
             echo "- Last phase: ${FINAL_PHASE:-unknown} — ${FINAL_PHASE_DETAIL:-unknown}"
             echo "- Controller-verified persisted checkpoints: ${PERSISTED_CHECKPOINTS:-0}"

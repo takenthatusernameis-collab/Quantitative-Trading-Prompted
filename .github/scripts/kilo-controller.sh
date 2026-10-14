@@ -410,24 +410,37 @@ export KILO_SUPERVISOR_FEEDBACK_FILE="$SUPERVISOR_FEEDBACK_FILE"
 export KILO_SUPERVISOR_FEEDBACK_CURSOR_FILE="$SUPERVISOR_FEEDBACK_CURSOR_FILE"
 export KILO_SUPERVISOR_TRANSCRIPT_DIR="$SUPERVISOR_TRANSCRIPT_DIR"
 supervisor_loop_pid=""
-write_progress "supervisor-starting" "launching independent 150-second-cadence review process"
-python3 .github/scripts/kilo-supervisor-loop.py \
-  --repo-root "$PWD" \
-  --runtime-root "$RUNNER_TEMP" \
-  --active-log-pointer "$SUPERVISOR_ACTIVE_LOG_POINTER" \
-  --objective-file "$SUPERVISOR_OBJECTIVE_FILE" \
-  --feedback-file "$SUPERVISOR_FEEDBACK_FILE" \
-  --transcript-dir "$SUPERVISOR_TRANSCRIPT_DIR" \
-  --report-dir .kilo/supervisor-reports \
-  --kilo "$RUNNER_TEMP/kilo/node_modules/.bin/kilo" \
-  --model kilo/kilo-auto/free \
-  --interval-seconds 150 \
-  --review-timeout-seconds 120 \
-  --run-id "${GITHUB_RUN_ID:-local}" \
-  --run-attempt "${GITHUB_RUN_ATTEMPT:-1}" \
+SUPERVISOR_INTERVAL_SECONDS="${KILO_SUPERVISOR_INTERVAL_SECONDS:-150}"
+SUPERVISOR_REVIEW_TIMEOUT_SECONDS="${KILO_SUPERVISOR_REVIEW_TIMEOUT_SECONDS:-120}"
+if ! [[ "$SUPERVISOR_INTERVAL_SECONDS" =~ ^[1-9][0-9]*$ ]] ||
+   ! [[ "$SUPERVISOR_REVIEW_TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]] ||
+   [ "$SUPERVISOR_REVIEW_TIMEOUT_SECONDS" -ge "$SUPERVISOR_INTERVAL_SECONDS" ]; then
+  echo "::error::Supervisor interval and review timeout must be positive integers, with timeout shorter than interval."
+  exit 1
+fi
+supervisor_args=(
+  --repo-root "$PWD"
+  --runtime-root "$RUNNER_TEMP"
+  --active-log-pointer "$SUPERVISOR_ACTIVE_LOG_POINTER"
+  --objective-file "$SUPERVISOR_OBJECTIVE_FILE"
+  --feedback-file "$SUPERVISOR_FEEDBACK_FILE"
+  --transcript-dir "$SUPERVISOR_TRANSCRIPT_DIR"
+  --report-dir .kilo/supervisor-reports
+  --kilo "$RUNNER_TEMP/kilo/node_modules/.bin/kilo"
+  --model kilo/kilo-auto/free
+  --interval-seconds "$SUPERVISOR_INTERVAL_SECONDS"
+  --review-timeout-seconds "$SUPERVISOR_REVIEW_TIMEOUT_SECONDS"
+  --run-id "${GITHUB_RUN_ID:-local}"
+  --run-attempt "${GITHUB_RUN_ATTEMPT:-1}"
+)
+if [ "${KILO_E2E_MODE:-0}" = "1" ]; then
+  supervisor_args+=(--require-initial-recommendation)
+fi
+write_progress "supervisor-starting" "launching independent ${SUPERVISOR_INTERVAL_SECONDS}-second-cadence review process"
+python3 .github/scripts/kilo-supervisor-loop.py "${supervisor_args[@]}" \
   > >(tee -a "$SUPERVISOR_LOOP_LOG") 2>&1 &
 supervisor_loop_pid=$!
-echo "[loop-supervisor] Started alongside the Kilo worker; immediate review plus a 150-second cadence (PID $supervisor_loop_pid)."
+echo "[loop-supervisor] Started alongside the Kilo worker; review cadence ${SUPERVISOR_INTERVAL_SECONDS}s (PID $supervisor_loop_pid)."
 echo "[loop-supervisor] Only actual supervisor-to-worker and worker-to-supervisor messages are emitted as live dialogue and saved to agent-dialogue.jsonl; review prompts, repository snapshots, and CLI diagnostics are not published."
 echo "::notice title=Live agent dialogue::Expand the 'Run bash .github/scripts/kilo-controller.sh' step logs and search for 'LIVE AGENT DIALOGUE BOX — SUPERVISOR → WORKER' or 'LIVE AGENT DIALOGUE BOX — WORKER → SUPERVISOR'. Only new messages actually crossing a role boundary are shown."
 write_progress "supervisor-running" "review loop launched"
@@ -535,6 +548,87 @@ heartbeat &
 heartbeat_pid=$!
 write_progress "worker-loop-ready" "30-second live status heartbeat active"
 trap 'kill "$heartbeat_pid" 2>/dev/null || true; if [ -n "${supervisor_loop_pid:-}" ]; then kill -TERM "$supervisor_loop_pid" 2>/dev/null || true; wait "$supervisor_loop_pid" 2>/dev/null || true; fi; rm -f "$HEARTBEAT_STATE_FILE" "$SUPERVISOR_ACTIVE_LOG_POINTER" "$SUPERVISOR_FEEDBACK_FILE" "$SUPERVISOR_FEEDBACK_CURSOR_FILE" "$SUPERVISOR_OBJECTIVE_FILE"' EXIT
+
+
+if [ "\${KILO_E2E_MODE:-0}" = "1" ]; then
+  # The E2E worker must never start without an actual supervisor recommendation
+  # and its append-only written-state event. Retry the supervisor bootstrap first.
+  E2E_STARTUP_TIMEOUT_SECONDS=240
+  e2e_task_id="\${GITHUB_RUN_ID:-local}-attempt-\${GITHUB_RUN_ATTEMPT:-1}"
+  recommendation_file="$DIALOGUE_PROTOCOL_DIR/current-supervisor-recommendation.json"
+  communication_file="$SUPERVISOR_TRANSCRIPT_DIR/agent-communication.jsonl"
+  startup_deadline=$(( $(date +%s) + E2E_STARTUP_TIMEOUT_SECONDS ))
+  echo "[e2e-gate] Waiting for a valid run-correlated initial supervisor recommendation; deadline=\${E2E_STARTUP_TIMEOUT_SECONDS}s."
+  while true; do
+    if python3 - "$recommendation_file" "$communication_file" "$e2e_task_id" <<'PY'
+import json
+import re
+import sys
+from pathlib import Path
+recommendation_path, communication_path = map(Path, sys.argv[1:3])
+task_id = sys.argv[3]
+try:
+    item = json.loads(recommendation_path.read_text(encoding="utf-8"))
+except (OSError, ValueError, json.JSONDecodeError):
+    raise SystemExit(1)
+recommendation_id = item.get("recommendation_id")
+report = item.get("report")
+if (
+    item.get("schema_version") != 2
+    or item.get("task_id") != task_id
+    or item.get("session_id") != task_id
+    or not isinstance(recommendation_id, str)
+    or not recommendation_id.startswith(task_id + "-review-")
+    or not isinstance(report, str)
+    or len(report.strip()) < 80
+    or not re.match(r"^STATUS: (?:CONTINUE|ATTENTION|CRITICAL)\s*$", report.splitlines()[0] if report.splitlines() else "")
+):
+    raise SystemExit(1)
+try:
+    lines = communication_path.read_text(encoding="utf-8").splitlines()
+except OSError:
+    raise SystemExit(1)
+for line in lines:
+    try:
+        event = json.loads(line)
+    except ValueError:
+        continue
+    if (
+        event.get("task_id") == task_id
+        and event.get("direction") == "supervisor_to_worker"
+        and event.get("stage") == "message_written"
+        and event.get("message_id") == recommendation_id
+        and event.get("correlation_id") == recommendation_id
+        and event.get("role") == "supervisor"
+        and event.get("message") == report
+    ):
+        raise SystemExit(0)
+raise SystemExit(1)
+PY
+    then
+      echo "[e2e-gate] Initial supervisor recommendation and written-state event validated."
+      write_progress "supervisor-recommendation-ready" "initial run-correlated recommendation validated; worker may start"
+      break
+    fi
+    if [ -f "$SUPERVISOR_LOOP_LOG" ] && grep -Fq "SUPERVISOR_CIRCUIT_BREAKER_OPEN" "$SUPERVISOR_LOOP_LOG"; then
+      echo "::error::Supervisor bootstrap exhausted its bounded retries without publishing a recommendation; no worker was started."
+      exit 1
+    fi
+    if ! kill -0 "$supervisor_loop_pid" 2>/dev/null; then
+      echo "::error::Supervisor process exited before publishing the required initial recommendation; no worker was started."
+      exit 1
+    fi
+    now_epoch=$(date +%s)
+    remaining_startup=$((startup_deadline - now_epoch))
+    remaining_global=$((cutoff_epoch - now_epoch))
+    if [ "$remaining_startup" -le 0 ] || [ "$remaining_global" -le 60 ]; then
+      echo "::error::Initial supervisor recommendation was not published within the bounded startup window; no worker was started."
+      exit 1
+    fi
+    sleep 2
+  done
+fi
+
 
 # Project changes exclude workflow definitions and control-only markers.
 project_worktree_changes() {
