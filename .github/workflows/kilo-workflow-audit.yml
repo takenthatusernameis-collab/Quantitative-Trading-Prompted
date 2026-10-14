@@ -302,6 +302,10 @@ jobs:
           controller=.github/scripts/kilo-controller.sh
           # Construct literal dollar references without ShellCheck SC2016 false positives.
           literal_dollar="$(printf '%b' '\044')"
+          expected_interval="--interval-seconds \"${literal_dollar}SUPERVISOR_INTERVAL_SECONDS\""
+          expected_review_timeout="--review-timeout-seconds \"${literal_dollar}SUPERVISOR_REVIEW_TIMEOUT_SECONDS\""
+          grep -Fq -- "$expected_interval" "$controller"
+          grep -Fq -- "$expected_review_timeout" "$controller"
           grep -Fq -- '"--agent", "loop-supervisor"' .github/scripts/kilo-supervisor-loop.py
           grep -Fq -- "mode: all" .kilo/agents/loop-supervisor.md
           for marker in \
@@ -615,6 +619,7 @@ jobs:
           PY
           echo "Pinned Kilo CLI discovered loop-supervisor and its resolved permissions passed the boundary checks."
 
+          literal_dollar="$(printf '%b' '\044')"
           expected_interval="--interval-seconds \"${literal_dollar}SUPERVISOR_INTERVAL_SECONDS\""
           expected_review_timeout="--review-timeout-seconds \"${literal_dollar}SUPERVISOR_REVIEW_TIMEOUT_SECONDS\""
           grep -Fq -- "$expected_interval" "$controller"
