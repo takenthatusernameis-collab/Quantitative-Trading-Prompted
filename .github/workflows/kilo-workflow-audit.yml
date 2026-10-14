@@ -17,6 +17,15 @@ on:
       - ".kilo/supervisor-reports/.gitkeep"
       - ".kilo/TWO_AGENT_ONCE"
       - ".kilo/SKIP_NEXT_ROUTINE_KILO"
+  pull_request:
+    paths:
+      - ".github/workflows/main.yml"
+      - ".github/workflows/kilo-workflow-audit.yml"
+      - ".github/scripts/kilo-controller.sh"
+      - ".github/scripts/kilo-supervisor-loop.py"
+      - ".github/scripts/test_kilo_supervisor_loop.py"
+      - ".kilo/plugin/loop-supervisor-feedback.js"
+      - ".gitignore"
   workflow_dispatch:
 
 permissions:
