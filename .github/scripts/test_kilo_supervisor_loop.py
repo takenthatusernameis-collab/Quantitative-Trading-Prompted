@@ -42,35 +42,35 @@ class SupervisorLoopTests(unittest.TestCase):
 
     def test_report_fallback_requires_status_on_first_line(self):
         valid = (
-            "Additional CLI narration.\\n"
-            "REPORT_FALLBACK:\\n"
-            "STATUS: ATTENTION\\n"
-            "Observed evidence: the same focused assertion failed again.\\n"
-            "Previous approaches: the previous correction left the assertion failing.\\n"
-            "Likely cause: the parser still mishandles the empty-field case.\\n"
-            "Different next step: isolate the empty-field input and fix the parser.\\n"
-            "Verification: rerun the focused regression test and require it to pass.\\n"
-            "Limitations: the full suite has not yet been rerun.\\n"
+            "Additional CLI narration.\n"
+            "REPORT_FALLBACK:\n"
+            "STATUS: ATTENTION\n"
+            "Observed evidence: the same focused assertion failed again.\n"
+            "Previous approaches: the previous correction left the assertion failing.\n"
+            "Likely cause: the parser still mishandles the empty-field case.\n"
+            "Different next step: isolate the empty-field input and fix the parser.\n"
+            "Verification: rerun the focused regression test and require it to pass.\n"
+            "Limitations: the full suite has not yet been rerun.\n"
         )
         recovered = monitor.recover_report_from_cli_output(valid)
         self.assertIsNotNone(recovered)
         self.assertIn("Different next step: isolate the empty-field input", recovered)
 
         missing_status = (
-            "REPORT_FALLBACK:\\n"
-            "1. **Observed evidence** — the same focused assertion failed again.\\n"
-            "2. **Previous approaches** — the previous correction left it failing.\\n"
-            "3. **Likely cause** — the parser mishandles an empty field.\\n"
-            "4. **Different next step** — isolate the empty-field input.\\n"
-            "5. **Verification** — rerun the focused regression test.\\n"
-            "7. **Limitations** — full suite not rerun.\\n"
+            "REPORT_FALLBACK:\n"
+            "1. **Observed evidence** — the same focused assertion failed again.\n"
+            "2. **Previous approaches** — the previous correction left it failing.\n"
+            "3. **Likely cause** — the parser mishandles an empty field.\n"
+            "4. **Different next step** — isolate the empty-field input.\n"
+            "5. **Verification** — rerun the focused regression test.\n"
+            "7. **Limitations** — full suite not rerun.\n"
         )
         self.assertIsNone(
             monitor.recover_report_from_cli_output(missing_status),
             "The old numbered/bold report format must not be recovered as if it matched the new status-first contract.",
         )
 
-        status_not_first = valid.replace("REPORT_FALLBACK:\\nSTATUS: ATTENTION", "REPORT_FALLBACK:\\nPreamble text\\nSTATUS: ATTENTION")
+        status_not_first = valid.replace("REPORT_FALLBACK:\nSTATUS: ATTENTION", "REPORT_FALLBACK:\nPreamble text\nSTATUS: ATTENTION")
         self.assertIsNone(monitor.recover_report_from_cli_output(status_not_first))
 
 
