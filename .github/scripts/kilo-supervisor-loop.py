@@ -219,9 +219,10 @@ def read_worker_disposition(protocol_dir: Optional[Path]) -> Optional[dict]:
     for field in list_fields:
         if field in value and not isinstance(value[field], list):
             return None
-    acknowledgement = value.get("acknowledgement_state", "")
+    # Do not infer an acknowledgement from a disposition: these are distinct states.
+    acknowledgement = value.get("acknowledgement_state")
     if acknowledgement not in {"acknowledged", "rejected", "pending"}:
-        acknowledgement = "rejected" if disposition == "rejected_with_reason" else "acknowledged"
+        return None
     return {
         "schema_version": 2,
         "recommendation_id": recommendation_id.strip(),
