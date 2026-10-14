@@ -219,6 +219,7 @@ jobs:
             'persisted_checkpoints' \
             'kilo-terminal-outcome.py' \
             'terminal_status' \
+            'terminal_checkpoint_sha' \
             'intentional_noop'; do
             grep -Fq -- "$marker" "$controller" "$workflow" "$persist" .github/scripts/kilo-supervisor-loop.py .kilo/plugin/loop-supervisor-feedback.js || {
               echo "::error::Missing live-transparency marker: $marker"

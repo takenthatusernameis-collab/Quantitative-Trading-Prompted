@@ -53,6 +53,7 @@ jobs:
           SESSIONS_COMPLETED: ${{ steps.kilo_controller.outputs.sessions_completed }}
           PERSISTED_CHECKPOINTS: ${{ steps.kilo_controller.outputs.persisted_checkpoints }}
           LAST_VERIFIED_CHECKPOINT_SHA: ${{ steps.kilo_controller.outputs.last_verified_checkpoint_sha }}
+          TERMINAL_CHECKPOINT_SHA: ${{ steps.kilo_controller.outputs.terminal_checkpoint_sha }}
           SUPERVISOR_REVIEW_COUNT: ${{ steps.kilo_controller.outputs.supervisor_review_count }}
           SUPERVISOR_REVIEWS_COMPLETED: ${{ steps.kilo_controller.outputs.supervisor_reviews_completed }}
           SUPERVISOR_REVIEW_TIMEOUTS: ${{ steps.kilo_controller.outputs.supervisor_review_timeouts }}
@@ -75,6 +76,7 @@ jobs:
             echo "- Last phase: ${FINAL_PHASE:-unknown} — ${FINAL_PHASE_DETAIL:-unknown}"
             echo "- Controller-verified persisted checkpoints: ${PERSISTED_CHECKPOINTS:-0}"
             echo "- Last controller-verified checkpoint SHA: ${LAST_VERIFIED_CHECKPOINT_SHA:-none}"
+            echo "- Terminal local checkpoint SHA (current HEAD; remote verification is reported separately): ${TERMINAL_CHECKPOINT_SHA:-unknown}"
             echo "- Supervisor reviews started: ${SUPERVISOR_REVIEW_COUNT:-0}"
             echo "- Supervisor reviews completed with usable reports: ${SUPERVISOR_REVIEWS_COMPLETED:-0}"
             echo "- Supervisor timeouts: ${SUPERVISOR_REVIEW_TIMEOUTS:-0}; other review failures: ${SUPERVISOR_REVIEW_FAILURES:-0}"

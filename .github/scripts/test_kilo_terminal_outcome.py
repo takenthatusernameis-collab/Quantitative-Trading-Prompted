@@ -82,18 +82,36 @@ class TerminalOutcomeTests(unittest.TestCase):
             output = Path(temp) / "github-output.txt"
             status = Path(temp) / "git-status.txt"
             status.write_text("", encoding="utf-8")
+            checkpoint_sha = "a" * 40
             result = subprocess.run(
                 [
                     sys.executable, str(SCRIPT), "--project-progress", "1",
                     "--checkpoint-persisted", "1", "--git-status-file", str(status),
-                    "--cutoff", "1", "--output", str(output),
+                    "--cutoff", "1", "--checkpoint-sha", checkpoint_sha, "--output", str(output),
                 ],
                 capture_output=True, text=True, check=False,
             )
             self.assertEqual(result.returncode, 0)
             self.assertEqual(
                 output.read_text(encoding="utf-8").splitlines(),
-                ["terminal_status=verified_progress", "cutoff_reached=true"],
+                ["terminal_status=verified_progress", "cutoff_reached=true", f"terminal_checkpoint_sha={checkpoint_sha}"],
+            )
+
+    def test_cli_records_checkpoint_sha_for_intentional_noop(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / "github-output.txt"
+            checkpoint_sha = "b" * 40
+            result = subprocess.run(
+                [
+                    sys.executable, str(SCRIPT), "--intentional-noop",
+                    "--checkpoint-sha", checkpoint_sha, "--output", str(output),
+                ],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(
+                output.read_text(encoding="utf-8").splitlines(),
+                ["terminal_status=intentional_noop", "cutoff_reached=false", f"terminal_checkpoint_sha={checkpoint_sha}"],
             )
 
     def test_cli_returns_nonzero_for_no_progress(self):

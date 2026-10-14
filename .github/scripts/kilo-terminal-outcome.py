@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 from typing import Iterable
@@ -64,12 +65,13 @@ def classify_outcome(
     return "no_progress_failure", 1
 
 
-def emit_github_outputs(output_path: str, status: str, cutoff: bool) -> None:
+def emit_github_outputs(output_path: str, status: str, cutoff: bool, checkpoint_sha: str) -> None:
     if not output_path:
         return
     with Path(output_path).open("a", encoding="utf-8") as handle:
         handle.write(f"terminal_status={status}\n")
         handle.write(f"cutoff_reached={'true' if cutoff else 'false'}\n")
+        handle.write(f"terminal_checkpoint_sha={checkpoint_sha}\n")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -79,8 +81,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--git-status-file")
     parser.add_argument("--cutoff", choices=("0", "1"), default="0")
     parser.add_argument("--intentional-noop", action="store_true")
+    parser.add_argument("--checkpoint-sha", default="unknown", help="Full Git SHA for the terminal local HEAD")
     parser.add_argument("--output", default="")
     args = parser.parse_args(argv)
+    if not re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64}|unknown)", args.checkpoint_sha):
+        parser.error("--checkpoint-sha must be a full lowercase Git SHA or unknown")
 
     dirty = False
     if args.git_status_file:
@@ -99,7 +104,7 @@ def main(argv: list[str] | None = None) -> int:
         intentional_noop=args.intentional_noop,
     )
     try:
-        emit_github_outputs(args.output, status, args.cutoff == "1")
+        emit_github_outputs(args.output, status, args.cutoff == "1", args.checkpoint_sha)
     except OSError as exc:
         print(f"Unable to emit GitHub terminal outputs ({type(exc).__name__}).", file=sys.stderr)
         return 1

@@ -63,7 +63,7 @@ progress_field() {
 }
 
 record_intentional_noop() {
-  python3 .github/scripts/kilo-terminal-outcome.py --intentional-noop --cutoff 0 --output "${GITHUB_OUTPUT:-}"
+  python3 .github/scripts/kilo-terminal-outcome.py --intentional-noop --cutoff 0 --checkpoint-sha "$(git rev-parse HEAD 2>/dev/null || printf 'unknown')" --output "${GITHUB_OUTPUT:-}"
 }
 
 # Shared production checkpoint routine: CI calls it directly against a local bare Git remote.
@@ -940,6 +940,7 @@ python3 .github/scripts/kilo-terminal-outcome.py \
   --checkpoint-persisted "${persisted:-0}" \
   --git-status-file "$terminal_status_file" \
   --cutoff "$cutoff" \
+  --checkpoint-sha "$(git rev-parse HEAD 2>/dev/null || printf 'unknown')" \
   --output "${GITHUB_OUTPUT:-}"
 terminal_exit_code=$?
 set -e
