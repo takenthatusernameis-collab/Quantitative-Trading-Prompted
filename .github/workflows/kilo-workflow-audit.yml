@@ -115,7 +115,7 @@ jobs:
           grep -Fq 'sessions:' "$workflow"
           grep -Fq 'KILO_INPUT_SESSIONS:' "$workflow"
           grep -Fq 'default: "1000"' "$workflow"
-          grep -Fq 'SESSION_LIMIT_POLICY="$KILO_INPUT_SESSIONS"' "$controller"
+          grep -Fq "SESSION_LIMIT_POLICY=\"\$KILO_INPUT_SESSIONS\"" "$controller"
           grep -Fq 'Configured session target reached' "$controller"
           grep -Fq 'retries and corrective invocations remained count-unbounded' "$controller"
           grep -Fq "printf 'session_limit=%s" "$controller"
@@ -385,7 +385,7 @@ jobs:
             "Started alongside the Kilo worker" \
             "supervisor_loop_pid" \
             "title=Live agent dialogue" \
-            "Summary box appears only after this controller step completes" \
+            "Only new messages actually crossing a role boundary are shown" \
             "kill -TERM"; do
             grep -Fq -- "$marker" "$controller" || {
               echo "::error::Missing continuous supervisor integration marker: $marker"
