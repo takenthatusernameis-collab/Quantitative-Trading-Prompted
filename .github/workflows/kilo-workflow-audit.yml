@@ -180,7 +180,7 @@ jobs:
           match = source.match(/\A---[ \t]*\r?\n(.*?)\r?\n---[ \t]*\r?\n/m) or abort("Missing YAML frontmatter in #{path}")
           agent = YAML.safe_load(match[1]) or abort("Empty supervisor frontmatter")
           abort("Supervisor must support both direct CLI and Task invocation") unless agent["mode"] == "all"
-          abort("Supervisor step limit is missing or unbounded") unless agent["steps"].is_a?(Integer) && agent["steps"] <= 8
+          abort("Supervisor step limit is missing or exceeds four") unless agent["steps"].is_a?(Integer) && agent["steps"] <= 4
           permission = agent.fetch("permission")
           abort("Permission default must deny all tools") unless permission.fetch("*") == "deny"
           %w[read glob grep].each do |tool|
