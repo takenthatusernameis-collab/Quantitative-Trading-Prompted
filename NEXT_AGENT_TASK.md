@@ -1,54 +1,66 @@
-# Next Agent Task: Cycle 23 — Deployment Preparation Steps for Live Trading
+# Next Agent Task: Cycle 24 — Continued Prospective Monitoring or New Research Cycle
 
 ## Context
-Cycle 22 evaluated go/no-go for live deployment of `tsmomentum_spytrend_001` based on the accumulated evidence (Cycle 6 walk-forward, Cycles 8-21 paper trading). The go/no-go evaluation report at `research/reports/go_nogo_evaluation_001.md` recommended a **GO** decision with conditions for continued monitoring and operational controls.
+Cycle 23 completed the deployment preparation for `tsmomentum_spytrend_001`. The deployment dossier at `research/reports/deployment_dossier_001.md` documents the final strategy specification, live trading infrastructure requirements, monitoring protocol, evidence base, decision audit trail, and risk assessment. The go/no-go evaluation (Cycle 22) recommended **GO** for live deployment subject to operational controls.
+
+Since this system is for **research/backtesting only** and does not engage in live trading, the subsequent cycle has two viable paths:
+
+1. **Option A (Continued Monitoring):** Extend the paper trading track record further to accumulate more live-like evidence, monitor for regime changes, and maintain the validated candidate in a "ready" state.
+2. **Option B (New Research Cycle):** Begin a new hypothesis-driven research cycle exploring a different market inefficiency (e.g., alternative regime filters, new asset classes, cross-sectional signals), as all prior momentum/calendar/macro candidates have been evaluated and either rejected or promoted.
 
 ## Objective
-Define deployment preparation steps for transitioning the candidate `tsmomentum_spytrend_001` to live trading, given the research/backtesting-only constraint of this system. Since live trading is not permitted in this environment, the steps will focus on finalizing the research validation, documenting the live trading protocol, and preparing the necessary infrastructure specifications.
-
-### Action Required
-Create a deployment preparation plan that:
-1. Documents the final validated strategy specification and parameters
-2. Specifies the live trading infrastructure requirements (data feeds, execution, risk controls)
-3. Outlines the monitoring and validation protocol for live trading
-4. Documents the decision audit trail and evidence base
-5. Prepares the final research handoff for potential live deployment outside this system
-
-### Implementation Steps
-1. **Finalize strategy specification** — document the exact parameters, risk overlays, and execution rules from `config/simulation_candidate_001.yaml` and the paper trading configuration
-2. **Specify live trading infrastructure** — define requirements for market data feed, brokerage integration, order execution, and risk management systems
-3. **Outline live monitoring protocol** — adapt the paper trading monitoring system for live trading, including real-time drift alerts and performance tracking
-4. **Document evidence base** — compile all validation artifacts (walk-forward, paper trading, go/no-go report) into a comprehensive deployment dossier
-5. **Update README.md** with deployment preparation summary
-6. **Prepare NEXT_AGENT_TASK.md** for the subsequent cycle (which would be live trading monitoring if permitted, or a new research cycle)
+Choose and execute **one** of the two paths above as a bounded, verifiable task. The choice should be justified by the current evidence state and research priorities.
 
 ## Acceptance Criteria
-- [ ] Document final strategy specification and parameters
-- [ ] Specify live trading infrastructure requirements (data, execution, risk controls)
-- [ ] Outline live monitoring and validation protocol
-- [ ] Compile evidence base into deployment dossier (`research/reports/deployment_dossier_001.md`)
-- [ ] Update README.md with deployment preparation summary
-- [ ] Prepare NEXT_AGENT_TASK.md for subsequent cycle
+
+### If Option A (Continued Monitoring):
+- [ ] Run `research/run_paper_trading_replay.py` to extend the paper trading track record by at least 20 trading days (using cached data up to the latest available date)
+- [ ] Update `research/reports/paper_trading_rolling.md` with latest state
+- [ ] Update `research/reports/paper_trading_validation_003.md` with extended validation results
+- [ ] Verify no drift flags triggered (or document any triggered flags with analysis)
+- [ ] Update README.md with Cycle 24 monitoring summary
+- [ ] Prepare NEXT_AGENT_TASK.md for Cycle 25
+
+### If Option B (New Research Cycle):
+- [ ] Review `research/reports/opportunity_shortlist.md` and `research/reports/data_inventory.md` for viable candidates
+- [ ] Select one candidate with sufficient data support for valid testing
+- [ ] Create pre-registered hypothesis document in `research/hypotheses/`
+- [ ] Create frozen config in `config/`
+- [ ] Define evaluation plan (walk-forward design, benchmarks, falsification conditions)
+- [ ] Document in NEXT_AGENT_TASK.md for Cycle 25 (evaluation execution)
 
 ## Scope Boundaries
 - Research/analysis and documentation only. No live trading, no credentials, no network access within this system.
-- Focus on preparing the research handoff for potential live deployment outside this environment.
-- Decision must be based on documented evidence from Cycle 22 go/no-go evaluation.
+- Must follow AGENTS.md research standards (hypothesis-first, baseline-before-complexity, honest accounting).
+- If Option B: Candidate must have real cached data support; no speculative data assumptions.
+- If Option A: Use only existing cached data; no new data fetching required.
 
 ## Validation Commands
+
 ```bash
-# Verify strategy specification
-cat config/simulation_candidate_001.yaml
+# Verify deployment dossier exists
+ls -la research/reports/deployment_dossier_001.md
 
-# Verify paper trading configuration (if exists)
-ls -la config/paper_trading_*.yaml 2>/dev/null || echo "No paper trading config file"
+# Check current paper trading state
+python3 -c "
+import yaml
+with open('data/processed/paper_trading_state.yaml') as f:
+    state = yaml.safe_load(f)
+print(f'Track record: {len(state[\"run_history\"])} days')
+print(f'Last run: {state[\"last_run_date\"]}')
+print(f'Current NAV: \${state[\"current_nav\"]:,.2f}')
+print(f'Max DD: {state[\"max_drawdown\"]:.2%}')
+regimes = [r['regime_exposure'] for r in state['run_history']]
+flips = sum(1 for i in range(1, len(regimes)) if regimes[i] != regimes[i-1])
+print(f'Regime flips: {flips}')
+"
 
-# Verify go/no-go report exists and recommends GO
-grep -i "decision:.*go" research/reports/go_nogo_evaluation_001.md
+# Check available cached data end date
+ls -la data/raw/*.parquet | head -5
 
-# Verify deployment dossier will be created
-ls -la research/reports/deployment_dossier_001.md 2>/dev/null || echo "Deployment dossier not yet created"
+# Verify opportunity shortlist exists
+cat research/reports/opportunity_shortlist.md | head -30
 
-# Check README.md for deployment preparation summary
-grep -A 10 -B 2 "Cycle 23" README.md
+# Check for any new hypothesis/config files
+ls -la research/hypotheses/*.md config/*.yaml
 ```

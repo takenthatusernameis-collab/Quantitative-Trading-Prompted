@@ -83,6 +83,17 @@ This repository implements a disciplined quantitative research process focused o
 - Recommendation: **GO** for live deployment (subject to standard operational controls), with conditions for continued paper trading monitoring and liquidity validation.
 - Artifacts: `data/processed/paper_trading_state.yaml`, 444 daily parquet files, `research/reports/paper_trading_rolling.md`, `research/reports/go_nogo_evaluation_001.md`.
 - Next cycle should define deployment preparation steps (though note: this system is for research/backtesting only).
+
+**Cycle 23**: Deployment Preparation for Live Trading — **COMPLETE**.
+- Deployment dossier created at `research/reports/deployment_dossier_001.md` compiling all validation evidence.
+- Final strategy specification documented: TSMOM (lookback=226, skip=21, top_fraction=0.5) + SPY 200-day SMA regime filter + 10% vol targeting + 15% DD control on 7-ETF universe.
+- Live trading infrastructure requirements specified: data feeds (7 ETFs + SPY), brokerage API (IBKR/Alpaca), risk management (pre-trade checks, kill switch), technology stack (Python, daily scheduler, state persistence).
+- Live monitoring protocol defined: daily pre/post-market checklists, drift alert thresholds (regime flip, vol scale, DD scale, turnover, rolling Sharpe), monthly/quarterly validation cadence, continued paper trading shadow.
+- Evidence base compiled: walk-forward (Cycle 6, 48 folds, Sharpe 0.9473), paper trading (Cycles 20-21, 444 days, 6 regime flips, Sharpe 2.0548), go/no-go evaluation (Cycle 22, all gates passed).
+- Decision audit trail documented: hypothesis evolution from Cycles 1-23, falsification conditions tested and not met, independent reproduction verified.
+- Risk assessment completed for live deployment with mitigations.
+- Note: This system remains research/backtesting only; any live deployment occurs outside this environment.
+
 ## Running the Research Pipeline
 
 The pipeline runs automatically via GitHub Actions every 5 minutes. Each cycle:
