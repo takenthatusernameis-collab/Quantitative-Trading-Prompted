@@ -512,7 +512,6 @@ def run_review(
     finally:
         ACTIVE_REVIEW = None
 
-    recovered_from_cli = False
     try:
         report = report_path.read_text(encoding="utf-8", errors="replace").strip()
     except OSError:
@@ -522,7 +521,6 @@ def run_review(
         recovered = recover_report_from_cli_output(output or "")
         if recovered:
             report = recovered
-            recovered_from_cli = True
             try:
                 atomic_write(report_path, report)
                 log(f"review {cycle} recovered a substantive final response into the report file")
@@ -769,11 +767,6 @@ def main() -> int:
                     log(f"file-backed recommendation publication failed ({type(exc).__name__}); journal delivery remains enabled")
                 status_match = re.search(r"(?im)^STATUS:\s*(CONTINUE|ATTENTION|CRITICAL)\s*$", report)
                 status = status_match.group(1) if status_match else "REVIEW"
-                first_recommendation = next(
-                    (line.strip() for line in report.splitlines()
-                     if line.strip() and not line.lstrip().startswith("#")),
-                    "Review ready",
-                )
                 log(f"review {cycle} issued a new supervisor recommendation status={status}; exact advice is recorded only on delivery")
                 log(f"review {cycle} completed with usable report")
         if consecutive_unusable_reviews >= circuit_breaker_threshold:
