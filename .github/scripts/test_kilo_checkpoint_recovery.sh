@@ -104,4 +104,52 @@ expected_remote_sha="$(git -C "$competitor" rev-parse HEAD)"
   bundle_head="$(git bundle list-heads "$bundle_path" | awk 'NR==1 {print $1}')"
   [[ "$bundle_head" == "$expected_checkpoint_sha" ]]
 )
-echo "PASS: production routine preserves both commits, verifies a recovery copy, restores HEAD after abort, and stops after identical conflict."
+echo "PASS: production routine preserves both concurrent commits, verifies recovery, restores HEAD after abort, and terminates repeated conflicts."
+
+# Case 3: a remote hook rejects the default-branch update without creating a rebase
+# conflict. The failed checkpoint must remain classified as unpersisted and be
+# recoverable from a verified local bundle and/or a verified non-force recovery ref.
+failure_remote="$tmp/push-rejected.git"
+failure_seed="$tmp/push-rejected-seed"
+failure_worker="$tmp/push-rejected-worker"
+setup_remote "$failure_remote" "$failure_seed"
+cat > "$failure_remote/hooks/pre-receive" <<'HOOK'
+#!/bin/sh
+while read old new ref; do
+  if [ "$ref" = "refs/heads/main" ]; then
+    echo "intentional test rejection of default branch update" >&2
+    exit 1
+  fi
+done
+exit 0
+HOOK
+chmod +x "$failure_remote/hooks/pre-receive"
+git clone --quiet "$failure_remote" "$failure_worker"
+git -C "$failure_worker" config user.name "Kilo persistence integration test"
+git -C "$failure_worker" config user.email "kilo-persistence-test@example.invalid"
+printf 'checkpoint blocked from main\n' > "$failure_worker/shared.md"
+git -C "$failure_worker" commit --quiet -am "checkpoint whose default-branch push is rejected"
+expected_unpersisted_sha="$(git -C "$failure_worker" rev-parse HEAD)"
+expected_main_sha="$(git --git-dir="$failure_remote" rev-parse refs/heads/main)"
+(
+  cd "$failure_worker"
+  source "$repo_root/$persist_source"
+  configure_persistence_call
+  cutoff_epoch=$(( $(date +%s) + 3 ))
+  persist_current_checkpoint
+  [[ "$persisted" -eq 0 ]]
+  [[ "$cutoff" -eq 1 ]]
+  [[ "$project_progress" -eq 0 ]]
+  [[ "$(git ls-remote origin refs/heads/main | awk 'NR==1 {print $1}')" == "$expected_main_sha" ]]
+  recovery_ref="refs/heads/kilo-recovery/$expected_unpersisted_sha"
+  recovery_sha="$(git ls-remote origin "$recovery_ref" | awk 'NR==1 {print $1}')"
+  bundle_path="$(find "$RUNNER_TEMP/kilo-failure-logs" -type f -name "kilo-persistence-checkpoint-$expected_unpersisted_sha.bundle" -print -quit)"
+  bundle_verified=0
+  if [[ -n "$bundle_path" ]] && git bundle verify "$bundle_path" >/dev/null 2>&1; then
+    [[ "$(git bundle list-heads "$bundle_path" | awk 'NR==1 {print $1}')" == "$expected_unpersisted_sha" ]]
+    bundle_verified=1
+  fi
+  [[ "$recovery_sha" == "$expected_unpersisted_sha" || "$bundle_verified" -eq 1 ]]
+  [[ "$(git show "$expected_unpersisted_sha:shared.md")" == "checkpoint blocked from main" ]]
+)
+echo "PASS: a rejected default-branch push remains a failure and leaves verified recovery evidence."

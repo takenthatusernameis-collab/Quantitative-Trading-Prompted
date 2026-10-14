@@ -1,5 +1,54 @@
 #!/usr/bin/env bash
 # Production checkpoint persistence routine, sourced by kilo-controller.sh and exercised directly by integration tests.
+# Preserve a local recovery bundle for any checkpoint that cannot reach the default
+# branch, including permission/rejection failures that never enter rebase-conflict
+# handling. The optional remote recovery ref is created with a normal non-force push.
+preserve_failed_checkpoint() {
+  local checkpoint_sha recovery_dir recovery_bundle recovery_ref checkpoint_ref report
+  local bundle_verified=0 recovery_ref_verified=0 recovery_remote_sha=""
+  checkpoint_sha="$(git rev-parse HEAD 2>/dev/null)" || return 1
+  recovery_dir="${RUNNER_TEMP:-/tmp}/kilo-failure-logs"
+  mkdir -p "$recovery_dir" || return 1
+  recovery_bundle="$recovery_dir/kilo-persistence-checkpoint-${checkpoint_sha}.bundle"
+  recovery_ref="refs/heads/kilo-recovery/${checkpoint_sha}"
+  checkpoint_ref="refs/kilo-recovery/checkpoint-failure-${checkpoint_sha}"
+  report="$recovery_dir/kilo-persistence-failure-${GITHUB_RUN_ID:-manual}-${checkpoint_sha}.txt"
+  {
+    printf 'reason=checkpoint_not_persisted\n'
+    printf 'checkpoint_sha=%s\n' "$checkpoint_sha"
+    printf 'default_branch=%s\n' "${DEFAULT_BRANCH:-unknown}"
+    printf 'recovery_ref=%s\n' "$recovery_ref"
+  } > "$report" 2>/dev/null || true
+
+  if [ -f "$recovery_bundle" ] && git bundle verify "$recovery_bundle" >> "$report" 2>&1; then
+    bundle_verified=1
+  else
+    rm -f "$recovery_bundle"
+    if git update-ref "$checkpoint_ref" "$checkpoint_sha" >> "$report" 2>&1; then
+      if git bundle create "$recovery_bundle" "$checkpoint_ref" >> "$report" 2>&1 &&
+         git bundle verify "$recovery_bundle" >> "$report" 2>&1; then
+        bundle_verified=1
+      fi
+      git update-ref -d "$checkpoint_ref" >> "$report" 2>&1 || true
+    fi
+  fi
+
+  if git push origin "${checkpoint_sha}:${recovery_ref}" >> "$report" 2>&1; then
+    recovery_remote_sha="$(git ls-remote origin "$recovery_ref" 2>/dev/null | awk 'NR==1 {print $1}')"
+    if [ -n "$recovery_remote_sha" ] && [ "$recovery_remote_sha" = "$checkpoint_sha" ]; then
+      recovery_ref_verified=1
+    fi
+  fi
+
+  {
+    printf 'bundle_verified=%s\n' "$bundle_verified"
+    printf 'recovery_ref_verified=%s\n' "$recovery_ref_verified"
+    printf 'recovery_remote_sha=%s\n' "${recovery_remote_sha:-unverified}"
+  } >> "$report" 2>/dev/null || true
+  echo "::notice::Failed checkpoint recovery evidence: checkpoint=$checkpoint_sha bundle_verified=$bundle_verified recovery_ref_verified=$recovery_ref_verified report=$report"
+  [ "$bundle_verified" -eq 1 ] || [ "$recovery_ref_verified" -eq 1 ]
+}
+
 persist_current_checkpoint() {
   # Deterministic repository-level persistence. A checkpoint is already committed
   # locally before entering this loop. When rebase fails, preserve that exact
@@ -160,6 +209,9 @@ persist_current_checkpoint() {
   fi
   if [ "$persisted" -ne 1 ]; then
     echo "::warning::Checkpoint persistence was not confirmed. No success claim is made; stopping edits and preserving diagnostics before the cutoff."
+    if ! preserve_failed_checkpoint; then
+      echo "::error::Could not verify either a local recovery bundle or remote recovery ref for the failed checkpoint."
+    fi
     cutoff=1
   fi
   if [ "$persisted" -eq 1 ] && [ "$committed_this_iteration" -eq 1 ]; then
