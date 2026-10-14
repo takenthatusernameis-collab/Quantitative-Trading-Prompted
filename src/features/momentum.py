@@ -66,16 +66,25 @@ def select_top_decile(
     n_assets = momentum.shape[1]
     if n_assets < 5:
         # Small universe: pick the single best asset each period
-        best = momentum.idxmax(axis=1)
         mask = pd.DataFrame(False, index=momentum.index, columns=momentum.columns)
-        for date, col in best.items():
+        # Handle all-NA rows
+        for date, row in momentum.iterrows():
+            if row.isna().all():
+                continue
+            col = row.idxmax()
             if pd.notna(col) and col in mask.columns:
                 mask.loc[date, col] = True
         return mask
 
     ranks = rank_assets(momentum)
-    threshold = ranks.max(axis=1) * (1.0 - top_fraction)
-    return ranks.ge(threshold, axis=0)
+    # Handle rows where all values are NA
+    mask = pd.DataFrame(False, index=momentum.index, columns=momentum.columns)
+    for date, row in ranks.iterrows():
+        if row.isna().all():
+            continue
+        threshold = row.max() * (1.0 - top_fraction)
+        mask.loc[date, :] = row.ge(threshold)
+    return mask
 
 
 def build_weights(

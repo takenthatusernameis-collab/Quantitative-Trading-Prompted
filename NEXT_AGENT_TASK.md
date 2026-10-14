@@ -1,85 +1,61 @@
-# Next Agent Task: Microcap mom121 — Resolve Data Gap for Point-in-Time Microcap Universe
+# Next Agent Task: Microcap mom121 — Data Acquisition Decision (Bounded)
 
 ## Context
 
-The previous cycle completed the data/universe gate (Section A of `NEXT_AGENT_TASK.md` v1) and found:
+The microcap 12–1 momentum hypothesis (`mom121_microcap_001`) is **BLOCKED by data/infrastructure**. The previous cycle completed:
 
-- **Data gate FAILED.** `data/raw/` contains 19 parquet files, all ETFs/indices (DBC, EEM, EFA, GLD, IWM, QQQ, SPY, TLT, VNQ, XLB–XLY, ^VIX) with only OHLCV columns. **Zero individual stock data files exist.**
-- **yfinance cannot provide historical market cap.** `yfinance.download()` and `Ticker.history()` return only OHLCV + Dividends + Stock Splits. `Ticker.info` provides `marketCap` as a current snapshot only; no `get_market_cap_history()` method exists. Delisted tickers (e.g., RAD) return 0 rows with no structured delisting event data.
-- **Existing hypothesis** (`research/hypotheses/mom121_microcap_001.md` v0.2) and **experiment record** (`research/experiments/mom121_microcap_001.md`) are persisted with status: **Blocked by data/infrastructure**.
+- **Free data survey:** yfinance 1.7.0 cannot provide point-in-time market cap screening or delisting events for microcaps; `get_shares_full()` enables approximate market cap = shares × price for liquid names only. Other free data sources (ccxt, fredapi, sec-edgar-downloader, pandas-datareader, quandl, finnhub, alpha_vantage, polygon, sec_api, nasdaq) are **not installed**.
+- **Exploratory diagnostic:** Ran a clearly-labelled exploratory diagnostic comparing daily (existing code: 252/21) vs monthly calendar-month-end conventions on a survivorship-biased current-ETF basket. Code mechanics verified; the two conventions differ materially. Added defensive NA-handling to `src/features/momentum.py` (smallest sufficient change; no logic change to signal definition).
+- **Artifacts created:** `research/experiments/mom121_microcap_001_exploratory.md` with full disclosures, survey, and ranked data source shortlist.
 
-The full audit, verification commands, and observed outcomes are documented in `research/experiments/mom121_microcap_001.md` Section A.
+Full details: `research/experiments/mom121_microcap_001.md` (Section A) and `research/experiments/mom121_microcap_001_exploratory.md`.
 
 ## Objective
 
-Resolve the precise data blocker identified by the data gate: the inability to construct a **point-in-time microcap stock universe** (with historical market cap, shares outstanding, and delisting coverage). The objective is to determine the lowest-friction credible path to obtain the required data, and to run a **clearly labelled exploratory diagnostic** that tests the momentum code logic on imperfect data without making any alpha claims.
+Make an **evidence-based decision** on how to proceed with mom121_microcap_001 given the data blocker. This is a bounded decision/planning task (no confirmatory backtest). Choose exactly one path and prepare a concrete next task.
 
 ## Acceptance criteria
 
-### 1. Exhaustive free-data-source survey
+1. **Review artifacts**: Read `research/experiments/mom121_microcap_001_exploratory.md`, `research/hypotheses/mom121_microcap_001.md`, and `research/experiments/mom121_microcap_001.md`. Confirm the blocker summary is accurate.
 
-Survey all free/public data sources available in the repository's infrastructure (yfinance, ccxt, FRED, SEC EDGAR via `sec-edgar-downloader` if already installed, etc.):
+2. **Decide among valid paths** (pick exactly one):
 
-- [ ] Confirm whether any free source can provide **point-in-time** historical market cap for individual US stocks at month-end intervals.
-- [ ] Confirm whether any free source provides **delisting/termination** event dates for US stocks.
-- [ ] Confirm whether any free source provides **historical shares outstanding** (not just current `info` snapshot).
-- [ ] Confirm whether any free source provides a **point-in-time stock universe** (not just current constituents).
-- [ ] Document each source's limitations explicitly. If a source provides current-only data (like yfinance `info`), state why this violates point-in-time requirements.
+   - **Path A (confirmatory with proper data):** Identify a specific, concrete plan to obtain point-in-time microcap data with historical market cap, shares, delistings, and point-in-time universe (e.g., CRSP/Compustat access, specific API with point-in-time semantics). Document what’s needed, realistic effort, and whether it’s feasible in this environment. **Do not** actually acquire paid data or add credentials.
+   - **Path B (free approximation with strict labeling):** Define the minimal, auditable rules for constructing a free approximation using yfinance (e.g., which tickers, how to get shares history, delisting detection heuristics, survivorship caveats, minimum liquidity filters, date coverage). Explicitly state why this **cannot** be confirmatory and what disclosures are required. Only consider if it can be done without adding heavy dependencies.
+   - **Path C (pivot):** Pivot to another hypothesis from `research/hypotheses/` that can run with **existing** data in `data/raw/` (ETFs/indices only) while respecting AGENTS.md discipline (hypothesis-first, baseline before complexity, honest accounting). Justify why this is higher value than waiting on microcap data.
 
-### 2. Exploratory diagnostic (clearly labelled, NOT confirmatory)
+3. **Update hypothesis status**: If choosing Path A or B, update `research/hypotheses/mom121_microcap_001.md` status/version history to reflect the decision (still blocked for confirmatory unless Path B becomes viable with ironclad disclosures). If choosing Path C, document the pivot rationale in the chosen hypothesis or in experiment notes.
 
-If yfinance can fetch historical prices for a current-ticker basket of microcap ETFs or stocks (using today's microcap universe applied retrospectively), run a **clearly labelled exploratory diagnostic** that:
+4. **Write next bounded task**: Create **exactly one** new NEXT_AGENT_TASK.md with:
+   - Context (including evidence)
+   - Objective (single, concrete goal)
+   - Acceptance criteria (testable, minimal)
+   - Validation commands (exact)
+   - Scope boundaries (explicitly exclude confirmatory claims if using imperfect data)
 
-- [ ] Uses the current-ticker yfinance basket ONLY for testing code mechanics, with prominent labels: "EXPLORATORY — NOT CONFIRMATORY — SURVIVORSHIP BIASED — CURRENT TICKERS APPLIED RETROSPECTIVELY"
-- [ ] Tests the `compute_momentum` / `build_weights` pipeline from `src/features/momentum.py` on the fetched data
-- [ ] Explicitly verifies the daily-vs-monthly 12-1 discrepancy: runs BOTH the existing daily convention (lookback=252, skip=21) AND a monthly calendar-month-end 12-1 convention, and documents the difference
-- [ ] Does NOT report any Sharpe, return, or performance metric as evidence of an edge — only as code-verification output
-- [ ] Saves results to `research/experiments/mom121_microcap_001_exploratory.md` with full disclosure labels
-
-### 3. Document the data acquisition path
-
-- [ ] Produce a ranked shortlist of data sources that COULD resolve the blocker (e.g., CRSP monthly stock file, Compustat, Polygon.io, etc.) with cost/access estimates.
-- [ ] Document the exact data fields required (columns, frequency, point-in-time behavior).
-- [ ] State the lowest-friction credible path as a single recommendation, with effort estimate.
-
-### 4. Minimal code change (only if justified by evidence)
-
-- If the exploratory diagnostic reveals a material code defect (e.g., momentum calculation bug, weight normalization issue) that would affect a future confirmatory test, fix the **smallest** defect and add a regression test.
-- If no defect is found, make no code changes.
-
-### 5. Durable outputs and handoff
-
-- [ ] Update `research/experiments/mom121_microcap_001.md` with the free-data survey results (Section A supplement) and exploratory diagnostic.
-- [ ] Update `research/hypotheses/mom121_microcap_001.md` version history (v0.3) with findings.
-- [ ] Update README.md "Current Status" section with the microcap data gate result (factual summary only).
-- [ ] Prepare exactly one next-task handoff in `NEXT_AGENT_TASK.md`.
+5. **Minimal verification**: Run existing tests to ensure nothing is broken.
+   ```bash
+   python3 -m pytest .github/scripts/test_kilo_supervisor_loop.py -v
+   ```
 
 ## Scope boundaries
 
-- **Data survey only:** No paid data acquisition, no new paid dependencies, no credential entry. Only inspect free sources already accessible or documented in `config/settings.yaml`.
-- **Exploratory diagnostic only:** Do not run a confirmatory backtest. Do not present any metric as evidence of an edge.
-- **No live trading, no deployment claims.** Research/backtesting only.
-- **Smallest sufficient change:** Only add code/tests if a concrete defect is identified. Do not rebuild the stack.
+- **No paid data acquisition, no credentials, no new paid dependencies.**
+- **No confirmatory microcap backtest** unless Path A is realistically feasible with resources available in this environment (and even then, only with proper point-in-time data). If not feasible, do not run one.
+- **Smallest change principle.** Only make minimal doc/code edits needed to enact the decision.
+- **Research/backtesting only.** No live trading.
+- **Preserve evidence.** Do not downplay the data blocker or fabricate data availability.
 
 ## Validation commands
 
 ```bash
-# 1. Verify data inventory (confirm no stock data exists)
-find data/raw -name "*.parquet" | sort
+# 1. Verify artifacts exist
+ls -la research/experiments/mom121_microcap_001_exploratory.md research/hypotheses/mom121_microcap_001.md
 
-# 2. Confirm yfinance has no historical market cap
-python3 -c "import yfinance as yf; t=yf.Ticker('AAPL'); print('has_mc_history:', hasattr(t,'get_market_cap_history')); i=t.info; print('info_mc:', type(i.get('marketCap')))"
-
-# 3. Run exploratory diagnostic (to be written by this task)
-python3 research/run_mom121_microcap_exploratory.py
-
-# 4. Run existing test suite
+# 2. Run existing tests
 python3 -m pytest .github/scripts/test_kilo_supervisor_loop.py -v
-
-# 5. Verify created artifacts exist
-ls -la research/experiments/mom121_microcap_001.md research/experiments/mom121_microcap_001_exploratory.md
 ```
 
 ## Completion standard
 
-Return a concise evidence-backed decision: blocked by data (with exact missing fields and credible path documented), exploratory diagnostic results (code verification only, with full bias disclosures), and whether any code defects were found and fixed.
+Return a concise evidence-backed decision (A, B, or C with rationale), the updated artifacts, and the new single NEXT_AGENT_TASK.md ready for the next agent.
