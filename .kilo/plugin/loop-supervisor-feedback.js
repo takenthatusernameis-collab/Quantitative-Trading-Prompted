@@ -97,12 +97,12 @@ async function saveWorkerDelivery(transcriptDir, injectionText, sequence, recomm
   if (!isInside(transcriptDir, destination)) return null;
   const safeMessage = redactSensitiveText(injectionText).trim();
   const messageId = recommendationId || "unlinked-recommendation";
-  const eventKey = digest("supervisor_to_worker\\0" + messageId + "\\0" + safeMessage);
+  const eventKey = digest("supervisor_to_worker\0" + messageId + "\0" + safeMessage);
   try {
     await mkdir(transcriptDir, { recursive: true });
     let existing = "";
     try { existing = await readFile(destination, "utf8"); } catch {}
-    for (const line of existing.split(/\\r?\\n/).slice(-2000)) {
+    for (const line of existing.split(/\r?\n/).slice(-2000)) {
       try {
         if (line && JSON.parse(line).event_key === eventKey) return destination;
       } catch {}
@@ -117,7 +117,7 @@ async function saveWorkerDelivery(transcriptDir, injectionText, sequence, recomm
       message: safeMessage,
       sequence,
     };
-    await appendFile(destination, JSON.stringify(event) + "\\n", { encoding: "utf8", mode: 0o600 });
+    await appendFile(destination, JSON.stringify(event) + "\n", { encoding: "utf8", mode: 0o600 });
     return destination;
   } catch {
     return null;
