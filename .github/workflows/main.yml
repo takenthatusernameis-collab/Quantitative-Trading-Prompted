@@ -57,6 +57,7 @@ jobs:
           SUPERVISOR_REVIEW_FAILURES: ${{ steps.kilo_controller.outputs.supervisor_review_failures }}
           SUPERVISOR_DELIVERY_TRANSCRIPTS: ${{ steps.kilo_controller.outputs.supervisor_delivery_transcripts }}
           SUPERVISOR_DIALOGUE_TRANSCRIPTS: ${{ steps.kilo_controller.outputs.supervisor_dialogue_transcripts }}
+          SUPERVISOR_WORKER_REPLIES: ${{ steps.kilo_controller.outputs.supervisor_worker_replies }}
           SUPERVISOR_TRANSCRIPT_DIR: ${{ runner.temp }}/kilo-supervisor-transcripts-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           SUPERVISOR_ADVICE_ENTRIES: ${{ steps.kilo_controller.outputs.supervisor_advice_entries }}
           SUPERVISOR_PENDING_UNITS: ${{ steps.kilo_controller.outputs.supervisor_pending_units }}
@@ -75,10 +76,10 @@ jobs:
             echo "- Supervisor reviews started: ${SUPERVISOR_REVIEW_COUNT:-0}"
             echo "- Supervisor reviews completed with usable reports: ${SUPERVISOR_REVIEWS_COMPLETED:-0}"
             echo "- Supervisor timeouts: ${SUPERVISOR_REVIEW_TIMEOUTS:-0}; other review failures: ${SUPERVISOR_REVIEW_FAILURES:-0}"
-            echo "- Exact worker-delivery transcripts saved: ${SUPERVISOR_DELIVERY_TRANSCRIPTS:-0}; combined agent-dialogue transcripts saved: ${SUPERVISOR_DIALOGUE_TRANSCRIPTS:-0}"
+            echo "- Supervisor-to-worker messages delivered: ${SUPERVISOR_DELIVERY_TRANSCRIPTS:-0}; worker-to-supervisor replies: ${SUPERVISOR_WORKER_REPLIES:-0}; total role-dialogue messages: ${SUPERVISOR_DIALOGUE_TRANSCRIPTS:-0}"
             echo "- Cumulative supervisor advice entries: ${SUPERVISOR_ADVICE_ENTRIES:-0}"
             echo "- Advice journal units queued but not yet injected at shutdown: ${SUPERVISOR_PENDING_UNITS:-0}"
-            echo "- Full redacted supervisor request/CLI trace/response and exact worker-delivery transcripts: download artifact kilo-progress-trace-${GITHUB_RUN_ID}."
+            echo "- Artifact kilo-progress-trace-${GITHUB_RUN_ID} retains only role-dialogue messages plus controller health telemetry; repeated prompt echoes and raw reviewer traces are not published."
             echo "- Verified meaningful project progress: ${PROJECT_PROGRESS:-unknown}"
             echo "- Failed Kilo sessions: ${FAILED_SESSIONS:-unknown}"
             echo "- Upstream idle/network retries: ${IDLE_TIMEOUT_RETRIES:-unknown}"
@@ -91,39 +92,41 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           python3 - "$SUPERVISOR_TRANSCRIPT_DIR" >> "$GITHUB_STEP_SUMMARY" <<'PY'
           import html
+          import json
           import sys
           from pathlib import Path
 
-          directory = Path(sys.argv[1])
-          dialogues = sorted(directory.glob("review-*-agent-dialogue.md"))
-          deliveries = sorted(directory.glob("worker-delivery-*.md"))
+          dialogue_path = Path(sys.argv[1]) / "agent-dialogue.jsonl"
+          events = []
+          try:
+              for line in dialogue_path.read_text(encoding="utf-8").splitlines():
+                  if line.strip():
+                      value = json.loads(line)
+                      if value.get("direction") in {"supervisor_to_worker", "worker_to_supervisor"}:
+                          events.append(value)
+          except (OSError, ValueError):
+              events = []
           print()
           print("## Agent dialogue box")
-          print("The exchanges below show the redacted request/evidence sent to the loop-supervisor, its CLI trace and returned advice, plus the exact advice delivered to the worker. Supervisor reviews cannot interrupt an in-flight worker operation; delivery occurs at the next tool-result boundary.")
-          if not dialogues and not deliveries:
+          print("Only actual role-to-role messages are shown: supervisor advice injected into a worker tool result and worker dispositions returned to the supervisor. Repeated file reads, repository snapshots, prompts, CLI traces, and reminder echoes are not part of this record.")
+          if not events:
               print()
-              print("No supervisor dialogue or worker-delivery transcript was produced in this run. Check the supervisor timeout/failure counts above and download the trace artifact for diagnostics.")
-          for path in dialogues[-5:]:
-              content = path.read_text(encoding="utf-8", errors="replace")
+              print("No role-to-role dialogue message was delivered or acknowledged in this run.")
+          for event in events[-20:]:
+              direction = "Supervisor → Worker" if event.get("direction") == "supervisor_to_worker" else "Worker → Supervisor"
+              message_id = str(event.get("message_id", "unlinked"))
+              timestamp = str(event.get("timestamp_utc", "time unavailable"))
+              message = str(event.get("message", ""))
               print()
               print("<details open>")
-              print("<summary>" + html.escape(path.name) + "</summary>")
+              print("<summary>" + html.escape(timestamp + " | " + direction + " | " + message_id) + "</summary>")
               print("<pre style=\"white-space: pre-wrap; overflow-wrap: anywhere;\">")
-              print(html.escape(content))
+              print(html.escape(message))
               print("</pre>")
               print("</details>")
-          for path in deliveries:
-              content = path.read_text(encoding="utf-8", errors="replace")
+          if len(events) > 20:
               print()
-              print("<details>")
-              print("<summary>Exact worker delivery — " + html.escape(path.name) + "</summary>")
-              print("<pre style=\"white-space: pre-wrap; overflow-wrap: anywhere;\">")
-              print(html.escape(content))
-              print("</pre>")
-              print("</details>")
-          if len(dialogues) > 5:
-              print()
-              print(f"Showing the latest 5 of {len(dialogues)} supervisor exchanges here; the trace artifact contains every exchange.")
+              print(f"Showing the latest 20 of {len(events)} role-dialogue messages; the artifact contains the full dialogue-only record.")
           PY
 
       - name: Upload Kilo progress and supervisor trace
@@ -136,7 +139,7 @@ jobs:
             ${{ runner.temp }}/kilo-progress-*.log
             ${{ runner.temp }}/kilo-progress-state-*.txt
             ${{ runner.temp }}/kilo-supervisor-loop-*.log
-            ${{ runner.temp }}/kilo-supervisor-transcripts-*/**
+            ${{ runner.temp }}/kilo-supervisor-transcripts-*/agent-dialogue.jsonl
           if-no-files-found: ignore
           retention-days: 14
 
