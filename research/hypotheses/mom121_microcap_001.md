@@ -1,6 +1,6 @@
 # Preregistered Hypothesis: Microcap Cross-Sectional Momentum 12–1 (mom121_microcap_001)
 
-**Status:** Pending data-integrity audit and execution. No alpha claim has been established by this preregistration.
+**Status:** Blocked by data/infrastructure (data gate failed). See `research/experiments/mom121_microcap_001.md` Section A. No alpha claim has been established by this preregistration. The economic hypothesis is not rejected; it cannot be tested without point-in-time microcap stock data with historical market cap and delisting coverage.
 
 ## Research question
 
@@ -43,3 +43,26 @@ Report, where sample size supports them: gross and net cumulative return, CAGR, 
 ## Reproducibility artifacts
 
 Persist the preregistration, data audit, source/config/code revision, universe counts and construction, cost scenarios, fold boundaries, trial count, complete result tables, limitations, exact commands, and tests. Keep a clear decision label: **credible candidate for further validation**, **exploratory signal**, **rejected/failed**, or **blocked by data/infrastructure**. No live trades or deployment claims.
+
+---
+
+## Version history
+
+### v0.2 (2026-10-14) — Data gate audit; Blocked by data
+
+- **Data audit result:** Data gate **FAILED**. Repository cache contains 19 parquet files, all ETFs/indices (DBC, EEM, EFA, GLD, IWM, QQQ, SPY, TLT, VNQ, XLB–XLY, ^VIX) with only OHLCV columns. Zero individual stock data files exist.
+- **yfinance capability check:** `yfinance.download()` and `Ticker.history()` return only OHLCV + Dividends + Stock Splits — **no historical market cap**. `Ticker.info` provides `marketCap` as a current snapshot only (not historical); no `get_market_cap_history()` method exists in yfinance 1.7.0. Delisted tickers (e.g., RAD) return 0 rows with no structured delisting event data.
+- **Verdict:** No point-in-time microcap universe can be constructed. Confirmed BLOCKED by data/infrastructure. Full audit: `research/experiments/mom121_microcap_001.md` Section A.
+- **Signal definition discrepancy (documented, not corrected):** The repository's `src/features/momentum.py` `compute_momentum` (lines 17–46) computes a **daily** 273-trading-day return: `Price(t−21) / Price(t−273) − 1` (lookback=252, skip=21). This is NOT the monthly 12–1 specified here: `AdjClose(t−1 month) / AdjClose(t−12 months) − 1`. The daily code reaches back ~13.5 months vs. the hypothesis's 12 calendar months and uses trading-day offsets rather than calendar month-end dates. Per the hypothesis specification, the daily convention must be treated only as a separately labelled definition; the monthly calendar-month convention remains the frozen primary signal. No code correction made in this session (data gate blocks execution; smallest change principle).
+
+### v0.3 (2026-10-14) — Decision on data acquisition path
+
+- **Decision:** Pursue Path A - identify a specific plan to obtain point-in-time microcap data with historical market cap, shares, delistings, and point-in-time universe.
+- **Rationale:** While the microcap hypothesis remains blocked by data infrastructure in the current environment, identifying concrete requirements for proper data acquisition preserves the option for confirmatory testing when resources become available. This approach maintains research discipline by not pretending that imperfect data can support confirmatory claims.
+- **Identified requirements:** Point-in-time microcap universe construction requires: (1) historical market capitalization or shares outstanding data to determine which stocks were microcap (USD 50M–300M) at each formation date, (2) delisting events to avoid survivorship bias, (3) point-in-time universe membership data, and (4) security type/exchange/share class data for proper filtering.
+- **Feasible path in this environment:** None - acquiring CRSP/Compustat data or equivalent point-in-time fundamental databases would require paid subscriptions or institutional access not available in this research environment.
+- **Next step:** Document specific data source requirements and leave hypothesis as blocked pending appropriate data availability.
+
+### v0.1 (2026-10-14) — Initial preregistration
+
+- Frozen primary specification, mechanism, falsification condition, data requirements, evaluation design, and reporting standards.

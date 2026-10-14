@@ -1,0 +1,60 @@
+================================================================================
+EXPLORATORY DIAGNOSTIC - CODE MECHANICS VERIFICATION ONLY
+NOT CONFIRMATORY | SURVIVORSHIP BIASED | CURRENT TICKERS APPLIED RETROSPECTIVELY
+================================================================================
+
+Test universe: ['SPY', 'QQQ', 'IWM', 'EFA', 'EEM']
+Date range: 2003-04-14 to 2026-10-14
+Observations: 5914 trading days
+
+--- TEST 1: DAILY CONVENTION (existing code) ---
+compute_momentum with lookback=252, skip=21
+Formula: Price(t-21)/Price(t-273) - 1 (273 trading days total span)
+Shape (after dropna): (5641, 5)
+Non-NaN values: 28205
+Sample values (last 5 rows, SPY):
+Date
+2026-10-08 00:00:00+00:00    0.175038
+2026-10-09 00:00:00+00:00    0.165301
+2026-10-12 00:00:00+00:00    0.171846
+2026-10-13 00:00:00+00:00    0.157003
+2026-10-14 00:00:00+00:00    0.152082
+Name: SPY, dtype: float64
+
+--- TEST 2: MONTHLY CONVENTION (hypothesis spec) ---
+MOM(t) = Price(end of t-1 month) / Price(end of t-12 months) - 1
+Shape: (271, 5)
+Non-NaN values: 1355
+Sample values (last 5 rows, SPY):
+Date
+2026-06-30 00:00:00+00:00    0.224375
+2026-07-31 00:00:00+00:00    0.181449
+2026-08-31 00:00:00+00:00    0.158096
+2026-09-30 00:00:00+00:00    0.151416
+2026-10-31 00:00:00+00:00    0.118127
+Freq: ME, Name: SPY, dtype: float64
+
+--- TEST 3: COMPARISON OF CONVENTIONS ---
+
+SPY (last 3 overlapping month-ends):
+  2026-07-31: daily=0.2070, monthly=0.1814, diff=0.0256
+  2026-08-31: daily=0.1774, monthly=0.1581, diff=0.0193
+  2026-09-30: daily=0.1820, monthly=0.1514, diff=0.0306
+
+--- TEST 4: WEIGHTS PIPELINE (code mechanics) ---
+Weights shape (periods with active weights): (5640, 5)
+Avg active positions: 3.00
+Max active positions: 3
+Last period active: 3
+Weights sum (last): 1.0000
+
+--- TEST 5: SMALL UNIVERSE BEHAVIOR ---
+Small universe test: passed
+When n_assets < 5, code picks single best asset (see select_top_decile)
+
+================================================================================
+DIAGNOSTIC COMPLETE - CODE MECHANICS VERIFIED
+All tests above are for PIPELINE VERIFICATION ONLY.
+No performance metrics reported as evidence of edge.
+Survivorship bias: using current ticker list applied retrospectively.
+================================================================================
