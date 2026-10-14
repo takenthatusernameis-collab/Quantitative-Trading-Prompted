@@ -81,6 +81,19 @@ jobs:
           grep -Fq "process_group_members:" "$idle_log"
           grep -Fq "loadavg:" "$idle_log"
           echo "Kilo idle watchdog healthy-command, stalled-command and diagnostic-capture tests: OK"
+      - name: Guard recoverable Kilo checkpoint persistence
+        shell: bash
+        run: |
+          set -euo pipefail
+          controller=.github/scripts/kilo-controller.sh
+          grep -Fq 'git bundle create' "$controller"
+          grep -Fq 'git bundle verify' "$controller"
+          grep -Fq 'refs/heads/kilo-recovery/' "$controller"
+          grep -Fq 'conflict_signature=' "$controller"
+          grep -Fq 'Reached three rebase conflicts' "$controller"
+          grep -Fq 'same checkpoint conflicted with the same remote head again' "$controller"
+          grep -Fq 'rebase_abort_succeeded=' "$controller"
+          echo "Recoverable checkpoint, verified backup, and repeated-conflict guard: OK"
       - name: Guard cutoff-bounded unbounded retry and correction policy
         shell: bash
         run: |
