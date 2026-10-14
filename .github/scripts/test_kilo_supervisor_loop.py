@@ -34,7 +34,7 @@ class SupervisorLoopTests(unittest.TestCase):
         self.assertNotIn("super-secret-value", result)
         self.assertIn("hello world", result)
 
-    def test_two_cycles_preserve_feedback_and_record_exact_request_response(self):
+    def test_two_cycles_preserve_feedback_without_recording_internal_prompts(self):
         with tempfile.TemporaryDirectory(prefix="kilo-supervisor-test-") as temp:
             root = Path(temp)
             repo = root / "repo"
@@ -125,7 +125,7 @@ class SupervisorLoopTests(unittest.TestCase):
                 "reviewer prompts, CLI traces, status files, and undelivered advice must not be recorded as role dialogue",
             )
 
-    def test_failed_review_records_request_and_cli_output_without_erasing_feedback(self):
+    def test_failed_review_keeps_feedback_without_transcript_dumps(self):
         with tempfile.TemporaryDirectory(prefix="kilo-supervisor-failure-test-") as temp:
             root = Path(temp)
             repo = root / "repo"
@@ -339,6 +339,51 @@ class SupervisorLoopTests(unittest.TestCase):
                 "timeouts are operational status, not role-to-role dialogue",
             )
             self.assertEqual(feedback.read_text(encoding="utf-8"), "")
+
+
+    def test_role_dialogue_log_records_only_distinct_messages_in_both_directions(self):
+        with tempfile.TemporaryDirectory(prefix="kilo-role-dialogue-test-") as temp:
+            transcript_dir = Path(temp)
+            recommendation_id = "run-42-review-0003-deadbeef1234"
+            supervisor_message = (
+                "STATUS: ATTENTION\\n"
+                "Observed evidence: the focused assertion is still failing.\\n"
+                "Different next step: fix the parser and rerun that assertion."
+            )
+            worker_reply = (
+                "Disposition: in_progress\\n"
+                "Reason: I am applying the focused parser fix before other work.\\n"
+                "Evidence: the regression test identifies the failing input.\\n"
+                "Verification: pending the next test run."
+            )
+
+            self.assertTrue(monitor.append_dialogue_event(
+                transcript_dir, "supervisor_to_worker", "supervisor",
+                recommendation_id, supervisor_message,
+            ))
+            self.assertFalse(monitor.append_dialogue_event(
+                transcript_dir, "supervisor_to_worker", "supervisor",
+                recommendation_id, supervisor_message,
+            ), "identical supervisor messages must not be recorded twice")
+            self.assertTrue(monitor.append_dialogue_event(
+                transcript_dir, "worker_to_supervisor", "worker",
+                recommendation_id, worker_reply,
+            ))
+            self.assertFalse(monitor.append_dialogue_event(
+                transcript_dir, "worker_to_supervisor", "worker",
+                recommendation_id, worker_reply,
+            ), "identical worker replies must not be recorded twice")
+
+            dialogue_path = transcript_dir / "agent-dialogue.jsonl"
+            events = [json.loads(line) for line in dialogue_path.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual(len(events), 2)
+            self.assertEqual(
+                [event["direction"] for event in events],
+                ["supervisor_to_worker", "worker_to_supervisor"],
+            )
+            self.assertEqual([event["message"] for event in events], [supervisor_message, worker_reply])
+            self.assertTrue(all(event["message_id"] == recommendation_id for event in events))
+            self.assertTrue(all("prompt" not in event and "cli_output" not in event for event in events))
 
 
     def test_file_backed_dialogue_protocol_rejects_stale_or_malformed_dispositions(self):
