@@ -107,12 +107,12 @@ async function readProtocolState(protocolDir) {
 
 function buildProtocolReminder(recommendation) {
   // One lightweight reminder; the already-delivered recommendation body is never repeated.
-  return "## Supervisor → Worker\\n\\n"
-    + "Recommendation ID: " + recommendation.recommendation_id + "\\n\\n"
+  return "## Supervisor → Worker\n\n"
+    + "Recommendation ID: " + recommendation.recommendation_id + "\n\n"
     + "Please write a valid .kilo-runtime/worker-disposition.json for this recommendation. "
     + "Use schema_version=1, the exact recommendation_id, an allowed disposition, a concrete reason, "
     + "string evidence/verification fields, and an ISO-8601 UTC updated_at. "
-    + "Do not repeat the recommendation text; acknowledge, verify, block, or reject it with evidence.\\n\\n---\\n\\n";
+    + "Do not repeat the recommendation text; acknowledge, verify, block, or reject it with evidence.\n\n---\n\n";
 }
 
 async function appendAgentDialogue(transcriptDir, roleMessage) {
@@ -132,10 +132,10 @@ async function appendAgentDialogue(transcriptDir, roleMessage) {
   }
 }
 
-function chooseChunkEnd(function chooseChunkEnd(journal, start) {
+function chooseChunkEnd(journal, start) {
   let end = Math.min(start + MAX_FEEDBACK_CHARS_PER_INJECTION, journal.length);
   if (end < journal.length) {
-    const nextEntry = journal.lastIndexOf("--- SUPERVISOR ADVICE ENTRY", end);
+    const nextEntry = journal.lastIndexOf("--- SUPERVISOR ADVICE ENTRY ---", end);
     if (nextEntry > start) end = nextEntry;
   }
   if (end <= start) end = Math.min(start + MAX_FEEDBACK_CHARS_PER_INJECTION, journal.length);
@@ -222,21 +222,18 @@ const LoopSupervisorFeedback = async () => {
           const pending = redactSensitiveText(journal.slice(start, end));
           if (pending.trim()) {
             const body = pending
-              .replace(/^--- SUPERVISOR ADVICE ENTRY ---\\s*$/gm, "")
-              .replace(/^--- END SUPERVISOR ADVICE ENTRY ---\\s*$/gm, "")
+              .replace(/^--- SUPERVISOR ADVICE ENTRY ---\s*$/gm, "")
+              .replace(/^--- END SUPERVISOR ADVICE ENTRY ---\s*$/gm, "")
               .trim();
             if (body) {
               const recommendationId = recommendation?.recommendation_id ?? "(not assigned)";
-              injectionText = "## Supervisor → Worker\\n\\n"
-                + "Recommendation ID: " + recommendationId + "\\n\\n"
-                + body + "\\n\\n---\\n\\n";
+              injectionText = "## Supervisor → Worker\n\n"
+                + "Recommendation ID: " + recommendationId + "\n\n"
+                + body + "\n\n---\n\n";
               deliveryKind = "journal";
               nextCursorOffset = end;
               nextCursorDigest = digest(journal.slice(0, end));
             }
-            if (false) {
-              nextCursorOffset = end;            nextCursorOffset = end;
-            nextCursorDigest = digest(journal.slice(0, end));
           }
         }
 
