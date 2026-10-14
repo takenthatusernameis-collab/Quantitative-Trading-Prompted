@@ -116,18 +116,18 @@ class SupervisorLoopTests(unittest.TestCase):
             self.assertNotIn("ghp_123456789012345678901234567890", prompts)
             self.assertEqual(len(list(report_dir.glob("run-test-run-attempt-1-review-*.md"))), 1)
 
-            first_prompt = prompts.split("\\n---PROMPT-END---\\n", 1)[0]
+            first_prompt = prompts.split("\n---PROMPT-END---\n", 1)[0]
             request_file = transcripts / "review-0001-request-to-supervisor.md"
             response_file = transcripts / "review-0001-response-from-supervisor.md"
             cli_file = transcripts / "review-0001-supervisor-cli-output.txt"
             saved_request = request_file.read_text(encoding="utf-8")
-            self.assertEqual(saved_request.rstrip("\\n"), first_prompt.rstrip("\\n"),
+            self.assertEqual(saved_request.rstrip("\n"), first_prompt.rstrip("\n"),
                              "saved request must match the exact redacted prompt sent to Kilo")
             self.assertIn("worker started", saved_request)
             self.assertNotIn("secret-value", saved_request)
             self.assertEqual(
                 response_file.read_text(encoding="utf-8"),
-                "STATUS: ATTENTION\\nEvidence: worker review 1\\nRecommended next action: verify changed evidence 1",
+                "STATUS: ATTENTION\nEvidence: worker review 1\nRecommended next action: verify changed evidence 1",
             )
             self.assertIn("mock reviewer CLI output for cycle 1", cli_file.read_text(encoding="utf-8"))
             self.assertFalse(list(transcripts.glob("review-*-agent-dialogue.md")))
@@ -139,12 +139,12 @@ class SupervisorLoopTests(unittest.TestCase):
             ))
             self.assertIsNotNone(monitor.append_agent_dialogue(
                 transcripts, "Worker → Supervisor", "recommendation-1",
-                "Disposition: in_progress\\nReason: I am running the targeted test.\\nEvidence: test command prepared.\\nVerification: pending.",
+                "Disposition: in_progress\nReason: I am running the targeted test.\nEvidence: test command prepared.\nVerification: pending.",
             ))
             # Replaying the same role message must not duplicate it.
             monitor.append_agent_dialogue(
                 transcripts, "Worker → Supervisor", "recommendation-1",
-                "Disposition: in_progress\\nReason: I am running the targeted test.\\nEvidence: test command prepared.\\nVerification: pending.",
+                "Disposition: in_progress\nReason: I am running the targeted test.\nEvidence: test command prepared.\nVerification: pending.",
             )
             dialogue = dialogue_file.read_text(encoding="utf-8")
             self.assertEqual(dialogue.count("## Supervisor → Worker"), 1)
