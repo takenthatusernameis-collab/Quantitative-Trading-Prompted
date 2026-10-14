@@ -150,7 +150,7 @@ REQUIRED ACTION — REPORT-FIRST, BOUNDED REVIEW:
 2. If one relevant detail is needed, make no more than two targeted read/search calls. Mark anything else unverified instead of continuing exploration.
 3. Write the report to this exact path on your first available write operation, no later than your fourth tool call:
 REPORT_PATH: {report_relative_path}
-4. Use these exact headings, in order: STATUS: CONTINUE/ATTENTION/CRITICAL; Observed evidence; Previous approaches; Likely cause; Different next step; Verification; Limitations. Keep it concise (about 150–250 words). An Alternative section is optional only when the main step is blocked or materially uncertain.
+4. The report's first line must be exactly one of `STATUS: CONTINUE`, `STATUS: ATTENTION`, or `STATUS: CRITICAL`. Do not add a title. Then use plain, unnumbered headings with colons in this order: `Observed evidence:`, `Previous approaches:`, `Likely cause:`, `Different next step:`, `Verification:`, and `Limitations:`. Do not number or bold headings. Keep the report concise (about 150–250 words). `Alternative:` is optional only when the main step is blocked or materially uncertain.
 5. If no new action or materially changed recommendation is warranted, write exactly NO_NEW_DIALOGUE with no other text; the controller will not send or record a duplicate message.
 6. Do not tell the worker to restart, stop the workflow, weaken checks, or alter the existing 355-minute cutoff-only policy. Separate facts from hypotheses and do not claim unverified tests or file state.
 7. Do not include credentials, tokens, passwords, timestamps, or cycle counters in the report unless materially necessary. Your permissions remain read/search plus report-path-scoped edit/write only; do not execute commands, browse the web, delegate, or control workflows.
@@ -360,13 +360,16 @@ def recover_report_from_cli_output(cli_output: str) -> Optional[str]:
     explicit = list(re.finditer(r"(?im)^\s*REPORT_FALLBACK:\s*", cleaned))
     if explicit:
         possible = cleaned[explicit[-1].end():].strip()
+        first_line = possible.splitlines()[0].strip() if possible else ""
+        has_valid_status_first = bool(re.fullmatch(
+            r"STATUS:\s*(?:CONTINUE|ATTENTION|CRITICAL)", first_line, re.IGNORECASE
+        ))
         has_report_heading = re.search(
-            r"(?im)^\s*(?:STATUS:\s*(?:CONTINUE|ATTENTION|CRITICAL)|"
-            r"(?:#{1,3}\s*)?(?:Observed evidence|Previous approaches|Likely cause|"
-            r"Different next step|Verification|Limitations)\s*(?:[:—-]|$))",
+            r"(?im)^\s*(?:#{1,3}\s*)?(?:Observed evidence|Previous approaches|Likely cause|"
+            r"Different next step|Verification|Limitations)\s*(?:[:—-]|$)",
             possible,
         )
-        if has_report_heading:
+        if has_valid_status_first and has_report_heading:
             candidate = possible
 
     # Older Kilo runs can exhaust the agent step budget yet still return a
