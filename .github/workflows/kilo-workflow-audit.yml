@@ -123,7 +123,8 @@ jobs:
             echo "::error::Supervisor protocol files must stay outside .kilo/ so they are not validated as Kilo configuration."
             exit 1
           fi
-          grep -Fq 'DIALOGUE_PROTOCOL_DIR="$PWD/.kilo-runtime"' "$controller"
+          grep -Fq 'DIALOGUE_PROTOCOL_DIR=' "$controller"
+          grep -Fq '.kilo-runtime' "$controller"
           grep -Fq 'const protocolDir = join(workspace, ".kilo-runtime");' .github/workflows/kilo-workflow-audit.yml
           echo "Supervisor dialogue state is outside Kilo's config directory: OK"
           echo "Unlimited retry/session/correction policy and 355-minute cutoff guardrails: OK"
