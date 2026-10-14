@@ -436,6 +436,44 @@ jobs:
             assert.match(fresh.output, /run-test-review-0005-cafefeed0000/);
             dialogueEvents = (await readFile(dialoguePath, "utf8")).trim().split("\n").map(line => JSON.parse(line));
             assert.equal(dialogueEvents.length, 5, "a fresh ID yields exactly one additional supervisor-to-worker message");
+
+            // If either JSONL track fails, the cursor must stay pending; recovery should
+            // finish the missing append without silently losing the message.
+            const failureRoot = join(runtime, "persistence-failure");
+            const failureFeedbackPath = join(failureRoot, "feedback.md");
+            const failureCursorPath = join(failureRoot, "feedback-cursor.json");
+            const failureTranscripts = join(failureRoot, "transcripts");
+            await (await import("node:fs/promises")).mkdir(failureTranscripts, { recursive: true });
+            await (await import("node:fs/promises")).mkdir(
+              join(failureTranscripts, "agent-communication.jsonl"), { recursive: true }
+            );
+            const failureAdvice = "--- SUPERVISOR ADVICE ENTRY cycle=0006 ---\nSTATUS: ATTENTION\nRetry persistence after recovering the dialogue ledger.\n--- END SUPERVISOR ADVICE ENTRY cycle=0006 ---\n";
+            await writeFile(failureFeedbackPath, failureAdvice, "utf8");
+            process.env.KILO_SUPERVISOR_FEEDBACK_FILE = failureFeedbackPath;
+            process.env.KILO_SUPERVISOR_FEEDBACK_CURSOR_FILE = failureCursorPath;
+            process.env.KILO_SUPERVISOR_TRANSCRIPT_DIR = failureTranscripts;
+            const failureHooks = await pluginModule.default.server();
+            const firstAttempt = { output: "first persistence attempt" };
+            await failureHooks["tool.execute.after"]({ tool: "read" }, firstAttempt);
+            assert.match(firstAttempt.output, /Retry persistence after recovering/);
+            await assert.rejects(
+              readFile(failureCursorPath),
+              error => error.code === "ENOENT",
+              "cursor must not advance when either communication track fails to persist"
+            );
+            await rm(join(failureTranscripts, "agent-communication.jsonl"), { recursive: true, force: true });
+            const retryAttempt = { output: "persistence retry after repair" };
+            await failureHooks["tool.execute.after"]({ tool: "read" }, retryAttempt);
+            assert.match(retryAttempt.output, /Retry persistence after recovering/);
+            const recoveredCursor = JSON.parse(await readFile(failureCursorPath, "utf8"));
+            assert.equal(recoveredCursor.offset, failureAdvice.length);
+            const recoveredDialogue = (await readFile(join(failureTranscripts, "agent-dialogue.jsonl"), "utf8"))
+              .trim().split("\n").map(line => JSON.parse(line));
+            const recoveredCommunication = (await readFile(join(failureTranscripts, "agent-communication.jsonl"), "utf8"))
+              .trim().split("\n").map(line => JSON.parse(line));
+            assert.equal(recoveredDialogue.length, 1, "retry must not duplicate the first successful track append");
+            assert.equal(recoveredCommunication.length, 1, "retry must persist the missing lifecycle event");
+
             process.env.KILO_SUPERVISOR_MODE = "1";
             const reviewerHooks = await pluginModule.default.server();
             assert.equal(Object.keys(reviewerHooks).length, 0, "reviewer CLI sessions must not receive worker feedback");
