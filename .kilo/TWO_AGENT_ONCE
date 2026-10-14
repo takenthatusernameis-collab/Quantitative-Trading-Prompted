@@ -1,1 +1,0 @@
-Bounded live smoke test for file-backed supervisor-worker dialogue protocol. The worker should account for each supervisor recommendation in .kilo/runtime/worker-disposition.json; the supervisor should observe the disposition on subsequent reviews. Do not blindly obey unsafe or stale advice. Preserve all existing research safeguards.
