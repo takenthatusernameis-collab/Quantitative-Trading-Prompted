@@ -103,7 +103,14 @@ def read_git_snapshot(repo_root: Path) -> str:
             value = result.stdout.strip() or "(none)"
             if result.returncode:
                 value = f"(unavailable; exit {result.returncode})"
-            sections.append(f"{label}:\n{value}")
+            if label == "status" and value:
+                # Supervisor report files are diagnostic output created by this monitor,
+                # not changes made by the worker; exclude them to prevent self-triggered review loops.
+                value = "\\n".join(
+                    line for line in value.splitlines()
+                    if not re.match(r"^\\?\\?\\s+\\.kilo/supervisor-reports(?:/|$)", line)
+                ) or "(no worker-visible repository status changes)"
+            sections.append(f"{label}:\\n{value}")
         except (OSError, subprocess.TimeoutExpired):
             sections.append(f"{label}:\n(unavailable)")
     return redact_sensitive_text("\n\n".join(sections))[-2_500:]
