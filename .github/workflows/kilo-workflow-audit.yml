@@ -149,10 +149,9 @@ jobs:
             'sleep 30' \
             'ACTUAL REQUEST SENT TO SUPERVISOR' \
             'ACTUAL ADVICE RETURNED BY SUPERVISOR' \
-            'agent dialogue saved' \
             'completed with usable report' \
             'DELIVERY_CONFIRMED' \
-            'SUPERVISOR RECOMMENDATION AWAITING WORKER DISPOSITION' \
+            'Please write a valid .kilo-runtime/worker-disposition.json' \
             'KILO_SUPERVISOR_PROTOCOL_DIR' \
             'current-supervisor-recommendation.json' \
             'worker-disposition.json' \
@@ -166,8 +165,12 @@ jobs:
             'response-from-supervisor.md' \
             'worker-delivery-' \
             '--transcript-dir' \
-            'kilo-supervisor-transcripts-*/**' \
-            'kilo-progress-trace-' \
+            'kilo-supervisor-transcripts-*/agent-dialogue.md' \
+            'kilo-agent-dialogue-' \
+            'kilo-progress-' \
+            'duplicate review skipped' \
+            'append_agent_dialogue' \
+            'appendAgentDialogue' \
             'supervisor_pending_units' \
             'persisted_checkpoints'; do
             grep -Fq -- "$marker" "$controller" "$workflow" .github/scripts/kilo-supervisor-loop.py .kilo/plugin/loop-supervisor-feedback.js || {
