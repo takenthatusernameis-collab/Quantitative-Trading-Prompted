@@ -148,12 +148,12 @@ jobs:
             'current-supervisor-recommendation.json' \
             'worker-disposition.json' \
             'Agent dialogue box' \
-            'LIVE AGENT DIALOGUE BOX' \
+            'LIVE AGENT DIALOGUE BOX — WORKER → SUPERVISOR' \
             'SUPERVISOR_CIRCUIT_BREAKER_OPEN' \
             'consecutive_unusable_reviews' \
             'SUPERVISOR_REVIEWS_COMPLETED' \
-            'request-to-supervisor.md' \
-            'response-from-supervisor.md' \
+            'append_dialogue_event(' \
+            'supervisor_to_worker' \
             '--transcript-dir' \
             'kilo-supervisor-transcripts-*/agent-dialogue.jsonl' \
             'kilo-progress-trace-' \
@@ -392,7 +392,7 @@ jobs:
               exit 1
             }
           done
-          echo "Continuous supervisor loop, request/response/delivery transcripts, redaction, fail-open recovery, plugin syntax, and controller wiring: OK"
+          echo "Continuous supervisor loop, dialogue-only records and duplicate suppression, redaction, fail-open recovery, plugin syntax, and controller wiring: OK"
       - name: Verify supervisor discovery with the workflow's pinned Kilo CLI
         shell: bash
         run: |
