@@ -19,7 +19,7 @@ Runtime state files remain out of Git. Actual role-boundary messages and lifecyc
 
 The CLI command `completion-status` evaluates a task-scoped communication history and writes `task-completion-status.json`. It does not infer completion from supervisor advice, delivery, acknowledgement, a worker's `verified` disposition, a green workflow, or a local commit. Verified completion requires:
 
-1. A supervisor message recorded as written and delivered, plus a correlated worker-processed response.
+1. A supervisor message recorded as written and delivered, a separate correlated worker acknowledgement or rejection, and a matching worker-processed response in both tracks.
 2. A controller-owned version-1 verification manifest scoped to the exact task.
 3. Controller-verified acceptance criteria, each with passing status and an evidence reference.
 4. Independently verified passing test results with exit code 0 and references.
