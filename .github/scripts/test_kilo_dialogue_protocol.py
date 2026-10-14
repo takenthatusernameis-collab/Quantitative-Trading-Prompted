@@ -117,6 +117,24 @@ class DialogueProtocolTests(unittest.TestCase):
         self.assertNotEqual(result["status"], "verified_completion")
         self.assertEqual(result["status"], "awaiting_worker_response")
 
+    def test_processed_response_without_separate_acknowledgement_is_incomplete(self):
+        self.write_exchange()
+        events, errors = protocol.read_events(self.communication)
+        self.assertEqual(errors, [])
+        without_acknowledgement = [
+            event for event in events
+            if event["stage"] != "worker_acknowledged"
+        ]
+        self.communication.write_text(
+            "\n".join(json.dumps(event, ensure_ascii=False, separators=(",", ":"))
+                      for event in without_acknowledgement) + "\n",
+            encoding="utf-8",
+        )
+        result = self.evaluate(self.manifest())
+        self.assertEqual(result["status"], "incomplete_evidence")
+        self.assertTrue(any("distinct correlated acknowledgement/rejection event is missing"
+                            in reason for reason in result["reasons"]))
+
     def test_failed_test_blocks_completion_even_when_worker_claims_verified(self):
         self.write_exchange()
         manifest = self.manifest()
