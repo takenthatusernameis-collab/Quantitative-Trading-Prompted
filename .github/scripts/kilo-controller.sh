@@ -931,7 +931,9 @@ final_review_failure_count="$(grep -Ec '\[loop-supervisor\].*review [0-9]+ (retu
 final_delivery_count=0
 final_dialogue_count=0
 if [ -f "$SUPERVISOR_TRANSCRIPT_DIR/agent-dialogue.md" ]; then
-  final_delivery_count="$(grep -c '^## Supervisor → Worker
+  final_delivery_count="$(grep -c '^## Supervisor → Worker$' "$SUPERVISOR_TRANSCRIPT_DIR/agent-dialogue.md" || true)"
+  final_dialogue_count="$(grep -Ec '^## (Supervisor → Worker|Worker → Supervisor)$' "$SUPERVISOR_TRANSCRIPT_DIR/agent-dialogue.md" || true)"
+fi
 final_delivery_count="${final_delivery_count:-0}"
 final_dialogue_count="${final_dialogue_count:-0}"
 printf 'project_progress=%s\n' "$project_progress" >> "$GITHUB_OUTPUT"
