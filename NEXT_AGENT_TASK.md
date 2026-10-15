@@ -1,25 +1,26 @@
-# Next Agent Task: Post-Close Data Acquisition & Track Record Extension — Cycle 102
+# Next Agent Task: Post-Close Evaluation Gate Execution — Cycle 103
 
 ## Context
 
-Cycle 101 (session 2026-10-15T12:48:28Z) executed before post-close gate (2026-10-17T20:00:00Z). Timestamp gate enforced; no fetch attempted. Independent rolling-63-day Sharpe recomputed matched stored value (diff ~5e-16), regime flips = 6. Supervisor loop tests 10/10 passed. Validation report: `research/reports/paper_trading_validation_101.md`.
+Cycle 102 completed before the post-close gate (2026-10-17T20:00:00Z). Timestamp 2026-10-15T12:56:28Z; no fetch performed. Independent rolling-63-day Sharpe recomputation matched stored value (diff ~5e-16), regime flips=6, and supervisor loop tests passed 10/10. Validation report: `research/reports/paper_trading_validation_102.md`.
 
-Track record remains at 447 days (2025-01-02 → 2026-10-14), NAV $135,043.35, Sharpe 1.9272, max DD -2.93%, rolling 63-day Sharpe 0.1133. Drift flag persists (3 consecutive days, not yet >20-day threshold). State unchanged.
+Track record remains at 447 days (2025-01-02 → 2026-10-14), NAV $135,043.35, Sharpe 1.9272, max DD -2.93%, rolling 63d Sharpe 0.1133. Drift flag persists (3 consecutive days, not yet >20d threshold).
 
-The post-close gate (2026-10-17T20:00:00Z) is carried forward unchanged.
+Post-close gate: 2026-10-17T20:00:00Z (UTC). Gate is preserved; evaluation must occur at/after this time.
 
 ## Objective
 
-1. **Timestamp gate**: Record UTC session timestamp. Only attempt post-close fetch if `session_time >= 2026-10-17T20:00:00Z`. If before gate, do NOT fetch — document timing and hand off with same gate for next cycle.
-2. **Post-close fetch (only if gate met)**: Re-run `fetch_universe(['SPY','QQQ','IWM','TLT','GLD','EFA','EEM','^VIX'], start_date='2025-01-01', end_date='2026-11-30', force=True, raw_dir='data/raw')`; verify per-symbol max dates. If new real trading day (nonzero volume, incumbent ETFs) exists beyond 2026-10-14, bump `research/run_paper_trading_replay.py`'s `end_date` to capture it (preserve yfinance exclusive-end semantics), run `research/run_paper_trading_replay.py`, record extended track record. If no new real trading day exists, document confirmed blocker and advance gate.
-3. **Independent rolling-63-day Sharpe verification**: Recompute from `data/processed/paper_trading_state.yaml` `cumulative_returns` (last 63) via `(mean*252)/(std(ddof=1)*sqrt(252))`. Must match `state.drift_flags.low_rolling_sharpe.value`.
-4. **Regime flip verification**: Recompute regime flips from `run_history` `regime_exposure` transitions; must equal 6 (or the recomputed value if the replay extended the track record).
-5. **Tests**: `python3 .github/scripts/test_kilo_supervisor_loop.py -v` must pass 10/10.
-6. Write `research/reports/paper_trading_validation_102.md` with results.
-7. Update `NEXT_AGENT_TASK.md` with one narrow, testable next task for following cycle.
+1. **Timestamp gate enforcement**: Record UTC session time via `TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`. If `session_time < 2026-10-17T20:00:00Z`, do **not** fetch or replay. Document timing, run verifications (items 3-4), write validation report for cycle 103 noting gate not met, and leave this same task for next cycle (gate unchanged). If `session_time >= 2026-10-17T20:00:00Z`, proceed to (2).
+2. **Post-close fetch (gate met)**: Re-run `fetch_universe(['SPY','QQQ','IWM','TLT','GLD','EFA','EEM','^VIX'], start_date='2025-01-01', end_date='2026-11-30', force=True, raw_dir='data/raw')`. Verify per-symbol max dates. Determine if any new real trading day exists beyond 2026-10-14 (nonzero volume, incumbent ETFs).
+   - If **no new real trading day exists**: Document confirmed blocker (max date == 2026-10-14), do not modify replay, run verifications (3-4), supervisor tests (5), write validation report, and prepare next narrow task (likely to advance gate/monitor for next close).
+   - If **new real trading day exists**: Bump `research/run_paper_trading_replay.py`'s `end_date` to capture it, preserving yfinance exclusive-end semantics. Run `research/run_paper_trading_replay.py`. Record extended track record (days, NAV, Sharpe, max DD, rolling 63d Sharpe). Recompute regime flips from extended history.
+3. **Independent rolling-63-day Sharpe verification**: From `data/processed/paper_trading_state.yaml`, compute rolling 63d Sharpe from last 63 `cumulative_returns`: `(mean*252)/(std(ddof=1)*sqrt(252))`. Must match `state.drift_flags.low_rolling_sharpe.value` (within float precision).
+4. **Regime flip verification**: Recompute regime flips from `run_history.regime_exposure` transitions. If replay extended track, use recomputed count; otherwise expect 6 (or current stored value).
+5. **Supervisor loop tests**: `python3 .github/scripts/test_kilo_supervisor_loop.py -v` must pass 10/10.
+6. **Reporting**: Write `research/reports/paper_trading_validation_103.md` with UTC time, gate result, fetch results (if attempted), per-symbol max dates, track record changes (if any), verification numbers, and test results.
+7. **Next task**: Update `NEXT_AGENT_TASK.md` with one narrow, testable next task for Cycle 104, following evidence (don’t fabricate). Preserve restart-safety.
 
-## Validation Commands
-
+## Validation Commands (reference)
 ```bash
 TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ
 python3 -c "
@@ -35,16 +36,15 @@ d=yaml.safe_load(open('data/processed/paper_trading_state.yaml'))
 rh=d['run_history']; t=0; prev=rh[0]['regime_exposure']
 for i in range(1,len(rh)):
   if rh[i]['regime_exposure']!=prev: t+=1; prev=rh[i]['regime_exposure']
-print('flips',t)
+print('flips',t,len(rh))
 "
 python3 .github/scripts/test_kilo_supervisor_loop.py -v
 ```
 
 ## Scope Boundaries
-
-- Do not place live trades, enable live trading, or access credentials.
-- Do not fabricate data, market findings, or test output.
-- Do not add new dependencies, services, paid data, scheduled jobs, agents, or workflows.
+- Research/backtesting only. No live trades, no live trading enablement, no credentials access.
+- Do not fabricate data, market findings, or test outputs.
+- Do not add dependencies, services, paid data, scheduled jobs, agents, or workflows.
 - Preserve yfinance exclusive-end semantics when bumping `end_date`.
 - Do not commit changes unless explicitly requested; keep work in working tree.
-- Keep work bounded and restart-safe.
+- Keep bounded, restart-safe. If blocked by real data absence, document precisely.
