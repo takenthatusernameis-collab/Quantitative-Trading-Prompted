@@ -161,6 +161,9 @@ class TerminalOutcomeTests(unittest.TestCase):
                 encoding="utf-8",
             )
             hook.chmod(0o755)
+            # Runner-level core.hooksPath may be relative to the sender's workspace.
+            # Pin the receiving bare repository to its own absolute hook directory.
+            git(root, "--git-dir", str(remote), "config", "core.hooksPath", str(remote / "hooks"))
 
             (work / "research-change.txt").write_text("meaningful but unpersisted work\\n", encoding="utf-8")
             git(work, "add", "research-change.txt")
