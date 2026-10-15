@@ -1,15 +1,15 @@
-# Next Agent Task: Prepare for Post-Close Gate Monitoring — Cycle 265
+# Next Agent Task: Prepare for Post-Close Gate Monitoring — Cycle 266
 
 ## Context
 
-Cycle 264 validation completed (UTC 2026-10-15T20:32:41Z). Post-close gate remains 2026-10-18T20:00:00Z UTC. Gate not met; no fetch/replay performed. State unchanged (447 run_history entries, 6 regime flips). Rolling 63d Sharpe matches stored (diff 5.13e-16 < 1e-12). Supervisor loop tests passed 10/10. Report: `research/reports/paper_trading_validation_264.md`. Supervisor disposition recorded in `.kilo-runtime/worker-disposition.json` (recommendation_id `38762216276-attempt-1-review-0005-6996e9659a28`, disposition verified).
+Cycle 265 validation completed (UTC 2026-10-15T20:33:52Z). Post-close gate remains 2026-10-18T20:00:00Z UTC. Gate not met; no fetch/replay performed. State unchanged (447 run_history entries, 6 regime flips). Rolling 63d Sharpe matches stored (diff 5.13e-16 < 1e-12). Supervisor loop tests passed 10/10. Report: `research/reports/paper_trading_validation_265.md`. Supervisor disposition recorded in `.kilo-runtime/worker-disposition.json` (recommendation_id `38762216276-attempt-1-review-0005-6996e9659a28`, disposition verified).
 
 ## Objective
 
-1. **Timestamp gate enforcement**: Record UTC time (`TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`). If < 2026-10-18T20:00:00Z, do NOT fetch or replay. Run minimal verifications (rolling 63d Sharpe vs stored, regime flips count), run supervisor loop tests, write `research/reports/paper_trading_validation_265.md`, and prepare next narrow task. If >= 2026-10-18T20:00:00Z, proceed per established gate-met protocol (inspect for fetch/replay readiness, execute only if explicitly required and verifiably safe).
+1. **Timestamp gate enforcement**: Record UTC time (`TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`). If < 2026-10-18T20:00:00Z, do NOT fetch or replay. Run minimal verifications (rolling 63d Sharpe vs stored, regime flips count), run supervisor loop tests, write `research/reports/paper_trading_validation_266.md`, and prepare next narrow task. If >= 2026-10-18T20:00:00Z, proceed per established gate-met protocol (inspect for fetch/replay readiness, execute only if explicitly required and verifiably safe).
 2. **Independent verification**: Recompute rolling 63d Sharpe from last 63 cumulative returns; must match stored drift flag value within float precision. Recompute regime flips from run_history transitions.
 3. **Supervisor loop tests**: `python3 .github/scripts/test_kilo_supervisor_loop.py -v` must pass 10/10.
-4. **Reporting**: Write validation report 265 with UTC time, gate state, fetch/replay status, state snapshot, verification numbers/diff, test results.
+4. **Reporting**: Write validation report 266 with UTC time, gate state, fetch/replay status, state snapshot, verification numbers/diff, test results.
 5. **Supervisor disposition**: Record disposition in `.kilo-runtime/worker-disposition.json` within next two tool calls (schema_version 1, recommendation_id copied exactly, disposition with reason/evidence/verification/updated_at as ISO-8601 UTC). Use current `recommendation_id` from `.kilo-runtime/current-supervisor-recommendation.json` if it exists; otherwise, include `recommendation_id` as `null` and proceed safely.
 
 ## Validation Commands
