@@ -63,6 +63,14 @@ Persist the preregistration, data audit, source/config/code revision, universe c
 - **Feasible path in this environment:** None - acquiring CRSP/Compustat data or equivalent point-in-time fundamental databases would require paid subscriptions or institutional access not available in this research environment.
 - **Next step:** Document specific data source requirements and leave hypothesis as blocked pending appropriate data availability.
 
+### v0.4 (2026-10-15) — Data source survey and exploratory diagnostic completed
+
+- **Data source survey completed:** `research/reports/microcap_datasource_survey_001.md` documents 7 free/accessible sources (yfinance, Polygon.io, Alpha Vantage, IEX Cloud, SEC EDGAR, FRED, and other sources) with coverage, frequency, history depth, licensing, technical accessibility, and viability assessment for point-in-time microcap universe construction.
+- **Key finding:** No free source provides all three required elements (point-in-time market cap, delisting events, point-in-time universe membership) at low friction. yfinance offers the lowest-friction exploratory path via `get_shares_full()` × price, but with severe limitations (survivorship bias, no delistings, sparse microcap coverage). SEC EDGAR offers complete coverage but requires substantial XBRL parsing effort.
+- **Exploratory diagnostic completed:** `research/experiments/mom121_microcap_exploratory_001.md` and `research/run_microcap_exploratory.py` verify pipeline mechanics (momentum computation, weights pipeline, small-universe behavior) on a current-ticker ETF basket. All 5 tests pass. Results are clearly labelled as exploratory diagnostic only, with full bias disclosure.
+- **Environment setup:** Virtual environment created at `.venv/` with all dependencies from `requirements.txt` plus `pyarrow` installed. This enables reproducible execution of research scripts.
+- **Verdict unchanged:** Hypothesis remains **Blocked by data/infrastructure** for confirmatory testing. No free data source can construct a valid point-in-time microcap universe with delisting treatment.
+
 ### v0.1 (2026-10-14) — Initial preregistration
 
 - Frozen primary specification, mechanism, falsification condition, data requirements, evaluation design, and reporting standards.

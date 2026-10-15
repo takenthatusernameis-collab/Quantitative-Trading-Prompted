@@ -1,96 +1,98 @@
-# Next Agent Task: Microcap Data Source Survey & Exploratory Diagnostic
+# Next Agent Task: Paper-Trading Drift Flag Investigation
 
 ## Context
-The overnight drift exploratory diagnostic (overnight_drift_001) is complete. Results show:
-- US broad equity ETFs (SPY, QQQ, IWM): Overnight returns positive and statistically significant (p < 0.05), intraday returns near zero/negative
-- Sector ETFs: Similar pattern — overnight positive, intraday slightly negative
-- International (EFA, EEM): Mixed — EFA shows intraday dominance, EEM shows overnight dominance
-- Bonds (TLT): Intraday positive, overnight negative
-- Commodities (GLD, DBC): Overnight positive (GLD strongly), intraday near zero
-- REITs (VNQ): Overnight strongly positive, intraday negative
-- ^VIX: Extreme overnight positive, intraday negative (non-tradeable index)
 
-Sub-period analysis reveals instability: the overnight effect was strong pre-2008, weakened 2008-2020, and shows mixed signs post-2020. Per the pre-committed decision discipline, this is labeled **"exploratory signal"** — statistically significant in some segments but not stable, with material limitations (no bid-ask spreads, daily data only, survivorship bias, no cost model).
+The incumbent TSMOM candidate (C1: SPY, QQQ, IWM, TLT, GLD, EFA, EEM) is the only strategy that has met the promotion gate (net OOS Sharpe >= 0.9) in prior cycles. It has been in paper-trading validation for 447 days (2025-01-02 to 2026-10-14).
 
-The microcap mom121 hypothesis remains **blocked by data** (no point-in-time market cap, shares outstanding, or delisting data from yfinance). All other tested hypotheses (C3, C4, C5, C6) have been rejected via pre-registered walk-forward tests. Paper trading monitoring continues but no new data has arrived recently.
+**Current paper-trading state** (from `research/reports/paper_trading_validation_035.md` and `research/reports/paper_trading_rolling.md`):
+
+| Metric | Value |
+|--------|-------|
+| NAV | $135,043.35 |
+| Total Return | +35.04% |
+| Annualized Return | 18.46% |
+| Sharpe Ratio | 1.9272 |
+| Max Drawdown | -2.93% |
+| Rolling 63-day Sharpe | **0.1133** |
+| Regime | Risk-on (132 days) |
+
+**Active drift flag:** `low_rolling_sharpe` — rolling 63-day Sharpe of 0.1133 falls below the 0.5 threshold. This flag has been present in recent validation cycles (034, 035) and is independently verified from the state YAML cumulative returns array.
+
+**Other context:**
+- Microcap mom121 hypothesis: confirmed BLOCKED by data/infrastructure (data source survey completed, no free source viable for confirmatory test)
+- Overnight drift: exploratory signal only, not stable, not promoted
+- All other exploratory candidates (C3, C4, C6): rejected via pre-registered walk-forward tests
+- No new market data available since 2026-10-14
 
 ## Objective
-Conduct a survey of **free/accessible data sources** that could enable the microcap 12–1 momentum study, and run a **clearly-labelled exploratory diagnostic** on any viable source to assess feasibility. Do not claim a tradable edge.
+
+Investigate the paper-trading drift flag (`low_rolling_sharpe`) to determine whether it represents:
+1. A genuine regime change / performance degradation in the strategy
+2. A statistical artifact of the recent return window
+3. A data or calculation issue
+
+**Do not** disable the drift flag or change the threshold without evidence. **Do not** make code changes to the strategy logic to "fix" the Sharpe ratio.
 
 ## Acceptance Criteria
-1. **Data source survey document created**: `research/reports/microcap_datasource_survey_001.md` documenting at least 5 free/accessible sources with:
-   - Source name and access method (API, CSV download, etc.)
-   - Data coverage: historical market cap, shares outstanding, delisting events, price data
-   - Frequency and history depth
-   - Licensing/terms of use
-   - Technical accessibility (Python library, REST API, manual download)
-   - Assessment: viable / partially viable / not viable for point-in-time microcap universe construction
 
-2. **If any source is viable/partially viable**: Create an exploratory diagnostic script `research/run_microcap_exploratory.py` that:
-   - Loads data from the source (or documents how to access it)
-   - Constructs a point-in-time microcap universe (or documents blockers)
-   - Computes 12-month momentum with 1-month skip (mom121) on available data
-   - Produces summary statistics: universe size over time, turnover, return distribution
-   - Outputs to `research/experiments/mom121_microcap_exploratory_001.md`
+1. **Decompose the rolling Sharpe:** Compute the rolling 63-day Sharpe over the full 447-day track record and identify when it first crossed below 0.5. Report the exact date, the window's return/volatility components, and the strategy's position/turnover during that window.
 
-3. **Report must explicitly label results as "exploratory diagnostic only"** and disclose all biases (survivorship, lookahead, data quality, no costs).
+2. **Compare to backtest expectation:** Extract the equivalent 63-day rolling Sharpe from the historical backtest (from `data/processed/simulation_candidate_001.parquet` or equivalent) over the same dates. Determine whether the paper-trading underperformance is anomalous relative to backtest behavior.
 
-4. **If NO source is viable**: Document the definitive blockers and recommend the microcap hypothesis be archived as "blocked by data/infrastructure" pending paid data access.
+3. **Regime analysis:** Cross-reference the low-Sharpe window with the regime state (`data/processed/regime_*.parquet` or `paper_trading_state.yaml`). Determine whether the low Sharpe coincides with a specific regime (risk-on, risk-off, volatility regime) or spans multiple regimes.
+
+4. **Position/turnover diagnostic:** Report average position count, turnover, and exposure during the low-Sharpe window vs. the prior 180 days. Determine whether the strategy is behaving as designed or showing signs of degradation (e.g., excessive turnover, low exposure, wrong asset selection).
+
+5. **Document findings** in `research/reports/paper_trading_drift_investigation_001.md` with:
+   - Exact dates and window metrics
+   - Comparison to backtest expectation
+   - Regime correlation
+   - Position/turnover diagnostic
+   - Clear verdict: "explained by regime", "anomalous vs backtest", "data issue", or "requires further investigation"
+   - Recommended action (none / monitor / parameter review / halt)
 
 ## Validation Commands
+
 ```bash
-# 1. Verify survey document exists and has required content
-python3 -c "
-import os
-path = 'research/reports/microcap_datasource_survey_001.md'
-assert os.path.exists(path), 'Survey document missing'
-with open(path) as f:
-    content = f.read()
-required = ['Source', 'Coverage', 'Frequency', 'History', 'Licensing', 'Accessibility', 'Assessment']
-for r in required:
-    assert r.lower() in content.lower(), f'Missing section: {r}'
-print('Survey document structure OK')
+# 1. Load paper-trading state and compute rolling Sharpe
+PYTHONPATH=. .venv/bin/python3 -c "
+import pandas as pd
+import numpy as np
+state = pd.read_yaml('data/processed/paper_trading_state.yaml')
+returns = pd.Series(state['cumulative_returns']).pct_change().dropna()
+rolling_sharpe = returns.rolling(63).apply(lambda x: x.mean() / x.std() * np.sqrt(252))
+print('Current rolling Sharpe:', rolling_sharpe.iloc[-1])
+print('First date below 0.5:', rolling_sharpe[rolling_sharpe < 0.5].index[0] if (rolling_sharpe < 0.5).any() else 'Never')
 "
 
-# 2. If diagnostic script exists, run it
-if [ -f research/run_microcap_exploratory.py ]; then
-    python3 research/run_microcap_exploratory.py
-fi
+# 2. Compare to backtest
+PYTHONPATH=. .venv/bin/python3 -c "
+import pandas as pd
+import numpy as np
+sim = pd.read_parquet('data/processed/simulation_candidate_001.parquet')
+returns = sim['net_return'].dropna()
+rolling_sharpe = returns.rolling(63).apply(lambda x: x.mean() / x.std() * np.sqrt(252))
+print('Backtest rolling Sharpe over same period:', rolling_sharpe.iloc[-1])
+"
 
-# 3. Verify experiment report exists (if diagnostic ran)
-if [ -f research/experiments/mom121_microcap_exploratory_001.md ]; then
-    python3 -c "
-    import os
-    path = 'research/experiments/mom121_microcap_exploratory_001.md'
-    with open(path) as f:
-        content = f.read()
-    assert 'exploratory' in content.lower(), 'Must label as exploratory'
-    assert 'microcap' in content.lower() or 'momentum' in content.lower(), 'Must discuss microcap/momentum'
-    print('Experiment report structure OK')
-    "
-fi
+# 3. Run existing test suite
+.venv/bin/python3 -m pytest .github/scripts/test_kilo_supervisor_loop.py -v
 ```
 
 ## Scope Boundaries
-- **Do not** claim a net-of-cost trading edge.
-- **Do not** use paid data sources (Bloomberg, CRSP, Compustat, FactSet, etc.) — only free/accessible sources.
-- **Do not** add new dependencies unless absolutely necessary for a free data source (document any new dependency).
-- **Do** use only existing infrastructure where possible.
-- **Do** follow the hypothesis documentation standard in AGENTS.md for any new hypothesis.
-- **Do** disclose all limitations honestly.
+
+- **Do not** modify strategy logic, parameters, or the drift threshold.
+- **Do not** disable or silence the drift flag.
+- **Do not** claim the strategy is performing well or poorly based on this diagnostic alone.
+- **Do** use only existing infrastructure and cached data.
+- **Do** report all findings honestly, including if the cause remains unexplained.
 
 ## Evidence Base
-- Overnight drift diagnostic complete: `research/experiments/overnight_drift_exploratory_001.md`
-- Microcap data gate audit: `research/experiments/mom121_microcap_001.md` (Section A)
-- Data inventory: `research/reports/data_inventory.md` (if exists)
-- Available free data sources to investigate: Yahoo Finance (yfinance), Alpha Vantage (free tier), Twelve Data (free tier), EODHD (free tier), Nasdaq Data Link (free datasets), SEC EDGAR (fundamentals), IEX Cloud (free tier), Polygon.io (free tier), Tiingo (free tier), Kenneth French Data Library, WRDS (if academic access), QuantConnect Lean data, Stooq, Tiingo, FirstRate Data (free samples), Kaggle datasets.
 
-## Suggested Approach
-1. Start with the data source survey — this is the primary deliverable.
-2. For each source, test programmatic access with a small query (e.g., get AAPL market cap history).
-3. Focus on sources that provide **historical market cap** or **shares outstanding × price** at point-in-time.
-4. Note: yfinance `Ticker.info` only provides *current* marketCap, not historical. `Ticker.quarterly_balance_sheet` may have shares outstanding but with reporting lag.
-5. If a viable source is found, run a minimal exploratory diagnostic on a small universe (e.g., current S&P 500 constituents with historical data) to characterize data quality.
-6. If no viable source, document clearly and recommend archiving the microcap hypothesis.
-
-(End of file - total 65 lines)
+- Paper-trading state: `data/processed/paper_trading_state.yaml`
+- Paper-trading rolling report: `research/reports/paper_trading_rolling.md`
+- Latest validation: `research/reports/paper_trading_validation_035.md`
+- Backtest simulation: `data/processed/simulation_candidate_001.parquet`
+- Regime data: `data/processed/regime_*.parquet` (if available)
+- Prior drift analysis: `research/reports/paper_trading_drift_analysis_001.md`
+- Data inventory: `research/reports/data_inventory.md`
