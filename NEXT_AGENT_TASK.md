@@ -2,7 +2,7 @@
 
 ## Context
 
-Cycle 60 (this session) re-attempted data acquisition from Yahoo Finance with `force=True` and `end_date=2026-11-30`. Session timestamp was 2026-10-15T00:35:47Z (UTC) — still before the US equity market close for 2026-10-15 (4:00 PM EDT ≈ 20:00 UTC). **No new data was available**: all 7 incumbent ETFs (SPY, QQQ, IWM, TLT, GLD, EFA, EEM) and ^VIX end at 2026-10-14 with real (nonzero volume) data. Direct `yfinance.download()` for 2026-10-15 returned 0 rows ("Data doesn't exist").
+Cycle 61 (this session) re-attempted data acquisition from Yahoo Finance with `force=True` and `end_date=2026-11-30`. Session timestamp was 2026-10-15T00:38:20Z (UTC) — still before the US equity market close for 2026-10-15 (4:00 PM EDT ≈ 20:00 UTC). **No new data was available**: all 7 incumbent ETFs (SPY, QQQ, IWM, TLT, GLD, EFA, EEM) and ^VIX end at 2026-10-14 with real (nonzero volume) data. Direct `yfinance.download()` for 2026-10-15 returned 0 rows ("Data doesn't exist").
 
 The `low_rolling_sharpe` drift flag persists at 3 consecutive days (2026-10-12: 0.4892, 2026-10-13: 0.3669, 2026-10-14: 0.1133), still below the >20-day persistence threshold for strategy review. All primary go/no-go gates pass: track record 447 days (>126), Sharpe 1.9293 (>0.9), max DD -2.93% (<15%), 6 regime flips (>1). Regime unchanged (risk-on, 132 days). Independent verification of rolling 63-day Sharpe confirmed exact match (0.11333136870186329) from the 447 daily P&L parquet files. Tests: 10/10 passed.
 
@@ -24,7 +24,7 @@ Re-attempt data acquisition from Yahoo Finance and check whether 2026-10-15 real
    - Update drift flag status
    - Save updated artifacts (`paper_trading_rolling.md`, `paper_trading_state.yaml`)
 4. **If no new data**: Document status in validation report (no replay needed; results are unchanged)
-5. **Write validation report** to `research/reports/paper_trading_validation_034.md`
+5. **Write validation report** to `research/reports/paper_trading_validation_035.md`
 6. **Run tests**: `python3 -m pytest .github/scripts/test_kilo_supervisor_loop.py -v`
 
 ## Validation Commands
@@ -44,7 +44,7 @@ for sym in ['SPY','QQQ','IWM','TLT','GLD','EFA','EEM','^VIX']:
     f = f'data/raw/{sym}.parquet'
     if os.path.exists(f):
         df = pd.read_parquet(f)
-        print(f'{sym}: {len(df)} rows, max date={df.index.max().date()}, last vol={df[\"Volume\"].iloc[-1] if \"Volume\" in df.columns else \"N/A\"}')
+        print(f'{sym}: {len(df)} rows, max date={df.index.max().date()}, last vol={df["Volume"].iloc[-1] if "Volume" in df.columns else "N/A"}')
     else:
         print(f'{sym}: FILE NOT FOUND')
 "
