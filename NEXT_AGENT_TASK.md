@@ -2,13 +2,13 @@
 
 ## Context
 
-Cycle 55 (this session) re-attempted data acquisition from Yahoo Finance with `force=True` and `end_date=2026-11-30`. All 7 incumbent ETFs (SPY, QQQ, IWM, TLT, GLD, EFA, EEM) and ^VIX end at 2026-10-14 with real (nonzero volume) data. Direct `yfinance.download()` for 2026-10-15→2026-10-20 returned 0 rows for all 8 symbols ("Data doesn't exist"). No data for 2026-10-15 or later is available — the session date is 2026-10-14, so 2026-10-15 has not yet occurred.
+Cycle 56 (this session) re-attempted data acquisition from Yahoo Finance with `force=True` and `end_date=2026-11-30`. All 7 incumbent ETFs (SPY, QQQ, IWM, TLT, GLD, EFA, EEM) and ^VIX end at 2026-10-14 with real (nonzero volume) data. Direct `yfinance.download()` for 2026-10-15→2026-10-21 returned 0 rows for all 8 symbols ("Data doesn't exist"). No data for 2026-10-15 or later is available — the session date is 2026-10-15, so 2026-10-15 has not yet occurred (data publishes after market close).
 
 The `low_rolling_sharpe` drift flag persists at 3 consecutive days (2026-10-12: 0.4892, 2026-10-13: 0.3669, 2026-10-14: 0.1133), still below the >20-day persistence threshold for strategy review. The returns distribution analysis (`research/reports/returns_distribution_analysis_001.md`) attributes this to an 18% volatility increase and slightly more negative mean returns — consistent with sampling variation, not a structural break.
 
 All primary go/no-go gates pass: track record 447 days (>126), Sharpe 1.9293 (>0.9), max DD -2.93% (<15%), 6 regime flips (>1). Regime unchanged (risk-on, 132 days). Independent verification of rolling 63-day Sharpe confirmed exact match (0.11333136870186329) from the 447 daily P&L parquet files in `data/processed/paper_trading/`. Tests: 10/10 passed.
 
-**Key note**: The task references `research/fetch_market_data.py` but this file does not exist in the repository. Data fetching uses `src/data/yfinance_fetcher.py` via `fetch_universe()`. The replay script `research/run_paper_trading_replay.py` has `end_date = "2026-10-15"` (line 46) and replay upper bound `"2026-10-14"` (line 53) hardcoded. The script does NOT accept `--end-date` as a CLI argument.
+**Key note:** The replay script `research/run_paper_trading_replay.py` has `end_date = "2026-10-15"` (line 46) and replay upper bound `"2026-10-14"` (line 53) hardcoded. The script does NOT accept `--end-date` as a CLI argument. When new data arrives, these values must be updated manually.
 
 ## Objective
 
@@ -25,7 +25,7 @@ Re-attempt data acquisition from Yahoo Finance and check whether 2026-10-15 (or 
    - Update drift flag status
    - Save updated artifacts
 4. **If no new data**: Document status in validation report (no replay needed; results are unchanged)
-5. **Write validation report** to `research/reports/paper_trading_validation_029.md`
+5. **Write validation report** to `research/reports/paper_trading_validation_030.md`
 6. **Run tests**: `python3 -m pytest .github/scripts/test_kilo_supervisor_loop.py -v`
 
 ## Validation Commands
