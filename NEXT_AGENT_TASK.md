@@ -1,14 +1,10 @@
-# Next Agent Task: Post-Close Data Acquisition & Track Record Extension — Cycle 75
+# Next Agent Task: Post-Close Data Acquisition & Track Record Extension — Cycle 76
 
 ## Context
 
-Cycle 74 (2026-10-15T04:24:29Z) ran **before** the post-close gate (2026-10-15T20:00:00Z). No fetch was attempted per protocol. All verification completed: independent rolling-63-day Sharpe recomputed = 0.11333136870186329, exact match to stored drift flag; regime flips recomputed = 6; tests passed 10/10.
+Cycle 75 (2026-10-15T04:27:23Z) ran **before** the post-close gate (2026-10-16T20:00:00Z, per cycle 75 assignment). No fetch was attempted per protocol. Verification completed: supervisor-loop tests passed 10/10, regime flips confirmed 6. The paper-trading track record (tsmomentum_spytrend_001) remains at 447 days (2025-01-02 → 2026-10-14), NAV $135,043.35, Sharpe 1.9272, max DD -2.93%, rolling 63-day Sharpe 0.1133. Drift flag persists (3 consecutive days of low_rolling_sharpe < 0.5; 2026-10-12 0.4892, 2026-10-13 0.3669, 2026-10-14 0.1133), not yet at >20-day persistence threshold.
 
-The paper-trading track record (tsmomentum_spytrend_001) stands at **447 days** (2025-01-02 → 2026-10-14), NAV **$135,043.35**, Sharpe **1.9272**, max DD **-2.93%**, rolling 63-day Sharpe **0.1133**. All primary go/no-go gates pass except rolling 63-day Sharpe (0.1133 < 0.9, drift flag active). Regime: risk-on (132 days).
-
-**Drift flag persists**: 3 consecutive trading days of low_rolling_sharpe (2026-10-12 0.4892, 2026-10-13 0.3669, 2026-10-14 0.1133, all < 0.5 threshold). Trajectory volatile over last 18 days (range -0.51 to +1.19). Not yet at >20-day persistence threshold.
-
-Artifacts: `data/processed/paper_trading_state.yaml`, `research/reports/paper_trading_validation_074.md`.
+Artifacts: data/processed/paper_trading_state.yaml (unchanged), research/reports/paper_trading_validation_075.md.
 
 ## Objective
 
@@ -17,7 +13,7 @@ Artifacts: `data/processed/paper_trading_state.yaml`, `research/reports/paper_tr
 3. **Independent rolling-63-day Sharpe verification**: Recompute from `data/processed/paper_trading_state.yaml` `cumulative_returns` (last 63 entries) via `(mean*252)/(std(ddof=1)*sqrt(252))`. Must match `state.drift_flags.low_rolling_sharpe.value` (or updated value if replay was re-run).
 4. **Regime flip verification**: Recompute regime flips from `run_history` `regime_exposure` transitions; must equal 6 (unless replay was re-run, in which case recompute and confirm).
 5. **Tests**: `python3 -m pytest .github/scripts/test_kilo_supervisor_loop.py -v` — must pass 10/10.
-6. Write `research/reports/paper_trading_validation_075.md` with results.
+6. Write `research/reports/paper_trading_validation_076.md` with results.
 7. Update `NEXT_AGENT_TASK.md` with one narrow, testable next task for the following cycle.
 
 ## Validation Commands
