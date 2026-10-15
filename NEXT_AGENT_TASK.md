@@ -1,22 +1,22 @@
-# Next Agent Task: Continue Post-Close Gate Monitoring — Cycle 168 (Pending Gate)
+# Next Agent Task: Continue Post-Close Gate Monitoring — Cycle 169 (Pending Gate)
 
 ## Context
 
-Session from Cycle 167 completed at 2026-10-15T17:36:12Z UTC. Post-close gate remains 2026-10-18T20:00:00Z UTC; gate not met. Current paper trading state (`data/processed/paper_trading_state.yaml`, 2026-10-14):
+Session from Cycle 168 completed at 2026-10-15T17:38:38Z UTC. Post-close gate remains 2026-10-18T20:00:00Z UTC; gate not met. Current paper trading state (`data/processed/paper_trading_state.yaml`, 2026-10-14):
 - Track record: 447 days (2025-01-02 → 2026-10-14)
 - NAV: $135,043.35
 - Sharpe: 1.9272
 - Max DD: -2.93%
 - Rolling 63d Sharpe (stored): 0.11333136870186329
 - Regime flips: 6
-- Drift flag persists (3 consecutive days)
+- Drift flag persists (low_rolling_sharpe, 3 consecutive days)
 - Run history length: 447; last run date: 2026-10-14
 
-Validation report: `research/reports/paper_trading_validation_167.md`. All checks passed. No fetch/replay performed while gate pending.
+Validation report: `research/reports/paper_trading_validation_168.md`. All checks passed. No fetch/replay performed while gate pending.
 
 ## Objective
 
-1. **Timestamp gate enforcement**: Record UTC session time via `TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`. If `session_time < 2026-10-18T20:00:00Z`, do **not** fetch or replay. Run minimal verifications (rolling 63d Sharpe match, regime flips count, supervisor tests), write `research/reports/paper_trading_validation_168.md`, and prepare next narrow task (continue gate monitoring). If `session_time >= 2026-10-18T20:00:00Z`, proceed to post-close fetch/replay per established gate-met protocol.
+1. **Timestamp gate enforcement**: Record UTC session time via `TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`. If `session_time < 2026-10-18T20:00:00Z`, do **not** fetch or replay. Run minimal verifications (rolling 63d Sharpe match, regime flips count, supervisor tests), write `research/reports/paper_trading_validation_169.md`, and prepare next narrow task (continue gate monitoring). If `session_time >= 2026-10-18T20:00:00Z`, proceed to post-close fetch/replay per established gate-met protocol.
 2. **Independent verification**: Recompute rolling 63d Sharpe from last 63 cumulative returns; must match stored drift flag value within float precision. Recompute regime flips from run_history transitions (expect 6 unless data changed).
 3. **Supervisor loop tests**: `python3 .github/scripts/test_kilo_supervisor_loop.py -v` must pass 10/10.
 4. **Reporting**: Write validation report with UTC time, gate state, fetch/replay status (none if pending), state snapshot (counts, last run date, Sharpe/NAV/max DD), verification numbers, diff, and test results.
