@@ -2,7 +2,7 @@
 
 ## Context
 
-Cycle 56 (this session) re-attempted data acquisition from Yahoo Finance with `force=True` and `end_date=2026-11-30`. All 7 incumbent ETFs (SPY, QQQ, IWM, TLT, GLD, EFA, EEM) and ^VIX end at 2026-10-14 with real (nonzero volume) data. Direct `yfinance.download()` for 2026-10-15→2026-10-21 returned 0 rows for all 8 symbols ("Data doesn't exist"). No data for 2026-10-15 or later is available — the session date is 2026-10-15, so 2026-10-15 has not yet occurred (data publishes after market close).
+Cycle 57 (this session) re-attempted data acquisition from Yahoo Finance with `force=True` and `end_date=2026-11-30`. All 7 incumbent ETFs (SPY, QQQ, IWM, TLT, GLD, EFA, EEM) and ^VIX end at 2026-10-14 with real (nonzero volume) data. Direct `yfinance.download()` for 2026-10-15→2026-10-21 returned 0 rows for all 8 symbols ("Data doesn't exist"). No data for 2026-10-15 or later is available — the session date is 2026-10-15, so 2026-10-15 has not yet occurred (data publishes after market close).
 
 The `low_rolling_sharpe` drift flag persists at 3 consecutive days (2026-10-12: 0.4892, 2026-10-13: 0.3669, 2026-10-14: 0.1133), still below the >20-day persistence threshold for strategy review. The returns distribution analysis (`research/reports/returns_distribution_analysis_001.md`) attributes this to an 18% volatility increase and slightly more negative mean returns — consistent with sampling variation, not a structural break.
 
@@ -25,7 +25,7 @@ Re-attempt data acquisition from Yahoo Finance and check whether 2026-10-15 (or 
    - Update drift flag status
    - Save updated artifacts
 4. **If no new data**: Document status in validation report (no replay needed; results are unchanged)
-5. **Write validation report** to `research/reports/paper_trading_validation_030.md`
+5. **Write validation report** to `research/reports/paper_trading_validation_031.md`
 6. **Run tests**: `python3 -m pytest .github/scripts/test_kilo_supervisor_loop.py -v`
 
 ## Validation Commands
