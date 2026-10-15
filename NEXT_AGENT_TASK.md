@@ -1,15 +1,15 @@
-# Next Agent Task: Continue Post-Close Gate Monitoring — Cycle 224
+# Next Agent Task: Continue Post-Close Gate Monitoring — Cycle 225
 
 ## Context
 
-Cycle 223 validation completed at 2026-10-15T19:37:24Z UTC. Post-close gate remains 2026-10-18T20:00:00Z UTC; not met. No fetch/replay performed (git status clean). State unchanged relative to cycle 222 baseline (447 run_history entries, 6 regime flips). Validation report: `research/reports/paper_trading_validation_223.md`. All checks passed.
+Cycle 224 validation completed at 2026-10-15T19:38:33Z UTC. Post-close gate remains 2026-10-18T20:00:00Z UTC; not met. No fetch/replay performed (git status clean). State unchanged relative to cycle 223 baseline (447 run_history entries, 6 regime flips). Validation report: `research/reports/paper_trading_validation_224.md`. All checks passed.
 
 ## Objective
 
-1. **Timestamp gate enforcement**: Record UTC session time via `TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`. If < 2026-10-18T20:00:00Z, do NOT fetch or replay. Run minimal verifications (rolling 63d Sharpe match vs stored, regime flips count), run supervisor loop tests, write `research/reports/paper_trading_validation_224.md`, and prepare next narrow task. If >= 2026-10-18T20:00:00Z, proceed per established gate-met protocol.
+1. **Timestamp gate enforcement**: Record UTC session time via `TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`. If < 2026-10-18T20:00:00Z, do NOT fetching or replay. Run minimal verifications (rolling 63d Sharpe match vs stored, regime flips count), run supervisor loop tests, write `research/reports/paper_trading_validation_225.md`, and prepare next narrow task. If >= 2026-10-18T20:00:00Z, proceed per established gate-met protocol.
 2. **Independent verification**: Recompute rolling 63d Sharpe from last 63 cumulative returns; must match stored drift flag value within float precision. Recompute regime flips from run_history transitions.
 3. **Supervisor loop tests**: `python3 .github/scripts/test_kilo_supervisor_loop.py -v` must pass 10/10.
-4. **Reporting**: Write validation report 224 with UTC time, gate state, fetch/replay status, state snapshot, verification numbers/diff, test results.
+4. **Reporting**: Write validation report 225 with UTC time, gate state, fetch/replay status, state snapshot, verification numbers/diff, test results.
 5. **Supervisor disposition**: Record disposition in `.kilo-runtime/worker-disposition.json` within next two tool calls.
 
 ## Validation Commands
