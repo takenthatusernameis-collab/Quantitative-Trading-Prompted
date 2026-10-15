@@ -1,20 +1,18 @@
-# Next Agent Task: Continue Post-Close Gate Monitoring — Cycle 216
+# Next Agent Task: Continue Post-Close Gate Monitoring — Cycle 217
 
 ## Context
 
-Cycle 215 validation completed at 2026-10-15T19:23:24Z UTC. Post-close gate remains 2026-10-18T20:00:00Z UTC; not met. No fetch/replay performed (git status clean). State: 447 run_history entries, 6 regime flips, last_run_date 2026-10-14, current NAV 135043.35187742324, peak NAV 139120.07235486925, max DD -2.93%, rolling 63d Sharpe 0.11333136870186329, drift flag `low_rolling_sharpe` active=False.
+Cycle 216 validation completed at 2026-10-15T19:24:48Z UTC. Post-close gate remains 2026-10-18T20:00:00Z UTC; not met. No fetch/replay performed (git status clean). State: 447 run_history entries, 6 regime flips, last_run_date 2026-10-14, current NAV 135043.35187742324, peak NAV 139120.07235486925, max DD -2.93%, rolling 63d Sharpe 0.11333136870186329, drift flag low_rolling_sharpe active False.
 
-Validation report: `research/reports/paper_trading_validation_215.md`. All checks passed: rolling Sharpe recomputed matches stored drift flag value (diff 5.13e-16); regime flips 6; supervisor tests 10/10; git status clean confirming no fetch/replay.
-
-Supervisor recommendation present (recommendation_id 38762216276-attempt-1-review-0005-6996e9659a28, STATUS: CONTINUE). Worker disposition recorded in `.kilo-runtime/worker-disposition.json` as verified.
+Validation report: `research/reports/paper_trading_validation_216.md`. All checks passed: rolling 63d Sharpe recomputed matches stored (diff ~5.13e-16); regime flips 6; supervisor tests 10/10; git clean.
 
 ## Objective
 
-1. **Timestamp gate enforcement**: Record UTC session time via `TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`. If `< 2026-10-18T20:00:00Z`, do **not** fetching or replay. Run minimal verifications (rolling 63d Sharpe match vs stored drift flag value, regime flips count), run supervisor loop tests, write `research/reports/paper_trading_validation_216.md`, and prepare next narrow task (continue gate monitoring). If `>= 2026-10-18T20:00:00Z`, proceed to post-close fetch/replay per established gate-met protocol.
-2. **Independent verification**: Recompute rolling 63d Sharpe from last 63 cumulative returns; must match stored drift flag value within float precision. Recompute regime flips from run_history transitions; expect 6 (or report actual if changed).
+1. **Timestamp gate enforcement**: Record UTC session time via `TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`. If < 2026-10-18T20:00:00Z, do NOT fetch or replay. Run minimal verifications (rolling 63d Sharpe match vs stored, regime flips count), run supervisor loop tests, write `research/reports/paper_trading_validation_217.md`, and prepare next narrow task (continue gate monitoring). If >= 2026-10-18T20:00:00Z, proceed per established gate-met protocol.
+2. **Independent verification**: Recompute rolling 63d Sharpe from last 63 cumulative returns; must match stored drift flag value within float precision. Recompute regime flips from run_history transitions; expect 6 (or report actual).
 3. **Supervisor loop tests**: `python3 .github/scripts/test_kilo_supervisor_loop.py -v` must pass 10/10.
-4. **Reporting**: Write validation report `research/reports/paper_trading_validation_216.md` with UTC time, gate state, fetch/replay status (none if pending), state snapshot (counts, last run date, current/peak NAV, max DD, stored Sharpe/rolling Sharpe, drift flags), verification numbers/diff, and test results.
-5. **Supervisor disposition**: Record disposition in `.kilo-runtime/worker-disposition.json` within the next two tool calls.
+4. **Reporting**: Write validation report 217 with UTC time, gate state, fetch/replay status, state snapshot, verification numbers/diff, test results.
+5. **Supervisor disposition**: Record disposition in `.kilo-runtime/worker-disposition.json` within next two tool calls.
 
 ## Validation Commands
 
@@ -39,15 +37,13 @@ if rh:
     for i in range(1,len(rh)):
         if rh[i]['regime_exposure']!=prev: t+=1; prev=rh[i]['regime_exposure']
 df=d['drift_flags']['low_rolling_sharpe']
-print('flips',t,'len',len(rh),'last_run_date', d['last_run_date'],'current_nav', d['current_nav'],'peak_nav', d['peak_nav'],'max_dd', d['max_drawdown'],'rolling', df.get('value'),'active', df.get('active', df.get('triggered', False)))
+print('flips',t,'len',len(rh),'last_run_date',d['last_run_date'],'current_nav',d['current_nav'],'peak_nav',d['peak_nav'],'max_dd',d['max_drawdown'],'rolling',df.get('value'),'active',df.get('active',df.get('triggered',False)))
 PY
 git status --short
 python3 .github/scripts/test_kilo_supervisor_loop.py -v
 ```
 
 ## Scope Boundaries
-
-- Research/backtesting only. No live trades, no live trading enablement, no credentials access.
-- Do not fetch/replay when gate not met. Do not fabricate data, market findings, or test outputs.
-- Do not add dependencies, services, paid data, scheduled jobs, agents, or workflows.
-- Keep bounded, restart-safe. Document precisely if blocked.
+- Research/backtesting only. No live trades/credentials.
+- No fetch/replay if gate not met. No fabricated data/outputs.
+- No new dependencies/services/workflows. Bounded, restart-safe.
