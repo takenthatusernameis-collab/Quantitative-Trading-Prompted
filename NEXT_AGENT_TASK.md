@@ -1,8 +1,8 @@
-# Next Agent Task: Post-Close Data Acquisition & Track Record Extension — Cycle 87
+# Next Agent Task: Post-Close Data Acquisition & Track Record Extension — Cycle 88
 
 ## Context
 
-Cycle 86 (session 2026-10-15T06:05:57Z) ran before the post-close gate (2026-10-16T20:00:00Z). No fetch was attempted per protocol. All verification completed: independent rolling-63-day Sharpe recomputed = 0.11333136870186278 vs stored 0.11333136870186329 (diff 5.13e-16, float64 rounding); regime flips = 6; supervisor loop tests 10/10 passed. Validation report: `research/reports/paper_trading_validation_086.md`.
+Cycle 87 (session 2026-10-15T06:09:36Z) ran before the post-close gate (2026-10-16T20:00:00Z). No fetch was attempted per protocol. All verification completed: independent rolling-63-day Sharpe recomputed = 0.11333136870186278 vs stored 0.11333136870186329 (diff 5.13e-16, float64 rounding); regime flips = 6; supervisor loop tests 10/10 passed. Validation report: `research/reports/paper_trading_validation_087.md`.
 
 Track record remains at 447 days (2025-01-02 → 2026-10-14), NAV $135,043.35, Sharpe 1.9272, max DD -2.93%, rolling 63-day Sharpe 0.1133. Drift flag persists (3 consecutive days, not yet >20-day threshold). State unchanged.
 
@@ -11,9 +11,9 @@ Track record remains at 447 days (2025-01-02 → 2026-10-14), NAV $135,043.35, S
 1. **Timestamp gate**: Record UTC session timestamp. Only attempt post-close fetch if `session_time >= 2026-10-16T20:00:00Z`. If before gate, do NOT fetch — document timing and hand off with same gate for next cycle.
 2. **Post-close fetch (only if gate met)**: Re-run `fetch_universe(['SPY','QQQ','IWM','TLT','GLD','EFA','EEM','^VIX'], start_date='2025-01-01', end_date='2026-11-30', force=True, raw_dir='data/raw')`; verify per-symbol max dates. If new real trading day (nonzero volume, incumbent ETFs) exists beyond 2026-10-14, bump replay script's `end_date` to capture it (preserve yfinance exclusive-end semantics), run `research/run_paper_trading_replay.py`, record extended track record. If no new real trading day exists, document confirmed blocker.
 3. **Independent rolling-63-day Sharpe verification**: Recompute from `data/processed/paper_trading_state.yaml` `cumulative_returns` (last 63) via `(mean*252)/(std(ddof=1)*sqrt(252))`. Must match `state.drift_flags.low_rolling_sharpe.value`.
-4. **Regime flip verification**: Recompute regime flips from `run_history` `regime_exposure` transitions; must equal 6.
+4. **Regime flip verification**: Recompute regime flips from `run_history` `regime_exposure` transitions; must equal 6 (or the recomputed value if the replay extended the track record).
 5. **Tests**: `python3 -m pytest .github/scripts/test_kilo_supervisor_loop.py -v` must pass 10/10.
-6. Write `research/reports/paper_trading_validation_087.md` with results.
+6. Write `research/reports/paper_trading_validation_088.md` with results.
 7. Update `NEXT_AGENT_TASK.md` with one narrow, testable next task for following cycle.
 
 ## Validation Commands
@@ -46,3 +46,5 @@ python3 -m pytest .github/scripts/test_kilo_supervisor_loop.py -v
 - Preserve yfinance exclusive-end semantics when bumping `end_date`.
 - Do not commit changes unless explicitly requested; keep work in working tree.
 - Keep work bounded and restart-safe.
+
+(End of file - total 48 lines)
