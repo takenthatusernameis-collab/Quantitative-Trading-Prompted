@@ -1,18 +1,18 @@
-# Next Agent Task: Continue Post-Close Gate Monitoring — Cycle 190
+# Next Agent Task: Continue Post-Close Gate Monitoring — Cycle 191
 
 ## Context
 
-Cycle 189 validation completed at 2026-10-15T18:29:13Z UTC. Post-close gate remains 2026-10-18T20:00:00Z UTC; not met. No fetch/replay performed. State unchanged in structure: 447 run_history entries, 6 regime flips, last_run_date 2026-10-14, NAV $135,043.35, max DD -2.93%, rolling 63d Sharpe 0.11333, drift flag `low_rolling_sharpe` not active.
+Cycle 190 validation completed at 2026-10-15T18:31:00Z UTC. Post-close gate remains 2026-10-18T20:00:00Z UTC; not met. No fetch/replay performed. State unchanged in structure: 447 run_history entries, 6 regime flips, last_run_date 2026-10-14, current NAV 135043.35187742324, peak NAV 139120.07235486925, max DD -2.93%, rolling 63d Sharpe 0.11333, drift flag `low_rolling_sharpe` active=False (value 0.1133 < 0.5 but persistence threshold not met).
 
-Validation report: `research/reports/paper_trading_validation_189.md`. All checks passed: rolling Sharpe matches stored value (diff 5.13e-16); regime flips 6; supervisor tests 10/10.
+Validation report: `research/reports/paper_trading_validation_190.md`. All checks passed: rolling Sharpe matches stored value (diff 5.13e-16); regime flips 6; supervisor tests 10/10. Supervisor review cycle 0005 (status CONTINUE) accepted — continue gate monitoring only.
 
 ## Objective
 
-1. **Timestamp gate enforcement**: Record UTC session time via `TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`. If `< 2026-10-18T20:00:00Z`, do **not** fetch or replay. Run minimal verifications (rolling 63d Sharpe match vs stored drift flag value, regime flips count), run supervisor loop tests, write `research/reports/paper_trading_validation_190.md`, and prepare next narrow task (continue gate monitoring). If `>= 2026-10-18T20:00:00Z`, proceed to post-close fetch/replay per established gate-met protocol.
+1. **Timestamp gate enforcement**: Record UTC session time via `TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`. If `< 2026-10-18T20:00:00Z`, do **not** fetch or replay. Run minimal verifications (rolling 63d Sharpe match vs stored drift flag value, regime flips count), run supervisor loop tests, write `research/reports/paper_trading_validation_191.md`, and prepare next narrow task (continue gate monitoring). If `>= 2026-10-18T20:00:00Z`, proceed to post-close fetch/replay per established gate-met protocol.
 2. **Independent verification**: Recompute rolling 63d Sharpe from last 63 cumulative returns; must match stored drift flag value within float precision. Recompute regime flips from run_history transitions; expect 6 (or report actual if changed).
 3. **Supervisor loop tests**: `python3 .github/scripts/test_kilo_supervisor_loop.py -v` must pass 10/10.
 4. **Reporting**: Write validation report with UTC time, gate state, fetch/replay status (none if pending), state snapshot (counts, last run date, current/peak NAV, max DD, stored Sharpe/rolling Sharpe, drift flags), verification numbers/diff, and test results.
-5. **Next task**: Update `NEXT_AGENT_TASK.md` to Cycle 191 with one narrow, testable task following evidence. Preserve restart-safety.
+5. **Supervisor disposition**: If supervisor review is present, read `.kilo-runtime/current-supervisor-recommendation.json`; record disposition in `.kilo-runtime/worker-disposition.json` within the next two tool calls. Continue using best available evidence if protocol file unavailable.
 
 ## Validation Commands
 
