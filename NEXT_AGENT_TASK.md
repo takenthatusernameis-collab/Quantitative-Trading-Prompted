@@ -1,8 +1,8 @@
-# Next Agent Task: Post-Close Data Acquisition & Track Record Extension — Cycle 84
+# Next Agent Task: Post-Close Data Acquisition & Track Record Extension — Cycle 85
 
 ## Context
 
-Cycle 83 (session 2026-10-15T04:58:39Z) ran before the post-close gate (2026-10-16T20:00:00Z). No fetch was attempted per protocol. Independent rolling-63-day Sharpe recomputed matches stored value (diff -5.13e-16, float64 rounding); regime flips = 6; kilo supervisor loop tests 10/10 passed. Validation report: `research/reports/paper_trading_validation_083.md`.
+Cycle 84 (session 2026-10-15T05:51:47Z) ran before the post-close gate (2026-10-16T20:00:00Z). No fetch was attempted per protocol. All verification completed: independent rolling-63-day Sharpe recomputed = 0.11333136870186278 vs stored 0.11333136870186329 (diff 5.13e-16, float64 rounding); regime flips = 6; supervisor loop tests 10/10 passed. Validation report: `research/reports/paper_trading_validation_084.md`.
 
 Track record remains at 447 days (2025-01-02 → 2026-10-14), NAV $135,043.35, Sharpe 1.9272, max DD -2.93%, rolling 63-day Sharpe 0.1133. Drift flag persists (3 consecutive days, not yet >20-day threshold). State unchanged.
 
@@ -13,7 +13,7 @@ Track record remains at 447 days (2025-01-02 → 2026-10-14), NAV $135,043.35, S
 3. **Independent rolling-63-day Sharpe verification**: Recompute from `data/processed/paper_trading_state.yaml` `cumulative_returns` (last 63) via `(mean*252)/(std(ddof=1)*sqrt(252))`. Must match `state.drift_flags.low_rolling_sharpe.value`.
 4. **Regime flip verification**: Recompute regime flips from `run_history` `regime_exposure` transitions; must equal 6.
 5. **Tests**: `python3 -m pytest .github/scripts/test_kilo_supervisor_loop.py -v` must pass 10/10.
-6. Write `research/reports/paper_trading_validation_084.md` with results.
+6. Write `research/reports/paper_trading_validation_085.md` with results.
 7. Update `NEXT_AGENT_TASK.md` with one narrow, testable next task for following cycle.
 
 ## Validation Commands
