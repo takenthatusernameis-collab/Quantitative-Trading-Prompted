@@ -1,8 +1,8 @@
-# Next Agent Task: Post-Close Evaluation Gate Execution — Cycle 157 (Pending Gate)
+# Next Agent Task: Post-Close Evaluation Gate Execution — Cycle 158 (Pending Gate)
 
 ## Context
 
-Current check performed at 2026-10-15T16:57:59Z UTC. Post-close gate is 2026-10-18T20:00:00Z UTC; gate not met today but advancing to next trading day close window.
+Current check performed at 2026-10-15T17:00:02Z UTC. Post-close gate is 2026-10-18T20:00:00Z UTC; gate not met today but advancing to next trading day close window.
 
 State (from `data/processed/paper_trading_state.yaml` as of 2026-10-14):
 - Track record: 447 days (2025-01-02 → 2026-10-14)
@@ -14,23 +14,23 @@ State (from `data/processed/paper_trading_state.yaml` as of 2026-10-14):
 - Regime: risk-on (132 days)
 - Regime flips: 6 (447 run_history entries)
 
-Independent verifications (Cycle 156, 2026-10-15T16:57:59Z):
+Independent verifications (Cycle 157, 2026-10-15T17:00:02Z):
 - Rolling 63d Sharpe recomputed from last 63 cumulative_returns matches stored value within float precision (0.11333136870186278 vs 0.11333136870186329, diff 5.13e-16)
 - Regime flips computed from run_history transitions: 6 (expected 6)
 - State YAML integrity: cumulative_returns=447, run_history=447, cumulative_dates=447, no duplicate dates, product of (1+returns) == NAV/100000
 - Supervisor loop tests: 10/10 passed
-- Validation report: `research/reports/paper_trading_validation_156.md`
+- Validation report: `research/reports/paper_trading_validation_157.md`
 
 ## Objective
 
-1. **Timestamp gate enforcement**: Record UTC session time via `TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`. If `session_time < 2026-10-18T20:00:00Z`, do **not** fetch or replay. Document timing, run verifications (3-4), supervisor tests (5), write/update validation report for cycle 157, and prepare next narrow task (advance gate/monitor for next close). If `session_time >= 2026-10-18T20:00:00Z`, proceed to (2).
+1. **Timestamp gate enforcement**: Record UTC session time via `TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`. If `session_time < 2026-10-18T20:00:00Z`, do **not** fetch or replay. Document timing, run verifications (3-4), supervisor tests (5), write/update validation report for cycle 158, and prepare next narrow task (advance gate/monitor for next close). If `session_time >= 2026-10-18T20:00:00Z`, proceed to (2).
 2. **Post-close fetch (gate met)**: Re-run `fetch_universe(['SPY','QQQ','IWM','TLT','GLD','EFA','EEM','^VIX'], start_date='2025-01-01', end_date='2026-11-30', force=True, raw_dir='data/raw')`. Verify per-symbol max dates. Determine if any new real trading day exists beyond 2026-10-14 (nonzero volume, incumbent ETFs).
       - If **no new real trading day exists**: Document confirmed blocker (max date == 2026-10-14), do not modify replay, run verifications (3-4), supervisor tests (5), write validation report, and prepare next narrow task.
       - If **new real trading day exists (e.g., 2026-10-15 or later)**: Bump `research/run_paper_trading_replay.py`'s `end_date` to capture it, preserving yfinance exclusive-end semantics. Run `research/run_paper_trading_replay.py`. Record extended track record (days, NAV, Sharpe, max DD, rolling 63d Sharpe). Recompute regime flips from extended history.
 3. **Independent rolling-63-day Sharpe verification**: From `data/processed/paper_trading_state.yaml`, compute rolling 63d Sharpe from last 63 `cumulative_returns`: `(mean*252)/(std(ddof=1)*sqrt(252))`. Must match `state.drift_flags.low_rolling_sharpe.value` (within float precision).
 4. **Regime flip verification**: Recompute regime flips from `run_history.regime_exposure` transitions. If replay extended track, use recomputed count; otherwise expect 6.
 5. **Supervisor loop tests**: `python3 .github/scripts/test_kilo_supervisor_loop.py -v` must pass 10/10.
-6. **Reporting**: Write/update `research/reports/paper_trading_validation_157.md` with UTC time, gate result, fetch results (if attempted), per-symbol max dates, track record changes (if any), verification numbers, and test results.
+6. **Reporting**: Write/update `research/reports/paper_trading_validation_158.md` with UTC time, gate result, fetch results (if attempted), per-symbol max dates, track record changes (if any), verification numbers, and test results.
 7. **Next task**: Update `NEXT_AGENT_TASK.md` with one narrow, testable next task following evidence (do not fabricate). Preserve restart-safety.
 
 ## Validation Commands (reference)
