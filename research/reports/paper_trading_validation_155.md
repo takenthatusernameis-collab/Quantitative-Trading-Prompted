@@ -1,9 +1,10 @@
 # Paper Trading Validation Report — Cycle 155
 
 ## Session
-- UTC time: 2026-10-15T16:36:22Z
-- Gate Check: session_time 2026-10-15T16:36:22Z < gate 2026-10-17T20:00:00Z
+- UTC time: 2026-10-15T16:55:19Z
+- Gate Check: session_time 2026-10-15T16:55:19Z < gate 2026-10-17T20:00:00Z
 - Gate Met: NO - post-close gate not reached
+- Prior report from: 2026-10-15T16:36:22Z (verifications reproduced with identical results)
 
 ## Current State
 - Last run date: 2026-10-14
@@ -42,4 +43,4 @@ From last 63 cumulative_returns in `data/processed/paper_trading_state.yaml`:
 - No replay run (gate not met)
 
 ## Conclusion
-Gate condition not satisfied (2026-10-15T16:36:22Z < 2026-10-17T20:00:00Z). No new trading day data fetch or replay performed. All verifications passed: rolling-63d Sharpe matched within float precision (diff 5.13e-16), regime flips matched expected count of 6, state YAML integrity confirmed (447 records consistent, NAV consistent with returns product), supervisor loop tests passed 10/10. Next cycle must check gate again at/after 2026-10-17T20:00:00Z.
+Gate condition not satisfied (2026-10-15T16:55:19Z < 2026-10-17T20:00:00Z). No new trading day data fetch or replay performed. All verifications re-run in this session with identical results: rolling-63d Sharpe matched within float precision (diff 5.13e-16), regime flips matched expected count of 6, state YAML integrity confirmed (447 records consistent, NAV consistent with returns product), supervisor loop tests passed 10/10. Next cycle must check gate again at/after 2026-10-17T20:00:00Z.
