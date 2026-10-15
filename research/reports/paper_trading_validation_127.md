@@ -1,33 +1,47 @@
-# Paper Trading Validation — Cycle 127
+# Paper Trading Validation Report — Cycle 127
 
-## Timing (UTC)
-- session_time: 2026-10-15T14:28:28Z
-- gate: 2026-10-17T20:00:00Z
-- gate_met: false
+## Session Information
+- UTC Session Time: 2026-10-15T14:30:48Z
+- Post-Close Gate: 2026-10-17T20:00:00Z
+- Gate Status: NOT MET (14:30:48Z < 20:00:00Z)
+- Cycle: 127
 
-## Gate Decision
-Gate NOT MET (session_time < gate). Following task instructions: no fetch or replay performed. Verifications (rolling Sharpe, regime flips) and supervisor tests run below.
+## Gate Enforcement (Item 1)
+Per protocol, since session_time < post-close gate, no data fetch (`fetch_universe`) and no replay (`run_paper_trading_replay.py`) were performed.
 
-## Track Record State (current stored state)
-- track_days: 447 (2025-01-02 → 2026-10-14)
-- NAV: $135,043.35
-- Sharpe: 1.9272
-- max DD: -2.93%
-- rolling 63d Sharpe (stored): 0.11333136870186329
+## Independent Verifications
 
-## Independent Verification
-Rolling-63-day Sharpe (computed from last 63 cumulative_returns):
-- rolling_63d_sharpe_computed: 0.11333136870186278
-- rolling_63d_sharpe_stored: 0.11333136870186329
-- diff: 5.13e-16 (< 1e-10) ✓
+### Rolling-63-day Sharpe Verification (Item 3)
+- Source: data/processed/paper_trading_state.yaml
+- Computed from last 63 cumulative_returns: 0.11333136870186278
+- Stored drift_flags.low_rolling_sharpe.value: 0.11333136870186329
+- Difference: 5.13e-16
+- Result: PASS (diff < 1e-10)
 
-Regime flips (from run_history.regime_exposure transitions):
-- regime_flips_computed: 6
-- total_entries: 447
-- expected (no extension): 6 ✓ (matches stored/expected)
+### Regime Flip Verification (Item 4)
+- Source: data/processed/paper_trading_state.yaml (run_history)
+- Run history records: 447
+- Recomputed regime flips (transitions in regime_exposure): 6
+- Result: PASS (6 flips over 447 records; matches expected/current stored value)
 
-## Supervisor Loop Tests
-- result: 10/10 passed (OK)
+## Supervisor Loop Tests (Item 5)
+- Command: python3 .github/scripts/test_kilo_supervisor_loop.py -v
+- Result: 10/10 tests passed (OK)
+- Exit code: 0
 
-## Next Action
-Do NOT fetch/replay. Leave NEXT_AGENT_TASK.md unchanged as-is; next cycle must re-evaluate gate at/after 2026-10-17T20:00:00Z and only then perform post-close fetch/replay if new trading data exists.
+## Current State (No Changes)
+- Track record: 447 days (2025-01-02 → 2026-10-14)
+- NAV: $135,043.35 (unchanged)
+- Sharpe: 1.9272 (unchanged)
+- Max Drawdown: -2.93% (unchanged)
+- Rolling 63d Sharpe: 0.11333136870186278 (unchanged)
+- Drift flag: persists (3 consecutive days, not yet >20d threshold)
+
+## Action Taken
+- Verified timing gate not met; skipped fetch and replay per protocol.
+- Performed independent rolling-63-day Sharpe recomputation and regime flip recomputation.
+- Executed supervisor loop tests (10/10 passed).
+- Wrote validation report for Cycle 127.
+
+## Handoff
+Gate remains at 2026-10-17T20:00:00Z and is not met at session time. Task for next cycle (Cycle 128 / next agent) remains the same post-close evaluation gate execution task with unchanged acceptance criteria. No data or state modifications were made.
