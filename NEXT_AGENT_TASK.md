@@ -1,16 +1,16 @@
-# Next Agent Task: Continue Post-Close Gate Monitoring — Cycle 225
+# Next Agent Task: Prepare for Post-Close Gate Monitoring — Cycle 226
 
 ## Context
 
-Cycle 224 validation completed at 2026-10-15T19:38:33Z UTC. Post-close gate remains 2026-10-18T20:00:00Z UTC; not met. No fetch/replay performed (git status clean). State unchanged relative to cycle 223 baseline (447 run_history entries, 6 regime flips). Validation report: `research/reports/paper_trading_validation_224.md`. All checks passed.
+Cycle 225 validation completed (UTC 2026-10-15T19:40:13Z). Post-close gate remains 2026-10-18T20:00:00Z UTC. Gate not met; no fetch/replay performed. State unchanged (447 run_history entries, 6 regime flips). Rolling 63d Sharpe matches stored (diff < 1e-12). Supervisor loop tests passed (10/10). Report: `research/reports/paper_trading_validation_225.md`. Disposition recorded in `.kilo-runtime/worker-disposition.json`.
 
 ## Objective
 
-1. **Timestamp gate enforcement**: Record UTC session time via `TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`. If < 2026-10-18T20:00:00Z, do NOT fetching or replay. Run minimal verifications (rolling 63d Sharpe match vs stored, regime flips count), run supervisor loop tests, write `research/reports/paper_trading_validation_225.md`, and prepare next narrow task. If >= 2026-10-18T20:00:00Z, proceed per established gate-met protocol.
+1. **Timestamp gate enforcement**: Record UTC time (`TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`). If < 2026-10-18T20:00:00Z, do NOT fetch or replay. Run minimal verifications (rolling 63d Sharpe vs stored, regime flips count), run supervisor loop tests, write `research/reports/paper_trading_validation_226.md`, and prepare next narrow task. If >= 2026-10-18T20:00:00Z, proceed per established gate-met protocol (inspect for fetch/replay readiness, execute only if explicitly required and verifiably safe).
 2. **Independent verification**: Recompute rolling 63d Sharpe from last 63 cumulative returns; must match stored drift flag value within float precision. Recompute regime flips from run_history transitions.
 3. **Supervisor loop tests**: `python3 .github/scripts/test_kilo_supervisor_loop.py -v` must pass 10/10.
-4. **Reporting**: Write validation report 225 with UTC time, gate state, fetch/replay status, state snapshot, verification numbers/diff, test results.
-5. **Supervisor disposition**: Record disposition in `.kilo-runtime/worker-disposition.json` within next two tool calls.
+4. **Reporting**: Write validation report 226 with UTC time, gate state, fetch/replay status, state snapshot, verification numbers/diff, test results.
+5. **Supervisor disposition**: Record disposition in `.kilo-runtime/worker-disposition.json` within next two tool calls (schema_version 1, recommendation_id copied exactly, disposition with reason/evidence/verification/updated_at as ISO-8601 UTC).
 
 ## Validation Commands
 
