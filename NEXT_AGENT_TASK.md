@@ -1,28 +1,26 @@
-# Next Agent Task: Post-Close Gate Readiness Check — Cycle 163 (Pending Gate)
+# Next Agent Task: Continue Post-Close Gate Monitoring — Cycle 164 (Pending Gate)
 
 ## Context
 
-Session from Cycle 162 completed at 2026-10-15T17:20:22Z UTC. Post-close gate remains 2026-10-18T20:00:00Z UTC; gate not met. Current paper trading state (from `data/processed/paper_trading_state.yaml` as of 2026-10-14):
+Session from Cycle 163 completed at 2026-10-15T17:27:20Z UTC. Post-close gate remains 2026-10-18T20:00:00Z UTC; gate not met. Current paper trading state (`data/processed/paper_trading_state.yaml`, 2026-10-14):
 - Track record: 447 days (2025-01-02 → 2026-10-14)
 - NAV: $135,043.35
 - Sharpe: 1.9272
 - Max DD: -2.93%
 - Rolling 63d Sharpe (stored): 0.11333136870186329
-- Cumulative returns/run_history/cumulative_dates: 447
-- Last run date: 2026-10-14
 - Regime flips: 6
 - Drift flag persists (3 consecutive days)
+- Run history length: 447; last run date: 2026-10-14
 
-Cycle 162 validation report: `research/reports/paper_trading_validation_162.md`. All verifications passed; supervisor tests 10/10 passed. No data fetch or replay performed (gate not met).
+Validation reports: `research/reports/paper_trading_validation_162.md`, `research/reports/paper_trading_validation_163.md`. All checks passed. No fetch/replay performed while gate pending.
 
 ## Objective
 
-1. **Timestamp gate enforcement**: Record UTC session time via `TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`. If `session_time < 2026-10-18T20:00:00Z`, do **not** fetch or replay. Run verifications (2-3), supervisor tests (4), write `research/reports/paper_trading_validation_163.md`, and prepare next narrow task (continue gate monitoring). If `session_time >= 2026-10-18T20:00:00Z`, proceed to post-close fetch/replay per Cycle 162 gate-met logic.
-2. **Independent rolling-63-day Sharpe verification**: Recompute rolling 63d Sharpe from last 63 `cumulative_returns` using `(mean*252)/(std(ddof=1)*sqrt(252))`. Must match `state.drift_flags.low_rolling_sharpe.value` within float precision.
-3. **Regime flip verification**: Recompute regime flips from `run_history.regime_exposure` transitions. Expect 6 (no replay extension).
-4. **Supervisor loop tests**: `python3 .github/scripts/test_kilo_supervisor_loop.py -v` must pass 10/10.
-5. **Reporting**: Write `research/reports/paper_trading_validation_163.md` with UTC time, gate result, fetch/replay status (none if gate not met), state snapshot (counts, last run date), verification numbers, and test results.
-6. **Next task**: Update `NEXT_AGENT_TASK.md` with one narrow, testable next task following evidence. Preserve restart-safety.
+1. **Timestamp gate enforcement**: Record UTC session time via `TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`. If `session_time < 2026-10-18T20:00:00Z`, do **not** fetch or replay. Run minimal verifications (rolling 63d Sharpe match, regime flips count, supervisor tests), write `research/reports/paper_trading_validation_164.md`, and prepare next narrow task (continue gate monitoring). If `session_time >= 2026-10-18T20:00:00Z`, proceed to post-close fetch/replay per established gate-met protocol.
+2. **Independent verification**: Recompute rolling 63d Sharpe from last 63 cumulative returns; must match stored drift flag value within float precision. Recompute regime flips from run_history transitions (expect 6 unless data changed).
+3. **Supervisor loop tests**: `python3 .github/scripts/test_kilo_supervisor_loop.py -v` must pass 10/10.
+4. **Reporting**: Write validation report with UTC time, gate state, fetch/replay status (none if pending), state snapshot (counts, last run date, Sharpe/NAV/max DD), verification numbers, diff, and test results.
+5. **Next task**: Update `NEXT_AGENT_TASK.md` with one narrow, testable next task following evidence. Preserve restart-safety.
 
 ## Validation Commands (reference)
 ```bash
@@ -31,8 +29,9 @@ python3 -c "
 import yaml,math
 d=yaml.safe_load(open('data/processed/paper_trading_state.yaml'))
 ret=d['cumulative_returns'][-63:]
-m=sum(ret)/len(ret); v=sum((r-m)**2 for r in ret)/(len(ret)-1); s=(m*252)/(math.sqrt(v)*math.sqrt(252)) if v>0 else 0
-print('sharpe',s,d['drift_flags']['low_rolling_sharpe']['value'])
+m=sum(ret)/len(ret); v=sum((r-m)**2 for r in ret)/(len(ret)-1)
+s=(m*252)/(math.sqrt(v)*math.sqrt(252)) if v>0 else 0
+print('sharpe',s,d['drift_flags']['low_rolling_sharpe']['value'], abs(s-d['drift_flags']['low_rolling_sharpe']['value']))
 "
 python3 -c "
 import yaml
