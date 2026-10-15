@@ -1,36 +1,42 @@
-# Paper Trading Validation - Cycle 107
+# Cycle 107 — Post-Close Evaluation Gate Execution (Pre-Gate)
 
-**UTC Session Time:** 2026-10-15T13:25:09Z
-**Post-Close Gate:** 2026-10-17T20:00:00Z
+## Timestamp
+- **Session UTC time**: 2026-10-15T13:26:47Z
+- **Post-close gate**: 2026-10-17T20:00:00Z
+- **Gate status**: **NOT MET** (session time < gate time)
 
-## Gate Enforcement
+## Action Taken
+No fetch or replay performed per protocol. Independent verifications executed.
 
-- **Status:** Gate not met (session_time < 2026-10-17T20:00:00Z)
-- **Action Taken:** Did not fetch or replay data. Preserved existing state.
+## Independent Verifications
 
-## Current Track Record (from state)
+### Rolling 63-day Sharpe Recomputation
+- **Computed**: 0.11333136870186278
+- **Stored in state** (`drift_flags.low_rolling_sharpe.value`): 0.11333136870186329
+- **Match**: Yes (difference ~5e-16, within float precision)
 
-- Days: 447 (2025-01-02 → 2026-10-14)
-- NAV: $135,043.35
-- Sharpe: 1.9272
-- Max Drawdown: -2.93%
-- Rolling 63d Sharpe: 0.1133
-- Drift flag: persists (3 consecutive days, not yet >20d threshold)
-- Regime flips (stored): 6
+### Regime Flip Recomputation
+- **Run history length**: 447 entries
+- **Regime flips detected**: 6
+- **Matches stored expectation**: Yes
 
-## Verifications
+### Supervisor Loop Tests
+- **Command**: `python3 .github/scripts/test_kilo_supervisor_loop.py -v`
+- **Result**: **10/10 tests passed**
 
-### 1. Independent rolling-63-day Sharpe verification
-- Computed from last 63 cumulative_returns: 0.11333136870186278
-- Stored low_rolling_sharpe.value: 0.11333136870186329
-- **Match:** Yes (within float precision, diff ~5e-16)
+## Track Record (Unchanged)
+- **Period**: 2025-01-02 → 2026-10-14 (447 trading days)
+- **NAV**: $135,043.35 (+35.04%)
+- **Full-period Sharpe**: 1.9272
+- **Max drawdown**: -2.93%
+- **Rolling 63-day Sharpe**: 0.1133
+- **Regime**: Risk-on (132 days)
+- **Regime flips (total)**: 6
+- **Drift flag**: `low_rolling_sharpe` active for 3 consecutive days (2026-10-12, 2026-10-13, 2026-10-14); not yet at >20-day persistence threshold
 
-### 2. Regime flip verification
-- Computed from run_history.regime_exposure transitions: 6 flips over 447 days
-- **Match:** Yes (6 == stored value)
+## Gate Outcome
+Gate not met. No data fetch attempted. Strategy remains frozen. Same task carries forward to Cycle 108.
 
-## Supervisor Tests
-- `python3 .github/scripts/test_kilo_supervisor_loop.py -v`: **10/10 PASSED**
-
-## Conclusion
-Gate not met. No new data fetched or replay run. Task NEXT_AGENT_TASK.md remains unchanged for next cycle (gate still 2026-10-17T20:00:00Z). No changes to working tree.
+## Artifacts
+- State file: `data/processed/paper_trading_state.yaml`
+- This report: `research/reports/paper_trading_validation_107.md`
