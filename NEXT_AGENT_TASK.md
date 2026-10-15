@@ -1,4 +1,4 @@
-# Next Agent Task: Paper Trading Monitoring & Data Acquisition — Cycle 71
+# Next Agent Task: Paper Trading Monitoring & Data Acquisition — Cycle 72
 
 ## Context
 The paper-trading track record (tsmomentum_spytrend_001) stands at **447 days** (2025-01-02 → 2026-10-14), NAV **$135,043.35**, Sharpe **1.9272**, max DD **-2.93%**, rolling 63-day Sharpe **0.1133**. All primary go/no-go gates pass. Regime: risk-on, 132 days.
@@ -11,7 +11,7 @@ Re-attempt data acquisition from Yahoo Finance to extend the paper-trading track
 ## Acceptance Criteria
 1. Re-run fetch path with `force=True` and `end_date="2026-11-30"`. Verify per-symbol max dates for SPY, QQQ, IWM, TLT, GLD, EFA, EEM and ^VIX.
 2. If a new real trading day (nonzero volume for incumbent ETFs) exists beyond 2026-10-14, run `research/run_paper_trading_replay.py` with matching `end_date` and record extended track record (NAV, Sharpe, max DD, rolling 63-day Sharpe, regime flips, regime state, drift flags).
-3. If no new data, write `research/reports/paper_trading_validation_043.md` documenting the blocker precisely (max dates, per-symbol volume, yfinance exclusive-end semantics).
+3. If no new data, write `research/reports/paper_trading_validation_044.md` documenting the blocker precisely (max dates, per-symbol volume, yfinance exclusive-end semantics).
 4. Independently verify rolling 63-day Sharpe by recomputing from `data/processed/paper_trading_state.yaml` cumulative returns.
 5. Run `python3 -m pytest .github/scripts/test_kilo_supervisor_loop.py -v` — must pass 10/10.
 6. Update `NEXT_AGENT_TASK.md` with next bounded task.
@@ -52,5 +52,5 @@ python3 -m pytest .github/scripts/test_kilo_supervisor_loop.py -v
 - State: `data/processed/paper_trading_state.yaml`
 - Replay: `research/run_paper_trading_replay.py`
 - Fetcher: `src/data/yfinance_fetcher.py`
-- Recent validations: `research/reports/paper_trading_validation_042.md` (Cycle 70)
+- Recent validations: `research/reports/paper_trading_validation_043.md` (Cycle 71)
 - Rolling report: `research/reports/paper_trading_rolling.md`
