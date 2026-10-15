@@ -9,6 +9,10 @@ on:
       - ".github/workflows/kilo-two-agent-dispatch.yml"
       - ".github/scripts/kilo-controller.sh"
       - ".github/scripts/test_kilo_checkpoint_recovery.sh"
+      - ".github/scripts/kilo-refresh-default-branch.sh"
+      - ".github/scripts/test_kilo_refresh_default_branch.sh"
+      - ".github/scripts/kilo-terminal-outcome.py"
+      - ".github/scripts/test_kilo_terminal_outcome.py"
       - ".github/scripts/test_kilo_checkpoint_recovery.sh"
       - ".github/scripts/kilo-invoke-with-idle-timeout.py"
       - ".github/scripts/kilo-supervisor-loop.py"
@@ -24,6 +28,10 @@ on:
       - ".github/workflows/main.yml"
       - ".github/workflows/kilo-workflow-audit.yml"
       - ".github/scripts/kilo-controller.sh"
+      - ".github/scripts/kilo-refresh-default-branch.sh"
+      - ".github/scripts/test_kilo_refresh_default_branch.sh"
+      - ".github/scripts/kilo-terminal-outcome.py"
+      - ".github/scripts/test_kilo_terminal_outcome.py"
       - ".github/scripts/kilo-supervisor-loop.py"
       - ".github/scripts/test_kilo_supervisor_loop.py"
       - ".kilo/plugin/loop-supervisor-feedback.js"
@@ -100,6 +108,15 @@ jobs:
       - name: Exercise checkpoint recovery after a rebase conflict
         shell: bash
         run: bash .github/scripts/test_kilo_checkpoint_recovery.sh
+      - name: Test queued-checkout freshness and truthful terminal outcomes
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n .github/scripts/kilo-refresh-default-branch.sh
+          bash -n .github/scripts/kilo-controller.sh
+          bash .github/scripts/test_kilo_refresh_default_branch.sh
+          python3 .github/scripts/test_kilo_terminal_outcome.py
+
       - name: Guard cutoff-bounded unbounded retry and correction policy
         shell: bash
         run: |
