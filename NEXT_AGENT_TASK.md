@@ -6,10 +6,10 @@ Cycle 276 validation completed (UTC 2026-10-15T20:54:10Z). Post-close gate remai
 
 ## Objective
 
-1. **Timestamp gate enforcement**: Record UTC time (`TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`). If < 2026-10-18T20:00:00Z, do NOT fetch or replay. Run minimal verifications (rolling 63d Sharpe vs stored, regime flips count), run supervisor loop tests, write `research/reports/paper_trading_validation_276.md`, and prepare next narrow task. If >= 2026-10-18T20:00:00Z, proceed per established gate-met protocol (inspect for fetch/replay readiness, execute only if explicitly required and verifiably safe).
+1. **Timestamp gate enforcement**: Record UTC time (`TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`). If < 2026-10-18T20:00:00Z, do NOT fetch or replay. Run minimal verifications (rolling 63d Sharpe vs stored, regime flips count), run supervisor loop tests, write `research/reports/paper_trading_validation_277.md`, and prepare next narrow task. If >= 2026-10-18T20:00:00Z, proceed per established gate-met protocol (inspect for fetch/replay readiness, execute only if explicitly required and verifiably safe).
 2. **Independent verification**: Recompute rolling 63d Sharpe from last 63 cumulative returns; must match stored drift flag value within float precision. Recompute regime flips from run_history.
 3. **Supervisor loop tests**: `python3 .github/scripts/test_kilo_supervisor_loop.py -v` must pass 10/10.
-4. **Reporting**: Write validation report 276 with UTC time, gate state, fetch/replay status, state snapshot, verification numbers/diff, test results.
+4. **Reporting**: Write validation report 277 with UTC time, gate state, fetch/replay status, state snapshot, verification numbers/diff, test results.
 5. **Supervisor disposition**: Record disposition in `.kilo-runtime/worker-disposition.json` within next two tool calls (schema_version 1, recommendation_id copied exactly, disposition with reason/evidence/verification/updated_at as ISO-8601 UTC). Use current `recommendation_id` from `.kilo-runtime/current-supervisor-recommendation.json` if it exists; otherwise include `recommendation_id` as `null` and proceed safely.
 
 ## Validation Commands
