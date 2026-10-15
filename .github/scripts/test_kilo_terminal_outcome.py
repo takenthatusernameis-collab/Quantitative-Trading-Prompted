@@ -123,5 +123,93 @@ class TerminalOutcomeTests(unittest.TestCase):
         self.assertIn("no_progress_failure", result.stdout)
 
 
+    def test_rejected_checkpoint_push_drives_failure_terminal_outcome(self):
+        """A genuinely rejected push must not be classified as verified progress."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            remote = root / "remote.git"
+            work = root / "work"
+
+            def git(cwd: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
+                return subprocess.run(
+                    ["git", *args],
+                    cwd=cwd,
+                    capture_output=True,
+                    text=True,
+                    check=check,
+                )
+
+            git(root, "init", "--bare", str(remote))
+            git(root, "init", str(work))
+            git(work, "config", "user.name", "Kilo terminal-outcome regression")
+            git(work, "config", "user.email", "kilo-terminal-test@example.invalid")
+            git(work, "checkout", "-b", "main")
+            (work / "baseline.txt").write_text("baseline\\n", encoding="utf-8")
+            git(work, "add", "baseline.txt")
+            git(work, "commit", "-m", "test: establish baseline checkpoint")
+            git(work, "remote", "add", "origin", str(remote))
+            git(work, "push", "-u", "origin", "main")
+            baseline_sha = git(work, "rev-parse", "HEAD").stdout.strip()
+
+            # Reject only the subsequent test checkpoint, in this disposable bare repo.
+            hook = remote / "hooks" / "pre-receive"
+            hook.write_text(
+                "#!/bin/sh\\n"
+                "cat >/dev/null\\n"
+                "echo 'injected checkpoint persistence failure' >&2\\n"
+                "exit 1\\n",
+                encoding="utf-8",
+            )
+            hook.chmod(0o755)
+
+            (work / "research-change.txt").write_text("meaningful but unpersisted work\\n", encoding="utf-8")
+            git(work, "add", "research-change.txt")
+            git(work, "commit", "-m", "test: create unpersisted project progress")
+            local_checkpoint_sha = git(work, "rev-parse", "HEAD").stdout.strip()
+            rejected = git(work, "push", "origin", "HEAD:refs/heads/main", check=False)
+            self.assertNotEqual(rejected.returncode, 0, "the simulated remote must reject the checkpoint push")
+            self.assertIn("injected checkpoint persistence failure", rejected.stdout + rejected.stderr)
+
+            remote_sha = git(root, "--git-dir", str(remote), "rev-parse", "refs/heads/main").stdout.strip()
+            self.assertEqual(remote_sha, baseline_sha, "remote default-branch head must stay at the prior checkpoint")
+            self.assertNotEqual(local_checkpoint_sha, remote_sha)
+            status = git(work, "status", "--porcelain", "--untracked-files=all").stdout
+            self.assertEqual(status, "", "committed-but-unpushed work can leave a clean local worktree")
+
+            status_file = root / "final-git-status.txt"
+            status_file.write_text(status, encoding="utf-8")
+            github_output = root / "github-output.txt"
+            result = subprocess.run(
+                [
+                    sys.executable, str(SCRIPT),
+                    "--project-progress", "1",
+                    "--checkpoint-persisted", "0",
+                    "--git-status-file", str(status_file),
+                    "--cutoff", "0",
+                    "--checkpoint-sha", local_checkpoint_sha,
+                    "--output", str(github_output),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            self.assertIn("persistence_failure", result.stdout)
+            outputs = github_output.read_text(encoding="utf-8").splitlines()
+            self.assertIn("terminal_status=persistence_failure", outputs)
+            self.assertIn("cutoff_reached=false", outputs)
+            self.assertIn(f"terminal_checkpoint_sha={local_checkpoint_sha}", outputs)
+
+            # Guard the real caller wiring and job summary against accidental disconnection.
+            repo_root = SCRIPT.resolve().parents[2]
+            controller = (repo_root / ".github/scripts/kilo-controller.sh").read_text(encoding="utf-8")
+            workflow = (repo_root / ".github/workflows/main.yml").read_text(encoding="utf-8")
+            self.assertIn('--checkpoint-persisted "${persisted:-1}"', controller)
+            self.assertIn('exit "$terminal_rc"', controller)
+            self.assertIn("persistence_failure)", workflow)
+            self.assertIn("Checkpoint persistence or clean-worktree verification failed", workflow)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
