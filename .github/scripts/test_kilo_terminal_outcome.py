@@ -144,7 +144,7 @@ class TerminalOutcomeTests(unittest.TestCase):
             git(work, "config", "user.name", "Kilo terminal-outcome regression")
             git(work, "config", "user.email", "kilo-terminal-test@example.invalid")
             git(work, "checkout", "-b", "main")
-            (work / "baseline.txt").write_text("baseline\\n", encoding="utf-8")
+            (work / "baseline.txt").write_text("baseline\n", encoding="utf-8")
             git(work, "add", "baseline.txt")
             git(work, "commit", "-m", "test: establish baseline checkpoint")
             git(work, "remote", "add", "origin", str(remote))
@@ -154,10 +154,10 @@ class TerminalOutcomeTests(unittest.TestCase):
             # Reject only the subsequent test checkpoint, in this disposable bare repo.
             hook = remote / "hooks" / "pre-receive"
             hook.write_text(
-                "#!/bin/sh\\n"
-                "cat >/dev/null\\n"
-                "echo 'injected checkpoint persistence failure' >&2\\n"
-                "exit 1\\n",
+                "#!/bin/sh\n"
+                "cat >/dev/null\n"
+                "echo 'injected checkpoint persistence failure' >&2\n"
+                "exit 1\n",
                 encoding="utf-8",
             )
             hook.chmod(0o755)
@@ -165,7 +165,7 @@ class TerminalOutcomeTests(unittest.TestCase):
             # Pin the receiving bare repository to its own absolute hook directory.
             git(root, "--git-dir", str(remote), "config", "core.hooksPath", str(remote / "hooks"))
 
-            (work / "research-change.txt").write_text("meaningful but unpersisted work\\n", encoding="utf-8")
+            (work / "research-change.txt").write_text("meaningful but unpersisted work\n", encoding="utf-8")
             git(work, "add", "research-change.txt")
             git(work, "commit", "-m", "test: create unpersisted project progress")
             local_checkpoint_sha = git(work, "rev-parse", "HEAD").stdout.strip()
