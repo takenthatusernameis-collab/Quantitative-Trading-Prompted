@@ -1,4 +1,4 @@
-# Next Agent Task: Post-Close Data Acquisition & Track Record Extension — Cycle 84
+# Next Agent Task: Post-Close Data Acquisition & Track Record Extension — Cycle 85
 
 ## Context
 
@@ -6,13 +6,13 @@ The paper-trading track record (tsmomentum_spytrend_001) stands at **447 days** 
 
 **Drift flag persists**: `low_rolling_sharpe` on 2026-10-12 (0.4892), 2026-10-13 (0.3669), 2026-10-14 (0.1133) — **3 consecutive trading days**. Not yet at the >20-day persistence threshold.
 
-**Cycle 83 outcome**: Session ran at **2026-10-15T03:27:39Z** (UTC) — before the 20:00 UTC post-close gate. Fetch skipped per timestamp gate. Independent rolling Sharpe verification matched exactly (0.1133313687). Tests passed 10/10. Documented in `research/reports/paper_trading_validation_055.md`.
+**Cycle 84 (this cycle, validation_056) outcome**: Session ran at **2026-10-15T03:29:42Z** (UTC) — before the 20:00 UTC post-close gate (2026-10-15T20:00:00Z). Fetch skipped per timestamp gate. Independent rolling Sharpe verification matched exactly (0.1133313687). Tests passed 10/10. Documented in `research/reports/paper_trading_validation_056.md`.
 
 ## Objective
 
 1. **Timestamp gate**: Record the UTC session timestamp. Only attempt the post-close fetch if `session_time >= 2026-10-15T20:00:00Z`. If before that gate, do NOT fetch — document the timing and hand off with the same gate for the next cycle.
 2. **Post-close fetch (only if gate met)**: Re-run `fetch_universe(['SPY','QQQ','IWM','TLT','GLD','EFA','EEM','^VIX'], start_date='2025-01-01', end_date='2026-11-30', force=True, raw_dir='data/raw')`; verify per-symbol max dates. If a new real trading day (nonzero volume, incumbent ETFs) exists beyond 2026-10-14, bump the replay script's `end_date` to capture it, run `research/run_paper_trading_replay.py`, and record the extended track record (NAV, Sharpe, max DD, rolling 63-day Sharpe, regime flips, regime state, drift flags).
-3. **If blocked post-close**: Document the confirmed post-close blocker in `research/reports/paper_trading_validation_056.md`.
+3. **If blocked post-close**: Document the confirmed post-close blocker in `research/reports/paper_trading_validation_057.md`.
 
 ## Acceptance Criteria
 
@@ -23,7 +23,7 @@ The paper-trading track record (tsmomentum_spytrend_001) stands at **447 days** 
    - Record extended track record metrics
 3. **Independent rolling-63-day Sharpe verification**: Recompute from `data/processed/paper_trading_state.yaml` `cumulative_returns` (last 63 entries) via `mean/std(ddof=1)*sqrt(252)`. Must match `state.drift_flags.low_rolling_sharpe.value`.
 4. **Tests**: `python3 -m pytest .github/scripts/test_kilo_supervisor_loop.py -v` — must pass 10/10.
-5. Write `research/reports/paper_trading_validation_056.md` with results (extended track record if data found; confirmed post-close blocker if not).
+5. Write `research/reports/paper_trading_validation_057.md` with results (extended track record if data found; confirmed post-close blocker if not).
 6. Update `NEXT_AGENT_TASK.md` with one narrow, testable next task following from the evidence.
 
 ## Validation Commands
@@ -72,6 +72,6 @@ python3 -m pytest .github/scripts/test_kilo_supervisor_loop.py -v
 - State: `data/processed/paper_trading_state.yaml` (current_nav 135043.35187742324, rolling_sharpe_63d 0.1133313687, last_run_date 2026-10-14, 447 cumulative_returns records)
 - Replay: `research/run_paper_trading_replay.py`
 - Fetcher: `src/data/yfinance_fetcher.py`
-- Recent validations: `research/reports/paper_trading_validation_054.md` (Cycle 82), `paper_trading_validation_055.md` (Cycle 83)
+- Recent validations: `research/reports/paper_trading_validation_055.md` (Cycle 83), `paper_trading_validation_056.md` (Cycle 84)
 - Rolling report: `research/reports/paper_trading_rolling.md`
 - Drift root-cause: `research/reports/paper_trading_drift_analysis_001.md`
