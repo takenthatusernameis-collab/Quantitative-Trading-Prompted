@@ -1,0 +1,1 @@
+Validation-gated one-time Kilo run after the checkpoint-persistence fault-injection test merged. Run is intentionally limited to the controller's two-session one-shot mode; verify terminal outcome and persisted checkpoints.
