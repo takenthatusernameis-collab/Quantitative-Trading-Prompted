@@ -1,14 +1,12 @@
-# Next Agent Task: Post-Close Data Acquisition & Track Record Extension — Cycle 67
+# Next Agent Task: Post-Close Data Acquisition & Track Record Extension — Cycle 68
 
 ## Context
 
-Cycle 66 (2026-10-15T04:00:13Z) ran **before** the post-close gate (2026-10-15T20:00:00Z). No fetch was attempted per protocol.
+Cycle 67 (2026-10-15T04:07:34Z) ran **before** the post-close gate (2026-10-15T20:00:00Z). No fetch was attempted per protocol. All verification completed: independent rolling-63-day Sharpe recomputed = 0.11333136870186329, exact match to stored drift flag; tests passed 10/10.
 
 The paper-trading track record (tsmomentum_spytrend_001) stands at **447 days** (2025-01-02 → 2026-10-14), NAV **$135,043.35**, Sharpe **1.9272**, max DD **-2.93%**, rolling 63-day Sharpe **0.1133**. All primary go/no-go gates pass except rolling 63-day Sharpe (0.1133 < 0.9, drift flag active). Regime: risk-on (132 days).
 
 **Drift flag persists**: 3 consecutive trading days of low_rolling_sharpe (2026-10-12 0.4892, 2026-10-13 0.3669, 2026-10-14 0.1133, all < 0.5 threshold). Trajectory volatile over last 18 days (range -0.51 to +1.19). Not yet at >20-day persistence threshold.
-
-**Cycle 66 verification**: Independent rolling-63-day Sharpe recomputed from `cumulative_returns` (last 63 of 447 entries) via `(mean*252)/(std(ddof=1)*sqrt(252))` = **0.11333136870186329**, exact match to `state.drift_flags.low_rolling_sharpe.value`. Tests passed 10/10. Documented in `research/reports/paper_trading_validation_066.md`.
 
 ## Objective
 
@@ -16,7 +14,7 @@ The paper-trading track record (tsmomentum_spytrend_001) stands at **447 days** 
 2. **Post-close fetch (only if gate met)**: Re-run `fetch_universe(['SPY','QQQ','IWM','TLT','GLD','EFA','EEM','^VIX'], start_date='2025-01-01', end_date='2026-11-30', force=True, raw_dir='data/raw')`; verify per-symbol max dates. If a new real trading day (nonzero volume, incumbent ETFs) exists beyond 2026-10-14, bump the replay script's `end_date` to capture it, run `research/run_paper_trading_replay.py`, and record the extended track record (NAV, Sharpe, max DD, rolling 63-day Sharpe, regime flips, regime state, drift flags). If no new real trading day exists, document the confirmed blocker.
 3. **Independent rolling-63-day Sharpe verification**: Recompute from `data/processed/paper_trading_state.yaml` `cumulative_returns` (last 63 entries) via `(mean*252)/(std(ddof=1)*sqrt(252))`. Must match `state.drift_flags.low_rolling_sharpe.value`.
 4. **Tests**: `python3 -m pytest .github/scripts/test_kilo_supervisor_loop.py -v` — must pass 10/10.
-5. Write `research/reports/paper_trading_validation_067.md` with results.
+5. Write `research/reports/paper_trading_validation_068.md` with results.
 6. Update `NEXT_AGENT_TASK.md` with one narrow, testable next task following from the evidence.
 
 ## Validation Commands
