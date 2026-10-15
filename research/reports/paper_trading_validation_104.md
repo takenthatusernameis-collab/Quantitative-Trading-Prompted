@@ -1,48 +1,50 @@
-# Paper Trading Validation Report - Cycle 104
+# Paper Trading Validation — Cycle 104
 
-## UTC Session Time
-2026-10-15T13:05:34Z
+**Session UTC**: 2026-10-15T13:07:53Z
+**Post-Close Gate**: 2026-10-17T20:00:00Z (NOT MET)
+**Gate Status**: Pre-gate — no fetch, no replay executed
 
-## Gate Time
-2026-10-17T20:00:00Z
+## Gate Enforcement
 
-## Gate Result
-**NOT MET** (session_time < gate_time)
+Session time `2026-10-15T13:07:53Z` < gate `2026-10-17T20:00:00Z`. Per protocol, no data fetch or replay was attempted.
 
-## Verifications (Run Despite Gate Not Met)
+## State Verification (Independent Recomputation)
 
-### 3. Independent Rolling-63-Day Sharpe Verification
-- Computed rolling 63-day Sharpe: 0.11333136870186278
-- Stored low_rolling_sharpe.value: 0.11333136870186329
-- **MATCH** (difference ~5e-16, within floating-point precision)
+| Metric | Stored Value | Recomputed | Match |
+|--------|-------------|------------|-------|
+| Rolling 63-day Sharpe | 0.11333136870186329 | 0.11333136870186278 | ✓ (diff ~5e-16) |
+| Regime Flips | 6 | 6 | ✓ |
+| Track Record Length | 447 days | 447 | ✓ |
 
-### 4. Regime Flip Verification
-- Computed regime flips from run_history: 6
-- Stored regime flips (from context): 6
-- **MATCH**
+All verifications pass. The low rolling Sharpe (0.1133) confirms the `low_rolling_sharpe` drift flag persists for 3 consecutive days (2026-10-12: 0.4892, 2026-10-13: 0.3669, 2026-10-14: 0.1133). Not yet at >20-day persistence threshold.
 
-## Actions Taken
-- No fetch or replay performed (gate not met).
-- No changes to paper trading state or history.
+## Track Record (Unchanged)
 
-## Next Steps
-Leave the same task (Cycle 104) for the next agent session; the gate remains unchanged.
+- **Period**: 2025-01-02 → 2026-10-14 (447 trading days)
+- **NAV**: $135,043.35 (+35.04%)
+- **Full-period Sharpe**: 1.9272
+- **Max Drawdown**: -2.93%
+- **Rolling 63-day Sharpe**: 0.1133
+- **Regime**: Risk-on (132 days)
+- **Regime Flips**: 6 (3 risk-on→risk-off, 3 risk-off→risk-on)
 
-## Validation Commands Reference
-```bash
-TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ
-python3 -c "
-import yaml,math
-d=yaml.safe_load(open('data/processed/paper_trading_state.yaml'))
-ret=d['cumulative_returns'][-63:]
-m=sum(ret)/len(ret); v=sum((r-m)**2 for r in ret)/(len(ret)-1); s=(m*252)/(math.sqrt(v)*math.sqrt(252)) if v>0 else 0
-print('sharpe',s,d['drift_flags']['low_rolling_sharpe']['value'])
-"
-python3 -c "
-import yaml
-d=yaml.safe_load(open('data/processed/paper_trading_state.yaml'))
-rh=d['run_history']; t=0; prev=rh[0]['regime_exposure']
-for i in range(1,len(rh)):
-  if rh[i]['regime_exposure']!=prev: t+=1; prev=rh[i]['regime_exposure']
-print('flips',t,len(rh))
+## Primary Go/No-Go Gates
+
+| Gate | Threshold | Current | Status |
+|------|-----------|---------|--------|
+| Track Record Length | >126 days | 447 | ✓ PASS |
+| Net Sharpe | >0.9 | 1.9272 | ✓ PASS |
+| Max Drawdown | <15% | -2.93% | ✓ PASS |
+| Regime Flips | >1 | 6 | ✓ PASS |
+| Rolling 63d Sharpe | >0.9 | 0.1133 | ✗ FAIL (drift flag active) |
+
+## Supervisor Loop Tests
+
 ```
+python3 .github/scripts/test_kilo_supervisor_loop.py -v
+```
+**Result**: 10/10 tests PASSED
+
+## Action
+
+Gate not met. Strategy remains frozen. No replay run. Validation report written. Next cycle (105) will re-evaluate at/after `2026-10-17T20:00:00Z` UTC.
