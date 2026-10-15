@@ -62,6 +62,10 @@ progress_field() {
   awk -F= -v field="$field" '$1 == field { sub(/^[^=]*=/, ""); print; exit }' "$KILO_PROGRESS_STATE_FILE"
 }
 
+record_intentional_noop() {
+  python3 .github/scripts/kilo-terminal-outcome.py --intentional-noop --cutoff 0 --checkpoint-sha "$(git rev-parse HEAD 2>/dev/null || printf 'unknown')" --output "${GITHUB_OUTPUT:-}"
+}
+
 write_progress "controller-configured" "event=${KILO_TRIGGER_EVENT:-unknown}; session_policy=${SESSION_LIMIT_POLICY}; hard_cutoff=355_minutes"
 
 # While the one-shot marker awaits its independent validation gate,
@@ -74,6 +78,7 @@ if [ "$KILO_TRIGGER_EVENT" = "schedule" ]; then
   fi
   if git cat-file -e "origin/$DEFAULT_BRANCH:.kilo/TWO_AGENT_ONCE" 2>/dev/null; then
     echo "::notice::One-shot marker is awaiting validation/dispatch; this scheduled activation will not start Kilo."
+    record_intentional_noop
     exit 0
   fi
 fi
@@ -113,12 +118,14 @@ if [ "$one_shot_mode" -eq 1 ]; then
   fi
   if ! git cat-file -e "origin/$DEFAULT_BRANCH:.kilo/TWO_AGENT_ONCE" 2>/dev/null; then
     echo "::notice::The one-shot marker is absent from origin/$DEFAULT_BRANCH; this is a stale/duplicate activation, exiting without invoking Kilo."
+    record_intentional_noop
     exit 0
   fi
 fi
 
 if [ "$KILO_TRIGGER_EVENT" = "push" ] && [ "$one_shot_mode" -ne 1 ]; then
   echo "::notice::One-shot sentinel is absent; safe no-op."
+  record_intentional_noop
   exit 0
 fi
 
@@ -157,6 +164,7 @@ if [ "$one_shot_mode" -eq 0 ] && [ "${GITHUB_EVENT_NAME:-${KILO_TRIGGER_EVENT:-}
     sleep "$delay"
     if [ "$delay" -lt 30 ]; then delay=$((delay * 2)); if [ "$delay" -gt 30 ]; then delay=30; fi; fi
   done
+  record_intentional_noop
   exit 0
 fi
 
@@ -496,16 +504,22 @@ hard_provider_block=0
 correction_failure_block=0
 no_progress_block=0
 cutoff=0
+actual_cutoff_reached=0
+stop_reason="running"
+persisted=1
 
 agent_index=0
 while true; do
   if [ "$agent_index" -ge "$SESSION_LIMIT_POLICY" ]; then
+    stop_reason="configured_session_target"
     echo "::notice::Configured session target reached ($SESSION_LIMIT_POLICY); transient retries and corrective invocations remained count-unbounded until the 355-minute cutoff."
     break
   fi
   remaining=$((cutoff_epoch - $(date +%s)))
   if [ "$remaining" -le 0 ]; then
     cutoff=1
+    actual_cutoff_reached=1
+    stop_reason="wall_clock_cutoff"
     break
   fi
   agent_index=$((agent_index + 1))
@@ -524,7 +538,7 @@ while true; do
     session_attempt=$((session_attempt + 1))
     attempt_log="$RUNNER_TEMP/kilo-session-${agent_index}-attempt-${session_attempt}.log"
     remaining_global=$((cutoff_epoch - $(date +%s)))
-    if [ "$remaining_global" -le 0 ]; then rc=124; echo "::warning::355-minute workflow cutoff reached before attempt ${session_attempt}."; break; fi
+    if [ "$remaining_global" -le 0 ]; then actual_cutoff_reached=1; stop_reason="wall_clock_cutoff"; rc=124; echo "::warning::355-minute workflow cutoff reached before attempt ${session_attempt}."; break; fi
     : > "$attempt_log"
     printf '%s\n' "$attempt_log" > "$HEARTBEAT_STATE_FILE"
     printf '%s\n' "$attempt_log" > "$SUPERVISOR_ACTIVE_LOG_POINTER"
@@ -681,6 +695,8 @@ RECOVERY_PROMPT
   if [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ]; then
     if [ "$(date +%s)" -ge "$cutoff_epoch" ]; then
       cutoff=1
+      actual_cutoff_reached=1
+      stop_reason="wall_clock_cutoff"
       echo "::warning::355-minute safety cutoff reached; saving the last possible checkpoint."
     else
       consecutive_failures=$((consecutive_failures + 1))
@@ -815,6 +831,8 @@ PY
       remaining=$((cutoff_epoch - $(date +%s)))
       if [ "$remaining" -le 0 ]; then
         cutoff=1
+        actual_cutoff_reached=1
+        stop_reason="wall_clock_cutoff"
         echo "::warning::Safety cutoff reached before checkpoint persistence could be confirmed."
         break
       fi
@@ -923,23 +941,27 @@ PY
             if [ "$abort_ok" -ne 1 ]; then
               echo "::error::Could not confirm rebase abort after preserving recovery evidence; stopping persistence attempts."
               cutoff=1
+              stop_reason="checkpoint_recovery_failure"
               break
             fi
             if [ "$bundle_verified" -ne 1 ] && [ "$recovery_ref_verified" -ne 1 ]; then
               echo "::error::Neither the checkpoint bundle nor recovery ref could be verified; stopping rather than risking repeated conflict retries."
               cutoff=1
+              stop_reason="checkpoint_recovery_failure"
               break
             fi
             if [ "$conflict_signature" = "$last_conflict_signature" ]; then
               printf 'repeated_identical_conflict=1\n' >> "$recovery_report" 2>/dev/null || true
               echo "::error::The same checkpoint conflicted with the same remote head again; recovery evidence is preserved and the loop is stopping for targeted resolution."
               cutoff=1
+              stop_reason="checkpoint_persistence_failure"
               break
             fi
             last_conflict_signature="$conflict_signature"
             if [ "$rebase_conflicts" -ge 3 ]; then
               echo "::error::Reached three rebase conflicts in this checkpoint persistence loop; recovery evidence is preserved and automatic retries are stopping."
               cutoff=1
+              stop_reason="checkpoint_persistence_failure"
               break
             fi
           fi
@@ -947,8 +969,13 @@ PY
       fi
 
       remaining=$((cutoff_epoch - $(date +%s)))
-      if [ "$cutoff" -eq 1 ] || [ "$remaining" -le 0 ]; then
+      if [ "$remaining" -le 0 ]; then
         cutoff=1
+        actual_cutoff_reached=1
+        stop_reason="wall_clock_cutoff"
+        break
+      fi
+      if [ "$cutoff" -eq 1 ]; then
         break
       fi
       if [ "$delay" -gt "$remaining" ]; then delay="$remaining"; fi
@@ -957,7 +984,10 @@ PY
     done
   fi
   if [ "$persisted" -ne 1 ]; then
-    echo "::warning::Checkpoint persistence was not confirmed. No success claim is made; stopping edits and preserving diagnostics before the cutoff."
+    if [ "$stop_reason" = "running" ] || [ "$stop_reason" = "configured_session_target" ]; then
+      stop_reason="checkpoint_persistence_failure"
+    fi
+    echo "::error::Checkpoint persistence was not confirmed. No success claim is made; stopping edits and preserving diagnostics."
     cutoff=1
   fi
   if [ "$persisted" -eq 1 ] && [ "$committed_this_iteration" -eq 1 ]; then
@@ -1014,14 +1044,10 @@ PY
   fi
 done
 
-if [ "$cutoff" -eq 1 ]; then
-  echo "::warning::The 355-minute safety cutoff was reached; see checkpoint verification messages above."
+if [ "$actual_cutoff_reached" -eq 1 ]; then
+  echo "::warning::The 355-minute wall-clock cutoff was reached; see checkpoint verification messages above."
 fi
-if [ "$cutoff" -eq 1 ]; then
-  write_progress "controller-finished" "355-minute hard cutoff reached"
-else
-  write_progress "controller-finished" "controller loop finished before cutoff"
-fi
+write_progress "controller-finished" "stop_reason=${stop_reason}; wall_clock_cutoff=${actual_cutoff_reached}"
 # Publish only role-dialogue records; raw protocol state files remain runner-local.
 read -r final_journal_units final_cursor_offset final_advice_entries < <(python3 - "$SUPERVISOR_FEEDBACK_FILE" "$SUPERVISOR_FEEDBACK_CURSOR_FILE" <<'PY'
 import json
@@ -1072,14 +1098,31 @@ printf 'supervisor_advice_entries=%s\n' "$final_advice_entries" >> "$GITHUB_OUTP
 printf 'supervisor_pending_units=%s\n' "$final_pending_units" >> "$GITHUB_OUTPUT"
 printf 'final_phase=%s\n' "$(progress_field phase)" >> "$GITHUB_OUTPUT"
 printf 'final_phase_detail=%s\n' "$(progress_field detail)" >> "$GITHUB_OUTPUT"
+terminal_status_file="$RUNNER_TEMP/kilo-terminal-git-status-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}.txt"
+if ! git status --porcelain --untracked-files=all > "$terminal_status_file"; then
+  printf '?? terminal-status-check-unavailable\n' > "$terminal_status_file"
+fi
+set +e
+python3 .github/scripts/kilo-terminal-outcome.py \
+  --project-progress "$project_progress" \
+  --checkpoint-persisted "${persisted:-1}" \
+  --git-status-file "$terminal_status_file" \
+  --cutoff "$actual_cutoff_reached" \
+  --checkpoint-sha "$(git rev-parse HEAD 2>/dev/null || printf 'unknown')" \
+  --output "${GITHUB_OUTPUT:-}"
+terminal_rc=$?
+set -e
+printf 'terminal_stop_reason=%s\n' "$stop_reason" >> "$GITHUB_OUTPUT"
+printf 'wall_clock_cutoff_reached=%s\n' "$actual_cutoff_reached" >> "$GITHUB_OUTPUT"
 if [ "$failed_sessions" -gt 0 ]; then
   echo "::warning::$failed_sessions Kilo session(s) failed during this activation. Session-level failures did not stop the action; upstream idle/network retries: $idle_timeout_retry_count."
 fi
 if [ "$project_progress" -ne 1 ]; then
   echo "::warning::No meaningful repository change was confirmed before the action ended. Review the preserved session logs and checkpoints."
 fi
-if [ "$cutoff" -eq 1 ]; then
-  echo "Kilo controller reached the global 355-minute safety cutoff. Sessions started: $agent_index; failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
+if [ "$actual_cutoff_reached" -eq 1 ]; then
+  echo "Kilo controller reached the global 355-minute wall-clock cutoff (stop_reason=$stop_reason). Sessions started: $agent_index; failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
 else
-  echo "Kilo controller finished at the configured session target or cutoff. Sessions started: $agent_index; failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
+  echo "Kilo controller stopped with reason=$stop_reason. Sessions started: $agent_index; failed sessions: $failed_sessions; upstream idle/network retries: $idle_timeout_retry_count."
 fi
+exit "$terminal_rc"
