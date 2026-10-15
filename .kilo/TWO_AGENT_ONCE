@@ -1,1 +1,0 @@
-Validation-gated one-time Kilo run after PR #13 merge. Intended for a fresh default-branch terminal-outcome verification; the controller should consume this marker.
