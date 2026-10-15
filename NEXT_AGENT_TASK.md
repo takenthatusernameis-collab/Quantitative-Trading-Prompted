@@ -1,96 +1,71 @@
-# Next Agent Task: Microcap Data Source Survey & Exploratory Diagnostic
+# Next Agent Task: Paper Trading Monitoring & Data Acquisition — Cycle 53
 
 ## Context
-The overnight drift exploratory diagnostic (overnight_drift_001) is complete. Results show:
-- US broad equity ETFs (SPY, QQQ, IWM): Overnight returns positive and statistically significant (p < 0.05), intraday returns near zero/negative
-- Sector ETFs: Similar pattern — overnight positive, intraday slightly negative
-- International (EFA, EEM): Mixed — EFA shows intraday dominance, EEM shows overnight dominance
-- Bonds (TLT): Intraday positive, overnight negative
-- Commodities (GLD, DBC): Overnight positive (GLD strongly), intraday near zero
-- REITs (VNQ): Overnight strongly positive, intraday negative
-- ^VIX: Extreme overnight positive, intraday negative (non-tradeable index)
+The microcap mom121 data source survey and exploratory diagnostic (Cycle 52) are complete:
+- Survey: `research/reports/microcap_datasource_survey_001.md` — 8 free sources assessed; **SEC EDGAR XBRL** is the only viable source for point-in-time shares outstanding (verified: 33/38 tickers returned usable history).
+- Diagnostic: `research/run_microcap_exploratory.py` + `research/experiments/mom121_microcap_exploratory_001.md` — clearly-labelled exploratory only, no tradable edge claimed. Universe: 31 tickers, 699 trading days (2024-01-02 → 2026-10-14), canonical 12-1 momentum computed, descriptive stats only.
+- Hypothesis `research/hypotheses/mom121_microcap_001.md` updated to v0.4; verdict remains **Blocked by data/infrastructure** (quarterly lag, no delistings, survivorship bias, no cost model, retrospective ticker list).
 
-Sub-period analysis reveals instability: the overnight effect was strong pre-2008, weakened 2008-2020, and shows mixed signs post-2020. Per the pre-committed decision discipline, this is labeled **"exploratory signal"** — statistically significant in some segments but not stable, with material limitations (no bid-ask spreads, daily data only, survivorship bias, no cost model).
+The incumbent paper-trading track record (tsmomentum_spytrend_001) stands at **447 days** (2025-01-02 → 2026-10-14), NAV **$135,057.00** (+35.06%), Sharpe **1.9302**, max DD **-2.92%**, rolling 63-day Sharpe **0.1185**. All primary go/no-go gates pass. Regime: risk-on, 132 days.
 
-The microcap mom121 hypothesis remains **blocked by data** (no point-in-time market cap, shares outstanding, or delisting data from yfinance). All other tested hypotheses (C3, C4, C5, C6) have been rejected via pre-registered walk-forward tests. Paper trading monitoring continues but no new data has arrived recently.
+**Drift flag persists**: `low_rolling_sharpe` on 2026-10-12 (0.4892), 2026-10-13 (0.3669), 2026-10-14 (0.1185) — **3 consecutive trading days**. Trajectory over last 18 days volatile (range -0.51 to +1.19). Not yet at the >20-day persistence threshold.
 
 ## Objective
-Conduct a survey of **free/accessible data sources** that could enable the microcap 12–1 momentum study, and run a **clearly-labelled exploratory diagnostic** on any viable source to assess feasibility. Do not claim a tradable edge.
+Re-attempt data acquisition from Yahoo Finance to extend the paper-trading track record, and continue monitoring the rolling 63-day Sharpe trajectory. If new data arrives, run the deterministic replay and update the track record. If no new data, report the blocker in a new validation report.
 
 ## Acceptance Criteria
-1. **Data source survey document created**: `research/reports/microcap_datasource_survey_001.md` documenting at least 5 free/accessible sources with:
-   - Source name and access method (API, CSV download, etc.)
-   - Data coverage: historical market cap, shares outstanding, delisting events, price data
-   - Frequency and history depth
-   - Licensing/terms of use
-   - Technical accessibility (Python library, REST API, manual download)
-   - Assessment: viable / partially viable / not viable for point-in-time microcap universe construction
-
-2. **If any source is viable/partially viable**: Create an exploratory diagnostic script `research/run_microcap_exploratory.py` that:
-   - Loads data from the source (or documents how to access it)
-   - Constructs a point-in-time microcap universe (or documents blockers)
-   - Computes 12-month momentum with 1-month skip (mom121) on available data
-   - Produces summary statistics: universe size over time, turnover, return distribution
-   - Outputs to `research/experiments/mom121_microcap_exploratory_001.md`
-
-3. **Report must explicitly label results as "exploratory diagnostic only"** and disclose all biases (survivorship, lookahead, data quality, no costs).
-
-4. **If NO source is viable**: Document the definitive blockers and recommend the microcap hypothesis be archived as "blocked by data/infrastructure" pending paid data access.
+1. Re-run `src/data/yfinance_fetcher.py` (or the fetch path used by `research/run_paper_trading_replay.py`) with `force=True` and `end_date="2026-11-30"`.
+2. Verify per-symbol max dates for the 7 incumbent ETFs (SPY, QQQ, IWM, TLT, GLD, EFA, EEM) and ^VIX.
+3. If a new real trading day (nonzero volume) exists beyond 2026-10-14, run `research/run_paper_trading_replay.py` with the matching `end_date` and record the extended track record (NAV, Sharpe, max DD, rolling 63-day Sharpe, regime flips, regime state, drift flags).
+4. If no new data, do NOT fabricate a replay; write `research/reports/paper_trading_validation_036.md` documenting the blocker precisely (max dates observed, per-symbol volume check, yfinance exclusive-end semantics).
+5. Independently verify the rolling 63-day Sharpe by recomputing it from `data/processed/paper_trading_state.yaml` cumulative returns (do not trust the stored drift_flag value).
+6. Run the test suite: `python3 -m pytest .github/scripts/test_kilo_supervisor_loop.py -v` — must pass 10/10.
+7. Update `NEXT_AGENT_TASK.md` with the next bounded task.
 
 ## Validation Commands
 ```bash
-# 1. Verify survey document exists and has required content
+# 1. Fetch and verify data availability
 python3 -c "
-import os
-path = 'research/reports/microcap_datasource_survey_001.md'
-assert os.path.exists(path), 'Survey document missing'
-with open(path) as f:
-    content = f.read()
-required = ['Source', 'Coverage', 'Frequency', 'History', 'Licensing', 'Accessibility', 'Assessment']
-for r in required:
-    assert r.lower() in content.lower(), f'Missing section: {r}'
-print('Survey document structure OK')
+import sys; sys.path.insert(0, 'src')
+from data.yfinance_fetcher import fetch_universe
+df = fetch_universe(force=True, end_date='2026-11-30')
+print('max date:', df.index.max())
 "
 
-# 2. If diagnostic script exists, run it
-if [ -f research/run_microcap_exploratory.py ]; then
-    python3 research/run_microcap_exploratory.py
-fi
+# 2. If replay ran, verify state YAML integrity
+python3 -c "
+import yaml
+with open('data/processed/paper_trading_state.yaml') as f:
+    state = yaml.safe_load(f)
+print('run_history records:', len(state.get('run_history', [])))
+"
 
-# 3. Verify experiment report exists (if diagnostic ran)
-if [ -f research/experiments/mom121_microcap_exploratory_001.md ]; then
-    python3 -c "
-    import os
-    path = 'research/experiments/mom121_microcap_exploratory_001.md'
-    with open(path) as f:
-        content = f.read()
-    assert 'exploratory' in content.lower(), 'Must label as exploratory'
-    assert 'microcap' in content.lower() or 'momentum' in content.lower(), 'Must discuss microcap/momentum'
-    print('Experiment report structure OK')
-    "
-fi
+# 3. Independent rolling Sharpe recomputation
+python3 -c "
+import pandas as pd, numpy as np
+state = yaml.safe_load(open('data/processed/paper_trading_state.yaml'))
+cr = pd.Series(state['cumulative_returns'])
+ret = cr.pct_change().dropna()
+roll = ret.rolling(63).apply(lambda x: x.mean()/x.std()*np.sqrt(252), raw=True)
+print('rolling 63d Sharpe (last):', roll.iloc[-1])
+"
+
+# 4. Test suite
+python3 -m pytest .github/scripts/test_kilo_supervisor_loop.py -v
 ```
 
 ## Scope Boundaries
-- **Do not** claim a net-of-cost trading edge.
-- **Do not** use paid data sources (Bloomberg, CRSP, Compustat, FactSet, etc.) — only free/accessible sources.
-- **Do not** add new dependencies unless absolutely necessary for a free data source (document any new dependency).
-- **Do** use only existing infrastructure where possible.
-- **Do** follow the hypothesis documentation standard in AGENTS.md for any new hypothesis.
-- **Do** disclose all limitations honestly.
+- **Do not** place live trades, enable live trading, or access credentials.
+- **Do not** fabricate data, market findings, or test output.
+- **Do not** add new dependencies, services, scheduled jobs, agents, or workflows.
+- **Do not** modify workflow scheduling or agent counts.
+- **Do** preserve the existing replay script's yfinance exclusive-end semantics; if a fix is needed, make the smallest reversible change and document it.
+- **Do** keep work bounded and restart-safe.
 
 ## Evidence Base
-- Overnight drift diagnostic complete: `research/experiments/overnight_drift_exploratory_001.md`
-- Microcap data gate audit: `research/experiments/mom121_microcap_001.md` (Section A)
-- Data inventory: `research/reports/data_inventory.md` (if exists)
-- Available free data sources to investigate: Yahoo Finance (yfinance), Alpha Vantage (free tier), Twelve Data (free tier), EODHD (free tier), Nasdaq Data Link (free datasets), SEC EDGAR (fundamentals), IEX Cloud (free tier), Polygon.io (free tier), Tiingo (free tier), Kenneth French Data Library, WRDS (if academic access), QuantConnect Lean data, Stooq, Tiingo, FirstRate Data (free samples), Kaggle datasets.
-
-## Suggested Approach
-1. Start with the data source survey — this is the primary deliverable.
-2. For each source, test programmatic access with a small query (e.g., get AAPL market cap history).
-3. Focus on sources that provide **historical market cap** or **shares outstanding × price** at point-in-time.
-4. Note: yfinance `Ticker.info` only provides *current* marketCap, not historical. `Ticker.quarterly_balance_sheet` may have shares outstanding but with reporting lag.
-5. If a viable source is found, run a minimal exploratory diagnostic on a small universe (e.g., current S&P 500 constituents with historical data) to characterize data quality.
-6. If no viable source, document clearly and recommend archiving the microcap hypothesis.
-
-(End of file - total 65 lines)
+- Track record state: `data/processed/paper_trading_state.yaml`
+- Replay script: `research/run_paper_trading_replay.py`
+- Fetcher: `src/data/yfinance_fetcher.py`
+- Prior validation reports: `research/reports/paper_trading_validation_026.md` through `_035.md`
+- Rolling Sharpe trajectory: `research/reports/paper_trading_rolling.md`
+- Microcap deliverables (this cycle): `research/reports/microcap_datasource_survey_001.md`, `research/run_microcap_exploratory.py`, `research/experiments/mom121_microcap_exploratory_001.md`, `research/hypotheses/mom121_microcap_001.md` (v0.4)

@@ -63,6 +63,13 @@ Persist the preregistration, data audit, source/config/code revision, universe c
 - **Feasible path in this environment:** None - acquiring CRSP/Compustat data or equivalent point-in-time fundamental databases would require paid subscriptions or institutional access not available in this research environment.
 - **Next step:** Document specific data source requirements and leave hypothesis as blocked pending appropriate data availability.
 
+### v0.4 (2026-10-15) — Free-source survey + exploratory diagnostic; still Blocked by data/infrastructure
+
+- **Data source survey completed:** `research/reports/microcap_datasource_survey_001.md` assesses 8 free/accessible sources. Only **SEC EDGAR XBRL companyfacts API** provides point-in-time shares outstanding with filing dates across the cap spectrum (verified for 38 tickers; 33/38 returned usable shares history). yfinance is partially viable (liquid names only, ~1.5yr history, no delistings). Alpha Vantage, IEX Cloud, Polygon.io, FRED, and the other listed sources are NOT viable within free tiers.
+- **Exploratory diagnostic run:** `research/run_microcap_exploratory.py` (clearly-labelled exploratory; no performance metrics reported) constructs an approximate point-in-time market-cap universe (SEC XBRL shares × yfinance close) over 2024-01-02 → 2026-10-14 (699 trading days), 31 tickers with usable data, computes canonical 12-1 momentum (252/21 daily convention), and reports descriptive universe statistics. Full report: `research/experiments/mom121_microcap_exploratory_001.md`.
+- **Coverage finding:** 5 of 38 requested tickers (MA, META, NOK, PATH, V) returned no usable shares history — they file under IFRS or use non-standard XBRL concepts. Universe coverage is therefore incomplete even for large caps, and microcap coverage depends on filing behavior.
+- **Verdict unchanged: Blocked by data/infrastructure.** The diagnostic resolves the *data gate blocker* for point-in-time shares outstanding (SEC EDGAR is free and works), but the approximated universe is NOT sufficient for a confirmatory test: quarterly reporting lag (up to ~90 days), no delisting events (survivorship bias), approximate market cap, no cost model, and retrospective ticker application. Per the pre-committed decision discipline, this remains **blocked by data/infrastructure** pending a point-in-time microcap dataset with delisting treatment (CRSP/Compustat).
+
 ### v0.1 (2026-10-14) — Initial preregistration
 
 - Frozen primary specification, mechanism, falsification condition, data requirements, evaluation design, and reporting standards.

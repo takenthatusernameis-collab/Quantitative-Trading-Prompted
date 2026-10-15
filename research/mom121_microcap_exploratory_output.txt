@@ -1,60 +1,84 @@
 ================================================================================
-EXPLORATORY DIAGNOSTIC - CODE MECHANICS VERIFICATION ONLY
-NOT CONFIRMATORY | SURVIVORSHIP BIASED | CURRENT TICKERS APPLIED RETROSPECTIVELY
+EXPLORATORY DIAGNOSTIC - NOT CONFIRMATORY - NO TRADABLE EDGE CLAIMED
+Microcap 12-1 momentum feasibility via SEC EDGAR XBRL + yfinance
 ================================================================================
 
-Test universe: ['SPY', 'QQQ', 'IWM', 'EFA', 'EEM']
-Date range: 2003-04-14 to 2026-10-14
-Observations: 5914 trading days
+Building universe over 2024-01-01 -> 2026-10-15 for 38 tickers...
+  [1/38] AAPL: SEC rows=141, shares days=6186, price days=699
+  [2/38] MSFT: SEC rows=182, shares days=6096, price days=699
+  [3/38] GOOGL: SEC rows=87, shares days=3712, price days=699
+  [4/38] AMZN: SEC rows=138, shares days=6187, price days=699
+  [5/38] NVDA: SEC rows=34, shares days=5794, price days=699
+  [6/38] META: SEC rows=0, shares days=0, price days=699
+  [7/38] TSLA: SEC rows=124, shares days=5438, price days=699
+  [8/38] JPM: SEC rows=51, shares days=5173, price days=699
+  [9/38] XOM: SEC rows=6, shares days=1, price days=699
+  [10/38] LLY: SEC rows=36, shares days=5793, price days=699
+  [11/38] WMT: SEC rows=6, shares days=674, price days=699
+  [12/38] AVGO: SEC rows=72, shares days=2973, price days=699
+  [13/38] JNJ: SEC rows=154, shares days=6174, price days=699
+  [14/38] V: SEC rows=0, shares days=0, price days=699
+  [15/38] MA: SEC rows=0, shares days=0, price days=699
+  [16/38] HD: SEC rows=171, shares days=6179, price days=699
+  [17/38] PG: SEC rows=148, shares days=6090, price days=699
+  [18/38] UNH: SEC rows=140, shares days=6174, price days=699
+  [19/38] BAC: SEC rows=143, shares days=6173, price days=699
+  [20/38] CRM: SEC rows=36, shares days=5807, price days=699
+  [21/38] EPAM: SEC rows=116, shares days=5167, price days=699
+  [22/38] CTS: SEC rows=181, shares days=4265, price days=699
+  [23/38] OSIS: SEC rows=120, shares days=5363, price days=699
+  [24/38] AMTX: SEC rows=114, shares days=4992, price days=699
+  [25/38] MEDS: SEC rows=14, shares days=464, price days=414
+  [26/38] IONQ: SEC rows=40, shares days=1690, price days=699
+  [27/38] SMCI: SEC rows=50, shares days=2243, price days=699
+  [28/38] AVLN: SEC rows=4, shares days=29, price days=116
+  [29/38] KIM-PM: SEC rows=146, shares days=6174, price days=699
+  [30/38] HTZ: SEC rows=86, shares days=3524, price days=699
+  [31/38] NOK: SEC rows=0, shares days=0, price days=699
+  [32/38] BB: SEC rows=75, shares days=5626, price days=699
+  [33/38] PLTR: SEC rows=48, shares days=2057, price days=699
+  [34/38] SNAP: SEC rows=34, shares days=1247, price days=699
+  [35/38] RBLX: SEC rows=44, shares days=1876, price days=699
+  [36/38] U: SEC rows=48, shares days=2057, price days=699
+  [37/38] PATH: SEC rows=0, shares days=0, price days=699
+  [38/38] HOOD: SEC rows=6, shares days=137, price days=699
 
---- TEST 1: DAILY CONVENTION (existing code) ---
-compute_momentum with lookback=252, skip=21
-Formula: Price(t-21)/Price(t-273) - 1 (273 trading days total span)
-Shape (after dropna): (5641, 5)
-Non-NaN values: 28205
-Sample values (last 5 rows, SPY):
-Date
-2026-10-08 00:00:00+00:00    0.175038
-2026-10-09 00:00:00+00:00    0.165301
-2026-10-12 00:00:00+00:00    0.171846
-2026-10-13 00:00:00+00:00    0.157003
-2026-10-14 00:00:00+00:00    0.152082
-Name: SPY, dtype: float64
+Aligned market-cap frame: 699 days x 31 tickers
+Date range: 2024-01-02 -> 2026-10-14
 
---- TEST 2: MONTHLY CONVENTION (hypothesis spec) ---
-MOM(t) = Price(end of t-1 month) / Price(end of t-12 months) - 1
-Shape: (271, 5)
-Non-NaN values: 1355
-Sample values (last 5 rows, SPY):
-Date
-2026-06-30 00:00:00+00:00    0.224375
-2026-07-31 00:00:00+00:00    0.181449
-2026-08-31 00:00:00+00:00    0.158096
-2026-09-30 00:00:00+00:00    0.151416
-2026-10-31 00:00:00+00:00    0.118127
-Freq: ME, Name: SPY, dtype: float64
+--- SUMMARY STATISTICS (descriptive only) ---
+  price_days: 699
+  universe_size_max: 31
+  universe_size_mean: 28.76824034334764
+  avg_active_positions: 9.320457796852647
+  avg_daily_turnover: 0.0361587982832618
+  p95_daily_turnover: 0.13333333333333333
+  momentum_non_nan: 12495
+  mcap_buckets: {'Mega': 17, 'Large': 6, 'Mid': 3, 'Small': 3, 'Micro': 2}
+  mcap_date_range: ('2024-01-02', '2026-10-14')
 
---- TEST 3: COMPARISON OF CONVENTIONS ---
+--- UNIVERSE SIZE OVER TIME ---
+  min=28, mean=28.8, max=31
+  first 5 days: [28, 28, 28, 28, 28]
+  last 5 days:  [31, 31, 31, 31, 31]
 
-SPY (last 3 overlapping month-ends):
-  2026-07-31: daily=0.2070, monthly=0.1814, diff=0.0256
-  2026-08-31: daily=0.1774, monthly=0.1581, diff=0.0193
-  2026-09-30: daily=0.1820, monthly=0.1514, diff=0.0306
+--- MARKET-CAP BUCKETS (latest snapshot) ---
+  Large: 6
+  Mega: 17
+  Micro: 2
+  Mid: 3
+  Small: 3
 
---- TEST 4: WEIGHTS PIPELINE (code mechanics) ---
-Weights shape (periods with active weights): (5640, 5)
-Avg active positions: 3.00
-Max active positions: 3
-Last period active: 3
-Weights sum (last): 1.0000
+--- TOP-3 MOMENTUM NAMES (last 5 trading days) ---
+  2026-10-08: BB=1.008, XOM=0.538, JNJ=0.533
+  2026-10-09: BB=1.011, JNJ=0.539, XOM=0.537
+  2026-10-12: BB=1.029, JNJ=0.545, XOM=0.518
+  2026-10-13: BB=1.003, JNJ=0.526, XOM=0.515
+  2026-10-14: BB=1.000, XOM=0.553, JNJ=0.534
 
---- TEST 5: SMALL UNIVERSE BEHAVIOR ---
-Small universe test: passed
-When n_assets < 5, code picks single best asset (see select_top_decile)
+Report written to /home/runner/work/Quantitative-Trading-Prompted/Quantitative-Trading-Prompted/research/experiments/mom121_microcap_exploratory_001.md
 
 ================================================================================
-DIAGNOSTIC COMPLETE - CODE MECHANICS VERIFIED
-All tests above are for PIPELINE VERIFICATION ONLY.
-No performance metrics reported as evidence of edge.
-Survivorship bias: using current ticker list applied retrospectively.
+DIAGNOSTIC COMPLETE - RESULTS ARE EXPLORATORY ONLY
+No tradable edge is claimed. See report for full bias disclosures.
 ================================================================================
