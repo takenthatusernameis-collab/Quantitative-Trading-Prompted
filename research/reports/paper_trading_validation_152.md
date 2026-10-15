@@ -1,31 +1,37 @@
-# Paper Trading Validation Report — Cycle 152
+# Paper Trading Validation - Cycle 152
 
-## Session
-- UTC time: 2026-10-15T15:53:02Z
-- Gate: 2026-10-17T20:00:00Z
-- Gate met: false
+**UTC Timestamp:** 2026-10-15T16:00:51Z
+**Gate Check:** session_time 2026-10-15T16:00:51Z < gate 2026-10-17T20:00:00Z
+**Gate Met:** NO - post-close gate not reached
+
+## Current State
+- Last run date: 2026-10-14
 - Track record: 447 days (2025-01-02 → 2026-10-14)
 - NAV: $135,043.35
 - Sharpe: 1.9272
-- Max drawdown: -2.93%
-- Rolling 63d Sharpe (stored): 0.11333136870186329
+- Max DD: -2.93%
+- Rolling 63d Sharpe: 0.1133 (stored)
+- Drift flag: persists (3 consecutive days; not yet >20d threshold)
 - Regime: risk-on (132 days)
-- Drift flag: persists (3 consecutive days, < 20d threshold)
+- Regime flips: 6 (from 447 run_history entries)
 
-## Post-Close Gate Enforcement
-- session_time (UTC): 2026-10-15T15:53:02Z < 2026-10-17T20:00:00Z
-- Action: No fetch_universe call. No replay modification/run.
-- Blocker: Post-close gate not reached; wait for next session at/after 2026-10-17T20:00:00Z.
+## Verifications
 
-## Independent Verifications
-- Rolling 63d Sharpe (computed from last 63 cumulative_returns): 0.11333136870186278
-  - Stored: 0.11333136870186329
-  - Difference: 5.13e-16 (within float precision) ✓
-- Regime flips (from run_history.regime_exposure): 6 flips, 447 entries ✓
+### 1. Rolling 63-day Sharpe (independent recomputation)
+From last 63 cumulative_returns in `data/processed/paper_trading_state.yaml`:
+- Computed: 0.11333136870186278
+- Stored: 0.11333136870186329
+- Difference: 5.13e-16 (matches to float precision)
 
-## Supervisor Tests
-- Command: `python3 .github/scripts/test_kilo_supervisor_loop.py -v`
-- Result: 10/10 passed ✓
+### 2. Regime flips
+- Computed from run_history transitions: 6 flips over 447 entries ✓
+
+### 3. Supervisor loop tests
+- `python3 .github/scripts/test_kilo_supervisor_loop.py -v`: 10/10 passed ✓
+
+## Fetch/Replay
+- No fetch attempted (gate not met)
+- No replay run (gate not met)
 
 ## Conclusion
-Gate not met. No new data fetched or replay executed. Task remains bounded and restart-safe. Next cycle should re-check gate at 2026-10-17T20:00:00Z and proceed per NEXT_AGENT_TASK logic.
+Gate condition not satisfied. No new trading day data fetch or replay performed. Verifications completed successfully. Next cycle must check gate again at/after 2026-10-17T20:00:00Z.
