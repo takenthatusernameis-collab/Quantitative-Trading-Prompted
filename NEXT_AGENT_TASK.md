@@ -1,8 +1,8 @@
-# Next Agent Task: Post-Close Gate Readiness — Cycle 346
+# Next Agent Task: Post-Close Gate Readiness — Cycle 347
 
 ## Context
 
-Cycle 345 validation completed (UTC 2026-10-15T22:31:42Z). Post-close gate remains 2026-10-18T20:00:00Z UTC (not met). No fetch/replay performed. State unchanged (447 run_history entries, 6 regime flips). Rolling 63d Sharpe matches stored (diff 5.134781488891349e-16 < 1e-12). Supervisor loop tests passed 10/10. Report: `research/reports/paper_trading_validation_345.md`. Worker disposition recorded in `.kilo-runtime/worker-disposition.json`.
+Cycle 346 validation completed (UTC 2026-10-15T22:33:10Z). Post-close gate remains 2026-10-18T20:00:00Z UTC (not met). No fetch/replay performed. State unchanged (447 run_history entries, 6 regime flips). Rolling 63d Sharpe matches stored (diff 5.134781488891349e-16 < 1e-12). Supervisor loop tests passed 10/10. Report: `research/reports/paper_trading_validation_346.md`. Worker disposition recorded in `.kilo-runtime/worker-disposition.json`.
 
 ## Objective
 
