@@ -1,14 +1,14 @@
-# Next Agent Task: Continue Post-Close Gate Monitoring — Cycle 196
+# Next Agent Task: Continue Post-Close Gate Monitoring — Cycle 197
 
 ## Context
 
-Cycle 195 validation completed at 2026-10-15T18:42:50Z UTC. Post-close gate remains 2026-10-18T20:00:00Z UTC; not met. No fetch/replay performed. State unchanged in structure: 447 run_history entries, 6 regime flips, last_run_date 2026-10-14, current NAV 135043.35187742324, peak NAV 139120.07235486925, max DD -2.93%, rolling 63d Sharpe 0.11333, drift flag `low_rolling_sharpe` active=False (value 0.11333 < 0.5 but persistence threshold not met).
+Cycle 196 validation completed at 2026-10-15T18:45:19Z UTC. Post-close gate remains 2026-10-18T20:00:00Z UTC; not met. No fetch/replay performed. State unchanged in structure: 447 run_history entries, 6 regime flips, last_run_date 2026-10-14, current NAV 135043.35187742324, peak NAV 139120.07235486925, max DD -2.93%, rolling 63d Sharpe 0.11333, drift flag `low_rolling_sharpe` active=False (value 0.11333 < 0.5 but persistence threshold not met).
 
-Validation report: `research/reports/paper_trading_validation_195.md`. All checks passed: rolling Sharpe matches stored value (diff 5.13e-16); regime flips 6; supervisor tests 10/10.
+Validation report: `research/reports/paper_trading_validation_196.md`. All checks passed: rolling Sharpe matches stored value (diff 5.13e-16); regime flips 6; supervisor tests 10/10.
 
 ## Objective
 
-1. **Timestamp gate enforcement**: Record UTC session time via `TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`. If `< 2026-10-18T20:00:00Z`, do **not** fetch or replay. Run minimal verifications (rolling 63d Sharpe match vs stored drift flag value, regime flips count), run supervisor loop tests, write `research/reports/paper_trading_validation_196.md`, and prepare next narrow task (continue gate monitoring). If `>= 2026-10-18T20:00:00Z`, proceed to post-close fetch/replay per established gate-met protocol.
+1. **Timestamp gate enforcement**: Record UTC session time via `TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`. If `< 2026-10-18T20:00:00Z`, do **not** fetch or replay. Run minimal verifications (rolling 63d Sharpe match vs stored drift flag value, regime flips count), run supervisor loop tests, write `research/reports/paper_trading_validation_197.md`, and prepare next narrow task (continue gate monitoring). If `>= 2026-10-18T20:00:00Z`, proceed to post-close fetch/replay per established gate-met protocol.
 2. **Independent verification**: Recompute rolling 63d Sharpe from last 63 cumulative returns; must match stored drift flag value within float precision. Recompute regime flips from run_history transitions; expect 6 (or report actual if changed).
 3. **Supervisor loop tests**: `python3 .github/scripts/test_kilo_supervisor_loop.py -v` must pass 10/10.
 4. **Reporting**: Write validation report with UTC time, gate state, fetch/replay status (none if pending), state snapshot (counts, last run date, current/peak NAV, max DD, stored Sharpe/rolling Sharpe, drift flags), verification numbers/diff, and test results.
@@ -33,9 +33,9 @@ d=yaml.safe_load(open('data/processed/paper_trading_state.yaml'))
 rh=d['run_history']
 t=0
 if rh:
-   prev=rh[0]['regime_exposure']
-   for i in range(1,len(rh)):
-     if rh[i]['regime_exposure']!=prev: t+=1; prev=rh[i]['regime_exposure']
+    prev=rh[0]['regime_exposure']
+    for i in range(1,len(rh)):
+      if rh[i]['regime_exposure']!=prev: t+=1; prev=rh[i]['regime_exposure']
 df=d['drift_flags']['low_rolling_sharpe']
 print('flips',t,'len',len(rh),'last_run_date', d['last_run_date'],'current_nav', d['current_nav'],'peak_nav', d['peak_nav'],'max_dd', d['max_drawdown'],'rolling', df.get('value'),'active', df.get('active', df.get('triggered', False)))
 PY
