@@ -65,8 +65,8 @@ progress_field() {
 record_intentional_noop() {
   python3 .github/scripts/kilo-terminal-outcome.py --intentional-noop --cutoff 0 --checkpoint-sha "$(git rev-parse HEAD 2>/dev/null || printf 'unknown')" --output "${GITHUB_OUTPUT:-}"
   if [ -n "${GITHUB_OUTPUT:-}" ]; then
-    printf 'terminal_stop_reason=intentional_noop\\n' >> "$GITHUB_OUTPUT"
-    printf 'wall_clock_cutoff_reached=false\\n' >> "$GITHUB_OUTPUT"
+    printf 'terminal_stop_reason=intentional_noop\n' >> "$GITHUB_OUTPUT"
+    printf 'wall_clock_cutoff_reached=false\n' >> "$GITHUB_OUTPUT"
   fi
 }
 
