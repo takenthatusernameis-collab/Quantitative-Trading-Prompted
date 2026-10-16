@@ -1,12 +1,19 @@
-# Paper Trading Validation — Cycle 513
+# Paper Trading Validation Report - Cycle 513
 
-Timestamp (UTC): 2026-10-16T04:05:55Z
+Generated: 2026-10-16T04:12:13Z (UTC)
+
 Gate: 2026-10-18T20:00:00Z
-Gate met: false
 
-Verifications:
-- Rolling 63d Sharpe recomputation matches stored drift flag: diff = 5.13e-16 (< 1e-10) OK
-- Regime flips from run_history: 6 (matches expected) OK
-- Supervisor loop tests: 10/10 passed OK
+## Verification Results
 
-Worker disposition: verified (within next two tool calls per protocol)
+- Rolling 63d Sharpe recomputation vs stored drift flag: diff 5.13e-16 (< 1e-10) ✓
+- Regime flips: 6 / 447 run_history entries ✓
+- Supervisor loop tests: 10/10 passed ✓
+
+## Gate Status
+
+< 2026-10-18T20:00:00Z: monitoring only; no data acquisition/replay changes.
+
+## Recommendation context
+
+recommendation_id: 38817660960-attempt-1-review-0003-2ac0cb7d6609 (from .kilo-runtime/current-supervisor-recommendation.json)
