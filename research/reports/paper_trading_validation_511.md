@@ -23,4 +23,4 @@ Gate status: BEFORE GATE - monitoring only
 - Recorded results.
 
 ## State
-- Worker disposition to be updated per protocol (schema_version 1) using recommendation_id from current-supervisor-recommendation.json if present.
+- Worker disposition recorded at 2026-10-16T03:58:33Z UTC in .kilo-runtime/worker-disposition.json (schema_version 1, recommendation_id 38817660960-attempt-1-review-0003-2ac0cb7d6609, disposition "verified").
