@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
+from src.evaluation.utils import compute_running_drawdown
 from src.simulation.engine import (
     SimulationConfig,
     _project_root,
@@ -264,9 +265,15 @@ def run_daily_paper_update(
 
     # Update NAV
     new_nav = state.current_nav + daily_pnl
-    state.peak_nav = max(state.peak_nav, new_nav)
-    new_dd = (new_nav / state.peak_nav - 1.0) if state.peak_nav > 0 else 0.0
-    state.max_drawdown = min(state.max_drawdown, new_dd)
+
+    # Update running-maximum drawdown. The drawdown is always measured
+    # against the all-time peak NAV, so a recovery followed by a new decline
+    # is correctly reported as a deeper drawdown from the new high (see
+    # compute_running_drawdown in src/evaluation/utils.py).
+    state.peak_nav, state.max_drawdown = compute_running_drawdown(
+        state.peak_nav, new_nav, state.max_drawdown
+    )
+    new_dd = state.max_drawdown
 
     # Enhanced drift monitoring calculations
     # Rolling 63-day Sharpe and max DD

@@ -134,3 +134,38 @@ def max_drawdown(returns: pd.Series) -> float:
     running_max = cum.expanding().max()
     dd = (cum / running_max) - 1
     return float(dd.min())
+
+
+def compute_running_drawdown(
+    peak_nav: float, current_nav: float, prev_max_drawdown: float
+) -> tuple[float, float]:
+    """Update the running-maximum drawdown for one new NAV observation.
+
+    The drawdown is always measured against the *all-time* peak NAV seen so
+    far, not a recent local peak. This is the standard running-maximum
+    definition: a portfolio that recovers to a new high and then falls must
+    measure the new trough against that new high. Anchoring the running max
+    to the current NAV instead silently understates drawdown whenever the
+    portfolio has ever been higher than the current window.
+
+    Parameters
+    ----------
+    peak_nav:
+        All-time peak NAV observed before this step.
+    current_nav:
+        The new NAV observation for this step.
+    prev_max_drawdown:
+        Most negative drawdown observed before this step (<= 0).
+
+    Returns
+    -------
+    (new_peak_nav, new_max_drawdown)
+        Updated running peak and running maximum drawdown.
+    """
+    if peak_nav <= 0.0:
+        new_peak = current_nav
+        new_dd = 0.0
+    else:
+        new_peak = max(peak_nav, current_nav)
+        new_dd = min(prev_max_drawdown, current_nav / new_peak - 1.0)
+    return float(new_peak), float(new_dd)

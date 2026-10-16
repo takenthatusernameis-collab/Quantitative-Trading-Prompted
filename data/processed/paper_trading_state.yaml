@@ -1353,7 +1353,7 @@ cumulative_dates:
 - '2026-10-14'
 peak_nav: 139120.07235486925
 current_nav: 135043.35187742324
-max_drawdown: -0.0293036109631043
+max_drawdown: -0.049857401112321176
 drift_flags:
   low_rolling_sharpe:
     value: 0.11333136870186329

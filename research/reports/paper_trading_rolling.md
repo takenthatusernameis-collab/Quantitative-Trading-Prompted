@@ -1,6 +1,6 @@
 # Paper-Trading Rolling Report
 
-**Generated:** 2026-10-14 23:28:57 UTC
+**Generated:** 2026-10-16 07:59:26 UTC
 **Last Run Date:** 2026-10-14
 **Days Tracked:** 447
 
@@ -10,7 +10,7 @@
 |---|---|
 | Current NAV | $135,043.35 |
 | Peak NAV | $139,120.07 |
-| Paper Drawdown | -2.93% |
+| Paper Drawdown | -4.99% |
 | Total Return | 35.04% |
 | Annualized Return | 18.46% |
 | Volatility (ann.) | 9.57% |
