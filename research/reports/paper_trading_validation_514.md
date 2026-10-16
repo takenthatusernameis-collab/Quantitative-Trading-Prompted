@@ -1,19 +1,25 @@
-# Paper Trading Validation Report - Cycle 514
+# Paper Trading Validation — Cycle 514
 
-Generated: 2026-10-16T04:13:24Z (UTC)
-
-Gate: 2026-10-18T20:00:00Z
+- **UTC time**: 2026-10-16T04:14:18Z
+- **Gate**: 2026-10-18T20:00:00Z — **NOT MET** (before gate)
+- **Action**: Monitoring only. No data acquisition or replay performed.
 
 ## Verification Results
 
-- Rolling 63d Sharpe recomputation vs stored drift flag: diff 5.134781488891349e-16 (< 1e-10) ✓
-- Regime flips: 6 / 447 run_history entries ✓
-- Supervisor loop tests: 10/10 passed ✓
+| Check | Result |
+|-------|--------|
+| Rolling 63d Sharpe recomputation vs stored drift flag | diff = 5.134781488891349e-16 (< 1e-10) — **PASS** |
+| Regime flips from run_history | 6 flips / 447 entries — **PASS** |
+| Supervisor loop tests | 10/10 — **PASS** |
 
-## Gate Status
+## Current State
+- Track record: 447 days (2025-01-02 → 2026-10-14)
+- NAV: $135,043.35 (+35.04%)
+- Sharpe: 1.9272
+- Max drawdown: -2.93%
+- Rolling 63-day Sharpe: 0.1133
+- Drift flag: `low_rolling_sharpe` persists 3 consecutive days (2026-10-12, 2026-10-13, 2026-10-14)
+- Regime: risk-on (132 days)
 
-< 2026-10-18T20:00:00Z: monitoring only; no data acquisition/replay changes.
-
-## Recommendation context
-
-recommendation_id: 38817660960-attempt-1-review-0003-2ac0cb7d6609 (from .kilo-runtime/current-supervisor-recommendation.json)
+## Next Cycle
+Re-evaluate after the post-close gate at 2026-10-18T20:00:00Z. If gate met: proceed with data acquisition for incumbent universe + SPY/^VIX, verify dates, re-run replay, confirm state, write detailed validation per Cycle 486 protocol.
