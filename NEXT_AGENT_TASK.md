@@ -1,17 +1,17 @@
-# Next Agent Task: Post-Gate Data Acquisition Check — Cycle 486
+# Next Agent Task: Post-Gate Monitoring — Cycle 487
 
 ## Context
-Cycle 485 completed at 2026-10-16T02:33:40Z. Gate is 2026-10-18T20:00:00Z. State unchanged: 447 run_history (2025-01-02 → 2026-10-14), 6 regime flips, last_run_date 2026-10-14. Drift: low_rolling_sharpe persists; not yet >20d persistence threshold. All primary gates pass. Validation report 485 written. Worker disposition recorded (verified).
+Cycle 486 completed at 2026-10-16T02:43:03Z. Gate remains 2026-10-18T20:00:00Z (still before gate). All validations passed: rolling 63d Sharpe diff 5.13e-16, regime flips 6/447, supervisor loop tests 10/10. Report written at research/reports/paper_trading_validation_486.md. Worker disposition verified against current supervisor recommendation.
 
 ## Objective
 1. Record UTC time (TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ).
-2. If < 2026-10-18T20:00:00Z: do NOT fetch or replay. Run minimal verifications:
-- Rolling 63d Sharpe computed from last 63 cumulative_returns matches stored drift flag within float precision.
-- Regime flips count recomputed from run_history matches 6.
-- Supervisor loop tests: python3 .github/scripts/test_kilo_supervisor_loop.py -v must pass 10/10.
-3. Write research/reports/paper_trading_validation_486.md with UTC time, gate state, status, verification numbers/diff, test results.
-4. Supervisor disposition: record disposition in .kilo-runtime/worker-disposition.json within next two tool calls, using current recommendation_id from .kilo-runtime/current-supervisor-recommendation.json if it exists; otherwise null. Follow schema_version 1 with reason/evidence/verification/updated_at as ISO-8601 UTC.
-5. If >= 2026-10-18T20:00:00Z: proceed per established gate-met protocol — re-attempt data acquisition from Yahoo Finance (force=True, end_date 2026-11-30) for 7-ETF incumbent universe (SPY, QQQ, IWM, TLT, GLD, EFA, EEM) plus SPY and ^VIX; verify per-symbol max dates; re-run research/run_paper_trading_replay.py (end_date per yfinance exclusive-end semantics); confirm track record extension/regime/drift state; write detailed validation report.
+2. If < 2026-10-18T20:00:00Z: continue monitoring only. Re-run the same minimal verifications:
+- Rolling 63d Sharpe recomputation matches stored drift flag (diff < 1e-10)
+- Regime flips count from run_history matches 6
+- Supervisor loop tests pass 10/10
+3. Write research/reports/paper_trading_validation_487.md with UTC time, gate state, verification results.
+4. Update .kilo-runtime/worker-disposition.json per protocol (schema_version 1) within next two tool calls; use recommendation_id from current-supervisor-recommendation.json if present, else null. Set disposition to "verified" with concrete reason/evidence/verification/updated_at (ISO-8601 UTC).
+5. If >= 2026-10-18T20:00:00Z: proceed with gate-met protocol as specified in Cycle 486 (data acquisition for incumbent universe + SPY/^VIX, verify dates, re-run replay, confirm state, write detailed validation).
 
 ## Validation Commands
 ```bash
@@ -22,8 +22,9 @@ d=yaml.safe_load(open('data/processed/paper_trading_state.yaml'))
 ret=d['cumulative_returns'][-63:]
 if len(ret)>1:
     m=sum(ret)/len(ret); v=sum((r-m)**2 for r in ret)/(len(ret)-1)
-else: m=ret[0] if ret else 0; v=0
-s=(m*252)/(math.sqrt(v)*math.sqrt(252)) if v>0 else 0
+    s=(m*252)/(math.sqrt(v)*math.sqrt(252)) if v>0 else 0
+else:
+    s=ret[0] if ret else 0
 stored = d['drift_flags']['low_rolling_sharpe']['value']
 print('diff',abs(s-stored))
 PY
@@ -42,6 +43,5 @@ python3 .github/scripts/test_kilo_supervisor_loop.py -v
 ```
 
 ## Scope Boundaries
-- No strategy changes or dependency modifications.
-- Monitoring/verification only while gate < 2026-10-18T20:00:00Z.
-- Do not commit changes unless explicitly requested.
+- Monitoring/verification only while before gate; no strategy/data acquisition changes.
+- No commits unless explicitly requested.
