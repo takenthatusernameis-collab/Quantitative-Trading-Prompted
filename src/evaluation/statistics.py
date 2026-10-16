@@ -171,6 +171,50 @@ def compute_dsr(
     }
 
 
+def _evaluate_config(
+    close: pd.DataFrame,
+    lookback: int,
+    skip: int,
+    top_fraction: float,
+    cost: float,
+    train_end_dt: pd.Timestamp,
+    val_end_dt: pd.Timestamp,
+) -> dict:
+    """Run one (lookback, skip, top_fraction) configuration and return its
+    train/validation/test Sharpe, annualized return and max drawdown.
+
+    Extracted so the baseline reference point can be evaluated with the same
+    code path as the perturbations (see parameter_perturbation).
+    """
+    weights = build_weights(close, lookback=lookback, skip=skip, top_fraction=top_fraction)
+    common = close.index.intersection(weights.index)
+    close_a = close.loc[common]
+    weights_a = weights.loc[common]
+    daily_ret = close_a.pct_change().fillna(0.0)
+    port_ret = (weights_a * daily_ret).sum(axis=1)
+    wc = weights_a.diff().abs().sum(axis=1)
+    net_ret = port_ret - wc * cost
+
+    tr_mask = net_ret.index <= train_end_dt
+    va_mask = (net_ret.index > train_end_dt) & (net_ret.index <= val_end_dt)
+    te_mask = net_ret.index > val_end_dt
+
+    tr_ret = net_ret[tr_mask]
+    va_ret = net_ret[va_mask]
+    te_ret = net_ret[te_mask]
+
+    return {
+        "lookback": lookback,
+        "skip": skip,
+        "top_fraction": top_fraction,
+        "train_sharpe": sharpe_ratio(tr_ret) if len(tr_ret) > 1 else np.nan,
+        "val_sharpe": sharpe_ratio(va_ret) if len(va_ret) > 1 else np.nan,
+        "test_sharpe": sharpe_ratio(te_ret) if len(te_ret) > 1 else np.nan,
+        "test_ann_return": annualize_return(te_ret) if len(te_ret) > 0 else np.nan,
+        "test_max_dd": max_drawdown(te_ret) if len(te_ret) > 0 else np.nan,
+    }
+
+
 def parameter_perturbation(
     close: pd.DataFrame,
     baseline: tuple[int, int, float] = (252, 21, 0.5),
@@ -206,33 +250,23 @@ def parameter_perturbation(
     train_end_dt = pd.Timestamp(train_end, tz="UTC")
     val_end_dt = pd.Timestamp(val_end, tz="UTC")
 
+    # Evaluate the baseline itself first. The perturbation set is only a
+    # meaningful factorial design when the unperturbed reference point is
+    # present: without it the plateau summary has no row to anchor the
+    # "within +/-10% of baseline" stability statistic, and the markdown
+    # formatter silently drops both the baseline row and the stability
+    # paragraph (see format_plateau_markdown).
+    baseline_row = _evaluate_config(
+        close, lb0, sk0, tf0, cost, train_end_dt, val_end_dt
+    )
+    baseline_row["label"] = "baseline"
+    rows.append(baseline_row)
+
     for lb, sk, tf, label in perturbations:
         try:
-            weights = build_weights(close, lookback=lb, skip=sk, top_fraction=tf)
-            common = close.index.intersection(weights.index)
-            close_a = close.loc[common]
-            weights_a = weights.loc[common]
-            daily_ret = close_a.pct_change().fillna(0.0)
-            port_ret = (weights_a * daily_ret).sum(axis=1)
-            wc = weights_a.diff().abs().sum(axis=1)
-            net_ret = port_ret - wc * cost
-
-            tr_mask = net_ret.index <= train_end_dt
-            va_mask = (net_ret.index > train_end_dt) & (net_ret.index <= val_end_dt)
-            te_mask = net_ret.index > val_end_dt
-
-            tr_ret = net_ret[tr_mask]
-            va_ret = net_ret[va_mask]
-            te_ret = net_ret[te_mask]
-
-            rows.append({
-                "lookback": lb, "skip": sk, "top_fraction": tf, "label": label,
-                "train_sharpe": sharpe_ratio(tr_ret) if len(tr_ret) > 1 else np.nan,
-                "val_sharpe": sharpe_ratio(va_ret) if len(va_ret) > 1 else np.nan,
-                "test_sharpe": sharpe_ratio(te_ret) if len(te_ret) > 1 else np.nan,
-                "test_ann_return": annualize_return(te_ret) if len(te_ret) > 0 else np.nan,
-                "test_max_dd": max_drawdown(te_ret) if len(te_ret) > 0 else np.nan,
-            })
+            row = _evaluate_config(close, lb, sk, tf, cost, train_end_dt, val_end_dt)
+            row["label"] = label
+            rows.append(row)
         except (ValueError, KeyError, RuntimeError) as exc:
             print(f"    Perturbation error ({lb},{sk},{tf}): {exc}")
             rows.append({
