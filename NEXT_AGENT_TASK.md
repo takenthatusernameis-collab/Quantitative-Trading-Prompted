@@ -1,17 +1,17 @@
-# Next Agent Task: Monitor Gate Readiness — Cycle 397
+# Next Agent Task: Monitor Gate Readiness — Cycle 398
 
 ## Context
 
-Cycle 396 validation completed (UTC 2026-10-15T23:59:45Z). Post-close gate remains 2026-10-18T20:00:00Z UTC. No fetch/replay performed. State unchanged (447 run_history entries, 6 regime flips, rolling 63d Sharpe matches stored drift flag within float precision). Report: `research/reports/paper_trading_validation_396.md`. Worker disposition recorded in `.kilo-runtime/worker-disposition.json` with recommendation_id copied from `.kilo-runtime/current-supervisor-recommendation.json`.
+Cycle 397 validation completed (UTC 2026-10-16T00:00:48Z). Post-close gate remains 2026-10-18T20:00:00Z UTC. No fetch/replay performed. State unchanged (447 run_history entries, 6 regime flips, rolling 63d Sharpe matches stored drift flag within float precision). Report: `research/reports/paper_trading_validation_397.md`. Worker disposition recorded in `.kilo-runtime/worker-disposition.json` with recommendation_id "38817660960-attempt-1-review-0003-2ac0cb7d6609".
 
 ## Objective
 
 1. **Timestamp gate monitoring**: Record UTC time (`TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`).
-    - If < 2026-10-18T20:00:00Z: do NOT fetch or replay. Run minimal verifications (rolling 63d Sharpe vs stored, regime flips count), run supervisor loop tests, write `research/reports/paper_trading_validation_397.md`, and prepare next narrow task.
+    - If < 2026-10-18T20:00:00Z: do NOT fetch or replay. Run minimal verifications (rolling 63d Sharpe vs stored, regime flips count), run supervisor loop tests, write `research/reports/paper_trading_validation_398.md`, and prepare next narrow task.
     - If >= 2026-10-18T20:00:00Z: proceed per established gate-met protocol — re-attempt data acquisition from Yahoo Finance (force=True, end_date 2026-11-30) for the 7-ETF incumbent universe (SPY, QQQ, IWM, TLT, GLD, EFA, EEM) plus SPY and ^VIX, verify per-symbol max dates, re-run `research/run_paper_trading_replay.py` (end_date per yfinance exclusive-end semantics), confirm track record extension/regime/drift state, write validation report with results.
 2. **Independent verification**: Recompute rolling 63d Sharpe from last 63 cumulative returns; must match stored drift flag value within float precision. Recompute regime flips from run_history.
 3. **Supervisor loop tests**: `python3 .github/scripts/test_kilo_supervisor_loop.py -v` must pass 10/10.
-4. **Reporting**: Write validation report 397 with UTC time, gate state, fetch/replay status, state snapshot, verification numbers/diff, test results.
+4. **Reporting**: Write validation report 398 with UTC time, gate state, fetch/replay status, state snapshot, verification numbers/diff, test results.
 5. **Supervisor disposition**: Record disposition in `.kilo-runtime/worker-disposition.json` within next two tool calls, using current recommendation_id from `.kilo-runtime/current-supervisor-recommendation.json` if it exists; otherwise null. Follow schema_version 1 with reason/evidence/verification/updated_at as ISO-8601 UTC.
 
 ## Validation Commands
