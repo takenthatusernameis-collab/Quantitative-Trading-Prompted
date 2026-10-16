@@ -1,18 +1,19 @@
-# Paper Trading Validation Report — Cycle 487
+# Paper Trading Validation — Cycle 487
 
-Generated: 2026-10-16T02:44:52Z (UTC)
+## Execution Time
+- UTC: 2026-10-16T02:45:43Z
 
-## Gate State
-Gate time: 2026-10-18T20:00:00Z
-Current time (UTC): 2026-10-16T02:44:52Z
-Status: BEFORE GATE — monitoring only
+## Gate Status
+- Gate: 2026-10-18T20:00:00Z
+- Status: Before gate (< gate) — Monitoring/verification only; no data fetch/replay
 
-## Verification Results
-Rolling 63d Sharpe diff: 5.135e-16 (< 1e-10) OK
-Regime flips: 6/447 (matches stored) OK
-Supervisor loop tests: 10/10 passed OK
+## State Verification
+- Rolling 63d Sharpe (computed from last 63 cumulative_returns): diff from stored = 5.13e-16 (float precision)
+- Regime flips: 6 (matches stored count of 6)
+- Run history length: 447 (last_run_date 2026-10-14)
 
+## Supervisor Loop Tests
+- python3 .github/scripts/test_kilo_supervisor_loop.py -v: 10/10 passed
 
-## Notes
-- No strategy or data acquisition changes.
-- Monitoring/verification only per Cycle 487 task.
+## Supervisor Disposition
+- Worker disposition recorded per protocol schema_version 1
