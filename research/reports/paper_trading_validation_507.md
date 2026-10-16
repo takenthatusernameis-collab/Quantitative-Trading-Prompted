@@ -1,34 +1,12 @@
 # Paper Trading Validation — Cycle 507
 
-## UTC Time
-2026-10-16T03:42:28Z
+UTC time: 2026-10-16T03:44:08Z
+Gate: 2026-10-18T20:00:00Z
+Gate state: before gate
 
-## Gate State
-Gate: 2026-10-18T20:00:00Z. Current time is BEFORE the gate. Monitoring-only mode.
+Verifications:
+- Rolling 63d Sharpe recomputation vs stored drift flag: diff 5.134781488891349e-16 < 1e-10
+- Regime flips from run_history: 6/447
+- Supervisor loop tests: 10/10 passed
 
-## Verification Results
-
-### 1. Rolling 63d Sharpe Recomputation
-- Recomputed from `data/processed/paper_trading_state.yaml` cumulative_returns (last 63 entries)
-- Stored drift flag value: matches
-- Diff: 5.134781488891349e-16 (< 1e-10 threshold)
-- **PASSED**
-
-### 2. Regime Flips Count
-- Recomputed from `data/processed/paper_trading_state.yaml` run_history
-- Flips: 6
-- Run history length: 447
-- **PASSED** (matches expected 6)
-
-### 3. Supervisor Loop Tests
-- Command: `python3 .github/scripts/test_kilo_supervisor_loop.py -v`
-- Result: 10/10 tests passed
-- **PASSED**
-
-## Worker Disposition
-- recommendation_id: 38817660960-attempt-1-review-0003-2ac0cb7d6609
-- disposition: verified
-- Written to: `.kilo-runtime/worker-disposition.json`
-
-## Next Cycle
-Continue monitoring. Re-run same three verifications. If >= 2026-10-18T20:00:00Z, proceed with gate-met protocol as specified in Cycle 486.
+Summary: Post-gate monitoring completed; gate not met, no data acquisition/replay performed.
