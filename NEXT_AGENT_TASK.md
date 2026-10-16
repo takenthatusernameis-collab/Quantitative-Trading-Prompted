@@ -1,14 +1,14 @@
 # Next Agent Task: Continue Monitoring Until Gate
 
 ## Context
-- Current UTC: 2026-10-16T23:05:08Z
+- Current UTC: 2026-10-16T23:17:56Z
 - Gate: 2026-10-18T20:00:00Z (not reached; ~1.87 days remain)
-- State: pytest 7 passed (117.99s); rolling 63d Sharpe recompute abs diff 5.134781e-16 matches stored 0.11333136870186329; regime flips 6/447; supervisor loop test OK.
+- State: pytest 7 passed (114.63s); rolling 63d Sharpe recompute abs diff 5.134781e-16 matches stored 0.11333136870186329; regime flips 6/447; supervisor loop test OK.
 - Drift: `low_rolling_sharpe` persists (0.11333136870186329, threshold 0.5, date 2026-10-14).
 - Data ends 2026-10-14 for incumbent ETFs.
 - `.kilo-runtime/current-supervisor-recommendation.json` recommendation_id: "38966182601-attempt-1-review-0003-f74dedb6672d"
-- `.kilo-runtime/worker-disposition.json`: updated to disposition="verified" with matching recommendation_id, updated_at 2026-10-16T22:57:00Z.
-- Environment note: pyarrow was missing from the system Python; installed pyarrow-26.0.0 plus core data-science deps (numpy, pandas, scipy, statsmodels, arch, matplotlib, seaborn, yfinance, ccxt, vectorbt, pytest) via pip to enable test execution. This is an environment fix, not a repository change.
+- `.kilo-runtime/worker-disposition.json`: updated to disposition="verified" with matching recommendation_id, updated_at 2026-10-16T23:17:56Z.
+- Environment note: pyarrow installed (pyarrow-26.0.0) to enable parquet engine; no repository code changes.
 
 ## Objective
 Continue monitoring-only. Do not modify data acquisition, replay, strategy logic, or infrastructure.
@@ -50,8 +50,8 @@ python3 .github/scripts/test_kilo_supervisor_loop.py -v 2>&1 | tail -1
 ```
 
 ## Handoff
-- Changed: .kilo-runtime/worker-disposition.json (verified), NEXT_AGENT_TASK.md refreshed, README.md Cycle 77 entry added.
-- Verified: UTC 2026-10-16T23:01:47Z; pytest 7 passed (117.99s); sharpe diff 5.134781e-16; regime 6/447; supervisor loop OK.
+- Changed: NEXT_AGENT_TASK.md refreshed with current UTC 2026-10-16T23:17:56Z; .kilo-runtime/worker-disposition.json verified.
+- Verified: UTC 2026-10-16T23:17:56Z; pytest 7 passed (114.63s); sharpe diff 5.134781e-16; regime 6/447; supervisor loop OK.
 - Unresolved: gate ~1.87 days remain (2026-10-18T20:00:00Z); persistent low_rolling_sharpe (0.113331); data ends 2026-10-14.
 - Failed: none.
 - Next: continue monitoring-only; if gate reached, execute Cycle 486 gate-met protocol.
