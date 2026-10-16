@@ -1,7 +1,7 @@
 # Next Agent Task: Gate-Met Protocol Monitoring (Continuation)
 
 ## Context
-Cycle 523 monitoring check executed at 2026-10-16T06:46:31Z. Gate remains at 2026-10-18T20:00:00Z. Gate NOT yet met. Monitoring verifications passed: rolling 63d Sharpe diff 5.13e-16, regime flips 6/447, supervisor loop tests OK. State from data/processed/paper_trading_state.yaml: last_run_date 2026-10-14, drift flag low_rolling_sharpe persists (0.1133, below >20-day persistence threshold).
+Cycle 523 monitoring check executed at 2026-10-16T06:47:28Z. Gate remains at 2026-10-18T20:00:00Z. Gate NOT yet met. Monitoring verifications passed: rolling 63d Sharpe diff 5.134781488891349e-16, regime flips 6/447, supervisor loop tests OK. State from data/processed/paper_trading_state.yaml: last_run_date 2026-10-14, drift flag low_rolling_sharpe persists (0.1133, below >20-day persistence threshold).
 
 Worker disposition schema_version 1 recorded in .kilo-runtime/worker-disposition.json with recommendation_id "38817660960-attempt-1-review-0003-2ac0cb7d6609".
 
@@ -9,12 +9,12 @@ Worker disposition schema_version 1 recorded in .kilo-runtime/worker-disposition
 1. Record current UTC time (TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ).
 2. If current time < 2026-10-18T20:00:00Z: continue monitoring only. Re-run the same minimal verification set and update .kilo-runtime/worker-disposition.json (schema_version 1) within next two tool calls. Use recommendation_id from .kilo-runtime/current-supervisor-recommendation.json if present; otherwise use "38817660960-attempt-1-review-0003-2ac0cb7d6609". Set disposition to "verified" with concrete reason, evidence, verification (all JSON strings), and updated_at (ISO-8601 UTC). Do not modify data acquisition, replay, strategy logic, or infrastructure.
 3. If current time >= 2026-10-18T20:00:00Z: execute Cycle 486 gate-met protocol exactly as specified:
-   - Re-attempt data acquisition from Yahoo Finance (force=True, end_date 2026-11-30) for incumbent 7-ETF universe (SPY, QQQ, IWM, TLT, GLD, EFA, EEM) plus SPY and ^VIX.
-   - Verify per-symbol max dates and confirm real (nonzero volume) data for each incumbent ETF; note ^VIX placeholder rows (Volume=0) are expected.
-   - Re-run `research/run_paper_trading_replay.py` with appropriate end_date (yfinance exclusive-end semantics).
-   - Confirm state: track record length/dates, NAV metrics, Sharpe, max DD, rolling 63d Sharpe, regime flips, drift flag status.
-   - Write `research/reports/paper_trading_validation_523.md` (or next appropriate sequence) with UTC time, gate state, verification results, and data-acquisition outcome.
-   - Update .kilo-runtime/worker-disposition.json per protocol.
+    - Re-attempt data acquisition from Yahoo Finance (force=True, end_date 2026-11-30) for incumbent 7-ETF universe (SPY, QQQ, IWM, TLT, GLD, EFA, EEM) plus SPY and ^VIX.
+    - Verify per-symbol max dates and confirm real (nonzero volume) data for each incumbent ETF; note ^VIX placeholder rows (Volume=0) are expected.
+    - Re-run `research/run_paper_trading_replay.py` with appropriate end_date (yfinance exclusive-end semantics).
+    - Confirm state: track record length/dates, NAV metrics, Sharpe, max DD, rolling 63d Sharpe, regime flips, drift flag status.
+    - Write `research/reports/paper_trading_validation_523.md` (or next appropriate sequence) with UTC time, gate state, verification results, and data-acquisition outcome.
+    - Update .kilo-runtime/worker-disposition.json per protocol.
 
 ## Validation Commands (monitoring baseline)
 ```bash
