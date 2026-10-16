@@ -1,22 +1,22 @@
-# Next Agent Task: Gate-Met Protocol — Cycle 523
+# Next Agent Task: Gate-Met Protocol Monitoring (Cycle 523 continuation)
 
 ## Context
-Cycle 522 completed at 2026-10-16T05:40:12Z (UTC). Gate is 2026-10-18T20:00:00Z. All verifications passed: rolling 63d Sharpe diff 5.13e-16, regime flips 6/447, supervisor loop tests 10/10. Report written at research/reports/paper_trading_validation_522.md. Worker disposition recorded as "verified" for recommendation_id 38817660960-attempt-1-review-0003-2ac0cb7d6609.
+Cycle 523 worker executed gate check. Current UTC time 2026-10-16T05:42:53Z, gate 2026-10-18T20:00:00Z. Gate not yet met. Minimal monitoring verifications completed and passed. Rolling 63d Sharpe diff 5.13e-16, regime flips 6/447, supervisor loop tests 10/10 OK. Worker disposition recorded as verified with recommendation_id 38817660960-attempt-1-review-0003-2ac0cb7d6609.
 
-Track record: 447 days (2025-01-02 → 2026-10-14), current_nav $135,043.35, max DD -2.93%, rolling 63d Sharpe 0.11333. Drift flag `low_rolling_sharpe` persists in state; below the >20-day persistence threshold.
+State (from data/processed/paper_trading_state.yaml): last_run_date 2026-10-14, current_nav 135043.35, max_dd -0.0293, rolling 63d Sharpe 0.11333, drift flag low_rolling_sharpe persistent below >20-day persistence threshold. Run history length 447.
 
 ## Objective
-1. Record UTC time (TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ).
-2. If < 2026-10-18T20:00:00Z: continue monitoring only (same minimal verifications as Cycle 520).
-3. If >= 2026-10-18T20:00:00Z: proceed with the gate-met protocol per Cycle 486:
-    - Re-attempt data acquisition from Yahoo Finance (force=True, end_date 2026-11-30) for the incumbent 7-ETF universe (SPY, QQQ, IWM, TLT, GLD, EFA, EEM) plus SPY and ^VIX.
-    - Verify per-symbol max dates and confirm real (nonzero volume) data for each incumbent ETF; note ^VIX placeholder rows (Volume=0) are expected.
-    - Re-run `research/run_paper_trading_replay.py` with appropriate end_date (yfinance exclusive-end semantics).
-    - Confirm state: track record length/dates, NAV metrics, Sharpe, max DD, rolling 63d Sharpe, regime flips (expect 6), drift flag status.
-    - Write research/reports/paper_trading_validation_523.md with UTC time, gate state, verification results, and data-acquisition outcome.
-4. Update .kilo-runtime/worker-disposition.json per protocol (schema_version 1) within the next two tool calls; use recommendation_id from current-supervisor-recommendation.json if present, else "38817660960-attempt-1-review-0003-2ac0cb7d6609". Set disposition to "verified" with concrete reason/evidence/verification/updated_at (ISO-8601 UTC).
+1. Record current UTC time (TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ).
+2. If current time < 2026-10-18T20:00:00Z: continue monitoring only. Re-run the same minimal verification set and update .kilo-runtime/worker-disposition.json (schema_version 1) within next two tool calls. Use recommendation_id from .kilo-runtime/current-supervisor-recommendation.json if present, else "38817660960-attempt-1-review-0003-2ac0cb7d6609". Set disposition to "verified" with concrete reason/evidence/verification/updated_at (ISO-8601 UTC). Do not modify data acquisition, replay, or strategy logic.
+3. If current time >= 2026-10-18T20:00:00Z: execute Cycle 486 gate-met protocol exactly as specified:
+   - Re-attempt data acquisition from Yahoo Finance (force=True, end_date 2026-11-30) for incumbent 7-ETF universe (SPY, QQQ, IWM, TLT, GLD, EFA, EEM) plus SPY and ^VIX.
+   - Verify per-symbol max dates and confirm real (nonzero volume) data for each incumbent ETF; note ^VIX placeholder rows (Volume=0) are expected.
+   - Re-run `research/run_paper_trading_replay.py` with appropriate end_date (yfinance exclusive-end semantics).
+   - Confirm state: track record length/dates, NAV metrics, Sharpe, max DD, rolling 63d Sharpe, regime flips, drift flag status.
+   - Write `research/reports/paper_trading_validation_523.md` with UTC time, gate state, verification results, and data-acquisition outcome.
+   - Update .kilo-runtime/worker-disposition.json per protocol.
 
-## Validation Commands
+## Validation Commands (monitoring baseline)
 ```bash
 TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ
 python3 <<'PY'
@@ -42,9 +42,11 @@ if rh:
         if rh[i]['regime_exposure'] != prev: t += 1; prev = rh[i]['regime_exposure']
 print('flips', t, 'len', len(rh))
 PY
-python3 .github/scripts/test_kilo_supervisor_loop.py -v
+python3 .github/scripts/test_kilo_supervisor_loop.py -v 2>&1 | tail -2
 ```
 
 ## Scope Boundaries
 - No commits unless explicitly requested.
-- No strategy or data-acquisition changes before the gate; after the gate, only the Cycle 486 gate-met data acquisition/replay protocol.
+- Before gate: monitoring only - no strategy, parameter, or data-acquisition changes.
+- At/after gate: only the exact Cycle 486 gate-met data acquisition/replay protocol.
+- Do not introduce new infrastructure, parallelization, or workflow changes.
