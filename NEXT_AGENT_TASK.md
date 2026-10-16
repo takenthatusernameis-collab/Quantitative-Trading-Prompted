@@ -1,7 +1,7 @@
-# Next Agent Task: Gate-Met Protocol — Cycle 522
+# Next Agent Task: Gate-Met Protocol — Cycle 523
 
 ## Context
-Cycle 521 completed at 2026-10-16T05:38:30Z (UTC). Gate is 2026-10-18T20:00:00Z. All verifications passed: rolling 63d Sharpe diff 5.13e-16, regime flips 6/447, supervisor loop tests 10/10. Report written at research/reports/paper_trading_validation_521.md. Worker disposition recorded as "verified" for recommendation_id 38817660960-attempt-1-review-0003-2ac0cb7d6609.
+Cycle 522 completed at 2026-10-16T05:40:12Z (UTC). Gate is 2026-10-18T20:00:00Z. All verifications passed: rolling 63d Sharpe diff 5.13e-16, regime flips 6/447, supervisor loop tests 10/10. Report written at research/reports/paper_trading_validation_522.md. Worker disposition recorded as "verified" for recommendation_id 38817660960-attempt-1-review-0003-2ac0cb7d6609.
 
 Track record: 447 days (2025-01-02 → 2026-10-14), current_nav $135,043.35, max DD -2.93%, rolling 63d Sharpe 0.11333. Drift flag `low_rolling_sharpe` persists in state; below the >20-day persistence threshold.
 
@@ -13,7 +13,7 @@ Track record: 447 days (2025-01-02 → 2026-10-14), current_nav $135,043.35, max
     - Verify per-symbol max dates and confirm real (nonzero volume) data for each incumbent ETF; note ^VIX placeholder rows (Volume=0) are expected.
     - Re-run `research/run_paper_trading_replay.py` with appropriate end_date (yfinance exclusive-end semantics).
     - Confirm state: track record length/dates, NAV metrics, Sharpe, max DD, rolling 63d Sharpe, regime flips (expect 6), drift flag status.
-    - Write research/reports/paper_trading_validation_522.md with UTC time, gate state, verification results, and data-acquisition outcome.
+    - Write research/reports/paper_trading_validation_523.md with UTC time, gate state, verification results, and data-acquisition outcome.
 4. Update .kilo-runtime/worker-disposition.json per protocol (schema_version 1) within the next two tool calls; use recommendation_id from current-supervisor-recommendation.json if present, else "38817660960-attempt-1-review-0003-2ac0cb7d6609". Set disposition to "verified" with concrete reason/evidence/verification/updated_at (ISO-8601 UTC).
 
 ## Validation Commands
