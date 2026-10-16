@@ -1,7 +1,7 @@
 # Next Agent Task: Gate-Met Protocol Monitoring (Continuation)
 
 ## Context
-Gate remains at 2026-10-18T20:00:00Z. Last monitoring verification at 2026-10-16T07:08:10Z confirmed: rolling 63d Sharpe diff ~5.13e-16 vs stored, regime flips 6/447, supervisor loop tests 10/10 OK. Drift flag low_rolling_sharpe persists (3 days, below >20-day persistence threshold). Data ends at 2026-10-14; no real data beyond 2026-10-14 for incumbent ETFs. Worker disposition schema_version 1 recorded with recommendation_id "38817660960-attempt-1-review-0003-2ac0cb7d6609".
+Gate remains at 2026-10-18T20:00:00Z. Current UTC time: 2026-10-16T07:10:26Z (before gate). Last monitoring verification confirmed: rolling 63d Sharpe diff ~5.13e-16 vs stored, regime flips 6/447, supervisor loop tests OK. Drift flag low_rolling_sharpe persists (3 days, below >20-day persistence threshold). Data ends at 2026-10-14; no real data beyond 2026-10-14 for incumbent ETFs. Worker disposition schema_version 1 recorded with recommendation_id "38817660960-attempt-1-review-0003-2ac0cb7d6609".
 
 ## Objective
 1. Record current UTC time (TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ).
@@ -49,8 +49,9 @@ python3 .github/scripts/test_kilo_supervisor_loop.py -v 2>&1 | tail -1
 - At/after gate: only the exact Cycle 486 gate-met data acquisition/replay protocol.
 - Do not introduce new infrastructure, parallelization, or workflow changes.
 - Respect supervisor file-backed dialogue: update .kilo-runtime/worker-disposition.json within next two tool calls when advice arrives.
+- Temporary supervisor reports under .kilo/supervisor-reports/ must not be treated as research outputs or project deliverables.
 
 ## Evidence Artifacts
 - data/processed/paper_trading_state.yaml
 - .kilo-runtime/worker-disposition.json
-- research/reports/paper_trading_validation_*.md
+- research/reports/paper_trading_validation_*.md (created only when gate met)
