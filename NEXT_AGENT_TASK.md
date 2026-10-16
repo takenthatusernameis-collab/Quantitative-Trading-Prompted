@@ -1,9 +1,7 @@
 # Next Agent Task: Gate-Met Protocol Monitoring (Continuation)
 
 ## Context
-Gate remains at 2026-10-18T20:00:00Z. Current UTC time: 2026-10-16T08:00:00Z (before gate). Previous monitoring verification confirmed: rolling 63d Sharpe diff ~5.13e-16 vs stored, regime flips 6/447, supervisor loop tests OK (10 passed). Drift flag low_rolling_sharpe persists (3 days, below >20-day persistence threshold). Data ends at 2026-10-14; no real data beyond 2026-10-14 for incumbent ETFs. Worker disposition schema_version 1 recorded with recommendation_id "38817660960-attempt-1-review-0003-2ac0cb7d6609", disposition "verified", updated_at 2026-10-16T08:00:00Z.
-
-**Cycle 530 completed (this cycle):** Bounded drawdown-correctness fix. `state.max_drawdown` was understated (-0.0293 vs true running-max -0.0499) because `run_daily_paper_update` reset the running max to the current NAV each day. Fixed via `compute_running_drawdown` in `src/evaluation/utils.py`, wired into `src/simulation/paper_trading.py`, with 3 regression tests in `tests/test_paper_trading_drawdown.py`. Full replay reproduced all metrics exactly (447 days, NAV $135,043.35, Sharpe 1.9293, rolling 63d Sharpe 0.1133, flips 6/447); only the drawdown field changed (now -0.0499, matching the already-correct `rolling_max_dd_63d`). pytest 3/3, ruff clean, mypy clean, supervisor tests OK. Artifact: `research/reports/paper_trading_validation_530.md`.
+Gate remains at 2026-10-18T20:00:00Z. Current UTC time: 2026-10-16T08:11:39Z (before gate). Monitoring verification confirmed: rolling 63d Sharpe diff ~5.13e-16 vs stored, regime flips 6/447, supervisor loop tests OK (10 passed). Drift flag low_rolling_sharpe persists (3 days, below >20-day persistence threshold). Data ends at 2026-10-14; no real data beyond 2026-10-14 for incumbent ETFs. Worker disposition schema_version 1 recorded with recommendation_id "38817660960-attempt-1-review-0003-2ac0cb7d6609", disposition "verified", updated_at 2026-10-16T08:11:39Z.
 
 ## Objective
 1. Record current UTC time (TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ).
