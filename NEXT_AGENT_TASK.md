@@ -1,7 +1,7 @@
-# Next Agent Task: Post-Gate Monitoring — Cycle 491
+# Next Agent Task: Post-Gate Monitoring — Cycle 492
 
 ## Context
-Cycle 490 completed at 2026-10-16T03:05:55Z. Gate remains 2026-10-18T20:00:00Z (still before gate). All validations passed: rolling 63d Sharpe diff 5.13e-16, regime flips 6/447, supervisor loop tests 10/10. Report written at research/reports/paper_trading_validation_490.md. Worker disposition verified against current supervisor recommendation (id 38817660960-attempt-1-review-0003-2ac0cb7d6609).
+Cycle 491 completed at 2026-10-16T03:13:04Z (commit c200e71). Gate remains 2026-10-18T20:00:00Z (still before gate). All validations passed: rolling 63d Sharpe diff 5.13e-16, regime flips 6/447, supervisor loop tests 10/10. Report written at research/reports/paper_trading_validation_491.md and committed. Worker disposition written to .kilo-runtime/worker-disposition.json (recommendation_id 38817660960-attempt-1-review-0003-2ac0cb7d6609, disposition verified). The prior cycle's durable gap (NEXT_AGENT_TASK.md not advanced past Cycle 491) is now closed.
 
 ## Objective
 1. Record UTC time (TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ).
@@ -9,7 +9,7 @@ Cycle 490 completed at 2026-10-16T03:05:55Z. Gate remains 2026-10-18T20:00:00Z (
    - Rolling 63d Sharpe recomputation matches stored drift flag (diff < 1e-10)
    - Regime flips count from run_history matches 6
    - Supervisor loop tests pass 10/10
-3. Write research/reports/paper_trading_validation_491.md with UTC time, gate state, verification results.
+3. Write research/reports/paper_trading_validation_492.md with UTC time, gate state, verification results.
 4. Update .kilo-runtime/worker-disposition.json per protocol (schema_version 1) within next two tool calls; use recommendation_id from current-supervisor-recommendation.json if present, else null. Set disposition to "verified" with concrete reason/evidence/verification/updated_at (ISO-8601 UTC).
 5. If >= 2026-10-18T20:00:00Z: proceed with gate-met protocol as specified in Cycle 486 (data acquisition for incumbent universe + SPY/^VIX, verify dates, re-run replay, confirm state, write detailed validation).
 
