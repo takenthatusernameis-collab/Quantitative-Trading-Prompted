@@ -1,7 +1,7 @@
-# Next Agent Task: Post-Gate Data Acquisition Check — Cycle 485
+# Next Agent Task: Post-Gate Data Acquisition Check — Cycle 486
 
 ## Context
-Cycle 484 completed at 2026-10-16T02:31:45Z. Gate is 2026-10-18T20:00:00Z. State unchanged: 447 run_history (2025-01-02 → 2026-10-14), 6 regime flips, last_run_date 2026-10-14. Drift: low_rolling_sharpe persists (2026-10-12: 0.4892, 2026-10-13: 0.3669, 2026-10-14: 0.1133); not yet >20d persistence threshold. All primary gates pass. Validation report 484 written. Worker disposition recorded (verified, recommendation_id 38817660960-attempt-1-review-0003-2ac0cb7d6609).
+Cycle 485 completed at 2026-10-16T02:33:40Z. Gate is 2026-10-18T20:00:00Z. State unchanged: 447 run_history (2025-01-02 → 2026-10-14), 6 regime flips, last_run_date 2026-10-14. Drift: low_rolling_sharpe persists; not yet >20d persistence threshold. All primary gates pass. Validation report 485 written. Worker disposition recorded (verified).
 
 ## Objective
 1. Record UTC time (TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ).
@@ -9,7 +9,7 @@ Cycle 484 completed at 2026-10-16T02:31:45Z. Gate is 2026-10-18T20:00:00Z. State
 - Rolling 63d Sharpe computed from last 63 cumulative_returns matches stored drift flag within float precision.
 - Regime flips count recomputed from run_history matches 6.
 - Supervisor loop tests: python3 .github/scripts/test_kilo_supervisor_loop.py -v must pass 10/10.
-3. Write research/reports/paper_trading_validation_485.md with UTC time, gate state, status, verification numbers/diff, test results.
+3. Write research/reports/paper_trading_validation_486.md with UTC time, gate state, status, verification numbers/diff, test results.
 4. Supervisor disposition: record disposition in .kilo-runtime/worker-disposition.json within next two tool calls, using current recommendation_id from .kilo-runtime/current-supervisor-recommendation.json if it exists; otherwise null. Follow schema_version 1 with reason/evidence/verification/updated_at as ISO-8601 UTC.
 5. If >= 2026-10-18T20:00:00Z: proceed per established gate-met protocol — re-attempt data acquisition from Yahoo Finance (force=True, end_date 2026-11-30) for 7-ETF incumbent universe (SPY, QQQ, IWM, TLT, GLD, EFA, EEM) plus SPY and ^VIX; verify per-symbol max dates; re-run research/run_paper_trading_replay.py (end_date per yfinance exclusive-end semantics); confirm track record extension/regime/drift state; write detailed validation report.
 
