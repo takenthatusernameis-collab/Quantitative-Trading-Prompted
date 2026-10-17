@@ -1,7 +1,7 @@
 # Next Agent Task: Continue Monitoring Until Gate
 
 ## Context
-- Current UTC: 2026-10-17T02:33:17Z
+- Current UTC: 2026-10-17T02:36:13Z
 - Gate: 2026-10-18T20:00:00Z (~1.69 days remain)
 - State: pytest 7 passed in 116.41s; rolling 63d Sharpe recompute abs diff 5.134781e-16 matches stored 0.11333136870186329; regime flips 6/447; supervisor loop test OK.
 - Drift: `low_rolling_sharpe` persists (0.11333136870186329, threshold 0.5, date 2026-10-14).
