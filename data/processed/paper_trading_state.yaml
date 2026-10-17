@@ -5393,3 +5393,4 @@ dd_scale_min: 1.0
 dd_scale_max: 1.0
 turnover_median: 0.0012494892551145886
 turnover_p95: 0.5
+last_checkpoint_utc: '2026-10-17T20:40:26Z'
