@@ -1,9 +1,9 @@
 # Next Agent Task: Continue Monitoring Until Gate
 
 ## Context
-- Current UTC: 2026-10-17T02:38:36Z
+- Current UTC: 2026-10-17T02:45:59Z
 - Gate: 2026-10-18T20:00:00Z (~1.72 days remain)
-- State: pytest 7 passed in 115.59s; rolling 63d Sharpe recompute abs diff 5.134781e-16 matches stored 0.11333136870186329; regime flips 6/447; supervisor loop test OK (10 tests, 0.403s).
+- State: pytest 7 passed in 114.56s; rolling 63d Sharpe recompute abs diff 5.134781e-16 matches stored 0.11333136870186329; regime flips 6/447; supervisor loop test OK (10 tests, 0.404s).
 - Drift: `low_rolling_sharpe` persists (0.11333136870186329, threshold 0.5, date 2026-10-14).
 - Data ends 2026-10-14 for incumbent ETFs.
 - Prior supervisor recommendation (missing pyarrow ImportError) verified resolved: pyarrow installed, full suite passes.
