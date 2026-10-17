@@ -1,8 +1,8 @@
 # Next Agent Task: Continue Monitoring Until Gate
 
 ## Context
-- Current UTC: 2026-10-17T12:29:06Z
-- Gate: 2026-10-18T20:00:00Z (~31.5h remain)
+- Current UTC: 2026-10-17T12:31:55Z
+- Gate: 2026-10-18T20:00:00Z (~31.4h remain)
 - State: pytest 7 passed in 54.17s; rolling 63d Sharpe recompute diff 5.134781e-16 matches stored 0.11333136870186329; regime flips 6/447; supervisor loop test OK (10 tests in 0.365s); current_nav 135043.35187742324; last_run_date 2026-10-14.
 - Drift: `low_rolling_sharpe` persists (0.11333136870186329, threshold 0.5, date 2026-10-14).
 - Data ends 2026-10-14 for incumbent ETFs.
