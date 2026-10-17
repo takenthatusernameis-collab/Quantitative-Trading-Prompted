@@ -1,26 +1,25 @@
 # Next Agent Task: Continue Monitoring Until Gate
 
 ## Context
-- Current UTC: 2026-10-17T01:01:59Z
-- Gate: 2026-10-18T20:00:00Z (~1.89 days remain)
-- State: pytest 7 passed in 114.79s; rolling 63d Sharpe recompute abs diff 5.134781e-16 matches stored 0.11333136870186329; regime flips 6/447; supervisor loop test OK (10 tests).
+- Current UTC: 2026-10-17T01:04:45Z
+- Gate: 2026-10-18T20:00:00Z (~1.8 days remain)
+- State: pytest 7 passed in 115.09s; rolling 63d Sharpe recompute abs diff 5.134781e-16 matches stored 0.11333136870186329; regime flips 6/447; supervisor loop test OK.
 - Drift: `low_rolling_sharpe` persists (0.113331369, threshold 0.5, date 2026-10-14).
 - Data ends 2026-10-14 for incumbent ETFs.
-- Supervisor recommendation `38966182601-attempt-1-review-0003-f74dedb6672d` (re-run pytest after pyarrow install): verified — full pytest suite 7 passed in 114.79s including test_plateau_analysis.py (4 tests); disposition set to `verified` in .kilo-runtime/worker-disposition.json.
 
 ## Objective
 Continue monitoring-only. Do not modify data acquisition, replay, strategy logic, or infrastructure.
 
 ## Steps
-1. Record current UTC time (`TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`).
+1. Record current UTC time.
 2. Run verification set (pytest, rolling 63d Sharpe recomputation vs stored, regime flip count, supervisor loop test).
-3. Update `.kilo-runtime/worker-disposition.json` within next two tool calls if supervisor advice arrives; otherwise keep current. If updating, use schema_version 1, copy recommendation_id exactly, set disposition="verified", include concrete JSON strings for reason/evidence/verification, updated_at ISO-8601 UTC.
+3. Keep current disposition (verified) unless new supervisor advice arrives.
 4. If current time >= 2026-10-18T20:00:00Z, switch to Cycle 486 gate-met protocol - do NOT do this yet.
 
 ## Validation Commands
 ```bash
 TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ
-python3 -m pytest tests/ -v 2>&1 | tail -1
+python3 -m pytest tests/ -q 2>&1 | tail -1
 python3 <<'PY'
 import yaml, math
 d = yaml.safe_load(open('data/processed/paper_trading_state.yaml'))
@@ -44,12 +43,12 @@ if rh:
         if rh[i]['regime_exposure']!=prev: t+=1; prev=rh[i]['regime_exposure']
 print(f'{t}/{len(rh)}')
 PY
-python3 .github/scripts/test_kilo_supervisor_loop.py -v 2>&1 | tail -1
+python3 .github/scripts/test_kilo_supervisor_loop.py 2>&1 | tail -1
 ```
 
 ## Handoff
-- Changed: NEXT_AGENT_TASK.md refreshed with current UTC 2026-10-17T01:01:59Z; supervisor disposition verified and written; no code changes.
-- Verified: UTC 2026-10-17T01:01:59Z; pytest 7 passed in 114.79s; sharpe diff 5.134781e-16; regime 6/447; supervisor loop OK; plateau test 4/4 passed after pyarrow install.
-- Unresolved: gate ~1.89 days remain (2026-10-18T20:00:00Z); persistent low_rolling_sharpe (0.113331369); data ends 2026-10-14.
+- Changed: NEXT_AGENT_TASK.md refreshed with current UTC 2026-10-17T01:04:45Z; no code changes.
+- Verified: UTC 2026-10-17T01:04:45Z; pytest 7 passed in 115.09s; sharpe diff 5.134781e-16; regime 6/447; supervisor loop OK.
+- Unresolved: gate ~1.8 days remain (2026-10-18T20:00:00Z); persistent low_rolling_sharpe (0.113331369); data ends 2026-10-14.
 - Failed: none.
 - Next: continue monitoring-only; if gate reached, execute Cycle 486 gate-met protocol.
