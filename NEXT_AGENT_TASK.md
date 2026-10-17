@@ -1,9 +1,9 @@
 # Next Agent Task: Continue Monitoring Until Gate
 
 ## Context
-- Current UTC: 2026-10-17T08:30:38Z
-- Gate: 2026-10-18T20:00:00Z (~35.5h remain)
-- State: pytest 7 passed in 79.98s; rolling 63d Sharpe recompute diff 5.134781e-16 matches stored 0.113331368702; regime flips 6/447; supervisor loop test OK (10 tests); NAV $135,043.35; last data date 2026-10-14.
+- Current UTC: 2026-10-17T08:32:42Z
+- Gate: 2026-10-18T20:00:00Z (~35.3h remain)
+- State: pytest 7 passed in 79.52s; rolling 63d Sharpe recompute diff 5.134781e-16 matches stored 0.11333136870186329; regime flips 6/447; supervisor loop test OK (10 tests in 0.422s); NAV $135,043.35; last data date 2026-10-14.
 - Drift: `low_rolling_sharpe` persists (0.11333136870186329, threshold 0.5, date 2026-10-14).
 - Data ends 2026-10-14 for incumbent ETFs.
 - Supervisor recommendation 38990659192-attempt-1-review-0008-2a0e48144967 (pyarrow undeclared) is stale: pyarrow>=14.0.0 declared at requirements.txt:35; worker-disposition.json disposition "superseded".
