@@ -1,9 +1,9 @@
 # Next Agent Task: Continue Monitoring Until Gate
 
 ## Context
-- Current UTC: 2026-10-17T11:53:38Z
-- Gate: 2026-10-18T20:00:00Z (~32.1h remain)
-- State: pytest 7 passed in 53.14s; rolling 63d Sharpe recompute diff 5.134781e-16 matches stored 0.11333136870186329; regime flips 6/447; supervisor loop test OK; current_nav 135043.35187742324; last_run_date 2026-10-14.
+- Current UTC: 2026-10-17T11:56:08Z
+- Gate: 2026-10-18T20:00:00Z (~32.0h remain)
+- State: pytest 7 passed in 55.27s; rolling 63d Sharpe recompute diff 5.134781e-16 matches stored 0.11333136870186329; regime flips 6/447; supervisor loop test OK; current_nav 135043.35187742324; last_run_date 2026-10-14.
 - Drift: `low_rolling_sharpe` persists (0.11333136870186329, threshold 0.5, date 2026-10-14).
 - Data ends 2026-10-14 for incumbent ETFs.
 - Supervisor loop test passes; monitoring continues per hold directive.
@@ -48,4 +48,5 @@ python3 .github/scripts/test_kilo_supervisor_loop.py 2>&1 | tail -1
 ```
 
 ## Handoff
-- Changed: NEXT_AGENT_TASK.md refreshed with current UTC 2026-10-17T11:53:38Z; all verification checks passed (pytest 7 passed in 53.14s, diff 5.134781e-16, 6/447 regime flips, supervisor loop OK). Monitoring-only; gate still in future (~32.1h). No infrastructure/data/strategy changes. .kilo-runtime/worker-disposition.json updated (disposition verified, recommendation_id 39022240727-attempt-1-review-0005-68e608fbb53f).
+- Changed: NEXT_AGENT_TASK.md refreshed with current UTC 2026-10-17T11:56:08Z; all verification checks passed (pytest 7 passed in 55.27s, diff 5.134781e-16, 6/447 regime flips, supervisor loop OK). Monitoring-only; gate still in future (~32.0h). No infrastructure/data/strategy changes. .kilo-runtime/worker-disposition.json updated (disposition verified, recommendation_id 39022240727-attempt-1-review-0005-68e608fbb53f).
+" filePath="/home/runner/work/Quantitative-Trading-Prompted/Quantitative-Trading-Prompted/NEXT_AGENT_TASK.md
