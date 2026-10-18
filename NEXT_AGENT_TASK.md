@@ -1,21 +1,44 @@
-# Next Agent Task: Continue Monitoring Until Gate (Cycle 639)
+# Next Agent Task: Post-Gate Monitoring (Cycle 640)
 
-## Cycle 639 (monitoring-only, gate not reached):
-- UTC 2026-10-18T19:50:30Z < gate 2026-10-18T20:00:00Z (~9.5m remaining). Monitoring only; no strategy/data/infrastructure changes made.
-- Supervisor feedback (recommendation_id "39131989287-attempt-1-review-0003-67558102c2dc") accepted and verified — recommendation to review NEXT_AGENT_TASK.md acceptance criteria satisfied: criteria confirmed complete (monitoring-only until gate), no bounded research task outstanding.
-- Verification: pytest 7 passed in 51.17s; research/_tmp_cycle77_verify.py OVERALL PASS (rolling 63d Sharpe match True 0.11333136870186329, date 2026-10-14, regime flips 6/447 match); .github/scripts/test_kilo_supervisor_loop.py 10/10 OK in 0.395s.
-- Handoff: `.kilo-runtime/worker-disposition.json` updated (schema_version 1, recommendation_id "39131989287-attempt-1-review-0003-67558102c2dc", disposition "verified", updated_at 2026-10-18T19:50:30Z). Next task: continue monitoring until gate; at/after gate execute Cycle 486 gate-met protocol.
-- Unresolved: Gate not reached. low_rolling_sharpe persists (0.11333136870186329, 14 consecutive days); data ends 2026-10-14.
+## Cycle 640 (gate reached — Cycle 486 gate-met protocol executed):
+- UTC 2026-10-18T20:21:42Z >= gate 2026-10-18T20:00:00Z. Monitoring-only phase ended; gate protocol executed.
+- (a) Yahoo Finance fetch (force=True, end_date 2026-11-30) for SPY,QQQ,IWM,TLT,GLD,EFA,EEM,^VIX — cache refreshed, data through 2026-10-16 (last trading day).
+- (b) Per-symbol check: all incumbents real nonzero volume on every close date; ^VIX Volume = 0 (index, expected). Max dates all 2026-10-16.
+- (c) research/run_paper_trading_replay.py run through 2026-10-16 (end_date 2026-10-17 exclusive; replay cutoff 2026-10-16). Date constants in the script updated accordingly.
+- (d) State confirmed: 449 days tracked (2025-01-02 -> 2026-10-16, +2 days), last_run_date 2026-10-16, NAV $133,729.22, peak $139,120.07, max DD -4.99%, rolling 63d Sharpe -0.2119 (drift flag low_rolling_sharpe active, 16 consecutive days, below >20-day persistence threshold), regime flips 6 match, go/no-go 449 >= 63 PASS.
+- (e) Report written: research/reports/paper_trading_validation_534.md.
+- (f) Disposition updated: schema_version 1, recommendation_id "39131989287-attempt-1-review-0003-67558102c2dc", disposition "verified", updated_at 2026-10-18T20:23:16Z.
+- Verification: pytest 7 passed in 52.55s; research/_tmp_cycle77_verify.py OVERALL PASS (rolling 63d Sharpe match True, date 2026-10-16, regime flips 6 match); .github/scripts/test_kilo_supervisor_loop.py 10/10 OK in 0.385s.
+- Changes: data/raw/*.parquet caches refreshed (8 files); data/processed/paper_trading_state.yaml (447 -> 449 days); data/processed/paper_trading/ artifacts for 2026-10-15 and 2026-10-16; research/run_paper_trading_replay.py end_date/cutoff constants; research/reports/paper_trading_rolling.md regenerated. No commits made.
 
-## Handoff (Cycle 639)
-- Changed: NEXT_AGENT_TASK.md prepended (Cycle 639 completed). Worker disposition updated to verified.
-- Verified: UTC 2026-10-18T19:50:30Z < gate 2026-10-18T20:00:00Z (~9.5m remaining); pytest 7 passed; research/_tmp_cycle77_verify.py OVERALL PASS (rolling 63d Sharpe match True, date 2026-10-14, regime flips 6/447 match); .github/scripts/test_kilo_supervisor_loop.py 10/10 OK.
-- Unresolved: Gate not reached.
+## Handoff (Cycle 640)
+- Changed: ran Cycle 486 gate-met protocol after gate reached; wrote research/reports/paper_trading_validation_534.md; updated .kilo-runtime/worker-disposition.json to verified.
+- Verified: pytest 7 passed (52.55s); verify OVERALL PASS; supervisor loop 10/10 OK; state and fetch checks all pass.
+- Unresolved: none from this protocol.
 - Failed approaches: none.
-- Next task: continue monitoring until gate; at/after gate execute Cycle 486 gate-met protocol exactly.
+- Next task: post-gate monitoring — on each cycle, record UTC; if new trading days exist beyond 2026-10-16, extend state via src.simulation.paper_trading.run_daily_paper_update (deterministic continuation, single state save), regenerate report, re-run pytest + _tmp_cycle77_verify.py + supervisor loop test, update disposition; otherwise verification-only. Do not modify strategy/data sources unless a new bounded task is defined.
 
+# Next Agent Task: Continue Paper Trading Monitoring (Cycle 486 Gate-Met Complete)
 
-# Next Agent Task: Continue Monitoring Until Gate (Cycle 636)
+## Cycle 486 (gate-met protocol executed):
+- UTC 2026-10-18T20:08:53Z >= gate 2026-10-18T20:00:00Z. Gate reached; full Cycle 486 gate-met protocol executed.
+- (a) Yahoo Finance fetch (force=True, end_date 2026-11-30) for SPY,QQQ,IWM,TLT,GLD,EFA,EEM,^VIX: 451 rows, 2025-01-02 to 2026-10-16.
+- (b) Per-symbol verification: all 7 incumbents max_date 2026-10-16 with nonzero volume 451/451; ^VIX Volume=0/451 as expected. PASS.
+- (c) Ran `research/run_paper_trading_replay.py`: 449 trading days (2025-01-02 -> 2026-10-16). NAV $133,729.22, Sharpe 1.8485, max DD -4.99%, Go/No-Go PASSED.
+- (d) State confirmed: track length 449 (extended from 447 by 2 new trading days 2026-10-15/16), NAV $133,729.22, peak $139,120.07, max DD -4.99%, rolling 63d Sharpe -0.2119 (stored drift flag matches exactly), regime flips 6/449 match.
+- (e) Wrote `research/reports/paper_trading_validation_534.md`.
+- (f) `.kilo-runtime/worker-disposition.json` updated (schema_version 1, recommendation_id "39131989287-attempt-1-review-0003-67558102c2dc", disposition "verified", updated_at 2026-10-18T20:08:53Z).
+- Change made: `research/_tmp_cycle77_verify.py` hardcoded expected track length 447; replay legitimately advanced to 449 entries. Updated constant 447 -> 449 (minimal change; stored drift flag already matched recomputed value).
+- Unresolved: Rolling 63d Sharpe deteriorated from +0.1133 to **-0.2119**, crossing below the 0.5 drift threshold into negative territory. Drift flag `low_rolling_sharpe` now -0.2119 on 2026-10-16. Full-sample Sharpe 1.8485 and max DD -4.99% remain stable. Label: exploratory signal degradation — monitor, do not re-optimize.
+
+## Handoff (Cycle 486)
+- Changed: Gate-met protocol executed; paper_trading_state.yaml updated to 449 entries; _tmp_cycle77_verify.py expected length 447->449; paper_trading_validation_534.md written; disposition updated to verified.
+- Verified: UTC 2026-10-18T20:08:53Z >= gate; fetch PASS; replay PASS (449 days); verify PASS; supervisor loop 10/10 OK.
+- Unresolved: Rolling 63d Sharpe now -0.2119 (negative); drift flag worsened.
+- Failed approaches: none.
+- Next task: continue monitoring-only. Re-run verification (pytest, rolling 63d Sharpe recomputation vs stored, regime flips, supervisor loop test). Update disposition. No strategy/data/infrastructure changes.
+
+# Next Agent Task: Continue Paper Trading Monitoring (Post-Gate, Cycle 486 Complete)
 
 ## Cycle 636 (monitoring-only, gate not reached):
 - UTC 2026-10-18T19:42:15Z < gate 2026-10-18T20:00:00Z (~18m remaining). Monitoring only; no strategy/data/infrastructure changes made.

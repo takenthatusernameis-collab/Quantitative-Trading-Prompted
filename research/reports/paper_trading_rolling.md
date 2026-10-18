@@ -1,40 +1,40 @@
 # Paper-Trading Rolling Report
 
-**Generated:** 2026-10-16 09:41:00 UTC
-**Last Run Date:** 2026-10-14
-**Days Tracked:** 447
+**Generated:** 2026-10-18 20:16:44 UTC
+**Last Run Date:** 2026-10-16
+**Days Tracked:** 449
 
 ## Current State
 
 | Metric | Value |
 |---|---|
-| Current NAV | $135,043.35 |
+| Current NAV | $133,729.22 |
 | Peak NAV | $139,120.07 |
 | Paper Drawdown | -4.99% |
-| Total Return | 35.04% |
-| Annualized Return | 18.46% |
-| Volatility (ann.) | 9.57% |
-| Sharpe Ratio (ann.) | 1.9293 |
+| Total Return | 33.73% |
+| Annualized Return | 17.72% |
+| Volatility (ann.) | 9.59% |
+| Sharpe Ratio (ann.) | 1.8485 |
 
 ## Positions Table
 
-- SPY: 16.1526%
-- QQQ: 16.1526%
-- IWM: 16.1526%
-- EEM: 16.1526%
+- SPY: 15.7831%
+- QQQ: 15.7831%
+- IWM: 15.7831%
+- EEM: 15.7831%
 
 ## Drift Monitoring
 
-- **low_rolling_sharpe**: {'value': np.float64(0.11333136870186329), 'threshold': 0.5, 'date': '2026-10-14'}
+- **low_rolling_sharpe**: {'value': np.float64(-0.21188351222842883), 'threshold': 0.5, 'date': '2026-10-16'}
 
 ## Enhanced Drift Monitoring
 
-- **Rolling 63-day Sharpe:** 0.1133
+- **Rolling 63-day Sharpe:** -0.2119
 - **Rolling 63-day Max DD:** -4.99%
-- **Regime Persistence:** 132 days in current regime
+- **Regime Persistence:** 134 days in current regime
 - **vol_scale range:** [0.437, 1.000]
 - **dd_scale range:** [1.000, 1.000]
-- **Turnover (median/p95):** 0.12% / 50.00%
+- **Turnover (median/p95):** 0.13% / 50.00%
 
 ## Performance Tracking
 
@@ -44,8 +44,8 @@
 
 ## Run History (Recent)
 
-- 2026-10-08: NAV=$136,804.15, Ret=-0.58%, Turnover=31.56%
-- 2026-10-09: NAV=$137,376.42, Ret=0.42%, Turnover=33.65%
 - 2026-10-12: NAV=$136,905.02, Ret=-0.34%, Turnover=0.49%
 - 2026-10-13: NAV=$136,593.98, Ret=-0.23%, Turnover=0.09%
 - 2026-10-14: NAV=$135,043.35, Ret=-1.14%, Turnover=0.56%
+- 2026-10-15: NAV=$135,230.10, Ret=0.14%, Turnover=0.23%
+- 2026-10-16: NAV=$133,729.22, Ret=-1.11%, Turnover=1.70%

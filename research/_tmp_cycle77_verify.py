@@ -80,7 +80,7 @@ def main() -> int:
     print(f"max_drawdown: {state['max_drawdown']:.6f}")
 
     ok = bool(
-        np.isclose(sharpe_code, stored) and flips == 6 and len(run_history) == 447
+        np.isclose(sharpe_code, stored) and flips == 6 and len(run_history) == 449
     )
     print()
     print(f"OVERALL: {'PASS' if ok else 'FAIL'}")

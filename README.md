@@ -48,6 +48,17 @@ This repository implements a disciplined quantitative research process focused o
 - Verification: pytest 7 passed in 52.61s; research/_tmp_cycle77_verify.py OVERALL PASS (rolling 63d Sharpe match True, date 2026-10-14, regime flips 6/447 match); .github/scripts/test_kilo_supervisor_loop.py 10/10 OK in 0.387s. Drift flag `low_rolling_sharpe` persists (0.11333136870186329, 14 consecutive days); below >20-day persistence threshold. Data ends 2026-10-14.
 - Handoff: `.kilo-runtime/worker-disposition.json` updated (schema_version 1, recommendation_id "39131989287-attempt-1-review-0003-67558102c2dc", disposition "verified", updated_at 2026-10-18T19:42:15Z). NEXT_AGENT_TASK.md context time updated (Cycle 636). Next task: continue monitoring until gate; at/after gate execute Cycle 486 gate-met protocol.
 
+**Cycle 486**: Gate-Met Protocol Executed — **ROLLING 63D SHARPE DETERIORATED TO -0.2119**.
+- UTC 2026-10-18T20:08:53Z >= gate 2026-10-18T20:00:00Z. Full gate-met protocol executed.
+- (a) Yahoo fetch (force=True, end 2026-11-30): 451 rows, 2025-01-02 to 2026-10-16.
+- (b) Per-symbol verify: 7 incumbents max_date 2026-10-16, nonzero volume 451/451; ^VIX Volume=0/451. PASS.
+- (c) Replay: 449 trading days (extended from 447 by 2 new days 2026-10-15/16). NAV $133,729.22, Sharpe 1.8485, max DD -4.99%, Go/No-Go PASSED.
+- (d) Rolling 63d Sharpe recomputed: -0.2119 (stored drift flag matches exactly). Regime flips 6/449 match.
+- (e) Report: `research/reports/paper_trading_validation_534.md`.
+- (f) Disposition updated (verified, 2026-10-18T20:08:53Z).
+- Change: `research/_tmp_cycle77_verify.py` hardcoded expected track length 447; replay legitimately advanced to 449. Updated constant 447 -> 449 (minimal; stored drift flag already matched).
+- Unresolved: Rolling 63d Sharpe fell from +0.1133 to **-0.2119**, below the 0.5 drift threshold and into negative territory. Full-sample Sharpe 1.8485 and max DD -4.99% stable. Label: exploratory signal degradation — monitor, do not re-optimize.
+
 **Cycle 632**: Continue Paper Trading Monitoring — **NO NEW REAL TRADING DAY, DRIFT FLAG PERSISTS (14 DAYS)**.
 - UTC 2026-10-18T19:35:25Z < gate 2026-10-18T20:00:00Z (~25m remaining). Monitoring only; no strategy/data/infrastructure changes made.
 - Supervisor feedback (recommendation_id "39131989287-attempt-1-review-0003-67558102c2dc") accepted and verified — recommendation to review NEXT_AGENT_TASK.md acceptance criteria satisfied: criteria confirmed complete (monitoring-only until gate), no bounded research task outstanding.
