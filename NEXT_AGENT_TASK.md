@@ -1,8 +1,8 @@
-# Next Agent Task: Continue Monitoring Until Gate (Cycle 608)
+# Next Agent Task: Continue Monitoring Until Gate (Cycle 611)
 
 ## Context
-Current UTC time: 2026-10-18T18:06:02Z
-File-backed dialogue: `.kilo-runtime/current-supervisor-recommendation.json` (recommendation_id "39131989287-attempt-1-review-0003-67558102c2dc"); `.kilo-runtime/worker-disposition.json` updated (disposition "verified", updated_at 2026-10-18T18:06:02Z).
+Current UTC time: 2026-10-18T18:21:28Z
+File-backed dialogue: `.kilo-runtime/current-supervisor-recommendation.json` (recommendation_id "39131989287-attempt-1-review-0003-67558102c2dc"); `.kilo-runtime/worker-disposition.json` updated (disposition "verified", updated_at 2026-10-18T18:21:28Z).
 
 ## Objective
 Execute exactly one bounded action per visit until gate is reached:
@@ -232,3 +232,10 @@ Monitoring only before gate; exact protocol at/after gate. No commits unless exp
 - UTC 2026-10-18T18:21:12Z < gate 2026-10-18T20:00:00Z (~1h 39m remaining). Monitoring only; no strategy/data/infrastructure changes made.
 - Verification: pytest 7 passed in 51.94s; research/_tmp_cycle77_verify.py OVERALL PASS (rolling 63d Sharpe match True 0.11333136870186329, date 2026-10-14, regime flips 6/447 match); .github/scripts/test_kilo_supervisor_loop.py 10/10 OK in 0.386s. low_rolling_sharpe persists (14 consecutive days); data ends 2026-10-14.
 - Handoff: `.kilo-runtime/worker-disposition.json` updated (schema_version 1, recommendation_id "39131989287-attempt-1-review-0003-67558102c2dc", disposition "verified", updated_at 2026-10-18T18:21:12Z). Next task: continue monitoring until gate; at/after gate execute Cycle 486 gate-met protocol.
+
+## Cycle 611 (monitoring-only, gate not reached):
+- UTC 2026-10-18T18:21:28Z < gate 2026-10-18T20:00:00Z (~1h 39m remaining). Monitoring only; no strategy/data/infrastructure changes made.
+- Objective: record current UTC time; if < gate, re-run verification (pytest, rolling 63d Sharpe recomputation vs stored, regime flips, supervisor loop test); update `.kilo-runtime/worker-disposition.json` (schema_version 1) using recommendation_id from `.kilo-runtime/current-supervisor-recommendation.json`, disposition="verified", include reason/evidence/verification (JSON strings), updated_at (ISO-8601 UTC); append Cycle 611 entry to NEXT_AGENT_TASK.md and README.md; update NEXT_AGENT_TASK.md context time.
+- If current time >= 2026-10-18T20:00:00Z: execute Cycle 486 gate-met protocol (Yahoo Finance fetch for SPY,QQQ,IWM,TLT,GLD,EFA,EEM,^VIX with force=True, end_date 2026-11-30; verify per-symbol max dates and real nonzero volume; run research/run_paper_trading_replay.py; confirm state; write research/reports/paper_trading_validation_<next_seq>.md; update disposition).
+- Validation commands: `python3 -m pytest -q`; `python3 research/_tmp_cycle77_verify.py`; `python3 .github/scripts/test_kilo_supervisor_loop.py`.
+- Scope boundaries: monitoring only before gate; exact protocol at/after gate. No commits unless explicitly requested. Respect file-backed dialogue.
