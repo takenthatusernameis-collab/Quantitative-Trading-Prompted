@@ -1,9 +1,9 @@
 # Next Agent Task: Post-Gate Monitoring
 
 ## Context
-Post-gate monitoring phase. No new trading days beyond 2026-10-16 (all symbols max 2026-10-16). All verification checks pass as of 2026-10-18T21:20:36Z. Data in parquet format under data/raw/*.parquet.
+Post-gate monitoring phase. No new trading days beyond 2026-10-16 (all symbols max 2026-10-16). All verification checks pass as of 2026-10-18T21:35:00Z. Data in parquet format under data/raw/*.parquet.
 
-Cycle 2026-10-18T21:20:36Z completed: verification-only, no state changes. Per-symbol max_date check confirms raw parquet (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX) all terminal at 2026-10-16; paper-trading state last_run_date 2026-10-16. pytest 7 passed (53.15s); research/_tmp_cycle77_verify.py OVERALL PASS (rolling 63d Sharpe -0.21188351222842883 match True, regime flips 6/6, run_history 449); .github/scripts/test_kilo_supervisor_loop.py 10/10 OK. Drift flag low_rolling_sharpe persists (20 consecutive days), at >20-day persistence threshold. Disposition updated to verified at 2026-10-18T21:20:36Z.
+Cycle 2026-10-18T21:35:00Z completed: verification-only plus bounded drift-flag escalation assessment. Per-symbol max_date check confirms raw parquet (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX) all terminal at 2026-10-16; paper-trading state last_run_date 2026-10-16. pytest 7 passed (52.25s); research/_tmp_cycle77_verify.py OVERALL PASS (rolling 63d Sharpe -0.21188351222842883 match True, regime flips 6/6, run_history 449); .github/scripts/test_kilo_supervisor_loop.py 10/10 OK. Drift flag `low_rolling_sharpe` persists (-0.21188351222842883). Escalation assessment written to research/reports/drift_flag_escalation_001.md — decision: exploratory signal degradation, monitor, do not re-optimize.
 
 ## Objective
 Continue post-gate monitoring-only. On each cycle, record UTC. If new trading days exist beyond 2026-10-16, extend state via `src.simulation.paper_trading.run_daily_paper_update` (deterministic continuation, single state save), regenerate reports, re-run verification checks, and update disposition. Otherwise perform verification-only with no state changes.
@@ -28,5 +28,7 @@ Continue post-gate monitoring-only. On each cycle, record UTC. If new trading da
 
 ## Known State
 - Data ends 2026-10-16; no new trading days observed
-- All verification passes as of 2026-10-18T21:20:36Z
-- Paper-trading state: last_run_date 2026-10-16, current_nav $133729.22, peak_nav $139120.07, max_drawdown -0.049857, 449 run_history entries, 6 regime flips, rolling 63d Sharpe -0.21188351222842883 (low_rolling_sharpe flag persists 20 consecutive days, at >20-day persistence threshold)
+- All verification passes as of 2026-10-18T21:35:00Z
+- Paper-trading state: last_run_date 2026-10-16, current_nav $133729.22, peak_nav $139120.07, max_drawdown -0.049857, 449 run_history entries, 6 regime flips, rolling 63d Sharpe -0.21188351222842883 (low_rolling_sharpe flag persists)
+- Escalation assessment: research/reports/drift_flag_escalation_001.md — exploratory signal degradation, monitor, do not re-optimize
+- Full-sample Sharpe 1.7484; recent 63d window (2026-08-20..10-16) ann. return -1.74%, ann. vol 8.22%
