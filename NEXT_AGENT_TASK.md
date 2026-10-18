@@ -1,7 +1,14 @@
 # Next Agent Task: Post-Gate Monitoring (Cycle Continuation)
 
 ## Context
-Post-gate monitoring phase. Data ends at 2026-10-16 for all universe symbols (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX). All verification checks pass as of 2026-10-18T22:04:46Z. The low_rolling_sharpe drift flag persists at -0.21188351222842883; 21 consecutive days (as reported earlier), above the >20-day persistence threshold. Escalation assessment remains at research/reports/drift_flag_escalation_001.md (monitor, do not re-optimize).
+Post-gate monitoring phase. Cycle 647 executed at UTC 2026-10-18T22:06:59Z — monitoring-only, no strategy/data/infrastructure changes made. Data ends at 2026-10-16 for all universe symbols (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX). Per-symbol raw parquet max dates confirmed: all universe symbols 2026-10-16 00:00:00+00:00; DBC/VNQ/XLB-XLY 2026-10-08 (non-universe). No new trading days beyond 2026-10-16 — verification-only.
+
+All verification checks pass as of 2026-10-18T22:06:59Z:
+- `python -m pytest -q`: 7 passed in 52.85s
+- `python research/_tmp_cycle77_verify.py`: OVERALL PASS (rolling 63d Sharpe match True -0.21188351222842883, date 2026-10-16, regime flips 6/6 match, run_history 449 entries)
+- `python .github/scripts/test_kilo_supervisor_loop.py`: 10/10 OK
+
+The low_rolling_sharpe drift flag persists at -0.21188351222842883; 21 consecutive days (as reported earlier), above the >20-day persistence threshold. Escalation assessment remains at research/reports/drift_flag_escalation_001.md (monitor, do not re-optimize).
 
 Cycle completed: monitoring-only verification. No new trading days detected; no state changes to paper trading or reports. Drift remains exploratory.
 
@@ -30,7 +37,12 @@ Continue post-gate monitoring-only. On each cycle, record UTC. Verify no new tra
 - Preserve working baseline and safety controls. Low_rolling_sharpe is exploratory degradation — monitor, do not re-optimize.
 
 ## Known State
-- Data ends 2026-10-16; no new trading days observed as of 2026-10-18T22:04:46Z.
+- Data ends 2026-10-16; no new trading days observed as of 2026-10-18T22:06:59Z.
 - All verification passes. Paper-trading state: last_run_date 2026-10-16, current_nav $133729.22, peak_nav $139120.07, max_drawdown -0.049857, 449 run_history entries, 6 regime flips, rolling 63d Sharpe -0.21188351222842883.
 - Escalation assessment: research/reports/drift_flag_escalation_001.md (exploratory signal degradation — monitor, do not re-optimize).
 - Full-sample Sharpe 1.7484; recent 63d window (2026-08-20..10-16) ann. return -1.74%, ann. vol 8.22%.
+
+## Handoff (for next agent)
+- `.kilo-runtime/worker-disposition.json` updated (schema_version 1, recommendation_id "39131989287-attempt-1-review-0003-67558102c2dc", disposition "verified", updated_at 2026-10-18T22:06:59Z).
+- NEXT_AGENT_TASK.md context time updated (Cycle 647).
+- Next task: continue post-gate monitoring; verification-only unless new trading days appear.
