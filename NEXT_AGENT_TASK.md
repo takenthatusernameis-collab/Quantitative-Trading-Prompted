@@ -1,7 +1,7 @@
 # Next Agent Task: Monitor Until Gate, Execute Gate-Met Protocol If Reached
 
 ## Context
-Current UTC time: 2026-10-18T00:49:22Z, gate 2026-10-18T20:00:00Z not reached (~19h 17m remaining). Monitoring verified: pytest 7 passed in 90.96s; rolling 63d Sharpe recomputation diff 5.134781e-16 matches stored 0.11333136870186329; regime flips 6/447; supervisor loop test OK. Drift flag `low_rolling_sharpe` persists (value 0.11333136870186329, threshold 0.5, date 2026-10-14, 3 consecutive days) below >20-day persistence threshold. Data ends 2026-10-14 for incumbent ETFs; no real data beyond 2026-10-14. `.kilo-runtime/current-supervisor-recommendation.json` has recommendation_id "39069095282-attempt-1-review-0008-fd07752e6a69". `.kilo-runtime/worker-disposition.json` updated (disposition "verified", updated_at 2026-10-18T00:49:22Z).
+Current UTC time: 2026-10-18T00:55:12Z, gate 2026-10-18T20:00:00Z not reached (~19h 4m remaining). Monitoring verified: pytest 7 passed in ~88s; rolling 63d Sharpe recomputation diff 5.134781e-16 matches stored; regime flips 6/447; supervisor loop test OK. Drift flag `low_rolling_sharpe` persists (value 0.11333136870186329, threshold 0.5, date 2026-10-14, 3 consecutive days) below persistence threshold. Data ends 2026-10-14 for incumbent ETFs; no real data beyond 2026-10-14. `.kilo-runtime/current-supervisor-recommendation.json` has recommendation_id "39069095282-attempt-1-review-0008-fd07752e6a69". `.kilo-runtime/worker-disposition.json` updated (disposition "verified", updated_at 2026-10-18T00:55:12Z).
 
 ## Objective
 Execute exactly one bounded action:
@@ -13,28 +13,28 @@ Execute exactly one bounded action:
 ```bash
 TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ
 python3 -m pytest tests/ -q 2>&1 | tail -1
-python3 -c "
-import yaml,math
-d=yaml.safe_load(open('data/processed/paper_trading_state.yaml'))
-ret=d['cumulative_returns'][-63:]
-if len(ret)>1:
-    m=sum(ret)/len(ret); v=sum((r-m)**2 for r in ret)/(len(ret)-1)
-    s=(m*252)/(math.sqrt(v)*math.sqrt(252)) if v>0 else 0
-else: s=ret[0] if ret else 0
-stored=d['drift_flags']['low_rolling_sharpe']['value']
+python3 << 'PY'
+import yaml, math
+d = yaml.safe_load(open('data/processed/paper_trading_state.yaml'))
+ret = d['cumulative_returns'][-63:]
+if len(ret) > 1:
+    m = sum(ret)/len(ret); v = sum((r-m)**2 for r in ret)/(len(ret)-1)
+    s = (m*252)/(math.sqrt(v)*math.sqrt(252)) if v > 0 else 0
+else: s = ret[0] if ret else 0
+stored = d['drift_flags']['low_rolling_sharpe']['value']
 print(f'diff={abs(s-stored):.6e}')
-"
-python3 -c "
+PY
+python3 << 'PY'
 import yaml
-d=yaml.safe_load(open('data/processed/paper_trading_state.yaml'))
-rh=d['run_history']
-t=0
+d = yaml.safe_load(open('data/processed/paper_trading_state.yaml'))
+rh = d['run_history']
+t = 0
 if rh:
-    prev=rh[0]['regime_exposure']
+    prev = rh[0]['regime_exposure']
     for i in range(1,len(rh)):
-        if rh[i]['regime_exposure']!=prev: t+=1; prev=rh[i]['regime_exposure']
+        if rh[i]['regime_exposure'] != prev: t += 1; prev = rh[i]['regime_exposure']
 print(f'{t}/{len(rh)}')
-"
+PY
 python3 .github/scripts/test_kilo_supervisor_loop.py 2>&1 | tail -1
 ```
 
@@ -52,8 +52,8 @@ python3 .github/scripts/test_kilo_supervisor_loop.py 2>&1 | tail -1
 - research/reports/paper_trading_validation_*.md (only when gate met)
 
 ## Handoff
-- Changed: NEXT_AGENT_TASK.md prepared (context time updated to 2026-10-18T00:43:29Z); `.kilo-runtime/worker-disposition.json` updated (disposition "verified", updated_at 2026-10-18T00:49:22Z).
-- Verified: UTC 2026-10-18T00:43:29Z < gate (2026-10-18T20:00:00Z); pytest 7 passed in 90.96s; rolling 63d Sharpe diff 5.134781e-16; regime flips 6/447; supervisor loop OK; git diff only __pycache__, 0 source changes.
+- Changed: NEXT_AGENT_TASK.md updated (current context time 2026-10-18T00:55:12Z); `.kilo-runtime/worker-disposition.json` updated (disposition "verified", updated_at 2026-10-18T00:55:12Z).
+- Verified: UTC 2026-10-18T00:55:12Z < gate (2026-10-18T20:00:00Z); pytest 7 passed; rolling 63d Sharpe diff 5.134781e-16; regime flips 6/447; supervisor loop OK; git diff only __pycache__, 0 source changes.
 - Unresolved: Gate not reached; drift persists (low_rolling_sharpe 0.11333136870186329 on 2026-10-14, 3 consecutive days); no real data beyond 2026-10-14.
 - Failed approaches: none new.
 - Next task: continue monitoring until gate; at/after gate execute Cycle 486 gate-met protocol.
