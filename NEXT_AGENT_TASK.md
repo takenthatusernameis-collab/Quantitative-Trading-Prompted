@@ -1,9 +1,9 @@
 # Next Agent Task: Post-Gate Monitoring
 
 ## Context
-Post-gate monitoring phase. No new trading days beyond 2026-10-16 (all symbols max 2026-10-16). All verification checks pass as of 2026-10-18T21:03:51Z. Data in parquet format under data/processed/paper_trading/.
+Post-gate monitoring phase. No new trading days beyond 2026-10-16 (all symbols max 2026-10-16). All verification checks pass as of 2026-10-18T21:16:18Z. Data in parquet format under data/raw/*.parquet.
 
-Cycle 2026-10-18T21:14:31Z completed: verification-only, no state changes. Per-symbol max_date check confirms raw parquet (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX) all terminal at 2026-10-16; paper-trading state last_run_date 2026-10-16. pytest 7 passed; research/_tmp_cycle77_verify.py OVERALL PASS (rolling 63d Sharpe -0.21188351222842883 match True, regime flips 6/6, run_history 449); .github/scripts/test_kilo_supervisor_loop.py 10/10 OK. Drift flag low_rolling_sharpe persists (19 consecutive days), below >20-day persistence threshold. Disposition updated to verified at 2026-10-18T21:14:31Z.
+Cycle 2026-10-18T21:16:18Z completed: verification-only, no state changes. Per-symbol max_date check confirms raw parquet (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX) all terminal at 2026-10-16; paper-trading state last_run_date 2026-10-16. pytest 7 passed; research/_tmp_cycle77_verify.py OVERALL PASS (rolling 63d Sharpe -0.21188351222842883 match True, regime flips 6/6, run_history 449); .github/scripts/test_kilo_supervisor_loop.py 10/10 OK. Drift flag low_rolling_sharpe persists (19 consecutive days), below >20-day persistence threshold. Disposition updated to verified at 2026-10-18T21:16:18Z.
 
 ## Objective
 Continue post-gate monitoring-only. On each cycle, record UTC. If new trading days exist beyond 2026-10-16, extend state via `src.simulation.paper_trading.run_daily_paper_update` (deterministic continuation, single state save), regenerate reports, re-run verification checks, and update disposition. Otherwise perform verification-only with no state changes.
@@ -28,5 +28,5 @@ Continue post-gate monitoring-only. On each cycle, record UTC. If new trading da
 
 ## Known State
 - Data ends 2026-10-16; no new trading days observed
-- All verification passes as of 2026-10-18T21:14:31Z
+- All verification passes as of 2026-10-18T21:16:18Z
 - Paper-trading state: last_run_date 2026-10-16, current_nav $133729.22, peak_nav $139120.07, max_drawdown -0.049857, 449 run_history entries, 6 regime flips, rolling 63d Sharpe -0.21188351222842883 (low_rolling_sharpe flag persists 19 consecutive days)
