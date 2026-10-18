@@ -58,8 +58,8 @@ NO-GO:        ██████████████████████
 | PSR NO-GO Threshold | < 0.5 |
 | First PSR > 0.95 | Never |
 | Final PSR (normal) | 0.4999 |
-| Final PSR (empirical) | 0.3800 |
-| Max PSR (normal) | 0.9392 |
+| Final PSR (empirical) | 0.5000 |
+| Max PSR (normal) | 0.9475 |
 | Min PSR (normal) | 0.0000 |
 
 ### PSR Trajectory
@@ -70,9 +70,9 @@ strong evidence that paper performance matches or exceeds the backtest.
 
 **PSR Normal over Time:**
 - Start (Day 1): 0.0000
-- Day 63: 0.0
-- Day 126: 0.16651455415832328
-- Day 252: 0.05365606779223652
+- Day 63: 4.859254628193891e-13
+- Day 126: 0.2034752970064178
+- Day 252: 0.04891330455716498
 - End: 0.4999
 
 ---
@@ -198,6 +198,6 @@ The framework is validated for use in prospective paper-trading monitoring.
 
 ---
 
-*Report generated: 2026-10-12 04:24:47 UTC*
+*Report generated: 2026-10-18 05:50:37 UTC*
 *Simulation data: 8,482 daily rows (1993-2026), OOS period: 2,205 days (2018-2026)*
-*Code revision: c92f30a*
+*Code revision: 7320aa4*
