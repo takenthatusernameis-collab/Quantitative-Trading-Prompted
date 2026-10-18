@@ -4,9 +4,9 @@
 Post-gate monitoring phase. Monitoring-only, no strategy/data/infrastructure changes. Data ends at 2026-10-16 for all universe symbols (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX). No new trading days beyond 2026-10-16 observed.
 
 All verification checks pass:
-- `python -m pytest -q`: 7 passed (51.53s)
+- `python -m pytest -q`: 7 passed
 - `python research/_tmp_cycle77_verify.py`: OVERALL PASS (rolling 63d Sharpe match True -0.21188351222842883, date 2026-10-16, regime flips 6/6 match, run_history 449 entries)
-- `python .github/scripts/test_kilo_supervisor_loop.py`: OK (10/10, 0.363s)
+- `python .github/scripts/test_kilo_supervisor_loop.py`: OK (10/10)
 
 The low_rolling_sharpe drift flag persists at -0.21188351222842883 (exploratory). Escalation assessment: research/reports/drift_flag_escalation_001.md (monitor, do not re-optimize).
 
@@ -41,9 +41,9 @@ Continue post-gate monitoring-only. On each cycle, record UTC. Verify no new tra
 - Full-sample Sharpe 1.7484; recent 63d window (2026-08-20..10-16) ann. return -1.74%, ann. vol 8.22%.
 
 ## Handoff
-- Cycle completed: monitoring-only verification (UTC 2026-10-18T23:32:56Z, Cycle 663).
+- Cycle completed: monitoring-only verification (UTC 2026-10-18T23:33:55Z, Cycle 664).
 - Per-symbol raw parquet index max dates verified: SPY/QQQ/IWM/TLT/GLD/EFA/EEM/^VIX all 2026-10-16. No new trading days beyond 2026-10-16 — verification-only, no state changes.
-- Verification: pytest 7 passed in 51.53s; research/_tmp_cycle77_verify.py OVERALL PASS (rolling 63d Sharpe match True -0.21188351222842883, date 2026-10-16, regime flips 6/6 match, run_history 449 entries); .github/scripts/test_kilo_supervisor_loop.py OK 10/10 in 0.363s.
+- Verification: pytest 7 passed; research/_tmp_cycle77_verify.py OVERALL PASS (rolling 63d Sharpe match True -0.21188351222842883, date 2026-10-16, regime flips 6/6 match, run_history 449 entries); .github/scripts/test_kilo_supervisor_loop.py OK 10/10.
 - Drift flag `low_rolling_sharpe` persists at -0.21188351222842883 (exploratory degradation; monitor, do not re-optimize). See research/reports/drift_flag_escalation_001.md.
-- Git status: only `__pycache__/*.pyc` artifacts may be present from test runs (no source changes). Do not commit.
+- Git status: no source changes. Do not commit.
 - Next task: continue post-gate monitoring; verification-only unless new trading days appear.
