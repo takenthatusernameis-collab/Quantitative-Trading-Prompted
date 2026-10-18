@@ -41,7 +41,7 @@ Continue post-gate monitoring-only. On each cycle, record UTC. Verify no new tra
 - Full-sample Sharpe 1.7484; recent 63d window (2026-08-20..10-16) ann. return -1.74%, ann. vol 8.22%.
 
 ## Handoff
-- Cycle completed: monitoring-only verification (UTC 2026-10-18T23:53:08Z, Cycle 666).
+- Cycle completed: monitoring-only verification (UTC 2026-10-18T23:57:05Z, Cycle 667).
 - Per-symbol raw parquet index max dates verified: SPY/QQQ/IWM/TLT/GLD/EFA/EEM/^VIX all 2026-10-16. No new trading days beyond 2026-10-16 — verification-only, no state changes.
 - Verification: pytest 7 passed in 50.89s; research/_tmp_cycle77_verify.py OVERALL PASS (rolling 63d Sharpe match True -0.21188351222842883, date 2026-10-16, regime flips 6/6 match, run_history 449 entries); .github/scripts/test_kilo_supervisor_loop.py OK 10/10 in 0.363s.
 - Drift flag `low_rolling_sharpe` persists at -0.21188351222842883 (exploratory degradation; monitor, do not re-optimize). See research/reports/drift_flag_escalation_001.md.
