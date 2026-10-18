@@ -1,13 +1,24 @@
-# Next Agent Task: Monitor Until Gate, Execute Gate-Met Protocol If Reached
+# Next Agent Task: Continue Monitoring Until Gate (Cycle 486)
 
 ## Context
-Current UTC time: 2026-10-18T01:59:10Z, gate 2026-10-18T20:00:00Z not reached (~18h 0m remaining). Monitoring verified: pytest 7 passed in 89.76s; rolling 63d Sharpe recomputation diff 5.134781e-16 matches stored; regime flips 6/447; supervisor loop test OK. Drift flag `low_rolling_sharpe` persists (value 0.11333136870186329, threshold 0.5, date 2026-10-14, 3 consecutive days) below persistence threshold. Data ends 2026-10-14 for incumbent ETFs; no real data beyond 2026-10-14. `.kilo-runtime/current-supervisor-recommendation.json` has recommendation_id "39069095282-attempt-1-review-0008-fd07752e6a69". `.kilo-runtime/worker-disposition.json` updated (disposition "verified", updated_at 2026-10-18T01:54:34Z).
+Current UTC time: 2026-10-18T02:06:43Z. Gate time: 2026-10-18T20:00:00Z. Time remaining: ~17h 53m.
+Previous verification: pytest 7 passed in 90.58s; rolling 63d Sharpe recomputation diff 5.134781e-16 matches stored; regime flips 6/447; supervisor loop test OK. Drift flag `low_rolling_sharpe` persists (value 0.11333136870186329, threshold 0.5, date 2026-10-14, 3 consecutive days). Data ends 2026-10-14 for incumbent ETFs; no real data beyond 2026-10-14.
+File-backed dialogue: `.kilo-runtime/current-supervisor-recommendation.json` (recommendation_id "39069095282-attempt-1-review-0008-fd07752e6a69"); `.kilo-runtime/worker-disposition.json` is up to date (disposition "verified", updated_at 2026-10-18T02:06:43Z).
 
 ## Objective
-Execute exactly one bounded action:
+Execute exactly one bounded action per visit until gate is reached:
 1. Record current UTC time (`TZ=UTC date -u +%Y-%m-%dT%H:%M:%SZ`).
-2. If current time < 2026-10-18T20:00:00Z: monitoring only. Re-run the same verification set (pytest, rolling 63d Sharpe recomputation vs stored, regime flip count, supervisor loop test). Update `.kilo-runtime/worker-disposition.json` (schema_version 1) within next two tool calls using recommendation_id from `.kilo-runtime/current-supervisor-recommendation.json`. Set disposition="verified", include concrete reason/evidence/verification (JSON strings), updated_at (ISO-8601 UTC). Do not modify data acquisition, replay, strategy logic, or infrastructure.
-3. If current time >= 2026-10-18T20:00:00Z: execute Cycle 486 gate-met protocol exactly - (a) Yahoo Finance fetch (force=True, end_date 2026-11-30) for incumbent 7-ETF universe (SPY,QQQ,IWM,TLT,GLD,EFA,EEM) plus SPY,^VIX; (b) verify per-symbol max dates and real (nonzero volume) data for incumbent ETFs (^VIX Volume=0 expected); (c) run `research/run_paper_trading_replay.py` with appropriate end_date (yfinance exclusive-end semantics); (d) confirm state (track length/dates, NAV, Sharpe, max DD, rolling 63d Sharpe, regime flips, drift flag status); (e) write `research/reports/paper_trading_validation_<next_seq>.md` with UTC time, gate state, verification results, data-acquisition outcome; (f) update `.kilo-runtime/worker-disposition.json` per protocol.
+2. If current time < 2026-10-18T20:00:00Z: monitoring only. Re-run the same verification set: pytest, rolling 63d Sharpe recomputation vs stored, regime flip count, supervisor loop test. Update `.kilo-runtime/worker-disposition.json` (schema_version 1) within next two tool calls using recommendation_id from `.kilo-runtime/current-supervisor-recommendation.json`. Set disposition="verified", include concrete reason/evidence/verification (JSON strings), updated_at (ISO-8601 UTC). Do not modify data acquisition, replay, strategy logic, or infrastructure.
+3. If current time >= 2026-10-18T20:00:00Z: execute Cycle 486 gate-met protocol exactly as specified below.
+
+### Cycle 486 Gate-Met Protocol (execute only when gate reached)
+When gate condition is met, perform in order:
+(a) Yahoo Finance fetch (force=True, end_date 2026-11-30) for incumbent 7-ETF universe (SPY,QQQ,IWM,TLT,GLD,EFA,EEM) plus SPY,^VIX.
+(b) Verify per-symbol max dates and real (nonzero volume) data for incumbent ETFs (^VIX Volume=0 expected).
+(c) Run `research/run_paper_trading_replay.py` with appropriate end_date (respecting yfinance exclusive-end semantics).
+(d) Confirm state (track length/dates, NAV, Sharpe, max DD, rolling 63d Sharpe, regime flips, drift flag status).
+(e) Write `research/reports/paper_trading_validation_<next_seq>.md` with UTC time, gate state, verification results, data-acquisition outcome (include per-symbol date ranges and volume checks).
+(f) Update `.kilo-runtime/worker-disposition.json` per protocol (schema_version 1, recommendation_id current, disposition="verified", concrete reason/evidence/verification, updated_at UTC).
 
 ## Validation Commands
 ```bash
@@ -44,7 +55,7 @@ python3 .github/scripts/test_kilo_supervisor_loop.py 2>&1 | tail -1
 - At/after gate: only exact Cycle 486 gate-met protocol.
 - No new infrastructure/parallelization/workflow changes.
 - Respect file-backed dialogue: update `.kilo-runtime/worker-disposition.json` within next two tool calls when advice arrives.
-- Temporary reports under `.kilo/supervisor-reports/` not research/project deliverables.
+- Temporary reports under `.kilo/supervisor-reports/` are not research/project deliverables.
 
 ## Evidence Artifacts
 - data/processed/paper_trading_state.yaml
@@ -52,8 +63,8 @@ python3 .github/scripts/test_kilo_supervisor_loop.py 2>&1 | tail -1
 - research/reports/paper_trading_validation_*.md (only when gate met)
 
 ## Handoff
-- Changed: NEXT_AGENT_TASK.md updated (current context time 2026-10-18T01:54:34Z); `.kilo-runtime/worker-disposition.json` updated (disposition "verified", updated_at 2026-10-18T01:54:34Z).
-- Verified: UTC 2026-10-18T01:54:34Z < gate (2026-10-18T20:00:00Z); pytest 7 passed in 89.76s; rolling 63d Sharpe diff 5.134781e-16; regime flips 6/447; supervisor loop test OK; git diff only __pycache__, 0 source changes.
+- Changed: NEXT_AGENT_TASK.md updated with current context (2026-10-18T02:06:43Z). Disposition already verified at 2026-10-18T02:06:43Z.
+- Verified: UTC 2026-10-18T02:06:43Z < gate (2026-10-18T20:00:00Z); pytest 7 passed in 90.58s; rolling 63d Sharpe diff 5.134781e-16; regime flips 6/447; supervisor loop test OK; git diff only __pycache__.
 - Unresolved: Gate not reached; drift persists (low_rolling_sharpe 0.11333136870186329 on 2026-10-14, 3 consecutive days); no real data beyond 2026-10-14.
 - Failed approaches: none new.
-- Next task: continue monitoring until gate; at/after gate execute Cycle 486 gate-met protocol.
+- Next task: continue monitoring until gate; at/after gate execute Cycle 486 gate-met protocol exactly.
