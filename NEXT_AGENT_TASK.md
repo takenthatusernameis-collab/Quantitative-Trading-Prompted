@@ -1,7 +1,7 @@
 # Next Agent Task: Post-Gate Monitoring (Cycle 685)
 
 ## Context
-Post-gate monitoring phase. Monitoring-only, no strategy/data/infrastructure changes. Data ends at 2026-10-16 for all universe symbols (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX). Independently re-verified at UTC 2026-10-19T00:53:16Z: no new trading days beyond 2026-10-16 (per-symbol index max check for all universe symbols using data/raw/*.parquet).
+Post-gate monitoring phase. Monitoring-only, no strategy/data/infrastructure changes. Data ends at 2026-10-16 for all universe symbols (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX). Independently re-verified at UTC 2026-10-19T00:59:49Z: no new trading days beyond 2026-10-16 (per-symbol index max check for all universe symbols using data/raw/*.parquet).
 
 All verification checks pass (UTC 2026-10-19T00:53:16Z):
 - `python -m pytest -q`: 7 passed in 50.04s
