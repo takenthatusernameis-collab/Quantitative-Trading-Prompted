@@ -79,9 +79,18 @@ def main() -> int:
     print(f"peak_nav: ${state['peak_nav']:.2f}")
     print(f"max_drawdown: {state['max_drawdown']:.6f}")
 
-    ok = bool(
-        np.isclose(sharpe_code, stored) and flips == 6 and len(run_history) == 449
+    # Invariants
+    cum_pnl = state["cumulative_pnl"]
+    cum_dates = state["cumulative_dates"]
+    ok_inv = (
+        len(cum_returns) == len(cum_pnl) == len(run_history) == len(cum_dates)
+        and cum_dates == [r["date"] for r in run_history]
+        and len(set(cum_dates)) == len(cum_dates)
+        and all(cum_dates[i] < cum_dates[i+1] for i in range(len(cum_dates)-1))
+        and abs(100000 + sum(cum_pnl) - state["current_nav"]) < 1e-6
+        and state["previous_regime_exposure"] == run_history[-1]["regime_exposure"]
     )
+    ok = bool(np.isclose(sharpe_code, stored) and ok_inv)
     print()
     print(f"OVERALL: {'PASS' if ok else 'FAIL'}")
     return 0 if ok else 1
