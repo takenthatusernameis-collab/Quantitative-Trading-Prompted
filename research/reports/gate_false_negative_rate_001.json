@@ -1,0 +1,96 @@
+{
+  "conditions": {
+    "g1": true,
+    "g2": false,
+    "g3": false
+  },
+  "decision": "The rolling-63-day gate fails on a large fraction of the strategy's own history, the current window is an ordinary failure rather than an extreme one, and the overlay does not cause gate failures (it reduces them). A trailing-window NO-GO is therefore weak evidence about the edge and must be reported together with this false-negative rate.",
+  "paths": {
+    "executed": {
+      "failure_0_0": {
+        "effective_independent_windows": 133.73015873015873,
+        "failures": 1138,
+        "rate": 0.13507418397626111,
+        "stderr_independent_window_approx": 0.029557039106703823,
+        "threshold": 0.0
+      },
+      "failure_0_5": {
+        "effective_independent_windows": 133.73015873015873,
+        "failures": 2704,
+        "rate": 0.3209495548961424,
+        "stderr_independent_window_approx": 0.04036962618352004,
+        "threshold": 0.5
+      },
+      "failure_0_9": {
+        "effective_independent_windows": 133.73015873015873,
+        "failures": 3299,
+        "rate": 0.3915727002967359,
+        "stderr_independent_window_approx": 0.0422081064440021,
+        "threshold": 0.9
+      },
+      "stats": {
+        "count": 8425,
+        "max": 9.668564263450465,
+        "mean": 1.498805543723587,
+        "median": 1.3515571511345408,
+        "min": -4.372612560894073,
+        "p01": -2.5374407683840214,
+        "p05": -0.9458454340954258,
+        "p25": 0.0038795445243858646,
+        "p75": 2.5101363863248154,
+        "p95": 4.618149081835959,
+        "p99": 5.91915649656297,
+        "sd": 1.7231995919099992
+      },
+      "zero_dispersion_windows": 965
+    },
+    "raw_signal": {
+      "failure_0_0": {
+        "effective_independent_windows": 133.73015873015873,
+        "failures": 2382,
+        "rate": 0.2827299703264095,
+        "stderr_independent_window_approx": 0.03894149191894185,
+        "threshold": 0.0
+      },
+      "failure_0_5": {
+        "effective_independent_windows": 133.73015873015873,
+        "failures": 3280,
+        "rate": 0.3893175074183976,
+        "stderr_independent_window_approx": 0.04216431234267839,
+        "threshold": 0.5
+      },
+      "failure_0_9": {
+        "effective_independent_windows": 133.73015873015873,
+        "failures": 3986,
+        "rate": 0.47311572700296733,
+        "stderr_independent_window_approx": 0.043174431739471615,
+        "threshold": 0.9
+      },
+      "stats": {
+        "count": 8425,
+        "max": 7.604644164157719,
+        "mean": 0.9931366538068108,
+        "median": 1.0062432498025966,
+        "min": -5.590810300832636,
+        "p01": -3.2344740088375556,
+        "p05": -2.023418684526072,
+        "p25": -0.1849990489139027,
+        "p75": 2.199142619060618,
+        "p95": 4.06982364247924,
+        "p99": 5.136948072441031,
+        "sd": 1.8233479448174386
+      },
+      "zero_dispersion_windows": 186
+    }
+  },
+  "sample": {
+    "end": "2026-10-16",
+    "sessions": 8487,
+    "start": "1993-01-29"
+  },
+  "trailing": {
+    "executed_value": -0.21188351222843826,
+    "percentile_rank": 11.13353115727003,
+    "raw_signal_value": 0.3072302592250985
+  }
+}

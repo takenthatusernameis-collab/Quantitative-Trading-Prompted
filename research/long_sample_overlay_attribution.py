@@ -188,6 +188,25 @@ def annualised_turnover(weights: pd.DataFrame, window: int | None = None) -> flo
     return float(turnover.mean() * 252)
 
 
+def long_sample_layers(config: SimulationConfig, end_date: str):
+    """Run the frozen configuration over its full history and build the layer chain."""
+    sim = run_simulation(config, config.history_start, end_date)
+    close, _ = _load_market_data(list(config.universe), config.history_start, end_date)
+    layers = build_layers(sim, close.pct_change(), config)
+    return sim, layers
+
+
+def layer_net_paths(layers: dict, config: SimulationConfig) -> dict[str, pd.Series]:
+    """Net-of-own-cost return path of every layer, plus the executed path."""
+    cost_per_unit = (config.commission_bps + config.slippage_bps) / 10000.0
+    paths = {
+        name: own_cost_net_path(layers[name], layers["asset_ret"], cost_per_unit)
+        for name in LAYER_ORDER
+    }
+    paths["executed"] = layers["net_return"].reindex(layers["index"])
+    return paths
+
+
 def distribution(values: np.ndarray) -> dict:
     arr = np.asarray(values, dtype=float)
     return {
@@ -225,16 +244,10 @@ def main() -> int:
     print(f"cost model            : {config.commission_bps + config.slippage_bps:.1f} bp per unit of weight change")
     print(f"paper record          : {len(paper_dates)} sessions through {state.get('last_run_date')}")
 
-    sim = run_simulation(config, config.history_start, paper_dates[-1])
-    close, _ = _load_market_data(list(config.universe), config.history_start, paper_dates[-1])
-    layers = build_layers(sim, close.pct_change(), config)
+    sim, layers = long_sample_layers(config, paper_dates[-1])
     index = layers["index"]
 
-    net_paths = {
-        name: own_cost_net_path(layers[name], layers["asset_ret"], cost_per_unit)
-        for name in LAYER_ORDER
-    }
-    net_paths["executed"] = layers["net_return"].reindex(index)
+    net_paths = layer_net_paths(layers, config)
 
     print("\n--- 1. Engine reproduces the committed paper record ---")
     positions = {str(ts.date()): i for i, ts in enumerate(index)}
