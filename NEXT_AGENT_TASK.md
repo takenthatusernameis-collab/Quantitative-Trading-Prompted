@@ -1,14 +1,14 @@
-# Next Agent Task: Post-Gate Monitoring (Cycle 804)
+# Next Agent Task: Post-Gate Monitoring (Cycle 805)
 ## Context
-Post-gate monitoring phase. Monitoring-only, no strategy/data/infrastructure changes. Data ends at 2026-10-16 for all universe symbols (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX). Current UTC 2026-10-19T07:38:00Z — no new trading days beyond 2026-10-16 (per-symbol parquet index max all 2026-10-16 00:00:00+00:00).
+Post-gate monitoring phase. Monitoring-only, no strategy/data/infrastructure changes. Data ends at 2026-10-16 for all universe symbols (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX). Current UTC 2026-10-19T07:41:09Z — no new trading days beyond 2026-10-16 (per-symbol parquet index max all 2026-10-16 00:00:00+00:00).
 
-Cycle 803 (this session): verification-only, no state/report/code changes. All verification checks pass:
-- `python -m pytest -q`: 7 passed in 119.59s
+Cycle 804 (this session): verification-only, no state/report/code changes. All verification checks pass:
+- `python -m pytest -q`: 7 passed in 120.41s
 - `python research/_tmp_cycle77_verify.py`: OVERALL PASS
-- `python .github/scripts/test_kilo_supervisor_loop.py`: OK
-- `.kilo-runtime/worker-disposition.json`: updated to verified (schema_version 1, recommendation_id "unknown", updated_at 2026-10-19T07:38:00Z)
+- `python .github/scripts/test_kilo_supervisor_loop.py`: OK 10/10
+- `.kilo-runtime/worker-disposition.json`: updated to verified (schema_version 1, recommendation_id "unknown", updated_at 2026-10-19T07:41:09Z)
 
-Low_rolling_sharpe drift flag persists at -0.21188351222842883 (exploratory, 81 days). See research/reports/drift_flag_escalation_001.md — monitor, do not re-optimize.
+Low_rolling_sharpe drift flag persists at -0.21188351222842883 (exploratory, 82 days). See research/reports/drift_flag_escalation_001.md — monitor, do not re-optimize.
 
 ## Objective
 Continue post-gate monitoring-only. Record UTC when updating documentation/worker disposition. Verify no new trading days beyond 2026-10-16 for universe symbols (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX) via per-symbol index max in data/raw/*.parquet.
@@ -39,4 +39,4 @@ Continue post-gate monitoring-only. Record UTC when updating documentation/worke
 - All verification passes. Drift flag persists at -0.21188351222842883.
 
 ## Handoff
-Cycle 804 (next session): continue post-gate monitoring; verification-only unless new trading days appear. Record UTC when updating documentation/worker disposition. Verify no new trading days beyond 2026-10-16 for universe symbols (SPY,QQQ,IWM,TLT,GLD,EFA,EEM,^VIX) via per-symbol index max in data/raw/*.parquet. If no new trading days: run all three verification commands; all must pass; no state/report/code changes. If new trading days present: extend state via src.simulation.paper_trading.run_daily_paper_update (deterministic, single state save), regenerate research/reports/paper_trading_rolling.md as needed, re-run all verification, document changes. Update .kilo-runtime/worker-disposition.json to verified with current UTC (recommendation_id "unknown" if no recommendation present). Monitoring-only: do not modify strategy/data sources, infrastructure, workflow orchestration, or add dependencies. Monitor low_rolling_sharpe drift (-0.21188351222842883); do not re-optimize.
+Cycle 805 (next session): continue post-gate monitoring; verification-only unless new trading days appear. Record UTC when updating documentation/worker disposition. Verify no new trading days beyond 2026-10-16 for universe symbols (SPY,QQQ,IWM,TLT,GLD,EFA,EEM,^VIX) via per-symbol index max in data/raw/*.parquet. If no new trading days: run all three verification commands; all must pass; no state/report/code changes. If new trading days present: extend state via src.simulation.paper_trading.run_daily_paper_update (deterministic, single state save), regenerate research/reports/paper_trading_rolling.md as needed, re-run all verification, document changes. Update .kilo-runtime/worker-disposition.json to verified with current UTC (recommendation_id "unknown" if no recommendation present). Monitoring-only: do not modify strategy/data sources, infrastructure, workflow orchestration, or add dependencies. Monitor low_rolling_sharpe drift (-0.21188351222842883); do not re-optimize.
