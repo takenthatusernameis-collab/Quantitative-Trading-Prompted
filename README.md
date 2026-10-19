@@ -2,6 +2,20 @@
 
 Autonomous research pipeline for discovering reproducible, net-of-cost trading edges.
 
+## Cycle 877: Post Go/No-Go Monitoring — **NO-GO STABLE; NO NEW COMPLETED SESSION**.
+- UTC 2026-10-19T20:16:00Z. Verification-only; no code, config, data, state, gate or candidate changes.
+- `python research/go_no_go_evaluation.py` → exit 0, decision **NO-GO**, `side_effect_free: True`, `evaluation_deterministic: True`. 449-session record through 2026-10-16: failed gates `rolling_63d_sharpe` **-0.211884** (< 0.9) and `psr` **0.684041** (< 0.95, grey zone); passing gates `track_record_length` 449, `full_period_sharpe` 1.748401, `max_drawdown` -0.049857, `rolling_63d_max_dd` -0.038564, `regime_flips` 6. Values are byte-identical to the Cycle 876 record — the decision is stable.
+- `python research/drift_persistence_report.py` → exit 0: stored `low_rolling_sharpe` = -0.21188351222842883 == recomputed; persistence **5** consecutive trading days below the 0.5 threshold (2026-10-12 → 2026-10-16); 109 of 430 evaluated sessions flagged; 21 of 33 sessions below threshold in the last 46 calendar days.
+- Data freshness: raw cache max dates — paper universe + `^VIX` all 2026-10-16 (SPY 8487, QQQ 6945, IWM 6637, TLT 6094, GLD 5512, EFA 6322, EEM 5916, ^VIX 5514 rows); the 11 non-universe series (DBC, VNQ, XLB–XLY) end 2026-10-08. `python research/refresh_raw_cache.py --dry-run` → exit 0, no-op for all 8 symbols. Paper state: `last_run_date` 2026-10-16, 449 `run_history` entries, NAV $133,729.22, drift flag present. **No new completed session.**
+- New timing evidence (read-only, Yahoo chart API): the provider *does* publish a 2026-10-19 bar, but the repository's own completeness rule (`research/extend_paper_trading_state.py:session_is_complete`, `close_hour + 1`) makes a session eligible only after **17:00 ET = 21:00 UTC**. This cycle ran 16:15 ET, so the bar is correctly refused. The record can be extended 449 → 450 sessions in a later cycle.
+- Artifact: `research/reports/monitoring_cycle_877.md`. Verification: `python -m pytest -q` → **82 passed**; `git status --porcelain data/ config/` → empty.
+- Handoff: NEXT_AGENT_TASK.md replaced with Cycle 878: long-sample mechanism decomposition of the incumbent's risk overlays (the one question the Cycle 862 attribution left open — is the trailing failure signal decay or overlay mechanics?), pre-registered before execution.
+
+## Cycle 876: Post Go/No-Go Monitoring — **NO-GO STABLE; NO NEW COMPLETED SESSION**.
+- UTC 2026-10-19T20:14:00Z. Verification-only; no code, config, data, state, gate or candidate changes.
+- `python research/go_no_go_evaluation.py` → exit 0, decision **NO-GO**, `side_effect_free: True`, `evaluation_deterministic: True`; failed gates `rolling_63d_sharpe` -0.211884 and `psr` 0.684041 (grey zone). `python research/drift_persistence_report.py` → stored == recomputed (-0.21188351222842883), persistence 5 trading days (2026-10-12 → 2026-10-16). Raw cache pinned at 2026-10-16 for the paper universe; `data/processed/paper_trading_state.yaml` `last_run_date` 2026-10-16 with 449 entries.
+- Artifact: `research/reports/monitoring_cycle_876.md`. Handoff: NEXT_AGENT_TASK.md replaced with Cycle 877 (post-go/no-go monitoring).
+
 ## Cycle 875: Go/No-Go Deployment Decision Reconciliation — **IMPLEMENTED AND VERIFIED**.
 - UTC 2026-10-19T20:05:00Z. Research/reports only; no code, config, data, or candidate changes; no live trading.
 - `python research/go_no_go_evaluation.py` → exit 0, decision **NO-GO**, `side_effect_free: True`, `evaluation_deterministic: True`. Current 449-session record through 2026-10-16: rolling 63d Sharpe **-0.211884** (fails ≥ 0.9; identical to stored `low_rolling_sharpe` drift flag, 5 consecutive trading days below 0.5), PSR 0.684041 (fails ≥ 0.95, grey zone), max drawdown -0.049857 (-4.99%, passes ≤ 15%), full-period Sharpe 1.748401 (passes), trade count 107, 6 regime flips, track record 449 days (passes ≥ 126).
