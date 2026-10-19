@@ -179,3 +179,188 @@ candidate's label:
 
 **Incumbent decision unchanged: NO-GO** (failed gates `rolling_63d_sharpe`, `psr`), live
 deployment unsupported.
+
+---
+
+# Cycle 882 extension - the shortlist's cost column completed, and the gate headroom
+
+**Added 2026-10-19.** The tool was **extended, not duplicated**: `research/cost_admissibility_screen.py`
+gained three candidate builders, one further decision number and the verification of three
+committed records. **No number that Cycle 881 published has changed** (verified by a line-level
+diff of the three Cycle 881 candidate blocks against the committed report: the only changed
+lines are the cost-sensitivity table header and rows, which gained one appended column and
+kept every previous value; everything else in those blocks is an addition).
+
+## What was added, and why
+
+| Addition | Reason |
+|---|---|
+| `csmomentum_001` (shortlist rank 2) | Cycle 881 left rank 2 without a cost basis; the shortlist's cost column must be completed for every row. |
+| `sectorrotation_001` (shortlist rank 3) | Same. |
+| `macroregime_001` (shortlist rank 6) | Same. |
+| **Gate headroom**: the cost per unit at which the candidate's net walk-forward mean OOS Sharpe falls to the repository's own 0.9 promotion threshold | The screen stated a break-even cost but not the cost at which the candidate stops passing the **promotion gate**; the two are different questions and only the second one says whether a cost can be paid for. |
+| Publication of the gate headroom for **every** candidate the screen covers | A decision number that exists for one candidate and not for another is not a decision number. |
+| The shortlist's cost column completed for all ten rows, with the four non-derivable rows listed and their reasons stated | The Cycle 881 task required "a cost basis for every row". |
+
+## The three new candidates: construction and provenance
+
+All three are the **config-faithful month-end path** of the repository's already-validated
+construction (`src/backtest/rebalance.py:build_month_end_weights`, Cycle 870), reached through the
+existing research tools, never re-implemented:
+
+| Candidate | Built by | Schedule | Universe | Screen window (invested sample) | Folds |
+|---|---|---|---|---|---|
+| `csmomentum_001` | `research/month_end_candidate_reaudit.py:build_csmomentum` -> `faithful_schedule` | `src/backtest/rebalance.py:build_month_end_weights` | 18 ETFs | 1994-03-01 -> 2026-10-09 (8,208 sessions) | 48 |
+| `sectorrotation_001` | `research/sectorrotation_long_sample_feasibility.py:build_monthly_weights` | same | 9 GICS sector ETFs | 2000-02-01 -> 2026-10-08 (6,712 sessions) | 36 |
+| `macroregime_001` | `research/month_end_candidate_reaudit.py:build_macroregime` -> `faithful_schedule` | same | 7 ETFs (+ ^VIX as an **input only**) | 2005-12-01 -> 2026-10-09 (5,246 sessions) | 24 |
+
+The **defective calendar rule** and the **daily re-rank** path are not used anywhere. No
+parameter, universe, cost model, gate, threshold or window is changed by this cycle, and no
+candidate is re-optimized.
+
+**Screen window = the invested sample.** A candidate that cannot be invested before its signal
+warm-up is flat before it, and a flat period carries neither signal nor turnover, so the screen
+measures it from the first session with a non-zero position to the end of the committed cache.
+This is the sample the committed records already use ("invested sample" in
+`research/reports/sectorrotation_long_sample_feasibility_001.md`). The walk-forward folds remain
+the candidate's own pre-registered splits, generated from the candidate's own sample start, so
+the fold count and the fold windows are unchanged.
+
+**Benchmark.** The same close-to-close 1/N buy-and-hold convention, with the screen's documented
+cash rule applied explicitly for the staggered-inception universes: without it a symbol without a
+price yet contributes a NaN to the whole benchmark return and silently removes every fold that
+overlaps the gap. The three Cycle 881 candidates keep their original benchmark, so their
+published numbers do not move.
+
+**Trade-count conventions differ between the two records and both are kept.** The Cycle 871
+record counts a fold's trades from the sliced weight frame (the first session of a fold
+contributes no trade); the Cycle 869 record counts them from the turnover series (the first
+session of a fold does). The screen keeps each candidate's own convention so that its pooled
+out-of-sample trade count is directly comparable with the number it is checked against. The
+convention affects only the trade-count and per-fold turnover columns, never a Sharpe.
+
+## Results of the three new candidates (3 bp/unit decision row)
+
+| Quantity | `csmomentum_001` | `sectorrotation_001` | `macroregime_001` |
+|---|---|---|---|
+| Annualized turnover (units/yr) | 2.2270 | 2.9961 | 3.7011 |
+| Annualized gross signal (geometric) | +9.4355%/yr | +7.2161%/yr | +6.9222%/yr |
+| Annualized cost drag @3 bp | +0.0668%/yr | +0.0899%/yr | +0.1110%/yr |
+| Net annualized return @3 bp | +9.3625%/yr | +7.1200%/yr | +6.8039%/yr |
+| Net canonical Sharpe @3 bp | +0.615144 | +0.472367 | +0.721249 |
+| Net WF mean OOS Sharpe @3 bp (backtest scale) | +0.697524 | +0.709767 | +0.263566 |
+| Net WF mean OOS Sharpe @3 bp (canonical scale) | +0.840389 | +0.847243 | +0.460847 |
+| WF mean OOS Sharpe at **zero** cost (canonical) | +0.845822 | +0.852863 | +0.473297 |
+| **Break-even cost (net annualized return = 0)** | **402.320946 bp/unit** | **231.710245 bp/unit** | **180.265254 bp/unit** |
+| **Cost at which the net WF Sharpe equals the same-fold benchmark's** | **-5.334684 bp/unit (a rebate)** | **-31.158677 bp/unit (a rebate)** | **-86.152115 bp/unit (a rebate)** |
+| **Gate headroom (net WF mean OOS Sharpe = 0.90, canonical scale)** | **-30.096717 bp/unit (negative)** | **-25.313702 bp/unit (negative)** | **none (no cost level in [-100, 1000] bp/unit reaches the gate)** |
+| Positive fold rate / pooled OOS trades | 79.1667% / 400 | 83.3333% / 213 | 66.6667% / 193 |
+| **Admissibility verdict** | **ADMISSIBLE** | **ADMISSIBLE** | **ADMISSIBLE** |
+
+The `sectorrotation_001` positive-fold rate above is the **backtest-scale** rate (the screen's
+column); the Cycle 869 record quotes the **canonical** rate, 91.6667% (33/36), and the screen
+verifies the record's own scale (section "Reproduction" below).
+
+## Reproduction of the three committed records (all PASS)
+
+**Tolerance rule:** the committed records quote their numbers as decimal strings, so the
+tolerance of every comparison is the unit of that string's last decimal - the repository's own
+rule (`research/month_end_candidate_reaudit.py:compare_published`). A 4-decimal number is
+compared with 1e-4, a 2-decimal one with 1e-2, a 6-decimal one with 1e-6, and a **count** with
+**0** (exact), because a count is an integer and no rounding is implied.
+
+| Candidate | Quantity | Published | Re-derived | Tolerance | Result |
+|---|---|---|---|---|---|
+| `csmomentum_001` | Test-window Sharpe (backtest scale) | 0.4878 | 0.487833 | 1e-4 | PASS |
+| `csmomentum_001` | Test-window Sharpe (canonical) | 0.6635 | 0.663540 | 1e-4 | PASS |
+| `csmomentum_001` | Test-window max drawdown | -0.2940 | -0.294002 | 1e-4 | PASS |
+| `csmomentum_001` | Test-window annualized turnover | 2.47 | 2.468571 | 1e-2 | PASS |
+| `csmomentum_001` | Test-window trade days | 77 | 77 | exact | PASS |
+| `csmomentum_001` | Walk-forward mean OOS Sharpe (backtest scale) | 0.6975 | 0.697524 | 1e-4 | PASS |
+| `csmomentum_001` | Walk-forward positive fold rate | 0.792 | 0.791667 | 1e-3 | PASS |
+| `csmomentum_001` | Walk-forward pooled OOS trades | 400 | 400 | exact | PASS |
+| `csmomentum_001` | Walk-forward fold count | 48 | 48 | exact | PASS |
+| `sectorrotation_001` | Canonical Sharpe (invested sample) | 0.472367 | 0.472367 | 1e-6 | PASS |
+| `sectorrotation_001` | Annualized turnover (invested sample) | 2.9961 | 2.996067 | 1e-4 | PASS |
+| `sectorrotation_001` | Trade days (invested sample) | 175 | 175 | exact | PASS |
+| `sectorrotation_001` | Walk-forward mean OOS Sharpe (canonical) | 0.847243 | 0.847243 | 1e-6 | PASS |
+| `sectorrotation_001` | Walk-forward positive fold rate | 0.9167 | 0.916667 | 1e-4 | PASS |
+| `sectorrotation_001` | Walk-forward pooled OOS trades | 215 | 215 | exact | PASS |
+| `sectorrotation_001` | Walk-forward fold count | 36 | 36 | exact | PASS |
+| `macroregime_001` | Test-window Sharpe (backtest scale) | 0.1428 | 0.142777 | 1e-4 | PASS |
+| `macroregime_001` | Test-window Sharpe (canonical) | 0.3823 | 0.382343 | 1e-4 | PASS |
+| `macroregime_001` | Test-window max drawdown | -0.2240 | -0.223998 | 1e-4 | PASS |
+| `macroregime_001` | Test-window annualized turnover | 4.22 | 4.217824 | 1e-2 | PASS |
+| `macroregime_001` | Test-window trade days | 84 | 84 | exact | PASS |
+| `macroregime_001` | Walk-forward mean OOS Sharpe (backtest scale) | 0.2636 | 0.263566 | 1e-4 | PASS |
+| `macroregime_001` | Walk-forward positive fold rate | 0.667 | 0.666667 | 1e-3 | PASS |
+| `macroregime_001` | Walk-forward pooled OOS trades | 193 | 193 | exact | PASS |
+| `macroregime_001` | Walk-forward fold count | 24 | 24 | exact | PASS |
+
+**One disclosed inconsistency inside a committed record.** The table of
+`research/experiments/month_end_candidate_reaudit_001.md` states `macroregime_001`'s test-window
+trade days as **84** and its prose states **83**. The screen compares against the table's 84 (and
+derives 84), so the discrepancy inside the record is visible rather than silently resolved. The
+screen does not re-decide which one is "right"; the record is the authority and the difference
+is one session.
+
+## Number of trials
+
+**One per candidate, unchanged.** The screen evaluates six candidates at three cost rows. It
+performs **no parameter search, no configuration selection, no optimization and no
+re-optimization**; the only root-finders are the deterministic bisections (break-even cost,
+benchmark parity, gate headroom), and each is reported with its bracket. The number of
+*configurations examined* is 1 for every candidate, so no multiple-testing correction is
+required for the screen itself. The re-derived walk-forward statistics are a **validation** of
+the screen, not a selection over configurations.
+
+## Reproduction commands (Cycle 882)
+
+```bash
+python research/cost_admissibility_screen.py     # -> OVERALL: PASS, exit 0, prints every number
+python -m pytest tests/test_cost_admissibility_screen.py -q   # 30 passed
+python -m pytest -q                               # 132 passed (102 pre-existing + 30 new)
+python research/go_no_go_evaluation.py            # NO-GO, side_effect_free: True
+git status --porcelain data/ config/              # empty (nothing written under data/ or config/)
+```
+
+Read-only proof: the tool takes a SHA-256 fingerprint of all files under `data/` and `config/`
+before and after the run and requires them to be identical.
+
+## Decision label (Cycle 882)
+
+**No candidate's label changes.** The screen is a cost filter that is necessary and not
+sufficient; adding three candidates and one decision number to it changes no label:
+
+| Candidate | Label before | Label after |
+|---|---|---|
+| `overnight_capture_001` | Rejected/failed (Cycle 880, on cost) | Rejected/failed (unchanged) |
+| `calendar_effects_001` | Rejected/failed (Cycle 18, on the walk-forward gate) | Rejected/failed (unchanged; its gate headroom is **negative**, so the cost screen cannot promote it either) |
+| `tsmomentum_spytrend_001` | Credible candidate (incumbent) | Credible candidate (unchanged; NO-GO on the live paper record is unchanged) |
+| `csmomentum_001` | Rejected/failed (Cycle 871, on the walk-forward gate) | Rejected/failed (unchanged; the cost screen clears it, which is **not** evidence of an edge) |
+| `sectorrotation_001` | Rejected/failed (Cycle 869, NO-GO on the promotion gates) | Rejected/failed (unchanged; the cost screen clears it, which is **not** evidence of an edge) |
+| `macroregime_001` | Rejected/failed (Cycle 871, on the walk-forward gate) | Rejected/failed (unchanged; the cost screen clears it, which is **not** evidence of an edge) |
+
+**Answer to the cycle's objective question.** *Which remaining candidate, if any, has enough
+cost headroom to be worth a promotion-gate test, and is that headroom an edge or only survival?*
+
+**None of them, and the headroom they have is only survival.** `csmomentum_001`,
+`sectorrotation_001` and `macroregime_001` all survive their own costs with a very large margin
+(gross signal 62x to 141x what their turnover requires, break-even costs of 180 to 402 bp/unit
+against the model's 3 bp/unit), but:
+
+1. every one of them is **below** the repository's 0.9 walk-forward gate **before a single basis
+   point is charged** (canonical walk-forward mean OOS Sharpe 0.8458 / 0.8529 / 0.4733);
+2. every one of them has a **negative gate headroom** (-30.10 / -25.31 bp/unit, and no crossing at
+   all for `macroregime_001`), i.e. it would have to be **paid** to trade to reach the gate, so no
+   cost level and no rebate promotes it;
+3. every one of them has a **negative benchmark-parity cost** (-5.33 / -31.16 / -86.15 bp/unit),
+   i.e. at *zero* cost it still does not match passive close-to-close holding of the same basket
+   on the same folds.
+
+Their cost headroom is a statement about how little they trade, not about an edge. The shortlist's
+remaining rows therefore support **no further candidate evaluation**: the three stay
+**Rejected/Failed** on their own pre-registered gates, and the cost screen adds no candidate.
+The incumbent is the only candidate with a positive gate headroom (+37.51 bp/unit, 12.5x the
+model's cost) - and even that is *survival*; the incumbent's edge comes from its own walk-forward
+record, not from this screen.

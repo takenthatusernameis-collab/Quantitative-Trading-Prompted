@@ -78,6 +78,60 @@ evidence is still only the structural (c) score above. Full evidence:
 
 ---
 
+## Cost-Admissibility Column, completed (Cycle 882 — additive; no existing row is re-ranked)
+
+**Added 2026-10-19 by `research/cost_admissibility_screen.py` (read-only).**
+Cycle 881 left ranks 2, 3 and 6 without a cost basis. The screen was **extended** (not
+duplicated) to cover them, using the repository's already-validated config-faithful month-end
+construction, and one further decision number was added: the **gate headroom**, i.e. the cost per
+unit at which the candidate's net walk-forward mean OOS Sharpe falls to the repository's own
+0.9 promotion threshold. **No row of the summary table above is removed, re-scored or re-ranked**,
+and no number of the Cycle 881 cost column changes.
+
+### Costed candidates (six of the ten rows)
+
+| Shortlist rank | Candidate | Annual turnover (units/yr) | Drag @3 bp/unit | Gross signal | Min gross signal needed @3 bp | Break-even cost | Admissibility | Gate headroom (WF Sharpe = 0.9) |
+|---|---|---|---|---|---|---|---|---|
+| 1 | TSMOM incumbent (`tsmomentum_spytrend_001`) | 12.16 | +0.3649%/yr | +13.8825%/yr | +0.3649%/yr | 106.75 bp/unit | **ADMISSIBLE** | +37.51 bp/unit |
+| 2 | Long-only cross-sectional momentum, broad 18-ETF universe (`csmomentum_001`) | 2.23 | +0.0668%/yr | +9.4355%/yr | +0.0668%/yr | 402.32 bp/unit | **ADMISSIBLE** | -30.10 bp/unit (negative) |
+| 3 | Sector rotation (`sectorrotation_001`) | 3.00 | +0.0899%/yr | +7.2161%/yr | +0.0899%/yr | 231.71 bp/unit | **ADMISSIBLE** | -25.31 bp/unit (negative) |
+| 4 | Calendar / rebalancing effects (`calendar_effects_001`) | 24.13 | +0.7239%/yr | +2.7326%/yr | +0.7239%/yr | 11.16 bp/unit | **ADMISSIBLE** | -16.75 bp/unit (negative) |
+| 6 | Macro regime overlay extension (`macroregime_001`) | 3.70 | +0.1110%/yr | +6.9222%/yr | +0.1110%/yr | 180.27 bp/unit | **ADMISSIBLE** | none (no cost level reaches the gate) |
+| 10 | Intraday session / time-of-day effects (overnight variant, `overnight_capture_001`) | 504.00 | +15.1200%/yr | +9.1558%/yr | +15.1200%/yr | 1.74 bp/unit | **INADMISSIBLE** | +0.47 bp/unit (below the 3 bp/unit the model charges) |
+
+### Rows with no derivable cost basis (four of the ten rows)
+
+| Shortlist rank | Candidate | Why there is no cost basis | What stands in its place |
+|---|---|---|---|
+| 5 | TSMOM parameter variants | No separate candidate configuration exists to cost: the family is the incumbent's own parameter set, and the repository's own 100-configuration grid already rejected it on evidence (0/100 beat the baseline test Sharpe). | The incumbent's row (rank 1) is the family's cost basis; the variants are not re-costed because they were never evaluated as candidates. |
+| 7 | Commodity/rate futures basis and roll yield | No futures series is cached (`data/raw/` holds no CL=F / NG=F / GC=F / ZB=F), so there is no daily return series and no weight path, hence no derivable turnover. | Blocked by data (unchanged verdict). |
+| 8 | Crypto perpetual funding-rate carry | No crypto spot/perp or funding series is cached, so no return series and no weight path exist to cost. | Blocked by data (unchanged verdict). |
+| 9 | Volatility risk premium | No **tradeable** volatility instrument is cached (^VIX is an index, not an executable return series), so no return series and no weight path exist to cost. | Blocked by data (unchanged verdict). |
+
+Every row of the shortlist now carries a cost basis: six rows are costed from the committed
+cache, and four are listed above with the reason they cannot be.
+
+### What the completed column changes
+
+* **The cost column does not promote any remaining candidate.** `csmomentum_001`,
+  `sectorrotation_001` and `macroregime_001` are all **ADMISSIBLE** on cost — their gross signal
+  is 62x to 141x what their own turnover requires — but that headroom is **survival, not edge**:
+  all three are *below* the repository's 0.9 walk-forward gate before a single basis point is
+  charged (canonical walk-forward mean OOS Sharpe 0.8458 / 0.8529 / 0.4733), their **gate
+  headroom is negative** (they would have to be *paid* to trade to reach the gate), and their
+  benchmark-parity cost is negative too, i.e. at zero cost they still do not match passive
+  close-to-close holding of the same basket on the same folds.
+* **The only candidate with real cost headroom is the incumbent** (+37.51 bp/unit, 12.5x the
+  model's 3 bp/unit) — and even that is a statement about survival; its edge comes from its own
+  walk-forward record, not from this screen.
+* **The shortlist's ranking is left intact.** Cost-admissibility is a filter to apply *before*
+  short-listing, not a re-ranking of the list.
+
+Full evidence: `research/reports/cost_admissibility_screen_001.md` (Cycle 882); the record of the
+cycle is `research/experiments/cost_admissibility_screen_001.md`.
+
+---
+
 ## Candidate C1: TSMOM incumbent — tsmomentum_spytrend_001 (226d lookback, 21d skip, top-50%, vol-target 10%, DD control 15%, SPY 200d SMA filter)
 
 **Category:** TSMOM variants
