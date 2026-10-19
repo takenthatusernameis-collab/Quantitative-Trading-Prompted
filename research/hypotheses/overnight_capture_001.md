@@ -7,6 +7,10 @@
   and Cycle 878 (`research/reports/long_sample_overlay_attribution_001.md`).
   Code revision at registration: `639188b`. **Pre-registered BEFORE any backtest
   was executed.**
+- v002 (erratum, 2026-10-19, post-execution, disclosure only): the annual cost-drag
+  figure stated in v001 (1.51%/yr) was an arithmetic error; the correct figure is
+  15.12%/yr (504 units x 3 bp). No threshold, gate, falsification condition or
+  configuration was changed. See the "Erratum" section at the end of this file.
 
 ---
 
@@ -297,3 +301,28 @@ with the other candidate records in this repository. The canonical arithmetic
 Sharpe (`src/evaluation/sharpe.py: sharpe_ratio`, rf 0) is **also** reported
 for every fold and for the pooled series, so the verdict can be checked on both
 scales. No gate threshold is changed by this hypothesis.
+
+---
+
+## Erratum (added 2026-10-19, AFTER the backtest was executed; disclosure only)
+
+The v001 text above states the cost drag at the decision configuration as
+"**~1.51%/yr**" and the net-return prior as "+5% to +10% after ~1.51%/yr cost".
+That cost figure is an **arithmetic error**: 504 units of annual turnover x
+3 bp per unit = 1512 bp = **15.12%/yr**, not 1.512%/yr. The error is in the
+narrative cost statement and in the prior derived from it; nothing else.
+
+**What is unchanged:** the decision cost configuration (3 bp/unit), the
+sensitivity rows (5 bp and 10 bp), N = 3, every gate threshold, every
+falsification condition, the universe, the signal, the execution convention
+and the walk-forward design. The executed backtest applied the repository's
+cost model exactly as specified (`turnover_units x cost_per_unit`, verified in
+the script's self-checks) and is unaffected by the narrative error.
+
+**Consequence:** the stated net-return prior was unreachable under the
+correctly computed cost drag (a 10 bp/unit row implies 50.4%/yr of cost), and
+the candidate was in fact evaluated and **rejected** (WF mean OOS Sharpe
+-0.599718; decision label **Rejected/Failed**; see
+`research/reports/overnight_capture_backtest_001.md`). The erratum removes a
+prior that the executed data had already contradicted; it does not change the
+verdict, and it is recorded rather than silently repaired.

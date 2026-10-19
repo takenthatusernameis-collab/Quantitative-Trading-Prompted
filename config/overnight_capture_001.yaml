@@ -1,0 +1,58 @@
+# Frozen configuration for the overnight-session capture candidate
+# (overnight_capture_001). Pre-registered in Cycle 880 BEFORE any backtest
+# execution; see research/hypotheses/overnight_capture_001.md.
+#
+# This file is a NEW candidate config. No existing file under config/ or data/
+# is modified by this candidate.
+
+candidate_id: "overnight_capture_001"
+hypothesis: "research/hypotheses/overnight_capture_001.md"
+
+universe:
+  - "SPY"
+  - "QQQ"
+  - "IWM"
+
+sample:
+  start_date: "2000-05-26"   # IWM inception
+  end_date: "2026-10-16"
+
+signal:
+  kind: "deterministic_session_timing"
+  overnight_mask: "every_trading_session"
+  leg: "overnight"            # previous close -> next open
+  weights: [0.3333333333333333, 0.3333333333333333, 0.3333333333333333]
+  intraday_exposure: 0.0
+
+execution:
+  entry: "previous_close"
+  exit: "session_open"
+  turnover_units_per_session: 2.0   # sell 1.0 at the open, buy 1.0 at the close
+  annual_turnover_units: 504.0
+
+costs:
+  decision_cost_bps_per_unit: 3.0   # 1 bp commission + 2 bp slippage
+  sensitivity_rows_bps_per_unit: [3.0, 5.0, 10.0]
+  multiple_testing_n: 3
+
+walkforward:
+  train_years: 10.0
+  test_months: 12.0
+  step_months: 6.0
+  purge_days: 21
+  embargo_days: 21
+  expected_folds: 33
+
+gates:
+  wf_mean_oos_sharpe_min: 0.9
+  positive_fold_rate_min: 0.5
+  pooled_oos_trades_min: 100
+
+benchmarks:
+  - "close_to_close_equal_weight"
+  - "intraday_only_leg"
+
+statistics:
+  n_bootstrap: 1000
+  block_size: 22
+  seed: 42
