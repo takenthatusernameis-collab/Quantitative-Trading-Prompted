@@ -6,17 +6,29 @@ using statistical tests and drift monitoring.
 The Probabilistic Sharpe Ratio is computed from a *seeded* block bootstrap
 (``GoNoGoConfig.psr_seed``) so that repeated evaluations of the same record
 reproduce the same PSR, Sharpe standard error and confidence interval.
+
+Promotion gates
+---------------
+Every promotion gate required by the repository's validation artifacts is
+defined in exactly one place: ``config/promotion_gates.yaml``. ``evaluate_go_no_go``
+loads that definition and evaluates *every* gate. A record may only be labelled
+"GO" when every gate passes; a failing gate can never yield "GO".
+
+The decision mapping is conservative by default: when the PSR sits in the grey
+zone (0.5-0.95) and at least one gate fails, the decision is "NO-GO" rather than
+"Inconclusive", so a degraded record cannot hide behind statistical uncertainty.
 """
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pandas as pd
+import yaml
 
 from src.evaluation.statistics import compute_psr
 from src.evaluation.utils import annualize_return, max_drawdown, sharpe_ratio
@@ -28,6 +40,41 @@ from src.simulation.paper_trading import (
 
 
 DEFAULT_PSR_SEED = 20240101
+
+# Path to the single source of truth for the promotion gates. Loaded lazily
+# inside ``_load_promotion_gates`` so the module imports cleanly even when the
+# file is absent (the loader then raises a clear error at evaluation time).
+_PROMOTION_GATES_PATH = (
+    Path(__file__).resolve().parent.parent.parent / "config" / "promotion_gates.yaml"
+)
+
+
+def _project_root() -> Path:
+    return Path(__file__).resolve().parent.parent.parent
+
+
+def _load_promotion_gates(path: Path | str | None = None) -> dict[str, Any]:
+    """Load the machine-readable promotion-gate definition from YAML.
+
+    Returns the parsed document as a dict. Raises ``FileNotFoundError`` if the
+    gate definition file is missing, so a missing gate table cannot silently
+    fall back to the old, incomplete behaviour.
+    """
+    p = Path(path) if path is not None else _PROMOTION_GATES_PATH
+    if not p.is_absolute():
+        p = _project_root() / p
+    if not p.exists():
+        raise FileNotFoundError(
+            f"promotion gates definition not found at {p}; this file is the "
+            "single source of truth for the go/no-go gates"
+        )
+    with open(p, "r") as fh:
+        data = yaml.safe_load(fh) or {}
+    if "gates" not in data:
+        raise ValueError(
+            f"promotion gates definition at {p} is malformed: missing 'gates' key"
+        )
+    return data
 
 
 @dataclass

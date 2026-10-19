@@ -1,0 +1,121 @@
+# Promotion Gates for tsmomentum_spytrend_001
+#
+# Machine-readable definition of every promotion gate that the repository's
+# own validation artifacts require before a paper-trading record may be
+# promoted to "GO". This file is the SINGLE SOURCE OF TRUTH for the gate
+# table: `evaluate_go_no_go` loads it and evaluates every gate; no gate may
+# be added, removed or re-thresholded without editing this file.
+#
+# Threshold values are inputs, not tunable parameters. They are copied from
+# the gate tables in:
+#   - research/reports/paper_trading_validation_002.md (Go/No-Go Assessment)
+#   - research/reports/go_no_go_evaluation_002.md (PSR grey-zone boundaries)
+# and must NOT be changed by this task (Cycle 860 is enforcement only).
+
+candidate_id: "tsmomentum_spytrend_001"
+
+# Decision mapping. Conservative default: any failing gate may never yield
+# "GO". When the PSR sits in the grey zone AND at least one gate fails, the
+# decision is "NO-GO" (not "INCONCLUSIVE") so that a degraded record cannot
+# hide behind statistical uncertainty. When the PSR is in the grey zone and
+# every gate passes, the decision is "INCONCLUSIVE" (need more observations).
+decision_mapping:
+  all_pass: "GO"
+  any_fail_with_psr_in_grey_zone: "NO-GO"
+  any_fail_with_psr_below_no_go: "NO-GO"
+  any_fail_with_psr_above_go: "NO-GO"
+  psr_grey_zone_and_all_pass: "INCONCLUSIVE"
+  insufficient_track_record: "INCONCLUSIVE"
+
+psr_grey_zone:
+  lower: 0.5
+  upper: 0.95
+  source: "research/reports/go_no_go_evaluation_002.md (PSR grey-zone boundaries)"
+
+gates:
+  # ------------------------------------------------------------------
+  # 1. Track-record length: enough history for regime diversity.
+  # Source: paper_trading_validation_002.md "Minimum Track Record (regime
+  # diversity) | 126 days".
+  # ------------------------------------------------------------------
+  - name: "track_record_length"
+    description: "Minimum number of trading days in the paper track record"
+    metric: "paper_days"
+    threshold: 126
+    comparison: "gte"  # value >= threshold -> pass
+    source: "research/reports/paper_trading_validation_002.md"
+
+  # ------------------------------------------------------------------
+  # 2. Full-period net-of-cost Sharpe.
+  # Source: paper_trading_validation_002.md "Full-Period Sharpe | 0.9".
+  # ------------------------------------------------------------------
+  - name: "full_period_sharpe"
+    description: "Full-period net-of-cost Sharpe ratio"
+    metric: "paper_sharpe"
+    threshold: 0.9
+    comparison: "gte"
+    source: "research/reports/paper_trading_validation_002.md"
+
+  # ------------------------------------------------------------------
+  # 3. Rolling 63-day Sharpe at end of record. This is the gate that the
+  # code-level decision previously ignored entirely.
+  # Source: paper_trading_validation_002.md "Rolling 63d Sharpe | 0.9".
+  # ------------------------------------------------------------------
+  - name: "rolling_63d_sharpe"
+    description: "Rolling 63-trading-day Sharpe ratio at the end of the record"
+    metric: "rolling_sharpe_63d"
+    threshold: 0.9
+    comparison: "gte"
+    source: "research/reports/paper_trading_validation_002.md"
+
+  # ------------------------------------------------------------------
+  # 4. Maximum drawdown over the full period.
+  # Source: paper_trading_validation_002.md "Max Drawdown | 15%".
+  # ------------------------------------------------------------------
+  - name: "max_drawdown"
+    description: "Maximum peak-to-trough drawdown over the full record"
+    metric: "paper_max_dd"
+    threshold: -0.15
+    comparison: "gte"  # paper_max_dd >= -0.15 -> pass
+    source: "research/reports/paper_trading_validation_002.md"
+
+  # ------------------------------------------------------------------
+  # 5. Rolling 63-day maximum drawdown.
+  # Source: paper_trading_validation_002.md "Rolling 63d Max DD | 15%".
+  # ------------------------------------------------------------------
+  - name: "rolling_63d_max_dd"
+    description: "Maximum drawdown over the trailing 63-trading-day window"
+    metric: "rolling_max_dd_63d"
+    threshold: -0.15
+    comparison: "gte"
+    source: "research/reports/paper_trading_validation_002.md"
+
+  # ------------------------------------------------------------------
+  # 6. Regime flips: at least one risk-on/risk-off transition must be
+  # observed so the regime filter has been exercised.
+  # Source: paper_trading_validation_002.md "Regime Flips Observed | 6"
+  # with gate ">= 1".
+  # ------------------------------------------------------------------
+  - name: "regime_flips"
+    description: "Number of risk-on/risk-off regime transitions observed"
+    metric: "regime_flips"
+    threshold: 1
+    comparison: "gte"
+    source: "research/reports/paper_trading_validation_002.md"
+
+  # ------------------------------------------------------------------
+  # 7. Probabilistic Sharpe Ratio against the backtest baseline. The GO
+  # boundary is the upper grey-zone edge; the NO-GO boundary is the lower
+  # edge. A value inside the grey zone is not itself a gate pass/fail but
+  # drives the decision mapping above.
+  # Source: research/reports/go_no_go_evaluation_002.md
+  # ------------------------------------------------------------------
+  - name: "psr"
+    description: "Probabilistic Sharpe Ratio (normal) vs backtest Sharpe baseline"
+    metric: "psr_normal"
+    threshold: 0.95
+    comparison: "gte"  # pass only above the GO boundary
+    grey_zone:
+      lower: 0.5
+      upper: 0.95
+    source: "research/reports/go_no_go_evaluation_002.md"
