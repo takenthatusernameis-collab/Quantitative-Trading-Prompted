@@ -1,101 +1,133 @@
-# NEXT AGENT TASK — Cycle 881
+# NEXT AGENT TASK — Cycle 882
 
 ## Context
 
-Cycle 880 pre-registered and evaluated the overnight-session capture candidate
-`overnight_capture_001` (`research/hypotheses/overnight_capture_001.md`,
-`research/reports/overnight_capture_backtest_001.md`,
-`research/experiments/overnight_capture_backtest_001.md`).
+Cycle 881 built the cost-admissibility screen the repository was missing
+(`research/cost_admissibility_screen.py`, `research/reports/cost_admissibility_screen_001.md`,
+`research/experiments/cost_admissibility_screen_001.md`).
 
-Result: **Rejected/Failed**, and the reason is structural rather than noisy.
+What it established:
 
-- The **gross** overnight premium is real: +9.16%/yr annualized for the 1/3
-  SPY/QQQ/IWM basket over 6,637 sessions (the exploratory diagnostic's
-  mechanism observation is confirmed).
-- An overnight-only leg must be flat during the day, so it round-trips **twice
-  per session** -> 504 units of annual turnover -> **15.12%/yr** of cost at the
-  repository's flat 3 bp/unit model, which is **larger than the gross premium**.
-- Net WF mean OOS Sharpe **-0.599718**; positive fold rate 15.15%;
-  DSR (N=3) -2.446673; block-bootstrap 95% CI [-0.788295, 0.034214].
-- It also **loses to passive close-to-close holding of the identical basket** on
-  identical folds (WF mean OOS Sharpe +0.844696), so the negative Sharpe is a
-  cost result, not a market-direction result.
+- A candidate's cost admissibility — can its gross signal survive the turnover it
+  actually incurs at the repository's flat 3 bp/unit model? — is computable from the
+  committed cache and the committed artifacts alone, and is now a published column.
+- `overnight_capture_001`: +9.1558%/yr gross against +15.1200%/yr required ->
+  **INADMISSIBLE**; break-even cost 1.7385 bp/unit, i.e. 58% of the model cost.
+- `calendar_effects_001`: **ADMISSIBLE** (break-even 11.1639 bp/unit, 3.72x the model
+  cost) **but with a negative benchmark-parity cost (-22.6852 bp/unit)**: to merely match
+  passive close-to-close holding of the same basket on the same folds it would have to be
+  *paid* 22.69 bp/unit. **Cost-admissibility is necessary and not sufficient: a candidate
+  can survive its costs and still have no edge.**
+- The incumbent `tsmomentum_spytrend_001`: **ADMISSIBLE** with a very large margin
+  (break-even 106.7540 bp/unit, benchmark parity at 32.3052 bp/unit).
+- The mechanical guard for the Cycle 880 erratum now exists: a stated cost drag is checked
+  against `annual_turnover * cost_bps_per_unit / 10000` within 1e-9, and the factor-10
+  error is rejected at every cost row.
 
-Two general lessons follow, and neither has been quantified in this repository
-yet:
+What is still missing: the screen covers **three** candidates. The repository's own
+shortlist (`research/reports/opportunity_shortlist.md`) has **ten** rows, and the cost column
+in that file now covers only shortlist ranks 1, 4 and 10. The three remaining rows with a
+derivable cost basis — `csmomentum_001` (rank 2), `sectorrotation_001` (rank 3) and
+`macroregime_001` (rank 6) — still carry only a structural "(c) net return" score. The
+shortlist is the instrument that chooses the next candidate, and the cost screen's own
+finding (the calendar candidate is admissible and still worthless) says a gross-effect
+score is not a sufficient basis for choosing one.
 
-1. **A candidate's gross signal size must be compared with its own annualized
-   cost drag *before* it is short-listed.** The shortlist
-   (`research/reports/opportunity_shortlist.md`,
-   `research/reports/candidate_family_selection_001.md`) ranks candidates by
-   gross effect size; no artifact states each candidate's annualized cost drag
-   at the repository's own cost model, nor the cost per unit at which each
-   candidate would clear the >= 0.9 gate.
-2. The Cycle 880 erratum (disclosed in
-   `research/hypotheses/overnight_capture_001.md`) is a live hazard: a stated
-   cost figure of "1.51%/yr" was actually 15.12%/yr. Nothing in the repository
-   mechanically checks a stated cost-drag figure against the turnover the
-   strategy actually incurs.
+The two *open* families among them are `csmomentum_001` and `macroregime_001`:
+`sectorrotation_001` was already evaluated on the config-faithful month-end path and
+rejected/failed in Cycle 869. So the open question is concrete:
+
+> **After the cost screen, is there any remaining candidate family whose cost headroom is
+> large enough to be worth a promotion-gate test — and is that headroom an *edge* or only
+> survival?**
 
 ## Objective
 
-Build one **read-only, deterministic** cost-admissibility screen that is
-reusable for every future candidate, and apply it to the repository's existing
-shortlist. No new candidate, no new data, no walk-forward re-run.
+Complete the shortlist's cost column for the three remaining derivable candidates and
+answer that question with the screen's own numbers.
+
+**No new candidate, no new data, no re-optimization, no re-judging of any candidate.**
 
 ## Method (fixed by this task; do not re-choose)
 
-- New script `research/cost_admissibility_screen.py` that, for a given
-  strategy definition, computes from the committed cache:
-  - **annualized gross signal** (annualized return with **zero** cost),
-  - **annualized cost drag** at the repository's cost model
-    (`get_cost_params()` = 3 bp/unit) and at the 5 bp and 10 bp rows,
-  - the **break-even cost per unit** at which the net annualized return is
-    zero, and the cost per unit at which the net Sharpe equals the
-    same-fold close-to-close benchmark's,
-  - the **minimum gross annual signal** a candidate needs in order to be
-    admissible at 3 bp/unit, i.e. `annualized_cost_drag`.
-- Apply the screen to **at least** these three existing candidates, reusing
-  their committed artifacts and their existing frozen configurations (do not
-  re-derive or re-tune them):
-  1. `overnight_capture_001` (Cycle 880; must reproduce 15.12%/yr drag and the
-     -0.599718 WF mean OOS Sharpe),
-  2. `calendar_effects_001` (turn-of-month; WF mean OOS Sharpe -0.0254),
-  3. the incumbent `tsmomentum_spytrend_001` (or `csmomentum_001`/`sectorrotation_001`
-     if the incumbent's turnover is not derivable from its committed artifacts -
-     state which one you used and why).
-- Add one **mechanical guard** for the Cycle 880 failure mode: a helper (or a
-  test) that takes a stated cost-drag figure and a stated annual turnover and
-  asserts `cost_drag == turnover * cost_per_unit` within 1e-9, so a factor-10
-  error like the Cycle 880 erratum cannot pass unnoticed again.
+1. Extend `research/cost_admissibility_screen.py` (do **not** write a second, parallel
+   tool) so that it also covers:
+   - `csmomentum_001` — frozen config `config/csmomentum_candidate_001.yaml`,
+   - `sectorrotation_001` — frozen config `config/sectorrotation_candidate_001.yaml`,
+   - `macroregime_001` — frozen config `config/macroregime_candidate_001.yaml`.
+
+   Reuse the repository's **already-validated config-faithful month-end construction**
+   (`src/backtest/rebalance.py`, added in Cycle 870) and the existing research tools
+   `research/month_end_candidate_reaudit.py` (Cycle 871) and
+   `research/sectorrotation_long_sample_feasibility.py` (Cycle 869). Do **not** re-derive
+   their signals, parameters or schedule from scratch, and do **not** use the defective
+   daily re-rank path or the calendar `is_month_end` path that Cycle 870 found and fixed.
+
+2. Every new candidate's daily gross-return and daily-turnover series must be **verified
+   against the committed published record** before it is screened, and a mismatch is a
+   **FAIL** to be reported, never a re-tune. The records to check against are:
+   - `research/reports/sectorrotation_long_sample_feasibility_001.md` (Cycle 869):
+     config-faithful long sample, canonical Sharpe 0.472367, annualized turnover 2.9961x,
+     175 trade days, WF mean OOS Sharpe 0.847243 over 36 folds.
+   - `research/experiments/month_end_candidate_reaudit_001.md` (Cycle 871): the
+     config-faithful `csmomentum_001` and `macroregime_001` numbers (turnover, trade days,
+     test Sharpe, WF mean OOS Sharpe) as published there.
+   State the tolerance used for each comparison and why.
+
+3. Add **one** further decision number to the screen, computed on the candidate's own
+   folds with the same machinery: the **cost per unit at which the candidate's net
+   walk-forward mean OOS Sharpe falls to 0.9** — the repository's own promotion threshold
+   (`AGENTS.md`, `config/promotion_gates.yaml`) — i.e. the candidate's *gate headroom*.
+   A candidate whose gate headroom is at or below the model's 3 bp/unit cannot be
+   promoted at the model's cost no matter how good its Sharpe is.
+
+4. Publish, per candidate, the same block the screen already publishes (annualized gross
+   signal; drag at 3/5/10 bp per unit; net annualized return; break-even cost; cost at
+   which the net WF Sharpe equals the same-fold close-to-close benchmark's; minimum gross
+   signal required; admissibility verdict) **plus** the new gate headroom, and state the
+   screen's limitations (necessary, not sufficient).
+
+5. Complete the cost column in `research/reports/opportunity_shortlist.md` (additive edit
+   only; do not remove, re-score or re-rank an existing row without stating the reason in
+   the report) for **every** shortlist row, including the rows that cannot be costed:
+   list them explicitly with the reason (no cached data, no derivable turnover, or
+   already rejected), so that no row is left silently without a cost basis.
+
+6. Answer the objective question explicitly, in the report and in the experiment record:
+   **which remaining candidate, if any, has enough cost headroom to be worth a
+   promotion-gate test, and is that headroom an edge or only survival?** If the answer is
+   "none", say so and say what the shortlist's remaining rows then support.
 
 ## Acceptance criteria
 
-1. `research/cost_admissibility_screen.py` exists, is read-only (writes nothing
-   under `data/` or `config/`), prints every number in its report, and exits 0
-   with `OVERALL: PASS`.
-2. `research/reports/cost_admissibility_screen_001.md` publishes, per candidate:
-   gross annualized signal, annualized cost drag at 3 / 5 / 10 bp per unit,
-   break-even cost per unit, the minimum gross signal required for
-   admissibility, and the resulting **admissibility verdict**; and it states
-   the screen's limitations (it is a necessary, not sufficient, condition).
-3. The screen reproduces Cycle 880's numbers for `overnight_capture_001`
-   (15.12%/yr drag at 3 bp/unit; net WF mean OOS Sharpe -0.599718) from the
-   committed artifacts, or **explains precisely** why a number cannot be
-   reproduced.
-4. The mechanical guard is implemented and unit-tested (a deliberate factor-10
-   error must be rejected by it).
-5. New offline tests in `tests/test_cost_admissibility_screen.py` (no network,
-   no data mutation) and `python -m pytest -q` passes (102 existing + the new
-   tests).
-6. `git status --porcelain data/ config/` shows **no modification** to an
-   existing file under `data/` or `config/`.
-7. The incumbent's decision is unchanged: **NO-GO**, live deployment
-   unsupported; `python research/go_no_go_evaluation.py` still prints NO-GO
-   with `side_effect_free: True`.
-8. `research/reports/opportunity_shortlist.md` is updated with the cost column
-   for the candidates the screen covers (additive edit only; do not remove or
-   re-rank existing rows without stating the reason in the report).
+1. `research/cost_admissibility_screen.py` is **extended**, not duplicated; it still writes
+   nothing under `data/` or `config/`, still prints every number in its report, and still
+   exits 0 with `OVERALL: PASS`.
+2. The screen's published block for `overnight_capture_001`, `calendar_effects_001` and
+   `tsmomentum_spytrend_001` is **unchanged** by this cycle (same numbers to the published
+   precision), and the existing reproduction checks still pass. Any change to those numbers
+   must be explained in the report.
+3. Each of `csmomentum_001`, `sectorrotation_001` and `macroregime_001` has a published
+   screen block, and each one's series is verified against the committed published record
+   with a stated tolerance; a verified mismatch is reported as a FAIL, not re-tuned.
+4. The new **gate headroom** is published for every candidate the screen covers, with the
+   threshold (0.9) and the folds used named explicitly.
+5. The mechanical guard is applied to every new figure, and the factor-10 negative control
+   still passes at every cost row.
+6. `research/reports/opportunity_shortlist.md` carries a cost basis for **every** row, with
+   the non-derivable rows listed and the reason given. No existing row is removed,
+   re-scored or re-ranked.
+7. The report states the screen's limitations (necessary, not sufficient) and answers the
+   objective question.
+8. New offline tests in `tests/test_cost_admissibility_screen.py` (no network, no data
+   mutation) and `python -m pytest -q` passes (124 existing + the new tests).
+9. `git status --porcelain data/ config/` shows **no modification** to an existing file
+   under `data/` or `config/`.
+10. No candidate's published verdict is changed. `csmomentum_001`, `sectorrotation_001`
+    and `macroregime_001` remain rejected/failed on their own pre-registered conditions.
+11. The incumbent's decision is unchanged: **NO-GO**, live deployment unsupported;
+    `python research/go_no_go_evaluation.py` still prints NO-GO with
+    `side_effect_free: True`.
 
 ## Validation commands
 
@@ -106,17 +138,23 @@ shortlist. No new candidate, no new data, no walk-forward re-run.
 
 ## Scope boundaries
 
-- Research only. No live trading, no credential access, no scheduled jobs, no
-  new dependencies.
-- Do not modify existing files under `config/` or `data/`, the paper-trading
-  state, the promotion gates, the incumbent configuration or the deployment
-  decision. Do not modify `src/` (put candidate-specific code in `research/`).
-- Do **not** re-optimize any candidate and do not re-run a walk-forward
-  evaluation to "rescue" a rejected candidate. This cycle measures costs; it
-  does not re-judge candidates.
-- Do not propose a variant of `overnight_capture_001` (for example a version
-  that avoids the second daily round trip). That is a **different hypothesis**
-  and would need its own pre-registration before any backtest.
+- Research only. No live trading, no credential access, no scheduled jobs, no new
+  dependencies.
+- Do not modify existing files under `config/` or `data/`, the paper-trading state, the
+  promotion gates, the incumbent configuration or the deployment decision. Do not modify
+  `src/` (put candidate-specific code in `research/`); if a shared helper is genuinely
+  needed, it must be additive, backward compatible and provably leave the incumbent
+  artifacts byte-identical.
+- Do **not** re-optimize any candidate and do **not** re-run a walk-forward evaluation to
+  "rescue" a rejected candidate. This cycle measures costs; it does not re-judge
+  candidates. The re-derived walk-forward statistics are a **validation** of the screen,
+  not a selection over configurations.
+- Do not propose a variant of any candidate (for example an overnight leg that avoids the
+  second daily round trip). That is a **different hypothesis** and would need its own
+  pre-registration before any backtest.
+- Do not add a candidate, a universe, a cost model change, a gate or a threshold. The cost
+  model stays `get_cost_params()` = 3 bp per unit of weight change, with 5 bp and 10 bp
+  sensitivity rows.
 - Do not dispatch this workflow or start additional agent sessions.
 
 ## Known pending item (deliberately not bundled with this cycle)

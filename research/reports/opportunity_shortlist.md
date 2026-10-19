@@ -37,6 +37,47 @@
 
 ---
 
+## Cost-Admissibility Column (Cycle 881 — additive; no existing row is re-ranked)
+
+**Added 2026-10-19 by `research/cost_admissibility_screen.py` (read-only).**
+The shortlist above scores (c) Net Return on a **structural** basis and states no candidate's
+annualized cost drag. Cycle 880 then rejected the overnight-session candidate on cost: a gross
+premium of +9.16%/yr against 15.12%/yr of drag, because an overnight-only leg must be flat
+during the day and therefore round-trips twice per session (504 units of annual turnover).
+This section adds the missing column for the candidates the screen covers. **No row of the
+summary table above is removed, re-scored or re-ranked**; the ranking stays as it was, and the
+cost evidence is published next to it.
+
+| Shortlist rank | Candidate | Annual turnover (units/yr) | Drag @3 bp/unit | Gross signal | Min gross signal needed @3 bp | Break-even cost | Admissibility |
+|---|---|---|---|---|---|---|---|
+| 1 | TSMOM incumbent (`tsmomentum_spytrend_001`) | 12.16 | +0.3649%/yr | +13.8825%/yr | +0.3649%/yr | 106.75 bp/unit | **ADMISSIBLE** |
+| 4 | Calendar / rebalancing effects (`calendar_effects_001`) | 24.13 | +0.7239%/yr | +2.7326%/yr | +0.7239%/yr | 11.16 bp/unit | **ADMISSIBLE** |
+| 10 | Intraday session / time-of-day effects (overnight variant, `overnight_capture_001`) | 504.00 | +15.1200%/yr | +9.1558%/yr | +15.1200%/yr | 1.74 bp/unit | **INADMISSIBLE** |
+
+Two things the cost column changes and one it does not:
+
+* **It confirms the Rank-10 rejection on a second, independent axis.** The session-effect
+  candidate fails the cost screen at the repository's own 3 bp/unit model: its break-even cost
+  is 1.74 bp/unit, 58% of what the model charges, and it needs a cost of only 0.29 bp/unit to
+  match simply holding the same basket close-to-close.
+* **It does not promote the Rank-4 candidate.** `calendar_effects_001` clears the cost screen
+  comfortably (break-even 11.16 bp/unit, 3.7x the model cost), but on the same folds it would
+  have to be **paid 22.69 bp/unit** to merely match passive close-to-close holding of the same
+  basket. Cost-admissibility is necessary and **not** sufficient: a candidate can survive its
+  costs and still have no edge.
+* **It leaves the shortlist's ranking intact.** Ranked by break-even cost the three screened
+  candidates order as incumbent > calendar > session-effect, which is the same order as the
+  gross-effect ranking above. The screen is a filter to apply **before** short-listing, not a
+  re-ranking of the list.
+
+**Coverage:** this cycle screens the three candidates whose daily gross-return and turnover
+series can be rebuilt from the committed cache and the committed artifacts. Ranks 2, 3 and 6
+(`csmomentum_001`, `sectorrotation_001`, `macroregime_001`) are **not** covered yet; their cost
+evidence is still only the structural (c) score above. Full evidence:
+`research/reports/cost_admissibility_screen_001.md`.
+
+---
+
 ## Candidate C1: TSMOM incumbent — tsmomentum_spytrend_001 (226d lookback, 21d skip, top-50%, vol-target 10%, DD control 15%, SPY 200d SMA filter)
 
 **Category:** TSMOM variants
