@@ -2,6 +2,14 @@
 
 Autonomous research pipeline for discovering reproducible, net-of-cost trading edges.
 
+## Cycle 856: Post-Gate Monitoring — **NO NEW COMPLETED SESSION; DRIFT FLAG PERSISTS**.
+- UTC 2026-10-19T14:54:18Z. Post-gate monitoring-only; no strategy/data/infrastructure changes made.
+- Per-symbol data check: raw parquet index max — SPY/QQQ/IWM/TLD/GLD/EFA/EEM/^VIX all 2026-10-16 00:00:00+00:00 (SPY 8487, QQQ 6945, IWM 6637, TLT 6094, GLD 5512, EFA 6322, EEM 5916 rows; ^VIX 451 rows as expected). Non-universe symbols (DBC/VNQ/XLB/XLE/XLF/XLI/XLK/XLP/XLU/XLV/XLY) max 2026-10-08. No new trading days beyond 2026-10-16 — verification-only, no state changes.
+- `refresh_raw_cache.py --dry-run`: no-op for all 8 symbols (0 appended). `extend_paper_trading_state.py --dry-run`: "no new completed session", sessions extended 0, state write count 0.
+- Verification: pytest **27 passed in 118.24s**; research/_tmp_cycle77_verify.py **OVERALL PASS** (rolling 63d Sharpe -0.21188351222842883, date 2026-10-16, regime flips 6/6 match, run_history 449 entries, current NAV $133,729.22, max drawdown -4.9857%); .github/scripts/test_kilo_supervisor_loop.py **OK 10/10 in 0.424s**.
+- Drift flag `low_rolling_sharpe` persists (-0.21188351222842883); above >20-day persistence threshold. Data ends 2026-10-16.
+- Handoff: `.kilo-runtime/worker-disposition.json` updated (schema_version 1, recommendation_id "n/a", disposition "verified", updated_at 2026-10-19T14:55:00Z). NEXT_AGENT_TASK.md replaced with Cycle 857.
+
 ## Cycle 855: Session-Safe Raw-Cache Refresh Tool — **IMPLEMENTED AND VERIFIED; NO NEW COMPLETED SESSION YET**.
 - UTC 2026-10-19T14:48:39Z. Tooling only; no strategy/config/cost/universe changes.
 - New tool `research/refresh_raw_cache.py`: downloads the paper-trading universe (SPY, QQQ, IWM, TLT, GLD, EFA, EEM) plus `^VIX` into a scratch dir, keeps only sessions whose local close has passed (no partial bar can enter `data/raw`), appends only rows newer than the cached max date (idempotent: re-run writes 0 rows, reports "no-op"), refuses to write any bar whose session is not complete, and writes an integrity manifest (`research/reports/raw_cache_integrity_manifest.json`, per symbol: row count, max date, sha256, timestamp).
