@@ -14,9 +14,8 @@ import pandas as pd
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SRC_ROOT = REPO_ROOT / "src"
-if str(SRC_ROOT) not in sys.path:
-    sys.path.insert(0, str(SRC_ROOT))
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 from src.backtest.engine import run_backtest
 from src.evaluation.sharpe import backtest_sharpe_ratio, sharpe_ratio
@@ -286,7 +285,7 @@ def main() -> int:
         f.write("## Decision\n\n")
         f.write(f"- decision: {report['decision']}\n")
         f.write(f"- failed_gates: {report['failed_gates']}\n")
-        f.write(f"- psr_zone: {report['psr_zone']}\n\n")
+        f.write(f"- psr_zone: {report['psr']['psr_zone']}\n\n")
         f.write("## Attainability (explicit answer)\n\n```json\n")
         json.dump(report["attainability"], f, indent=2)
         f.write("\n```\n\n")

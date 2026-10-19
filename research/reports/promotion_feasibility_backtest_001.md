@@ -134,3 +134,38 @@
 
 - decision: NO-GO
 - failed_gates: ['full_period_sharpe', 'rolling_63d_sharpe', 'max_drawdown', 'psr']
+- psr_zone: below_grey
+
+## Attainability (explicit answer)
+
+```json
+{
+  "psr_reaches_095": false,
+  "required_observed_sharpe_for_psr095": 1.674248608617688,
+  "sharpe_se_at_this_sample": 0.1559096836433908,
+  "sample_length": 8487,
+  "note": "PSR>=0.95 when (sr_obs - sr_t)/se >= 1.64485 at same SE."
+}
+```
+
+## Consequence for research loop
+
+not promotable in principle
+
+## Falsification conditions
+
+- backtest reads from network (cache bypass) -> false claim; must be read-only.
+- long-sample uses different universe/window than stated -> reject.
+- canonical vs backtest-baseline scales mixed -> reject.
+- gate thresholds changed from config/promotion_gates.yaml -> reject.
+
+## Reproduction
+
+```json
+{
+  "command": "python research/promotion_feasibility_backtest.py",
+  "deterministic": true,
+  "no_network": true,
+  "read_only_data": true
+}
+```
