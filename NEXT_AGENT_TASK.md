@@ -1,94 +1,98 @@
-# Next Agent Task: Cycle 862 - Attribute the trailing-63-session underperformance and the PSR shortfall (read-only diagnosis, one settled Sharpe convention)
+# Next Agent Task: Cycle 863 — Quantify the mechanical roll-off of the 63-session window (read-only projection, no forecast)
 
 ## Context
 
-Cycle 861 closed the measurement-consistency defect that Cycle 860 found. The repository now uses **one**
-documented Sharpe convention for every promotion-gate, drift-flag and PSR quantity:
+Cycle 862 attributed the trailing-63-session failure and the PSR shortfall from the committed
+record alone (`research/reports/trailing_window_attribution_001.md`,
+`research/experiments/trailing_window_attribution_001.md`,
+`research/trailing_window_attribution.py`). The record is unchanged: 449 sessions through
+2026-10-16, gate-complete, decision **NO-GO** (`evaluation_deterministic: True`).
 
-| | |
-|---|---|
-| id | `arithmetic_annualized_rf0` |
-| formula | `mean(r) * 252 / (std(r, ddof=1) * sqrt(252))`, zero risk-free rate |
-| implementation | `src.evaluation.sharpe.sharpe_ratio` |
-| declaration | `config/promotion_gates.yaml` → `sharpe_convention` (checked against the code; the evaluation fails closed on a mismatch) |
-| applies to | gate `full_period_sharpe`, gate `rolling_63d_sharpe`, PSR numerator **and** PSR bootstrap distribution, drift flag `state.drift_flags.low_rolling_sharpe` |
+What Cycle 862 established, with numbers:
 
-The separate *backtest-baseline* scale (`src.evaluation.sharpe.backtest_sharpe_ratio`, CAGR-based, rf 2%) is
-kept, named and confined to backtest research metrics, because the recorded backtest baseline 1.4178 and the
-published backtest artifacts are on that scale.
+| Window | gross signal return (unscaled) | vol overlay | filter | drawdown overlay | cost | observed net | canonical 63d Sharpe |
+|---|---|---|---|---|---|---|---|
+| trailing 63 (2026-07-21 → 2026-10-16) | **+1.078731%** | **-1.497444%** | 0.000000% | 0.000000% | -0.098798% | **-0.517510%** | **-0.211884** |
+| previous 63 (2026-07-14 → 2026-10-09) | +4.393818% | -2.546287% | 0.000000% | 0.000000% | -0.100635% | +1.746896% | +0.935578 |
+| tail 5 (2026-10-12 → 2026-10-16) | **-4.120856%** | +1.466867% | 0.000000% | 0.000000% | -0.000903% | **-2.654892%** | — |
 
-Current state of the record (449 sessions through 2026-10-16), gate-complete and reproducible
-(`evaluation_deterministic: True`):
+- The trailing-window shortfall is dominated by the **volatility-targeting overlay** (pro-cyclical
+  with a lag: it de-risked the sessions where the signal was making money — signal sum
+  +6.625738% on the low-`vol_scale` half of the window, -5.244338% on the high half), against a
+  *positive* raw signal (+1.078731%). The filter, the drawdown overlay and the gross-exposure cap
+  contributed exactly 0.000000% each; cost drag was -0.098798% (window) and -0.000903% (tail).
+- The window-to-window deterioration is a **signal failure** in the five sessions that entered the
+  window: -4.120856% unscaled, cushioned to -2.654892% by the overlay. Two sessions
+  (2026-10-14, 2026-10-16) carry 84.2% of it, in the four assets the momentum signal held
+  (SPY, QQQ, IWM, EEM).
+- The **PSR shortfall is not** caused by the trailing window: the five new sessions are 1.11% of the
+  record, the bootstrap SE *fell* (0.722984 → 0.690150), and the PSR change of -0.078384 is 110%
+  numerator-driven (observed Sharpe 1.934100 → 1.748401). At SE 0.690150 the record would need an
+  observed Sharpe of **2.552996** (or an SE of **0.200991**) to reach PSR 0.95; the PSR gate was
+  already failing before the tail (0.762425 < 0.95).
 
-| Gate | Value | Threshold | Result |
-|---|---|---|---|
-| `track_record_length` | 449 | ≥ 126 | PASS |
-| `full_period_sharpe` | 1.748401 | ≥ 0.9 | PASS |
-| `rolling_63d_sharpe` | **-0.211884** | ≥ 0.9 | **FAIL** |
-| `max_drawdown` | -0.049857 | ≥ -0.15 | PASS |
-| `rolling_63d_max_dd` | -0.038564 | ≥ -0.15 | PASS |
-| `regime_flips` | 6 | ≥ 1 | PASS |
-| `psr` | **0.684041** | ≥ 0.95 | **FAIL** (grey zone 0.5–0.95) |
-
-**Decision: NO-GO. Live deployment remains unsupported.** The `low_rolling_sharpe` drift flag persists
-(-0.21188351222842883, 5 consecutive sessions below 0.5, 2026-10-12 → 2026-10-16).
-
-The full-period Sharpe (1.748401) passes comfortably while the trailing 63 sessions fail badly. **The reason
-for that divergence has never been investigated** — Cycle 860 and Cycle 861 deliberately deferred it until the
-measurement convention was settled, so that the analysis would not be run on two definitions of "rolling
-Sharpe". That condition is now met, so the diagnosis is the next cycle.
-
-Cycle 861 evidence: `research/reports/monitoring_cycle_861.md`; dated addenda in
-`research/reports/go_no_go_evaluation_002.md`, `research/reports/deployment_dossier_001.md` and
-`research/reports/paper_trading_validation_002.md`; `research/sharpe_convention_audit.py` (read-only audit that
-reproduces every number from the committed state); `tests/test_go_no_go_evaluation.py` (61 tests).
-
-## Objective
-
-Establish, with numbers and from the committed data alone, **what made the trailing 63 sessions of the paper
-record fail the promotion gate**, and state which mechanism dominates. This is a *diagnosis* cycle: it must
-identify the cause of the observed -0.211884 trailing Sharpe and of the PSR shortfall, so that any later
-decision (fix, re-fit or abandon) is made on evidence instead of on a number that moved because a definition
-changed.
+**The question this cycle answers**: the 63-session window is a *rolling* measurement, and the five
+crash sessions will mechanically leave it after 63 further sessions. What does the gate table look
+like on the way out, and what would actually have to happen for the record to be promotable again?
+Without this, a future agent risks reading a mechanical window effect as a recovery — or reading a
+still-failing gate as a strategy failure.
 
 ## Precondition checks (cheap, do them first)
 
-1. Check whether a **completed** US session beyond 2026-10-16 is now available (raw parquet index max dates for
-   SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX; `python research/refresh_raw_cache.py --dry-run`; `python
-   research/extend_paper_trading_state.py --dry-run`). If a completed session exists, extend the state **once**
-   with the session-safe tools and run the diagnosis on the extended record; otherwise stay verification-only.
-2. Record the state/raw SHA-256 set before and after the cycle; the committed artifacts must stay byte-identical
-   unless the extension path legitimately appended a completed session.
-3. Re-derive the current numbers with the settled convention (`python research/sharpe_convention_audit.py`) so
-   the diagnosis is anchored on the same numbers the gate uses.
+1. Check whether a **completed** US session beyond 2026-10-16 is now available
+   (`research/refresh_raw_cache.py --dry-run`, `research/extend_paper_trading_state.py --dry-run`,
+   raw parquet index max dates). If a completed session exists, extend the state **once** with the
+   session-safe tools and run the projection on the extended record; otherwise stay verification-only
+   and project from the 449-session record.
+2. Record the state/raw SHA-256 set before and after the cycle; committed artifacts must stay
+   byte-identical unless the extension path legitimately appended a completed session.
+3. Re-derive the current numbers with the settled convention
+   (`python research/sharpe_convention_audit.py`, `python research/trailing_window_attribution.py`)
+   so the projection is anchored on the same numbers the gate uses.
+
+## Objective
+
+Produce a **read-only, deterministic projection** of the `rolling_63d_sharpe` gate as the window
+rolls forward over the next 63 sessions, under explicitly stated continuation assumptions, together
+with the *requirement* (not a forecast) that has to be met at every projected window. The output must
+make it impossible to confuse a mechanical window effect with a performance recovery.
 
 ## Acceptance Criteria
 
-1. **A decomposition that reconciles.** A report `research/reports/trailing_window_attribution_001.md` that
-   decomposes the trailing-63-session return of the committed record into *gross signal return*, *cost drag*
-   (turnover × the 3 bp committed cost model), *overlay effect* (vol-scale and drawdown-scale reductions) and
-   *filter effect* (SPY-trend regime exposure), with an explicit residual. The decomposition must sum to the
-   observed compounded return of the window to within a stated tolerance (≤ 1e-6 in return terms), and the
-   residual must be explained, not left over.
-2. **Per-asset attribution of the deterioration.** The 63-session window that ended 2026-10-16 compounded
-   **-0.5175%** while the 63-session window that ended 2026-10-09 compounded **+1.7469%**; the difference is
-   concentrated in the last five sessions (2026-10-12 → 2026-10-16, compounded **-2.6549%**, all with
-   `regime_exposure = 1.0`, `dd_scale = 1.0`, `vol_scale` 0.63–0.65). The report must attribute those five
-   sessions (and the full window) per asset and per mechanism, using a **scratch** copy of the state — the
-   canonical `data/processed/paper_trading_state.yaml` must never be written.
-3. **A stated dominant mechanism.** The report must say, with numbers, which of signal decay / filter timing /
-   overlay scaling / cost drag dominates the window, and must state the **falsification condition**: what
-   observation would refute that conclusion, and what would refute the alternative explanations.
-4. **The connection to the PSR shortfall** must be stated: the PSR is 0.684041 because the trailing window
-   dominates the bootstrap, or for another reason, with the numbers that support it (e.g. the PSR recomputed on
-   the record truncated to 2026-10-09 is 0.762425, and the canonical trailing Sharpe of the two windows is
-   0.935578 vs -0.211884).
-5. **Read-only.** No change to the strategy, the universe, the cost model, the parameters, the promotion
-   thresholds or the promotion-gate table; no change to the committed state, the raw cache or any committed
-   artifact. A new read-only script (`research/trailing_window_attribution.py`) must reproduce every number in
-   the report, and `python -m pytest -q` must still pass (61 tests at the end of Cycle 861).
-6. **The report must not recommend a re-fit.** It may state what a follow-up experiment would have to show,
-   but it must not tune parameters against the current record.
+1. **A projection script.** New read-only `research/rolling_63d_rolloff_projection.py` that, from the
+   committed record alone, prints:
+   - the canonical rolling 63d Sharpe series for the record (and the sessions currently in the window
+     with the date each one leaves the window);
+   - a projected rolling 63d Sharpe path for the next 63 sessions under **at least two** clearly
+     labelled continuation assumptions — (a) *flat*: every future session earns exactly 0.00%
+     net of cost, and (b) *record-average*: every future session earns the arithmetic mean daily net
+     return of the committed record (0.00066578, i.e. +16.77% annualised);
+   - for every projected window: the realised window mean, the window dispersion, the resulting
+     canonical Sharpe, the gate verdict, and the **mean daily net return required** for that
+     window to reach Sharpe 0.9 at its own dispersion;
+   - the first session on which the projected `rolling_63d_sharpe` would be ≥ 0.9 under each
+     assumption, or an explicit statement that it never is within the 63-session horizon.
+2. **A report** `research/reports/rolling_63d_rolloff_001.md` containing those numbers, the
+   interpretation, and an explicit **interpretation guard**: the projection is a conditional
+   calculation on the committed record, not a forecast, and it must not be presented as evidence
+   that the strategy has recovered. The report must state what the projection *does* and *does not*
+   establish.
+3. **A statement on the PSR gate's reachability**, using the Cycle 862 numbers: at the current SE
+   (0.690150) the observed Sharpe would have to reach 2.552996, or the SE 0.200991. If an
+   approximate scaling of the block-bootstrap SE with record length is used (state the assumption
+   explicitly and label it an approximation), state the approximate record length at which PSR 0.95
+   could be reached at the *unchanged* observed Sharpe — and say plainly that the alternative route
+   (a higher observed Sharpe) is the only one the strategy controls.
+4. **Read-only.** No change to the strategy, the universe, the cost model, the parameters, the
+   promotion thresholds or the promotion-gate table; no change to the committed state, the raw cache
+   or any committed artifact. `python -m pytest -q` must still pass (61 tests at the end of Cycle 862)
+   and `git status --porcelain data/` must be empty.
+5. **No forecast and no re-fit.** The cycle must not project market returns from a model, must not
+   tune anything against the current record, and must not restate the promotion decision: the current
+   decision stays **NO-GO** and the drift flag `low_rolling_sharpe` (-0.21188351222842883, 5
+   consecutive trading days below 0.5, 2026-10-12 → 2026-10-16) is unchanged. If a completed
+   session becomes available, the *realised* record must be reported alongside the projection, never
+   merged into it.
 
 ## Validation Commands
 
@@ -96,57 +100,68 @@ changed.
 - `python research/go_no_go_evaluation.py` (must print `side_effect_free: True` and `evaluation_deterministic: True`)
 - `python research/drift_persistence_report.py` (must report `stored == recomputed: True`)
 - `python research/sharpe_convention_audit.py`
-- `python research/trailing_window_attribution.py` (new; reproduces the report's numbers)
+- `python research/trailing_window_attribution.py` (Cycle 862 script; must still print `OVERALL: PASS`)
+- `python research/rolling_63d_rolloff_projection.py` (new; reproduces the report's numbers)
 - `python research/_tmp_cycle77_verify.py`
 - `python .github/scripts/test_kilo_supervisor_loop.py`
 - `git status --porcelain data/` must be empty (byte-identical committed artifacts)
 
 ## Scope Boundaries
 
-- **No threshold values may change** (0.9 Sharpe target, 15% max DD, PSR 0.5/0.95 boundaries, 126-day minimum,
-  1 regime flip). No strategy, config, cost-model, universe or parameter changes. No live trading, no new
-  dependencies, no schedule/workflow changes.
-- **No re-optimisation and no re-selection against the current record.** This cycle measures and explains; it
-  does not search.
+- **No threshold values may change** (0.9 Sharpe target, 15% max DD, PSR 0.5/0.95 boundaries, 126-day
+  minimum, 1 regime flip). No strategy, config, cost-model, universe or parameter changes. No live
+  trading, no new dependencies, no schedule/workflow changes.
+- **No re-optimisation and no re-selection against the current record.** This cycle projects and
+  quantifies requirements; it does not search.
+- **No fabricated market data.** The flat and record-average continuations are assumptions, must be
+  labelled as such in the script output and in the report, and must never be stored in the state file
+  or in `data/`.
 - Do not change the drift-flag threshold (0.5) or its persistence definition.
-- Do not restate the PSR target (1.4178) on the canonical scale in this cycle: that needs a backtest baseline
-  re-run and is a separate measurement task (see "Out of scope").
-- Any scratch state used for the per-asset attribution must live outside `data/processed` and must be deleted
-  or left untracked; the committed state file must stay byte-identical.
-- If a completed session is not available, the cycle must not fabricate one.
+- Do not restate the PSR target (1.4178) on the canonical scale: that needs a backtest baseline re-run
+  and remains a separate measurement task.
+- The projection must not be used to justify any deployment action; live deployment remains
+  unsupported while any gate fails.
 
 ## Evidence to Carry Forward
 
-- Current decision: **NO-GO** (gate-complete). `psr_normal` 0.684041 (grey zone), `psr_empirical` 0.741000,
-  `sharpe_se` 0.690150, 95% CI [0.536027, 3.216373], bootstrap mean 1.877745. Gate values:
-  `track_record_length` 449 (PASS), `full_period_sharpe` 1.748401 (PASS), `rolling_63d_sharpe` **-0.211884
-  (FAIL)**, `max_drawdown` -0.049857 (PASS), `rolling_63d_max_dd` -0.038564 (PASS), `regime_flips` 6 (PASS),
-  `psr` **0.684041 (FAIL)**. Drift flag `low_rolling_sharpe` = -0.21188351222842883, persistence 5 trading days
-  (2026-10-12 → 2026-10-16), 21 of 33 sessions below threshold in the trailing 46 calendar days. Max DD
-  -4.9857%. NAV $133,729.22.
-- **The rolling 63d Sharpe series (canonical)** for the last sessions: 2026-10-05 0.9920, 2026-10-06 0.9994,
-  2026-10-07 0.4728, 2026-10-08 0.1902, 2026-10-09 0.9356, 2026-10-12 0.4892, 2026-10-13 0.3669, 2026-10-14
-  0.1133, 2026-10-15 0.3249, 2026-10-16 -0.2119. The window passed the gate (0.9356) up to 2026-10-09.
-- **Window composition (from `run_history`, canonical convention):** trailing 63 sessions (2026-08-21 →
-  2026-10-16) compounded **-0.5175%**, **0 risk-off sessions** (`regime_exposure = 1.0` throughout),
-  `dd_scale = 1.0` throughout, mean `vol_scale` 0.5238 (min 0.4373), cumulative turnover 3.3102 → cost drag
-  ≈ 0.0993% at 3 bp. The preceding 63 sessions (through 2026-10-09) compounded **+1.7469%** with the same
-  zero-risk-off / no-drawdown-cut profile, mean `vol_scale` 0.5084, turnover 3.2969.
-- **The last five sessions** (2026-10-12 → 2026-10-16): daily returns -0.3431%, -0.2272%, -1.1352%, +0.1383%,
-  -1.1099% (compounded -2.6549%), all `regime_exposure = 1.0`, `dd_scale = 1.0`, `vol_scale` 0.6526 / 0.6517 /
-  0.6461 / 0.6484 / 0.6313, turnover 0.0049 / 0.0009 / 0.0056 / 0.0023 / 0.0170.
-  → the deterioration is **not** explained by the trend filter switching off or by the drawdown overlay cutting;
-  the strategy was invested and lost money. The open question this cycle must answer is *which positions and
-  which mechanism* produced the loss, and whether it is a signal failure, a regime-timing failure, an overlay
-  failure or plain cost drag.
-- 444-session record (through 2026-10-09) under the settled convention: `full_period_sharpe` 1.934100 (PASS),
-  `rolling_63d_sharpe` 0.935578 (PASS), `psr` 0.762425 (FAIL, grey zone) → **INCONCLUSIVE**, still not
-  promotable. The 449-session record is NO-GO.
-- **Out of scope for this cycle (deliberate):** restating the PSR target 1.4178 on the canonical scale. It is a
-  fixed external reference on the backtest-baseline scale; converting it needs the backtest return series (a
-  backtest baseline re-run) and is a separate, bounded measurement task. The quantified effect of the
-  mismatch is in `research/reports/monitoring_cycle_861.md` §3.3 (the PSR would be 0.625165 instead of 0.684041
-  if the target carried the paper series' own scale offset) — it changes no verdict.
-- Environment note: the runner image ships without the Python dependencies (`numpy`, `pandas`, `pyyaml`,
-  `pytest`, `scipy`, `statsmodels`, `yfinance`, `pyarrow`, `arch`); install them before running the validation
-  commands. `requirements.txt` already lists them and must not be modified.
+- Current decision: **NO-GO** (gate-complete). `psr_normal` 0.684041 (grey zone), `psr_empirical`
+  0.741000, `sharpe_se` 0.690150, 95% CI [0.536027, 3.216373], bootstrap mean 1.877745. Gate values:
+  `track_record_length` 449 (PASS), `full_period_sharpe` 1.748401 (PASS), `rolling_63d_sharpe`
+  **-0.211884 (FAIL)**, `max_drawdown` -0.049857 (PASS), `rolling_63d_max_dd` -0.038564 (PASS),
+  `regime_flips` 6 (PASS), `psr` **0.684041 (FAIL)**. Drift flag `low_rolling_sharpe` =
+  -0.21188351222842883, persistence 5 trading days (2026-10-12 → 2026-10-16). Max DD -4.9857%.
+  NAV $133,729.22.
+- **The rolling 63d Sharpe series (canonical)** for the last sessions: 2026-10-05 0.9920, 2026-10-06
+  0.9994, 2026-10-07 0.4728, 2026-10-08 0.1902, 2026-10-09 0.9356, 2026-10-12 0.4892, 2026-10-13
+  0.3669, 2026-10-14 0.1133, 2026-10-15 0.3249, 2026-10-16 -0.2119. The window passed the gate
+  (0.9356) up to 2026-10-09.
+- **Window composition (canonical convention)**: the trailing 63 sessions are **2026-07-21 →
+  2026-10-16** and compounded **-0.5175%**; 0 risk-off sessions, `dd_scale = 1.0` throughout, mean
+  `vol_scale` 0.5238 (min 0.4373), cumulative turnover 3.3102 → cost drag ≈ 0.0993% at 3 bp. The
+  preceding 63 sessions (**2026-07-14 → 2026-10-09**) compounded **+1.7469%** with the same
+  zero-risk-off / no-drawdown-cut profile, mean `vol_scale` 0.5084, turnover 3.2969. (Cycle 861's
+  handoff labelled the trailing window "2026-08-21 → 2026-10-16"; that range holds only 40
+  sessions — Cycle 862 resolved the label, the -0.5175% figure was the 63-session number.)
+- **Cycle 862 attribution (read-only, `research/reports/trailing_window_attribution_001.md`)**:
+  trailing 63 = signal +1.078731% + filter 0.000000% + vol overlay -1.497444% + drawdown overlay
+  0.000000% + cap 0.000000% + cost -0.098798% = observed -0.517510% (residual 0.000e+00). Tail 5 =
+  signal -4.120856% + overlay +1.466867% + cost -0.000903% = -2.654892%. Per asset over the trailing
+  63 (session-summed, bp): IWM -117.40, GLD +99.26, EEM -39.09, QQQ +16.37, SPY +11.13, EFA -13.81,
+  TLT 0.00; total -43.56 bp = the window's arithmetic sum. Tail 5: EEM -97.38, QQQ -90.10, IWM -48.71,
+  SPY -31.50; total -267.69 bp.
+- **Overlay mechanics**: trailing 63 corr(`vol_scale`, signal return) -0.2197, mean/median
+  `vol_scale` 0.5238/0.4661, implied realised vol of the raw signal portfolio 19.50% annualised;
+  previous 63: -0.1007, 0.5084/0.4642, 20.02%; tail 5: +0.6799, 0.6460/0.6484, 15.48%.
+- **Sharpe level**: trailing 63 mean -0.6914 bp/day (-1.7424% annualised), std 51.8011 bp/day
+  (8.2232% annualised), Sharpe -0.211884; mean required for Sharpe 0.9 at that dispersion
+  +2.9368 bp/day (+7.4009% annualised) → gap -9.1432 pp annualised. Previous 63: mean +2.8656 bp/day,
+  std 48.6225 bp/day, Sharpe 0.935578; gap +0.2746 pp annualised.
+- **PSR reachability**: at SE 0.690150 the observed Sharpe must be ≥ 2.552996 for PSR 0.95; at the
+  observed 1.748401 the SE must be ≤ 0.200991.
+- **Precondition (2026-10-19T16:42Z)**: no completed US session beyond 2026-10-16
+  (`refresh_raw_cache.py --dry-run` no-op for all 8 symbols; `extend_paper_trading_state.py --dry-run`
+  "no new completed session", 0 sessions extended, 0 state writes; raw cache pinned at 2026-10-16:
+  SPY 8487, QQQ 6945, IWM 6637, TLT 6094, GLD 5512, EFA 6322, EEM 5916 rows; ^VIX 451).
+- Environment note: the runner image ships without the Python dependencies (`numpy`, `pandas`,
+  `pyyaml`, `pytest`, `scipy`, `statsmodels`, `yfinance`, `pyarrow`, `arch`); install them before
+  running the validation commands. `requirements.txt` already lists them and must not be modified.
