@@ -18,6 +18,8 @@ from typing import Iterable
 import numpy as np
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from src.simulation.paper_trading import PaperTradingConfig, PaperTradingState
 from src.simulation.evaluation import evaluate_go_no_go, GoNoGoConfig
 from src.evaluation.utils import annualize_return, max_drawdown, sharpe_ratio
@@ -44,6 +46,7 @@ def compute_sha256_set(paths: Iterable[Path]) -> dict[str, str]:
 def main() -> int:
     repo_root = Path(__file__).resolve().parent.parent
     state_path = repo_root / "data" / "processed" / "paper_trading_state.yaml"
+    config_path = repo_root / "config" / "paper_trading_config.yaml"
     raw_dir = repo_root / "data" / "raw"
 
     # Capture hashes before (read-only)
@@ -59,8 +62,25 @@ def main() -> int:
 
     # Load state and evaluate
     state = PaperTradingState.from_yaml(state_path)
-    config = PaperTradingConfig()
-    result = evaluate_go_no_go(state, config)
+    config = PaperTradingConfig.from_paper_config_yaml(config_path)
+    go_no_go_config = GoNoGoConfig(
+        min_days=config.go_no_go_min_days,
+        target_sharpe=config.go_no_go_target_sharpe,
+        max_dd_threshold=config.go_no_go_max_dd_threshold,
+    )
+    result = evaluate_go_no_go(state, config, go_no_go_config=go_no_go_config)
+
+    # Reproducibility self-check: the PSR bootstrap is seeded, so two
+    # evaluations of the same state must agree exactly.
+    repeat = evaluate_go_no_go(state, config, go_no_go_config=go_no_go_config)
+    deterministic = (
+        repeat.decision == result.decision
+        and repeat.psr_normal == result.psr_normal
+        and repeat.psr_empirical == result.psr_empirical
+        and repeat.sharpe_se == result.sharpe_se
+        and repeat.sharpe_ci_lower == result.sharpe_ci_lower
+        and repeat.sharpe_ci_upper == result.sharpe_ci_upper
+    )
 
     # Compute rolling 63d Sharpe (report-level gate) explicitly
     returns = state.cumulative_returns
@@ -91,6 +111,8 @@ def main() -> int:
     print(f"paper_annualized_turnover: {result.paper_annualized_turnover:.6f}")
     print(f"psr_normal: {result.psr_normal:.6f}")
     print(f"psr_empirical: {result.psr_empirical:.6f}")
+    print(f"psr_seed: {go_no_go_config.psr_seed}")
+    print(f"evaluation_deterministic: {deterministic}")
     print(f"sharpe_se: {result.sharpe_se:.6f}")
     print(f"sharpe_ci_lower: {result.sharpe_ci_lower:.6f}")
     print(f"sharpe_ci_upper: {result.sharpe_ci_upper:.6f}")
@@ -122,6 +144,9 @@ def main() -> int:
         print("MISMATCHED_PATHS:")
         for m in mismatches:
             print(f"  {m}")
+        return 1
+    if not deterministic:
+        print("NON-DETERMINISTIC EVALUATION: repeated evaluation disagrees")
         return 1
     return 0
 

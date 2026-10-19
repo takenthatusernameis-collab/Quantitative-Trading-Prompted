@@ -49,3 +49,34 @@ This evaluation is read-only: `research/go_no_go_evaluation.py` confirms `side_e
 ## Data freshness note
 
 No completed US session was available beyond 2026-10-16 at evaluation time (per monitoring history). Evaluation uses the 449-session state as committed.
+
+## Addendum — Cycle 859 (2026-10-19): monitoring tick and PSR reproducibility fix
+
+- **No new completed US session** beyond 2026-10-16 (the 2026-10-19 provider bar is a partial, in-progress session and
+  was correctly dropped by `complete_session_view`). `research/refresh_raw_cache.py --dry-run` reports `no-op` for all
+  8 symbols and `research/extend_paper_trading_state.py --dry-run` reports `no new completed session`; the paper state
+  was **not** extended. Evidence: `research/reports/monitoring_cycle_859.md`.
+- **The evaluation tool is now runnable as documented.** `python research/go_no_go_evaluation.py` previously aborted with
+  `ModuleNotFoundError: No module named 'src'` (missing repository-root `sys.path` bootstrap that every sibling
+  research script has). Fixed; the tool now also reads thresholds from `config/paper_trading_config.yaml`.
+- **The PSR gate number is now reproducible.** `evaluate_go_no_go` previously ran the PSR block bootstrap *unseeded*, so
+  the same committed state produced different numbers on every run (0.621679 in this report vs 0.627490 on re-run). The
+  bootstrap is now seeded (`GoNoGoConfig.psr_seed`, default `20240101`); no threshold, gate, strategy parameter, cost
+  model or universe was changed. The tool evaluates the record twice and reports `evaluation_deterministic: True`.
+- **Reconciled values for the same 449-session record (through 2026-10-16), now stable and reproducible:**
+
+  | Metric | Cycle 858 (unseeded) | Cycle 859 (seeded, reproducible) |
+  |---|---|---|
+  | `psr_normal` | 0.621679 | **0.625683** |
+  | `psr_empirical` | — | 0.654000 |
+  | `sharpe_se` | 0.710598 | 0.687208 |
+  | 95% CI | [0.378, 3.114] | [0.344994, 2.998531] |
+  | decision | INCONCLUSIVE | **INCONCLUSIVE** (unchanged) |
+  | rolling 63d Sharpe (report-level gate) | -0.493001 | **-0.493001** (unchanged, still FAILS ≥ 0.9) |
+  | drift flags | 1 (`low_rolling_sharpe` -0.21188351222842883) | 1 (unchanged) |
+  | drift persistence | 5 trading days | 5 trading days (unchanged) |
+
+- **Decision and conditions are unchanged by this cycle:** current overall decision **INCONCLUSIVE**; the report-level
+  rolling-63d-Sharpe gate (≥ 0.9) remains **FAILED** (-0.493) and PSR(normal)=0.626 remains in the grey zone
+  (0.5–0.95). Promotion to live trading is still not supported by the current record.
+

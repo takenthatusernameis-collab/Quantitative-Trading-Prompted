@@ -2,6 +2,10 @@
 
 Evaluates the paper-trading track record against backtest baseline
 using statistical tests and drift monitoring.
+
+The Probabilistic Sharpe Ratio is computed from a *seeded* block bootstrap
+(``GoNoGoConfig.psr_seed``) so that repeated evaluations of the same record
+reproduce the same PSR, Sharpe standard error and confidence interval.
 """
 
 from __future__ import annotations
@@ -23,6 +27,9 @@ from src.simulation.paper_trading import (
 )
 
 
+DEFAULT_PSR_SEED = 20240101
+
+
 @dataclass
 class GoNoGoConfig:
     """Configuration for go/no-go evaluation."""
@@ -34,6 +41,7 @@ class GoNoGoConfig:
     psr_no_go_threshold: float = 0.5
     bootstrap_samples: int = 1000
     block_size: int = 22
+    psr_seed: int = DEFAULT_PSR_SEED
     backtest_sharpe: float = 1.4178
     backtest_max_dd: float = -0.0779
     backtest_trades: int = 1196
@@ -253,6 +261,7 @@ def evaluate_go_no_go(
             sr_target=backtest_baseline["sharpe"],
             n_bootstrap=go_no_go_config.bootstrap_samples,
             block_size=go_no_go_config.block_size,
+            seed=go_no_go_config.psr_seed,
         )
         psr_normal = psr_result["psr_normal"]
         psr_empirical = psr_result["psr_empirical"]
