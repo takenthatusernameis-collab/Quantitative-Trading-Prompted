@@ -2,12 +2,14 @@
 ## Context
 Post-gate monitoring phase. Monitoring-only, no strategy/data/infrastructure changes. Data ends at 2026-10-16 for all universe symbols (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX). No new trading days beyond 2026-10-16 observed.
 
-Cycle 819 completed: verification-only, no state/report/code changes. All verification checks passed:
-- `python -m pytest -q`: 7 passed in ~120s
-- `python research/_tmp_cycle77_verify.py`: OVERALL PASS
-- `python .github/scripts/test_kilo_supervisor_loop.py`: OK 10/10
+Cycle 820 completed (UTC 2026-10-19T09:00:11Z): verification-only, no state/report/code changes. All verification checks passed:
+- `python -m pytest -q`: 7 passed in 119.93s
+- `python research/_tmp_cycle77_verify.py`: OVERALL PASS (rolling 63d Sharpe -0.21188351222842883 at 2026-10-16, regime flips 6/6 match, run_history 449 entries, NAV $133729.22, max drawdown -4.9857%)
+- `python .github/scripts/test_kilo_supervisor_loop.py`: OK 10/10 (0.496s)
 
 Low_rolling_sharpe drift flag persists at -0.21188351222842883 (88 days, exploratory). See research/reports/drift_flag_escalation_001.md — monitor, do not re-optimize.
+
+Per-symbol raw parquet index max: SPY/QQQ/IWM/TLT/GLD/EFA/EEM/^VIX all 2026-10-16T00:00:00+00:00. No new trading days beyond 2026-10-16 — verification-only, no state changes.
 
 ## Objective
 Continue post-gate monitoring-only. Record UTC when updating documentation/worker disposition. Verify no new trading days beyond 2026-10-16 for universe symbols (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX) via per-symbol index max in data/raw/*.parquet.
