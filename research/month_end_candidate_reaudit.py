@@ -963,8 +963,9 @@ def main() -> int:
         )
     print(
         f"csmomentum_001  verdict: {cs_verdict} | macroregime_001 verdict: {macro_verdict} "
-        f"(the published macroregime path with the full VIX gate is not computable from the "
-        f"committed cache; see the report)"
+        f"(the macroregime_001 config-faithful path is now measured on the real VIX gate: the "
+        f"^VIX cache covers the full sample, so the legacy path reproduces the published numbers "
+        f"and the faithful path is not an ablation; see the report)"
     )
     if failed:
         print(f"FAILED CHECKS: {failed}", file=sys.stderr)

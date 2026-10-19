@@ -97,22 +97,28 @@ trial count adds no multiple-testing degree of freedom; this cycle measures, it 
 
 ### `macroregime_001` (test window 2018-01-01 .. 2026-10-09, 24 walk-forward folds)
 
+The numbers below are the **non-ablation** measurement: the `^VIX` cache now covers the full sample
+(2004-11-18 .. 2026-10-09), so the VIX regime gate is active in both paths and the legacy path is
+computed **from the cache** (no ablation). It reproduces the published numbers exactly (test Sharpe
+0.2950, max drawdown -0.1807, turnover 3.13x, 58 trades, WF mean OOS Sharpe 0.4331 over 24 folds,
+75.0% positive, 137 pooled trades).
+
 | Metric | Legacy (calendar) | Config-faithful | Delta |
 |---|---|---|---|
-| Sharpe (backtest scale) | 0.3371 | 0.1705 | -0.1666 |
-| Sharpe (canonical) | 0.5630 | 0.4010 | -0.1620 |
-| Max drawdown | -0.1794 | -0.2227 | -0.0434 |
-| Annualized turnover | 3.11x | 4.03x | +0.92x |
-| Trade days | 58 | 83 | +25 |
-| WF mean OOS Sharpe (backtest scale) | 0.4628 | 0.2838 | -0.1790 |
-| WF positive fold rate | 75.0% | 62.5% | -12.5pp |
-| WF pooled OOS trades | 137 | 191 | +54 |
-| Gate 1 (WF mean OOS Sharpe >= 0.9) | FAIL (0.4628) | FAIL (0.2838) | - |
+| Sharpe (backtest scale) | 0.2950 | 0.1428 | -0.1523 |
+| Sharpe (canonical) | 0.5222 | 0.3823 | -0.1399 |
+| Max drawdown | -0.1807 | -0.2240 | -0.0433 |
+| Annualized turnover | 3.13x | 4.22x | +1.09x |
+| Trade days | 58 | 84 | +26 |
+| WF mean OOS Sharpe (backtest scale) | 0.4331 | 0.2636 | -0.1695 |
+| WF positive fold rate | 75.0% | 66.7% | -8.3pp |
+| WF pooled OOS trades | 137 | 193 | +56 |
+| Gate 1 (WF mean OOS Sharpe >= 0.9) | FAIL (0.4331) | FAIL (0.2636) | - |
 | **Verdict** | **Rejected/Failed** | **Rejected/Failed** | **verdict unchanged** |
 
-The legacy column of the `macroregime_001` table is the **cache-reproducible** legacy path; the
-published path (which had the full VIX history) has test Sharpe 0.2950 and WF mean OOS Sharpe
-0.4331. See "Data gap" below.
+The legacy column of the `macroregime_001` table is the **cache-reproducible** legacy path, which
+reproduces the published path exactly because the cache now covers the full sample. See "Data gap"
+below and the documented alternative in § "Cycle 871 ablation alternative".
 
 ### Reproduction of the published numbers
 
@@ -137,15 +143,24 @@ repository's current fold generator (it reports 46 folds / 0.6619; the generator
 0.6928 on the frozen configuration's own window, and `config/csmomentum_001.yaml` itself declares
 `folds_expected: 48`).
 
-### Data gap (quantified, not hidden)
+### Data gap (closed this cycle)
 
-The committed `^VIX` cache starts **2025-01-02**, so 5,063 of the 5,507 sessions of the
-`macroregime_001` sample have no VIX observation. The config-faithful path *with the published VIX
-gate* is therefore **not computable from the committed cache**; the published path itself is
-reproduced from the committed weights artifact, and the schedule effect is measured on
-cache-reproducible paths in which the legacy and the config-faithful path share the identical
-cache-limited VIX input. The gate-1 margin on the config-faithful path (0.6162 Sharpe) is 3.4x the
-measured schedule effect (0.1790), so the verdict is not sensitive to the gap.
+The committed `^VIX` cache now covers **2004-11-18 .. 2026-10-09** (5,514 sessions), i.e. the full
+`macroregime_001` sample. **0 of 5,507 sessions** have no VIX observation. The config-faithful path
+*with the published VIX gate* is therefore **computable from the committed cache**, and the legacy path
+computed from the cache reproduces the published numbers exactly (test Sharpe 0.2950, max drawdown
+-0.1807, turnover 3.13x, 58 trades, WF mean OOS Sharpe 0.4331 over 24 folds, 75.0% positive, 137
+pooled trades). The gate-1 margin on the config-faithful path (0.6364 Sharpe) is 3.8x the measured
+schedule effect (0.1695), so the verdict is not sensitive to the gate.
+
+### Cycle 871 ablation alternative (documented, not deleted)
+
+Cycle 871 measured the `macroregime_001` deviation on a **VIX-gate ablation**, because the committed
+`^VIX` cache then covered only 2025-01-02 .. 2026-10-16 (451 rows) and 5,063 of the 5,507 sample
+sessions had no VIX observation. On that ablation the legacy path gave test Sharpe 0.3371 / WF mean
+OOS Sharpe 0.4628 and the config-faithful path gave test Sharpe 0.1705 / WF mean OOS Sharpe 0.2838
+(both still Rejected/Failed, verdict unchanged). The non-ablation numbers above supersede them; the
+ablation is kept here as the recorded alternative so the cycle's evolution is auditable.
 
 ### Effect of the defect
 
@@ -156,7 +171,8 @@ and at a different point in time.
 
 ## Known confounders and limitations
 
-1. The `macroregime_001` config-faithful path is data-limited by the missing `^VIX` history (above).
+1. The `macroregime_001` config-faithful path is now computable with the published VIX gate; the
+   `^VIX` cache was backfilled this cycle to cover the full sample (see "Data gap").
 2. `csmomentum_001` has two contradictory published records; this cycle identifies which code path
    produced each and measures the schedule's effect, it does not decide which record is
    authoritative.
@@ -173,7 +189,7 @@ and at a different point in time.
 ## Falsification condition
 
 This cycle's conclusions are wrong if any of the following holds (each is an executable check in
-`research/month_end_candidate_reaudit.py`, 16/16 pass):
+`research/month_end_candidate_reaudit.py`, 17/17 pass):
 
 1. the legacy path does not reproduce the committed weight artifacts or the published test-period
    metrics;
@@ -189,7 +205,7 @@ This cycle's conclusions are wrong if any of the following holds (each is an exe
 ## Reproduction commands
 
 ```bash
-python research/month_end_candidate_reaudit.py     # OVERALL: PASS, 16/16 checks
+python research/month_end_candidate_reaudit.py     # OVERALL: PASS, 17/17 checks
 python research/rebalance_schedule_audit.py         # OVERALL: PASS (Cycle 870, unchanged)
 python research/sectorrotation_long_sample_feasibility.py
 python -m pytest -q                                 # 82 passed
