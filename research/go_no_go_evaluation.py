@@ -128,6 +128,9 @@ def main() -> int:
                 print(f"  drift_flag.{k}: value={v.get('value')} threshold={v.get('threshold')} date={v.get('date')}")
             except Exception:
                 print(f"  drift_flag.{k}: {v}")
+    print("promotion_gates:")
+    for g in result.gates:
+        print(f"  {g.name}: value={g.value} threshold={g.threshold} comparison={g.comparison} pass={g.passed}")
     print(f"decision (evaluate_go_no_go): {result.decision}")
     print(f"rationale: {result.rationale}")
     print(f"conditions_for_reevaluation: {result.conditions_for_reevaluation}")

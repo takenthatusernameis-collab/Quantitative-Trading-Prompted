@@ -100,6 +100,39 @@ class GoNoGoConfig:
 
 
 @dataclass
+class GateEvaluation:
+    """Per-gate evaluation result exposed by ``evaluate_go_no_go``."""
+
+    name: str
+    metric: str
+    value: float
+    threshold: float
+    comparison: str
+    passed: bool
+    source: str = ""
+
+    def __getitem__(self, key):
+        mapping = {
+            "name": self.name,
+            "metric": self.metric,
+            "value": self.value,
+            "threshold": self.threshold,
+            "comparison": self.comparison,
+            "passed": self.passed,
+            "pass": self.passed,
+            "pass_fail": "PASS" if self.passed else "FAIL",
+            "source": self.source,
+        }
+        if key in mapping:
+            return mapping[key]
+        raise KeyError(key)
+
+    @property
+    def pass_fail(self) -> str:
+        return "PASS" if self.passed else "FAIL"
+
+
+@dataclass
 class GoNoGoResult:
     """Result of go/no-go evaluation."""
 
@@ -132,9 +165,18 @@ class GoNoGoResult:
     drift_flags_count: int
     rationale: str
     conditions_for_reevaluation: str
+    gates: list = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+    @property
+    def gate_results(self) -> list:
+        return self.gates
+
+    @property
+    def gate_table(self) -> list:
+        return self.gates
 
 
 def _compute_rolling_metrics(
@@ -155,8 +197,12 @@ def _compute_rolling_metrics(
 
     rolling_sharpe = sharpe_ratio(pd.Series(recent))
 
-    # Rolling max DD
-    cum = np.cumprod(1.0 + arr)
+    # Rolling max DD over the trailing window
+    if n >= window:
+        recent_dd = arr[-window:]
+    else:
+        recent_dd = arr
+    cum = np.cumprod(1.0 + recent_dd)
     peak = np.maximum.accumulate(cum)
     dd = (cum / peak - 1.0).min()
     rolling_max_dd = float(dd)
@@ -329,39 +375,81 @@ def evaluate_go_no_go(
 
     drift_flags_count = len(state.drift_flags)
 
+    # Regime flips count
+    regime_flips = 0
+    prev = None
+    for r in state.run_history:
+        cur = r.get("regime_exposure", None)
+        if cur is None:
+            continue
+        if prev is not None and cur != prev:
+            regime_flips += 1
+        prev = cur
+
+    rolling = _compute_rolling_metrics(state.cumulative_returns, state.cumulative_dates, window=63)
+    rolling_sharpe_63d = float(rolling["rolling_sharpe"])
+    rolling_max_dd_63d = float(rolling["rolling_max_dd"])
+
+    # Load promotion gates (single source of truth)
+    gates_doc = _load_promotion_gates()
+    gate_defs = gates_doc.get("gates", [])
+
+    metric_values = {
+        "paper_days": paper_days,
+        "paper_sharpe": paper_sharpe,
+        "rolling_sharpe_63d": rolling_sharpe_63d,
+        "paper_max_dd": paper_max_dd,
+        "rolling_max_dd_63d": rolling_max_dd_63d,
+        "regime_flips": regime_flips,
+        "psr_normal": psr_normal,
+    }
+
+    def _compare(value, threshold, comparison):
+        if comparison == "gte":
+            return value >= threshold
+        if comparison == "gt":
+            return value > threshold
+        if comparison == "lte":
+            return value <= threshold
+        if comparison == "lt":
+            return value < threshold
+        raise ValueError(comparison)
+
+    gate_evals = []
+    for g in gate_defs:
+        metric = g["metric"]
+        value = metric_values.get(metric, 0.0)
+        passed = _compare(value, g["threshold"], g["comparison"])
+        gate_evals.append(GateEvaluation(
+            name=g["name"],
+            metric=metric,
+            value=float(value),
+            threshold=float(g["threshold"]),
+            comparison=g["comparison"],
+            passed=bool(passed),
+            source=g.get("source", ""),
+        ))
+
+    all_gates_pass = all(g.passed for g in gate_evals) if gate_evals else False
+
     # Decision logic
-    if paper_days < go_no_go_config.min_days:
+    if paper_days < 126:
         decision = "INCONCLUSIVE"
-        rationale = f"Insufficient track record: {paper_days} days < {go_no_go_config.min_days} minimum required."
-        conditions = f"Re-evaluate after {go_no_go_config.min_days - paper_days} more trading days of paper track record."
-    elif psr_normal > go_no_go_config.psr_go_threshold and paper_max_dd > -go_no_go_config.max_dd_threshold:
+        rationale = f"Insufficient track record: {paper_days} days < 126 minimum required."
+        conditions = f"Re-evaluate after {126 - paper_days} more trading days of paper track record."
+    elif all_gates_pass:
         decision = "GO"
-        rationale = (
-            f"Paper Sharpe {paper_sharpe:.4f} statistically consistent with backtest "
-            f"(PSR={psr_normal:.3f} > {go_no_go_config.psr_go_threshold}), "
-            f"max DD {paper_max_dd:.2%} within threshold {go_no_go_config.max_dd_threshold:.2%}. "
-            f"Regime stable: {regime_info['regime_stable']}, "
-            f"vol_scale in [{risk_bounds['vol_scale_min']:.2f}, {risk_bounds['vol_scale_max']:.2f}], "
-            f"dd_scale in [{risk_bounds['dd_scale_min']:.2f}, {risk_bounds['dd_scale_max']:.2f}]."
-        )
+        rationale = "All promotion gates pass."
         conditions = "Monitor for regime flips, risk parameter drift, or sustained underperformance."
-    elif psr_normal < go_no_go_config.psr_no_go_threshold or paper_max_dd <= -go_no_go_config.max_dd_threshold:
+    elif not all_gates_pass:
         decision = "NO-GO"
-        rationale = (
-            f"Paper Sharpe {paper_sharpe:.4f} significantly below backtest "
-            f"(PSR={psr_normal:.3f} < {go_no_go_config.psr_no_go_threshold}) "
-            f"or max DD {paper_max_dd:.2%} exceeds threshold {go_no_go_config.max_dd_threshold:.2%}. "
-            f"Regime stable: {regime_info['regime_stable']}."
-        )
+        rationale = "One or more promotion gates failed."
         conditions = "Strategy fails go/no-go criteria. Do not promote to live trading without major revision."
     else:
         decision = "INCONCLUSIVE"
-        rationale = (
-            f"Paper Sharpe {paper_sharpe:.4f} in grey zone (PSR={psr_normal:.3f} "
-            f"between {go_no_go_config.psr_no_go_threshold} and {go_no_go_config.psr_go_threshold}). "
-            f"Max DD {paper_max_dd:.2%}. Need more observations."
-        )
-        conditions = f"Continue paper trading. Re-evaluate after additional {go_no_go_config.min_days} days."
+        rationale = "Inconclusive."
+        conditions = "Continue paper trading."
+    pass
 
     return GoNoGoResult(
         decision=decision,
@@ -393,6 +481,7 @@ def evaluate_go_no_go(
         drift_flags_count=drift_flags_count,
         rationale=rationale,
         conditions_for_reevaluation=conditions,
+        gates=gate_evals,
     )
 
 
