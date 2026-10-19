@@ -2,6 +2,15 @@
 
 Autonomous research pipeline for discovering reproducible, net-of-cost trading edges.
 
+## Cycle 855: Session-Safe Raw-Cache Refresh Tool — **IMPLEMENTED AND VERIFIED; NO NEW COMPLETED SESSION YET**.
+- UTC 2026-10-19T14:48:39Z. Tooling only; no strategy/config/cost/universe changes.
+- New tool `research/refresh_raw_cache.py`: downloads the paper-trading universe (SPY, QQQ, IWM, TLT, GLD, EFA, EEM) plus `^VIX` into a scratch dir, keeps only sessions whose local close has passed (no partial bar can enter `data/raw`), appends only rows newer than the cached max date (idempotent: re-run writes 0 rows, reports "no-op"), refuses to write any bar whose session is not complete, and writes an integrity manifest (`research/reports/raw_cache_integrity_manifest.json`, per symbol: row count, max date, sha256, timestamp).
+- 12 new offline unit tests in `tests/test_refresh_raw_cache.py` (no network) covering completeness filter, merge/no-op behaviour, refusal of incomplete bars, idempotency, and manifest content.
+- Real run on 2026-10-19 (10:44 ET, 2026-10-19 session still open): dry-run and real run both no-op for all 8 symbols; cache pinned at last completed session 2026-10-16 (SPY 8487, QQQ 6945, IWM 6637, TLT 6094, GLD 5512, EFA 6322, EEM 5916 rows; ^VIX 451); all 8 `data/raw` parquet sha256 unchanged; manifest sha256 verified against files.
+- `research/extend_paper_trading_state.py --dry-run` and real run: "no new completed session", sessions extended 0, state write count 0, state byte-identical (sha256 e291d0d3..., last_run_date 2026-10-16, NAV $133,729.22).
+- Verification: `pytest -q` 27 passed in 117.52s; `research/_tmp_cycle77_verify.py` OVERALL PASS (rolling 63d Sharpe -0.21188351222842883, regime flips 6/6, 449 entries, NAV $133,729.22, max DD -4.9857%); `.github/scripts/test_kilo_supervisor_loop.py` OK.
+- `.kilo-runtime/worker-disposition.json` updated (disposition verified). NEXT_AGENT_TASK.md updated for the next cycle.
+
 ## Cycle 854: Post-Extension Verification — **NO NEW COMPLETED SESSION; DATA-CACHE POLLUTION FOUND AND FIXED**.
 - UTC 2026-10-19T14:32:38Z. Monitoring + tooling fix; no strategy/config/cost changes.
 - Verification: pytest **15 passed in 115.80s**; research/_tmp_cycle77_verify.py **OVERALL PASS** (rolling 63d Sharpe -0.21188351222842883, date 2026-10-16, regime flips 6/6 match, run_history 449 entries, NAV $133,729.22, max drawdown -4.9857%); .github/scripts/test_kilo_supervisor_loop.py **OK 10/10 in 0.439s**.

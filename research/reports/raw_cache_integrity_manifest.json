@@ -1,0 +1,86 @@
+{
+  "generated_at": "2026-10-19T14:53:45.311894+00:00",
+  "raw_dir": "/home/runner/work/Quantitative-Trading-Prompted/Quantitative-Trading-Prompted/data/raw",
+  "symbols": {
+    "EEM": {
+      "after_max": "2026-10-16",
+      "after_rows": 5916,
+      "appended_rows": 0,
+      "cached_max": "2026-10-16",
+      "cached_rows": 5916,
+      "sha256": "c8839887bcaf3336f8e276e05895dbe3626b4a0c0b69a9e47d385fb1728a476f",
+      "status": "no-op",
+      "symbol": "EEM"
+    },
+    "EFA": {
+      "after_max": "2026-10-16",
+      "after_rows": 6322,
+      "appended_rows": 0,
+      "cached_max": "2026-10-16",
+      "cached_rows": 6322,
+      "sha256": "49ccdf05ba7ead3f71ff0f49ad9273513e431fbe7ee36bd7b92547049d5801d6",
+      "status": "no-op",
+      "symbol": "EFA"
+    },
+    "GLD": {
+      "after_max": "2026-10-16",
+      "after_rows": 5512,
+      "appended_rows": 0,
+      "cached_max": "2026-10-16",
+      "cached_rows": 5512,
+      "sha256": "55599371df45d59e1d82fcba36fc6995d7eceabf9bda8c73ca3a9723c0b2a080",
+      "status": "no-op",
+      "symbol": "GLD"
+    },
+    "IWM": {
+      "after_max": "2026-10-16",
+      "after_rows": 6637,
+      "appended_rows": 0,
+      "cached_max": "2026-10-16",
+      "cached_rows": 6637,
+      "sha256": "19943ed1c0601ae126422ae6b16b3f961764155bbb4f2a0ab0f03c8fe13d47d4",
+      "status": "no-op",
+      "symbol": "IWM"
+    },
+    "QQQ": {
+      "after_max": "2026-10-16",
+      "after_rows": 6945,
+      "appended_rows": 0,
+      "cached_max": "2026-10-16",
+      "cached_rows": 6945,
+      "sha256": "e0a49f97534e56772ccc063c78cf184abce8a4f6419a953994f60187bd6e6072",
+      "status": "no-op",
+      "symbol": "QQQ"
+    },
+    "SPY": {
+      "after_max": "2026-10-16",
+      "after_rows": 8487,
+      "appended_rows": 0,
+      "cached_max": "2026-10-16",
+      "cached_rows": 8487,
+      "sha256": "545fc8df7a832f95f7d9631bb1978dfee748f2b1be49c1788baebfa44ecf0188",
+      "status": "no-op",
+      "symbol": "SPY"
+    },
+    "TLT": {
+      "after_max": "2026-10-16",
+      "after_rows": 6094,
+      "appended_rows": 0,
+      "cached_max": "2026-10-16",
+      "cached_rows": 6094,
+      "sha256": "e2e7888c28c684c2387fc04ebcfb7d910a588a258860cf98e29b98f11a7cad8a",
+      "status": "no-op",
+      "symbol": "TLT"
+    },
+    "^VIX": {
+      "after_max": "2026-10-16",
+      "after_rows": 451,
+      "appended_rows": 0,
+      "cached_max": "2026-10-16",
+      "cached_rows": 451,
+      "sha256": "858bb9fa31266d01b8cee3bd3a60efd73b614f9e9621b5f7aca33694ea9e6a43",
+      "status": "no-op",
+      "symbol": "^VIX"
+    }
+  }
+}
