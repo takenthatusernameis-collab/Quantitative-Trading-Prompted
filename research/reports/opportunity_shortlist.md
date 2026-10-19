@@ -29,7 +29,7 @@
 |------------|--------|-------------|
 | Daily ETF OHLCV (18 ETFs + ^VIX) | YES | TSMOM, cross-sectional, sector, calendar, and regime strategies are all testable offline |
 | Crypto spot/perp + funding | NO | Funding-carry candidates blocked from offline testing |
-| Futures (commodity/rate) | NO | Basis/roll-yield candidates blocked |
+| Futures (commodity/rate) | YES (front-month CL/NG/GC/ZB cached) | Basis/roll-yield candidates blocked by unobservable roll prices, not by missing prices (`data/raw/{CL-F,NG-F,GC-F,ZB-F}.parquet` cached; no point-in-time roll constructible) |
 | Forex spot | NO | Forex carry blocked (no rate differentials regardless) |
 | Intraday history | NO | Session-effect candidates rejected |
 | Tradeable vol instrument | NO (^VIX index only) | Vol-risk-premium candidates blocked |
@@ -104,7 +104,7 @@ and no number of the Cycle 881 cost column changes.
 | Shortlist rank | Candidate | Why there is no cost basis | What stands in its place |
 |---|---|---|---|
 | 5 | TSMOM parameter variants | No separate candidate configuration exists to cost: the family is the incumbent's own parameter set, and the repository's own 100-configuration grid already rejected it on evidence (0/100 beat the baseline test Sharpe). | The incumbent's row (rank 1) is the family's cost basis; the variants are not re-costed because they were never evaluated as candidates. |
-| 7 | Commodity/rate futures basis and roll yield | No futures series is cached (`data/raw/` holds no CL=F / NG=F / GC=F / ZB=F), so there is no daily return series and no weight path, hence no derivable turnover. | Blocked by data (unchanged verdict). |
+| 7 | Commodity/rate futures basis and roll yield | Front-month series now cached (`data/raw/{CL-F,NG-F,GC-F,ZB-F}.parquet`, 2015-01-02 .. 2026-10-15, 2,964-2,965 sessions, 0 missing closes, 0 duplicate dates) but **no point-in-time roll is constructible**: no individual contract leg prices (all probed legs 404 / delisted), so roll dates, roll prices and the roll cost actually paid are unobservable. Hence no honest gross-return + turnover pair exists and no derivable turnover. | Blocked by data (unchanged verdict; see `research/reports/futures_basis_data_integrity_001.md` and `research/experiments/futuresbasis_001.md`). |
 | 8 | Crypto perpetual funding-rate carry | No crypto spot/perp or funding series is cached, so no return series and no weight path exist to cost. | Blocked by data (unchanged verdict). |
 | 9 | Volatility risk premium | No **tradeable** volatility instrument is cached (^VIX is an index, not an executable return series), so no return series and no weight path exist to cost. | Blocked by data (unchanged verdict). |
 
@@ -301,19 +301,19 @@ cycle is `research/experiments/cost_admissibility_screen_001.md`.
 ## Candidate C9: Commodity/rate futures basis and roll yield
 
 **Category:** Basis/calendar spread
-**Universe:** CL=F, NG=F, GC=F, ZB=F (not cached)
+**Universe:** CL=F, NG=F, GC=F, ZB=F (front-month series now cached; point-in-time roll NOT constructible — see `research/reports/futures_basis_data_integrity_001.md`)
 **Mechanism:** Roll yield from backwardation/contango and spot-futures basis convergence provide structural carry compensation.
 
 **Evidence base:**
-- No futures data cached in the repository
-- yfinance continuous futures have undocumented roll logic (Cycle 1 verification)
+- Front-month series now cached (`data/raw/{CL-F,NG-F,GC-F,ZB-F}.parquet`, 2015-01-02 .. 2026-10-15, complete, 0 missing closes, 0 duplicate dates; aligned-frame SHA-256 `f898cd42...`)
+- **No point-in-time roll constructible**: no individual contract leg prices (all probed legs 404 / delisted); roll dates, roll prices and the roll cost actually paid are unobservable; yfinance continuous-futures roll logic is undocumented (Cycle 1 verification)
 - No separate spot series for basis calculation
 
 ### Scores
 
 | Criterion | Score | Rationale |
 |-----------|-------|-----------|
-| (a) Data quality/access | 2 (weak) | No futures cached; continuous-contract roll methodology is undocumented, making reproducible backtests unreliable |
+| (a) Data quality/access | 2 (weak) | Front-month series cached but no observable roll prices/legs; continuous-contract roll methodology undocumented, making a reproducible point-in-time backtest unreliable |
 | (b) Structural mechanism | 4 (strong) | Roll yield and basis are structural features driven by storage, convenience yield, and hedging pressure |
 | (c) Expected net return | 3 (adequate) | Roll yield is regime-dependent and can be negative for years (contango); net-of-roll-cost returns unproven |
 | (d) Robustness/statistical power | 2 (weak) | Roll-timing ambiguity undermines any statistical test; no term-structure data cached |
@@ -322,7 +322,7 @@ cycle is `research/experiments/cost_admissibility_screen_001.md`.
 | (g) Diversification from existing research | 5 (excellent / feasible) | Commodity/rate exposure would be strongly diversifying vs. existing crypto/equity research |
 | **Overall** | **21/35** | |
 
-**Verdict: Blocked by data** — No futures or spot series cached; continuous-contract roll methodology undocumented; no basis computable. Would need a verified futures data source first.
+**Verdict: Blocked by data** — Front-month series cached but no observable roll prices/legs; continuous-contract roll methodology undocumented; no basis computable. Would need a verified point-in-time roll source first.
 
 ---
 
@@ -422,7 +422,7 @@ The scoring explicitly separates *price predictability* (does a signal forecast 
 | 4 | Calendar / rebalancing effects | 26/35 | Exploratory signal | Expected effect below cost hurdle |
 | 5 | TSMOM parameter variants | 25/35 | Rejected | Tested worse than incumbent on identical data |
 | 6 | Macro regime overlay extension | 24/35 | Exploratory signal | Overlay only; ^VIX not tradeable; regime overfitting risk |
-| 7 | Commodity/rate futures basis and roll yield | 21/35 | Blocked by data | No futures/spot data; undocumented roll logic |
+| 7 | Commodity/rate futures basis and roll yield | 21/35 | Blocked by data | Front-month cached; no observable roll prices/legs; roll unobservable |
 | 8 | Crypto perpetual funding-rate carry | 20/35 | Blocked by data | ~66 days funding history; single exchange; no diversification |
 | 9 | Volatility risk premium | 18/35 | Blocked by data | No tradeable volatility instrument |
 | 10 | Intraday session / time-of-day effects | 17/35 | Rejected | No intraday history |
