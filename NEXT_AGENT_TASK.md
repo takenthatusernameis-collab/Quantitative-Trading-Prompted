@@ -3,10 +3,10 @@
 ## Context
 Post-gate monitoring phase. Monitoring-only, no strategy/data/infrastructure changes. Data ends at 2026-10-16 for all universe symbols (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX). No new trading days beyond 2026-10-16 observed.
 
-All verification checks pass (Cycle 674, UTC 2026-10-19T00:11:46Z):
-- `python -m pytest -q`: 7 passed (51.43s)
-- `python research/_tmp_cycle77_verify.py`: OVERALL PASS (rolling 63d Sharpe match True -0.21188351222842883, date 2026-10-16, regime flips 6/6 match, run_history 449 entries)
-- `python .github/scripts/test_kilo_supervisor_loop.py`: OK (10/10, 0.368s)
+All verification checks pass:
+- `python -m pytest -q`: 7 passed
+- `python research/_tmp_cycle77_verify.py`: OVERALL PASS
+- `python .github/scripts/test_kilo_supervisor_loop.py`: OK (10/10)
 
 The low_rolling_sharpe drift flag persists at -0.21188351222842883 (exploratory). Escalation assessment: research/reports/drift_flag_escalation_001.md (monitor, do not re-optimize).
 
@@ -36,14 +36,11 @@ Continue post-gate monitoring-only. On each cycle, record UTC. Verify no new tra
 
 ## Known State
 - Data ends 2026-10-16; no new trading days observed.
-- All verification passes. Paper-trading state: last_run_date 2026-10-16, current_nav $133729.22, peak_nav $139120.07, max_drawdown -0.049857, 449 run_history entries, 6 regime flips, rolling 63d Sharpe -0.21188351222842883.
-- Escalation assessment: research/reports/drift_flag_escalation_001.md (exploratory signal degradation — monitor, do not re-optimize).
-- Full-sample Sharpe 1.7484; recent 63d window (2026-08-20..10-16) ann. return -1.74%, ann. vol 8.22%.
+- All verification passes. Drift flag persists at -0.21188351222842883.
 
 ## Handoff
-- Cycle completed: monitoring-only verification (UTC 2026-10-19T00:11:46Z, Cycle 674).
-- Per-symbol raw parquet index max dates verified: SPY/QQQ/IWM/TLT/GLD/EFA/EEM/^VIX all 2026-10-16 (non-universe DBC/VNQ/XLB-XLY max 2026-10-08). No new trading days beyond 2026-10-16 — verification-only, no state changes.
-- Verification: pytest 7 passed in 51.43s; research/_tmp_cycle77_verify.py OVERALL PASS (rolling 63d Sharpe match True -0.21188351222842883, date 2026-10-16, regime flips 6/6 match, run_history 449 entries; current_nav $133729.22, peak_nav $139120.07, max_drawdown -0.049857); .github/scripts/test_kilo_supervisor_loop.py OK 10/10 in 0.368s.
-- Drift flag `low_rolling_sharpe` persists at -0.21188351222842883 (exploratory degradation; monitor, do not re-optimize). See research/reports/drift_flag_escalation_001.md.
-- Git status: no source changes (only __pycache__ .pyc untracked/modified). Do not commit.
+- Cycle completed: monitoring-only verification (UTC 2026-10-19T00:12:38Z).
+- Per-symbol raw parquet index max dates verified: SPY/QQQ/IWM/TLT/GLD/EFA/EEM/^VIX all 2026-10-16. No new trading days beyond 2026-10-16 — verification-only, no state changes.
+- Verification: all three commands passed.
+- Drift flag persists at -0.21188351222842883 (exploratory degradation; monitor, do not re-optimize).
 - Next task: continue post-gate monitoring; verification-only unless new trading days appear.
