@@ -2,6 +2,13 @@
 
 Autonomous research pipeline for discovering reproducible, net-of-cost trading edges.
 
+## Cycle 875: Go/No-Go Deployment Decision Reconciliation — **IMPLEMENTED AND VERIFIED**.
+- UTC 2026-10-19T20:05:00Z. Research/reports only; no code, config, data, or candidate changes; no live trading.
+- `python research/go_no_go_evaluation.py` → exit 0, decision **NO-GO**, `side_effect_free: True`, `evaluation_deterministic: True`. Current 449-session record through 2026-10-16: rolling 63d Sharpe **-0.211884** (fails ≥ 0.9; identical to stored `low_rolling_sharpe` drift flag, 5 consecutive trading days below 0.5), PSR 0.684041 (fails ≥ 0.95, grey zone), max drawdown -0.049857 (-4.99%, passes ≤ 15%), full-period Sharpe 1.748401 (passes), trade count 107, 6 regime flips, track record 449 days (passes ≥ 126).
+- Wrote `research/reports/go_no_go_reconciliation_001.md` recording current metrics, comparison vs `deployment_dossier_001.md` thresholds (≥ 0.9 Sharpe, ≤ 15% max DD), and the resulting decision/rationale: the dossier's "GO for live deployment" (based on the 444-day record through 2026-10-09, rolling Sharpe 0.9356 at that time) is **no longer supported**; live deployment is explicitly rejected on the current record.
+- Verification: `python -m pytest -q` → **82 passed in 84.42s**; `git status --porcelain` → only `research/reports/go_no_go_reconciliation_001.md`.
+- Handoff: NEXT_AGENT_TASK.md replaced with Cycle 876: post-go/no-go monitoring (confirm no new completed session beyond 2026-10-16, NO-GO decision stable, drift flag persists).
+
 ## Cycle 874: Post-Backfill Verification Pass — **IMPLEMENTED AND VERIFIED**.
 - UTC 2026-10-19T19:43:35Z. Verification-only; no data, config, strategy, or candidate changes.
 - Acceptance criteria all pass: `python research/month_end_candidate_reaudit.py` → **OVERALL: PASS, 17/17** (macroregime_001 and csmomentum_001 verdicts unchanged, Rejected/Failed on the real VIX gate); `python research/rebalance_schedule_audit.py` → **OVERALL: PASS, 12/12**; `python -m pytest -q` → **82 passed in 86.16s**; `git status --porcelain config/ data/processed/` → empty; `data/raw/^VIX.parquet` → 5,514 rows, 2004-11-18 .. 2026-10-16, 0 duplicate dates, 0 NaN Close.
