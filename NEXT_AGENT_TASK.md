@@ -1,12 +1,12 @@
-# Next Agent Task: Post-Gate Monitoring (Cycle 683)
+# Next Agent Task: Post-Gate Monitoring (Cycle 685)
 
 ## Context
-Post-gate monitoring phase. Monitoring-only, no strategy/data/infrastructure changes. Data ends at 2026-10-16 for all universe symbols (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX). Independently re-verified at UTC 2026-10-19T00:49:08Z: no new trading days beyond 2026-10-16 (per-symbol Date max check for all universe symbols using data/raw/*.parquet).
+Post-gate monitoring phase. Monitoring-only, no strategy/data/infrastructure changes. Data ends at 2026-10-16 for all universe symbols (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX). Independently re-verified at UTC 2026-10-19T00:53:16Z: no new trading days beyond 2026-10-16 (per-symbol index max check for all universe symbols using data/raw/*.parquet).
 
-All verification checks pass (UTC 2026-10-19T00:49:08Z):
-- `python -m pytest -q`: 7 passed in 50.83s
+All verification checks pass (UTC 2026-10-19T00:53:16Z):
+- `python -m pytest -q`: 7 passed in 50.04s
 - `python research/_tmp_cycle77_verify.py`: OVERALL PASS
-- `python .github/scripts/test_kilo_supervisor_loop.py`: OK 10/10 in 0.411s
+- `python .github/scripts/test_kilo_supervisor_loop.py`: OK 10/10 in 0.413s
 
 The low_rolling_sharpe drift flag persists at -0.21188351222842883 (exploratory). Escalation assessment: research/reports/drift_flag_escalation_001.md (monitor, do not re-optimize).
 
@@ -18,7 +18,7 @@ Continue post-gate monitoring-only. On each cycle, record UTC. Verify no new tra
 
 ## Acceptance Criteria
 1. Record current UTC in cycle notes when updating documentation/worker disposition.
-2. Verify no new trading days beyond 2026-10-16 for the universe symbols listed (or detect if present). Check Date max for each parquet.
+2. Verify no new trading days beyond 2026-10-16 for the universe symbols listed (or detect if present). Check index max for each parquet.
 3. If no new trading days: run all three verification commands; all must pass. No code, state, or report modifications.
 4. If new trading days present: perform the deterministic state extension with single save, regenerate required reports, re-run all verification checks, and document what changed.
 5. Update `.kilo-runtime/worker-disposition.json` to `verified` with current UTC, concrete evidence, and verification details. Copy `recommendation_id` exactly from the current recommendation (if present; if missing, record as unknown but still mark verified with evidence).
@@ -39,8 +39,8 @@ Continue post-gate monitoring-only. On each cycle, record UTC. Verify no new tra
 - All verification passes. Drift flag persists at -0.21188351222842883.
 
 ## Handoff
-- Cycle completed: monitoring-only verification (UTC 2026-10-19T00:49:08Z). Cycle 682 verified by prior agent; Cycle 683 re-verified independently by this agent.
-- Per-symbol raw parquet Date max dates verified: SPY/QQQ/IWM/TLT/GLD/EFA/EEM/^VIX all 2026-10-16 00:00:00+00:00. No new trading days beyond 2026-10-16 — verification-only, no state changes.
-- Verification: all three commands passed (pytest 7/7 in 50.83s; research/_tmp_cycle77_verify.py OVERALL PASS; test_kilo_supervisor_loop.py OK 10/10 in 0.411s).
+- Cycle completed: monitoring-only verification (UTC 2026-10-19T00:53:16Z). Cycle 684 verified; NEXT_AGENT_TASK.md context time updated (Cycle 684).
+- Per-symbol raw parquet index max dates verified: SPY/QQQ/IWM/TLT/GLD/EFA/EEM/^VIX all 2026-10-16 00:00:00+00:00. No new trading days beyond 2026-10-16 — verification-only, no state changes.
+- Verification: all three commands passed (pytest 7/7 in 50.04s; research/_tmp_cycle77_verify.py OVERALL PASS; test_kilo_supervisor_loop.py OK 10/10 in 0.413s).
 - Drift flag persists at -0.21188351222842883 (exploratory degradation; monitor, do not re-optimize).
 - Next task: continue post-gate monitoring; verification-only unless new trading days appear.
