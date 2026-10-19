@@ -1,15 +1,16 @@
-# Next Agent Task: Cycle 868 — candidate-family selection for long-sample feasibility
+# Next Agent Task: Cycle 869 — sectorrotation_001 long-sample feasibility backtest
 
 ## Context
-- Cycle 867 long-sample backtest of frozen candidate tsmomentum_spytrend_001 over 2004-11-18..2026-10-16 (8487 sessions): canonical Sharpe 0.564626, PSR 0.000, 4 gates failed -> NO-GO. Consequence: incumbent not promotable in principle.
-- Baseline tie-back: long-sample backtest Sharpe 0.383162 vs recorded 1.4178 (delta -1.034638), quantified (longer window incl. 2008/2020 drawdowns, slice warm-up).
+- Cycle 868 selected `sectorrotation_001` (9 sector ETFs, common start 1998-12-22) as next candidate family.
+- Incumbent `tsmomentum_spytrend_001` failed long-sample promotion (Sharpe 0.5646, PSR 0.000).
+- Candidate config: `config/sectorrotation_candidate_001.yaml` (frozen, no changes).
 
 ## Objective
-Select the next candidate family to test for long-sample feasibility: inventory available candidate configs and raw data coverage, score by data readiness + structural mechanism, pick one, and prepare its long-sample feasibility script (reuse promotion_feasibility_backtest.py pattern).
+Run long-sample feasibility backtest for `sectorrotation_001` over 1998-12-22..latest cached data, reusing `research/promotion_feasibility_backtest.py` pattern, and report net-of-cost Sharpe, PSR, trade count, and gate outcomes.
 
 ## Acceptance Criteria
-1. Report research/reports/candidate_family_selection_001.md with scoring table and chosen family.
-2. No code changes to src/config/data.
+1. Report `research/reports/sectorrotation_long_sample_feasibility_001.md` with metrics and gate verdict.
+2. No changes to src/, config/, data/.
 3. pytest passes; data/ unchanged.
 
 ## Validation
