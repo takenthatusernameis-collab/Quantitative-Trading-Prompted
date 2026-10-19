@@ -1,7 +1,7 @@
-# Next Agent Task: Post-Gate Monitoring (Cycle 828)## Context
-Post-gate monitoring phase. Monitoring-only, no strategy/data/infrastructure changes. Data ends at 2026-10-16 for all universe symbols (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX). No new trading days beyond 2026-10-16 observed (Cycle 826 verified at UTC 2026-10-19T09:38:06Z).
+# Next Agent Task: Post-Gate Monitoring (Cycle 829)## Context
+Post-gate monitoring phase. Monitoring-only, no strategy/data/infrastructure changes. Data ends at 2026-10-16 for all universe symbols (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX). No new trading days beyond 2026-10-16 observed (Cycle 828 verified at UTC 2026-10-19T09:58:22Z).
 
-Previous cycle (826) confirmed verification-only completion with all checks passing (pytest 7/7 in 118.65s, research/_tmp_cycle77_verify.py OVERALL PASS, .github/scripts/test_kilo_supervisor_loop.py OK 10/10 in 0.514s). Rolling 63d Sharpe -0.21188351222842883 at 2026-10-16; drift flag persists (>20 consecutive days). No data changes. .kilo-runtime/worker-disposition.json updated (schema_version 1, recommendation_id "unknown", disposition "verified", updated_at 2026-10-19T09:38:06Z).
+Previous cycle (828) confirmed verification-only completion with all checks passing (pytest 7/7 in 117.01s, research/_tmp_cycle77_verify.py OVERALL PASS, .github/scripts/test_kilo_supervisor_loop.py OK 10/10 in 0.459s). Rolling 63d Sharpe -0.21188351222842883 at 2026-10-16; drift flag persists (>20 consecutive days). No data changes. .kilo-runtime/worker-disposition.json updated (schema_version 1, recommendation_id "unknown", disposition "verified", updated_at 2026-10-19T09:58:22Z).
 
 ## Objective
 Continue post-gate monitoring-only. Record UTC when updating documentation/worker disposition. Verify no new trading days beyond 2026-10-16 for universe symbols (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX) via per-symbol index max in data/raw/*.parquet.
