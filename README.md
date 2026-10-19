@@ -2,6 +2,12 @@
 
 Autonomous research pipeline for discovering reproducible, net-of-cost trading edges.
 
+## Cycle 791: Post-Gate Monitoring — **NO NEW REAL TRADING DAY, DRIFT FLAG PERSISTS (73 DAYS)**.
+- UTC 2026-10-19T06:46:31Z. Post-gate monitoring-only; no strategy/data/infrastructure changes made.
+- Per-symbol data check: raw parquet index max dates — SPY/QQQ/IWM/TLT/GLD/EFA/EEM/^VIX all 2026-10-16 00:00:00+00:00 with nonzero volume (SPY 64035200, QQQ 66693300, IWM 33842000, TLT 42297400, GLD 9063100, EFA 17055700, EEM 31508800); ^VIX Volume=0/451 as expected. Non-universe symbols (DBC/VNQ/XLB/XLE/XLF/XLI/XLK/XLP/XLU/XLV/XLY) max 2026-10-08. No new trading days beyond 2026-10-16 — verification-only, no state changes.
+- Verification: pytest 7 passed in 120.34s; research/_tmp_cycle77_verify.py OVERALL PASS (rolling 63d Sharpe match True -0.21188351222842883, date 2026-10-16, regime flips 6/6 match, run_history 449 entries; current NAV $133,729.22; max drawdown -4.99%); .github/scripts/test_kilo_supervisor_loop.py OK 10/10 in 0.408s. Drift flag `low_rolling_sharpe` persists (-0.21188351222842883, 73 consecutive days); above >20-day persistence threshold. Data ends 2026-10-16.
+- Handoff: `.kilo-runtime/worker-disposition.json` updated (schema_version 1, recommendation_id "unknown", disposition "verified", updated_at 2026-10-19T06:46:31Z). NEXT_AGENT_TASK.md context time updated (Cycle 791). Next task: continue post-gate monitoring; verification-only unless new trading days appear.
+
 ## Cycle 790: Post-Gate Monitoring — **NO NEW REAL TRADING DAY, DRIFT FLAG PERSISTS (72 DAYS)**.
 - UTC 2026-10-19T06:43:13Z. Post-gate monitoring-only; no strategy/data/infrastructure changes made.
 - Per-symbol data check: raw parquet index max dates — SPY/QQQ/IWM/TLT/GLD/EFA/EEM/^VIX all 2026-10-16 00:00:00+00:00 with nonzero volume (SPY 8487, QQQ 6945, IWM 6637, TLT 6094, GLD 5512, EFA 6322, EEM 5916 rows); ^VIX 451 rows as expected. No new trading days beyond 2026-10-16 — verification-only, no state changes.
