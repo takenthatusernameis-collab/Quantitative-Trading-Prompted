@@ -1,152 +1,122 @@
-# NEXT AGENT TASK — Cycle 880
+# NEXT AGENT TASK — Cycle 881
 
 ## Context
 
-Cycles 878 and 879 established two facts that change how the loop must read
-its own gates (reports `research/reports/long_sample_overlay_attribution_001.md`
-and `research/reports/gate_false_negative_rate_001.md`):
+Cycle 880 pre-registered and evaluated the overnight-session capture candidate
+`overnight_capture_001` (`research/hypotheses/overnight_capture_001.md`,
+`research/reports/overnight_capture_backtest_001.md`,
+`research/experiments/overnight_capture_backtest_001.md`).
 
-1. The incumbent's trailing 63-session promotion-gate failure is an
-   **overlay-timing** outcome, not signal decay: the raw signal was profitable
-   in the same window (L0-net Sharpe +0.307230 vs -0.211884 executed).
-2. The gate statistic is **noisy**: over the incumbent's own 8,425 rolling-63
-   windows the executed path fails the >= 0.9 gate in **39.16%** of them, and
-   the current window sits at the 11.13th percentile — an ordinary failure.
+Result: **Rejected/Failed**, and the reason is structural rather than noisy.
 
-Meanwhile the repository's own inventory contains exactly **one family that
-has never been tested as a candidate**: the *overnight session* effect.
-`research/experiments/overnight_drift_exploratory_001.md` (exploratory
-diagnostic, no alpha claim) measures it on the committed cache:
+- The **gross** overnight premium is real: +9.16%/yr annualized for the 1/3
+  SPY/QQQ/IWM basket over 6,637 sessions (the exploratory diagnostic's
+  mechanism observation is confirmed).
+- An overnight-only leg must be flat during the day, so it round-trips **twice
+  per session** -> 504 units of annual turnover -> **15.12%/yr** of cost at the
+  repository's flat 3 bp/unit model, which is **larger than the gross premium**.
+- Net WF mean OOS Sharpe **-0.599718**; positive fold rate 15.15%;
+  DSR (N=3) -2.446673; block-bootstrap 95% CI [-0.788295, 0.034214].
+- It also **loses to passive close-to-close holding of the identical basket** on
+  identical folds (WF mean OOS Sharpe +0.844696), so the negative Sharpe is a
+  cost result, not a market-direction result.
 
-| Asset (full history) | Overnight ann. mean | Overnight Sharpe | Intraday Sharpe |
-|---|---|---|---|
-| SPY | 8.37% | 0.790 | 0.122 |
-| QQQ | 13.40% | 0.939 | -0.004 |
-| IWM | 12.14% | 0.916 | -0.123 |
+Two general lessons follow, and neither has been quantified in this repository
+yet:
 
-with the 2020+ sub-period still positive (SPY 8.37%, QQQ 12.40%, IWM 15.91%
-annualized overnight). The mechanism is documented and distinct from every
-candidate in the repository (retail open-of-session buying, institutional flow
-timing, delayed price discovery); every candidate evaluated so far is a
-close-to-close momentum or rotation signal. The turn-of-month candidate
-(`calendar_effects_001`) was tested and rejected (WF mean OOS Sharpe -0.0254),
-so the calendar/session-timing space is not exhausted.
+1. **A candidate's gross signal size must be compared with its own annualized
+   cost drag *before* it is short-listed.** The shortlist
+   (`research/reports/opportunity_shortlist.md`,
+   `research/reports/candidate_family_selection_001.md`) ranks candidates by
+   gross effect size; no artifact states each candidate's annualized cost drag
+   at the repository's own cost model, nor the cost per unit at which each
+   candidate would clear the >= 0.9 gate.
+2. The Cycle 880 erratum (disclosed in
+   `research/hypotheses/overnight_capture_001.md`) is a live hazard: a stated
+   cost figure of "1.51%/yr" was actually 15.12%/yr. Nothing in the repository
+   mechanically checks a stated cost-drag figure against the turnover the
+   strategy actually incurs.
 
 ## Objective
 
-Pre-register and evaluate **one** new candidate — the overnight-session
-capture candidate `overnight_001` — under the repository's hypothesis-first,
-walk-forward, cost-aware discipline, and label it.
-
-Pre-registration file (write it BEFORE running anything):
-`research/hypotheses/overnight_capture_001.md`.
+Build one **read-only, deterministic** cost-admissibility screen that is
+reusable for every future candidate, and apply it to the repository's existing
+shortlist. No new candidate, no new data, no walk-forward re-run.
 
 ## Method (fixed by this task; do not re-choose)
 
-- **Universe**: SPY, QQQ, IWM (the three most liquid US equity ETFs — the same
-  choice as `research/hypotheses/calendar_effects_001.md`). No in-sample asset
-  selection; no other symbol may enter the candidate. Common sample from IWM's
-  inception (2000-05-26) to 2026-10-16.
-- **Signal**: deterministic session timing. Hold a 1/3 equal-weight basket from
-  the previous close to the next open; flat during the day. The overnight
-  return of session *t* is `Open_t / Close_{t-1} - 1`; the position is
-  established at the *previous* close and liquidated at the open, so the
-  standing rule requires no price-based decision and cannot look ahead.
-- **Costs**: the repository's model, 3 bp per unit of weight change, applied to
-  the **actual** daily turnover (sell at the open, buy back at the close = 2x
-  gross exposure per session => ~504 units of annual turnover => ~1.51%/yr of
-  cost). Pre-register 5 bp and 10 bp per unit as a *cost-sensitivity row*
-  (the documented "hidden cost of buying at the open"), never as a selection
-  grid; the decision uses the 3 bp configuration. Multiple-testing count
-  **N = 3** (the three cost levels).
-- **Walk-forward**: `src/evaluation/walkforward.py:generate_walkforward_splits`
-  with 10-year train, 12-month test, 6-month step, 21-day purge and 21-day
-  embargo, exactly as the calendar-effects candidate did. The strategy has no
-  fitted parameter, so the train window only bounds each fold; the per-fold
-  statistic is the **test-period net Sharpe**. The script MUST assert the
-  generated fold count and print the first and last fold.
-- **Gates (pre-registered, repository convention)**: WF mean OOS Sharpe
-  >= 0.9; positive fold rate >= 50%; pooled OOS trades > 100; plus the
-  Deflated Sharpe Ratio at N = 3 and a block-bootstrap 95% CI
-  (`src/evaluation/statistics.py`).
-- **Benchmarks (evaluated on the identical folds)**: (a) the same basket held
-  close-to-close (buy-and-hold), (b) the intraday-only leg (open to close).
-  The overnight leg must beat the close-to-close benchmark **after costs**,
-  otherwise the effect is equity beta, not an edge.
-- **Data-integrity pre-check (do this first and publish it)**: confirm whether
-  the committed cache stores **raw or dividend-adjusted** OHLC (the fetcher
-  calls yfinance with `auto_adjust=False`, so the cache is expected to be raw
-  — the exploratory diagnostic's caveat #5 asserts the opposite and must be
-  checked, not assumed); state the ex-dividend implication for an overnight
-  holder (the overnight leg does not receive dividends, so raw-price overnight
-  returns are biased *downward* — conservative); confirm Open/Close alignment
-  and count sessions with a missing Open.
-- **Carry the Cycle 879 finding into the report**: whenever a rolling-63-day
-  gate statistic is quoted for this candidate, report the statistic's own
-  dispersion (or the false-negative rate measured on the candidate's own
-  history) next to it. Do not change any gate.
-
-## Falsification conditions (pre-registered)
-
-The candidate is **Rejected/Failed** if ANY of:
-1. WF mean OOS Sharpe < 0.9;
-2. positive fold rate < 50%;
-3. pooled OOS trades <= 100;
-4. the net WF Sharpe does not exceed the same-fold close-to-close benchmark's;
-5. the edge does not survive the 10 bp-per-unit cost row.
-
-It is a **credible candidate for further validation** only if all of 1-5 hold
-and the DSR does not reject.
+- New script `research/cost_admissibility_screen.py` that, for a given
+  strategy definition, computes from the committed cache:
+  - **annualized gross signal** (annualized return with **zero** cost),
+  - **annualized cost drag** at the repository's cost model
+    (`get_cost_params()` = 3 bp/unit) and at the 5 bp and 10 bp rows,
+  - the **break-even cost per unit** at which the net annualized return is
+    zero, and the cost per unit at which the net Sharpe equals the
+    same-fold close-to-close benchmark's,
+  - the **minimum gross annual signal** a candidate needs in order to be
+    admissible at 3 bp/unit, i.e. `annualized_cost_drag`.
+- Apply the screen to **at least** these three existing candidates, reusing
+  their committed artifacts and their existing frozen configurations (do not
+  re-derive or re-tune them):
+  1. `overnight_capture_001` (Cycle 880; must reproduce 15.12%/yr drag and the
+     -0.599718 WF mean OOS Sharpe),
+  2. `calendar_effects_001` (turn-of-month; WF mean OOS Sharpe -0.0254),
+  3. the incumbent `tsmomentum_spytrend_001` (or `csmomentum_001`/`sectorrotation_001`
+     if the incumbent's turnover is not derivable from its committed artifacts -
+     state which one you used and why).
+- Add one **mechanical guard** for the Cycle 880 failure mode: a helper (or a
+  test) that takes a stated cost-drag figure and a stated annual turnover and
+  asserts `cost_drag == turnover * cost_per_unit` within 1e-9, so a factor-10
+  error like the Cycle 880 erratum cannot pass unnoticed again.
 
 ## Acceptance criteria
 
-1. `research/hypotheses/overnight_capture_001.md` exists, is committed with the
-   cycle, and contains the mechanism, expected direction and magnitude, the
-   data-integrity expectation, the execution convention, the cost model, the
-   walk-forward design, the gates, the benchmarks and the falsification
-   conditions — written **before** the backtest was run.
-2. New read-only script `research/overnight_capture_backtest.py` (or a new
-   candidate config `config/overnight_capture_001.yaml` plus script) that
-   prints every number in the report and exits 0 with `OVERALL: PASS`.
-3. New report `research/reports/overnight_capture_backtest_001.md` with: the
-   data-integrity pre-check, the full-sample net metrics (Sharpe, CAGR, max
-   drawdown, turnover, cost drag, trade count) for the 3 bp configuration, the
-   per-fold walk-forward table, the pooled OOS statistics, the DSR and
-   block-bootstrap CI, the cost-sensitivity row (3 / 5 / 10 bp), both
-   benchmarks on identical folds, the gate outcomes and the falsification
-   verdicts.
-4. New experiment record `research/experiments/overnight_capture_backtest_001.md`
-   in the repository format (hypothesis reference, data, point-in-time
-   treatment, configuration, splits, results, trials = 3 cost levels,
-   reproduction commands, decision label).
-5. New offline tests in `tests/test_overnight_capture_backtest.py` (no network,
-   no data mutation) for the pure helpers (overnight return computation,
-   turnover/cost application, walk-forward fold count, the benchmark).
-6. `python -m pytest -q` passes (95 existing + the new tests) and
-   `git status --porcelain data/ config/` shows **no modification** to an
-   existing file under `data/` or `config/` (a new candidate config file is
-   allowed; no existing config may be edited).
+1. `research/cost_admissibility_screen.py` exists, is read-only (writes nothing
+   under `data/` or `config/`), prints every number in its report, and exits 0
+   with `OVERALL: PASS`.
+2. `research/reports/cost_admissibility_screen_001.md` publishes, per candidate:
+   gross annualized signal, annualized cost drag at 3 / 5 / 10 bp per unit,
+   break-even cost per unit, the minimum gross signal required for
+   admissibility, and the resulting **admissibility verdict**; and it states
+   the screen's limitations (it is a necessary, not sufficient, condition).
+3. The screen reproduces Cycle 880's numbers for `overnight_capture_001`
+   (15.12%/yr drag at 3 bp/unit; net WF mean OOS Sharpe -0.599718) from the
+   committed artifacts, or **explains precisely** why a number cannot be
+   reproduced.
+4. The mechanical guard is implemented and unit-tested (a deliberate factor-10
+   error must be rejected by it).
+5. New offline tests in `tests/test_cost_admissibility_screen.py` (no network,
+   no data mutation) and `python -m pytest -q` passes (102 existing + the new
+   tests).
+6. `git status --porcelain data/ config/` shows **no modification** to an
+   existing file under `data/` or `config/`.
 7. The incumbent's decision is unchanged: **NO-GO**, live deployment
    unsupported; `python research/go_no_go_evaluation.py` still prints NO-GO
    with `side_effect_free: True`.
+8. `research/reports/opportunity_shortlist.md` is updated with the cost column
+   for the candidates the screen covers (additive edit only; do not remove or
+   re-rank existing rows without stating the reason in the report).
 
 ## Validation commands
 
-- `python research/overnight_capture_backtest.py`
+- `python research/cost_admissibility_screen.py`
 - `python research/go_no_go_evaluation.py`
 - `python -m pytest -q`
 - `git status --porcelain data/ config/`
 
 ## Scope boundaries
 
-- Research/backtesting only. No live trading, no credential access, no
-  scheduled jobs, no new dependencies.
+- Research only. No live trading, no credential access, no scheduled jobs, no
+  new dependencies.
 - Do not modify existing files under `config/` or `data/`, the paper-trading
   state, the promotion gates, the incumbent configuration or the deployment
-  decision. Do not modify `src/` (the shared engine is shared infrastructure;
-  put candidate-specific code in `research/`).
-- Do not re-optimize the incumbent and do not propose a variant of it; this
-  cycle tests a **different** family.
+  decision. Do not modify `src/` (put candidate-specific code in `research/`).
+- Do **not** re-optimize any candidate and do not re-run a walk-forward
+  evaluation to "rescue" a rejected candidate. This cycle measures costs; it
+  does not re-judge candidates.
+- Do not propose a variant of `overnight_capture_001` (for example a version
+  that avoids the second daily round trip). That is a **different hypothesis**
+  and would need its own pre-registration before any backtest.
 - Do not dispatch this workflow or start additional agent sessions.
 
 ## Known pending item (deliberately not bundled with this cycle)
