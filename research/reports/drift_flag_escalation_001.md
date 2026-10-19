@@ -84,3 +84,24 @@ Rationale:
 - `python .github/scripts/test_kilo_supervisor_loop.py` → 10/10 OK (0.368s)
 
 Data ends 2026-10-16; no new real trading days beyond.
+
+---
+
+## 7. Resolution (Cycle 857)
+
+The persistence counter is now computed by code instead of maintained by hand:
+`src/evaluation/drift.py` (pure helpers), `research/drift_persistence_report.py`
+(read-only reporting tool) and `tests/test_drift_persistence.py` (15 offline
+tests). On the committed state (449 sessions, 2025-01-02 → 2026-10-16) the tool
+reproduces the §3 finding exactly: **5 consecutive trading days** below the 0.5
+threshold (2026-10-12 → 2026-10-16) and 21 of 33 sessions below threshold in
+the trailing 46 calendar days.
+
+Consequence for the decision in §5: the ">20-day persistence" figure repeated
+in the cycle reports is a calendar-day count since the first flagged session,
+not the consecutive trading-day count defined here; the reproducible value is
+**5 trading days**, so the >20-day escalation threshold has not been reached
+under the stated definition. The decision label ("exploratory signal
+degradation — monitor, do not re-optimize") is unchanged.
+
+Details: `research/reports/drift_persistence_automation_001.md`.

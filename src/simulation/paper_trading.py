@@ -18,6 +18,11 @@ import numpy as np
 import pandas as pd
 import yaml
 
+from src.evaluation.drift import (
+    DEFAULT_MIN_PERIODS,
+    DEFAULT_SHARPE_THRESHOLD,
+    sharpe_persistence,
+)
 from src.evaluation.utils import compute_running_drawdown
 from src.simulation.engine import (
     SimulationConfig,
@@ -290,6 +295,25 @@ def run_daily_paper_update(
     else:
         rolling_sharpe = 0.0
 
+    # Persistence of the low-Sharpe condition: the number of consecutive
+    # sessions for which the rolling Sharpe stayed below the alert threshold.
+    # Recomputed from the stored return series so the count is reproducible
+    # offline (research/drift_persistence_report.py) and cannot drift away
+    # from the data it describes.
+    history_dates = list(state.cumulative_dates)
+    if len(history_dates) != len(state.cumulative_returns):
+        history_dates = (
+            history_dates[-len(state.cumulative_returns) :]
+            if state.cumulative_returns
+            else []
+        )
+    sharpe_persistence_days = int(
+        sharpe_persistence(
+            history_dates + [latest_date],
+            [float(x) for x in returns_arr],
+        )["streak_days"]
+    )
+
     # Rolling max DD
     cum = np.cumprod(1.0 + returns_arr)
     peak = np.maximum.accumulate(cum)
@@ -360,11 +384,15 @@ def run_daily_paper_update(
         }
 
     # Enhanced drift alerts
-    if rolling_sharpe < 0.5 and len(returns_arr) >= 20:
+    if (
+        rolling_sharpe < DEFAULT_SHARPE_THRESHOLD
+        and len(returns_arr) >= DEFAULT_MIN_PERIODS
+    ):
         drift_flags["low_rolling_sharpe"] = {
             "value": rolling_sharpe,
-            "threshold": 0.5,
+            "threshold": DEFAULT_SHARPE_THRESHOLD,
             "date": latest_date,
+            "persistence_days": sharpe_persistence_days,
         }
 
     if regime_persistence < 5 and state.previous_regime_exposure is not None and state.previous_regime_exposure != regime_exp:
@@ -424,6 +452,7 @@ def run_daily_paper_update(
 
     # Build daily artifacts
     output_dir = _ensure_path(config.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
     date_str_clean = latest_date.replace("-", "")
 
     positions_df = pd.DataFrame(

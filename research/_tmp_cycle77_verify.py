@@ -42,8 +42,15 @@ def main() -> int:
     #   (mean*252) / (std(ddof=1) * sqrt(256/252))
     sharpe_task = (mean_r * 252.0) / (std_r * np.sqrt(256.0 / 252.0)) if std_r > 0 else 0.0
 
-    stored = state["drift_flags"]["low_rolling_sharpe"]["value"]
-    stored_date = state["drift_flags"]["low_rolling_sharpe"]["date"]
+    stored_flag = (state.get("drift_flags") or {}).get("low_rolling_sharpe")
+    if stored_flag is not None:
+        stored = stored_flag["value"]
+        stored_date = stored_flag["date"]
+        flag_present = True
+    else:
+        stored = None
+        stored_date = None
+        flag_present = False
 
     print("=== Rolling 63-day Sharpe verification ===")
     print(f"cumulative_returns total entries: {n_returns}")
@@ -54,8 +61,43 @@ def main() -> int:
     print(f"Sharpe (task formula  sqrt(256/252)): {sharpe_task}")
     print(f"Stored drift_flags.low_rolling_sharpe.value: {stored}")
     print(f"Stored date: {stored_date}")
-    print(f"Match (code formula, exact): {np.isclose(sharpe_code, stored)}")
-    print(f"Match (task formula, exact): {np.isclose(sharpe_task, stored)}")
+    if flag_present:
+        print(f"Match (code formula, exact): {np.isclose(sharpe_code, stored)}")
+        print(f"Match (task formula, exact): {np.isclose(sharpe_task, stored)}")
+    else:
+        # The flag is absent only when the rolling Sharpe is at or above the
+        # 0.5 alert threshold (or before 20 returns exist).
+        print(
+            "Flag absent: consistent with the 0.5 threshold: "
+            f"{sharpe_code >= 0.5 or n_returns < 20}"
+        )
+
+    # Drift-flag persistence: consecutive trading sessions below the 0.5
+    # threshold, recomputed independently of src/evaluation/drift.py.
+    cum_dates_all = state["cumulative_dates"]
+    series = []
+    for i in range(len(cum_returns)):
+        if i + 1 < 20:
+            series.append(None)
+        else:
+            w = np.array(cum_returns[max(0, i - 62) : i + 1], dtype=float)
+            vol = np.std(w, ddof=1) * np.sqrt(252)
+            series.append((float(np.mean(w)) * 252) / vol if vol > 0 else 0.0)
+    streak = 0
+    for value in reversed(series):
+        if value is None or value >= 0.5:
+            break
+        streak += 1
+    print()
+    print("=== Drift-flag persistence verification ===")
+    print(f"Consecutive trading days below 0.5: {streak}")
+    if streak:
+        print(
+            "Streak window: "
+            f"{cum_dates_all[-streak]} -> {cum_dates_all[-1]}"
+        )
+    print(f"Recomputed final rolling Sharpe equals stored flag: "
+          f"{np.isclose(sharpe_code, stored) if flag_present else 'n/a (flag absent)'}")
 
     # Regime-flip verification from run_history regime_exposure transitions.
     run_history = state["run_history"]
@@ -90,7 +132,12 @@ def main() -> int:
         and abs(100000 + sum(cum_pnl) - state["current_nav"]) < 1e-6
         and state["previous_regime_exposure"] == run_history[-1]["regime_exposure"]
     )
-    ok = bool(np.isclose(sharpe_code, stored) and ok_inv)
+    ok_sharpe = (
+        bool(np.isclose(sharpe_code, stored))
+        if flag_present
+        else bool(sharpe_code >= 0.5 or n_returns < 20)
+    )
+    ok = bool(ok_sharpe and ok_inv)
     print()
     print(f"OVERALL: {'PASS' if ok else 'FAIL'}")
     return 0 if ok else 1
