@@ -14,6 +14,19 @@
   recorded as **Blocked by data/infrastructure**. No threshold, gate,
   falsification condition or configuration was changed by this block.
   **Pre-registered BEFORE any backtest was executed (no backtest exists yet).**
+- v003 (Cycle 884, data-fact correction, disclosure only): the v002 claim that
+  the **roll dates** are undetectable from the cached series is **falsified and
+  corrected**. The cached series carry the front contract's `Volume` column, and
+  the expiring contract's volume run-off followed by the new front's volume
+  recovery is a detectable signature: 127/125/72/62 roll events for
+  CL/NG/GC/ZB with modal spacings of 29/30/63/91 days, matching each product's
+  contract cycle, and the one externally verified roll (2026-09-23) is detected
+  in the committed cache. The **roll prices** and the **roll cost actually
+  paid** remain unobservable (nine source classes probed; no source serves
+  individual contract legs), so the candidate stays **Blocked by
+  data/infrastructure** on a narrower, *price*-only block. **No mechanism,
+  threshold, gate, falsification condition, cost-model value or configuration
+  was changed by v003**, and no backtest exists yet.
 
 ---
 
@@ -58,19 +71,20 @@ Cached range per the integrity record: 2015-01-02 .. 2026-10-15 (2,964–2,965 s
 | `ZB=F` | `data/raw/ZB-F.parquet` | 2,964 | 2015-01-02 | 2026-10-15 | 0 | 0 |
 
 - **Source**: Yahoo Finance via `src/data/yfinance_fetcher.py` (`auto_adjust=False`), `group_by='ticker'`, raw OHLCV. No forward-looking calls.
-- **Point-in-time roll requirement**: to pay the roll at observable prices, the candidate needs **individual contract legs** (front month and next contract) with observable daily closes on both sides of the roll. I probed eleven individual crude legs (`CLZ24` .. `CLZ25`) through yfinance: **all returned 404 "Quote not found" / "possibly delisted"**. No individual contract leg is available.
-- **Roll dates and roll prices**: **unobservable** from the continuous front-month series. The continuous series shows normal crude volatility (39–96 moves > 2.5% per year) with no clean, detectable monthly roll signature, and yfinance does not expose the roll date, the roll spread, or the individual leg prices.
-- **Conclusion**: a point-in-time front-month roll that pays the roll at observable prices **cannot be constructed** from the available data. A backtest on the spliced continuous series would silently embed the roll at an unobservable price and therefore understate the roll cost and misstate the roll yield — the exact trap this gate is designed to catch.
+- **Point-in-time roll requirement**: to pay the roll at observable prices, the candidate needs **individual contract legs** (front month and next contract) with observable daily closes on both sides of the roll. Cycle 883 probed eleven individual crude legs (`CLZ24` .. `CLZ25`) through yfinance: **all returned 404 "Quote not found" / "possibly delisted"**. Cycle 884 probed nine further source classes (Yahoo per-contract suffix symbols, Nasdaq Data Link CHRIS `CL1`/`CL2`, the CME settlement service, WSJ, Barchart, Stooq, FT Markets, Investing.com, Yahoo symbol search): **none serves individual contract legs**; the currently listed Yahoo per-contract symbols return five-year series (chain aliases, not a contract's own life) and the expired ones still 404.
+- **Roll dates**: **observable** (corrected in v003). The cached series' `Volume` column is the *front contract's* volume, and at a roll the contract behind the series changes, so the volume identity changes with it. The expiring contract's run-off followed by the new front's volume recovery is a deterministic, point-in-time signature (`research/futures_roll_visibility.py`): 127/125/72/62 events for CL/NG/GC/ZB, modal spacings 29/30/63/91 days, matching each product's monthly / bi-monthly / quarterly contract cycle. The one roll verified independently against Yahoo's per-contract volume and price series (2026-09-23) is detected in the committed cache. The detector's recall is imperfect and it is a visibility diagnostic, not an exhaustive roll calendar.
+- **Roll prices / roll spread**: **unobservable**. The continuous series is a single spliced front-month price; the expiring contract's close on the roll date is not in it, and no source in scope serves the individual legs.
+- **Conclusion**: a point-in-time front-month roll that pays the roll at observable prices **still cannot be constructed** (the *price* block survives even though the *date* block is lifted). A backtest on the spliced continuous series would embed the roll at an unobservable price and would misstate the roll yield — the exact trap this gate is designed to catch.
 
 ## Features and Data Sources
 
 | Feature | Specification | Source |
 |---|---|---|
 | Front-month price | Daily continuous front-month Close | `data/raw/{CL-F,NG-F,GC-F,ZB-F}.parquet` (Yahoo Finance, `auto_adjust=False`, cached) |
-| Roll rule | Point-in-time switch from front to next contract at the documented roll date | **Not available** — no observable roll dates or leg prices |
-| Roll cost | (next contract close − front contract close) / front close at the roll | **Not available** — unobservable |
+| Roll rule | Point-in-time switch from front to next contract at the documented roll date | **Roll dates available** from the cached volume signature (`research/futures_roll_visibility.py`); the *documented roll rule* (which contract is front on which date) is still not published by the source |
+| Roll cost | (next contract close − front contract close) / front close at the roll | **Not available** — the leg closes are unobservable |
 | Signal | Roll-yield carry: long front-month when backwardation is expected | **Not computable** — no term structure, no leg prices |
-| Point-in-time | Roll executed only on information available at the roll date's close | **Cannot be verified** — no roll dates detectable |
+| Point-in-time | Roll executed only on information available at the roll date's close | Roll **dates** detectable point-in-time (v003 volume signature); the leg **prices** at the roll date are not observable |
 
 **This hypothesis cannot be executed as a backtest until the roll block is resolved.** The data gate (integrity record `research/reports/futures_basis_data_integrity_001.md`) records the block and what would unblock it.
 
@@ -98,7 +112,7 @@ The benchmark must be costed identically (turnover of its own rebalancing) so th
 2. **Spliced-series trap**: a backtest on the continuous front-month series without an observable roll understates roll cost and misstates roll yield. This hypothesis explicitly refuses that construction.
 3. **Flat cost model**: no bid-ask spread, market impact, margin, borrow or funding model beyond the 3 bp/unit per-unit cost; the actual executed roll cost (commission, slippage, spread crossing) may exceed the model.
 4. **Contract specifications**: point value, tick size, margin and delivery differ across CL/NG/GC/ZB; a single per-unit cost model is an approximation.
-5. **Roll-date ambiguity**: without individual legs, the roll date cannot be detected point-in-time; a calendar rule would need first-notice-day / expiration data external to the cache.
+5. **Roll-date ambiguity**: the roll *dates* are detectable from the cached volume signature (v003), but the *roll rule* the source uses is undocumented, the detector's recall is imperfect, and the leg prices on the roll date are unobservable — so the roll cost, not the roll date, is the binding constraint. A calendar rule would need first-notice-day / expiration data external to the cache.
 6. **Multiple-testing risk**: N = 1 mechanism (roll carry), no parameter grid; if extended to multiple contracts or roll rules, control via Deflated Sharpe Ratio / block bootstrap.
 7. **Limited power**: ~11 years of monthly roll observations (~120–130 rolls) per contract; adequate for a directional carry test only if the effect is stable across regimes.
 8. **No tradeable spot basis**: no spot series is cached, so the spot–futures basis itself cannot be computed; only roll yield on the front-month contract is addressable.
@@ -144,4 +158,4 @@ The candidate is **Blocked by data/infrastructure** (this cycle's actual decisio
 No gate threshold is changed by this hypothesis. The candidate is currently **Blocked by data/infrastructure**; no gate is evaluated this cycle.
 
 ---
-*The cost-admissibility screen (`research/cost_admissibility_screen.py`) is NOT extended to this candidate this cycle, because no honest gross-return + turnover pair can be built without an observable point-in-time roll. Extending the screen to a spliced series would violate the data gate. See `research/experiments/futuresbasis_001.md` for the decision record.*
+*The cost-admissibility screen (`research/cost_admissibility_screen.py`) is NOT extended to this candidate, because no honest gross-return + turnover pair can be built without the roll *price*: the roll dates are observable (v003) but the two leg closes at a roll are not, and extending the screen to a spliced series would violate the data gate. See `research/experiments/futuresbasis_001.md` for the decision record and `research/reports/futures_roll_visibility_001.md` for the roll-date measurement.*

@@ -95,5 +95,41 @@ A source of individual futures contract legs (front month + at least the next co
 
 The four raw parquet files are committed under `data/raw/`. The aligned frame can be rebuilt from them with the union-calendar / forward-fill construction above; its content hash is `f898cd42f5e42a29b50363258863f563daadb220c0896ecbef133b9b26446f9c`. No file under `data/` or `config/` is modified by the cost screen (which is read-only); this record is the only change to the research record for this gate.
 
+## 10. Addendum — Cycle 884: the roll *dates* are detectable after all
+
+**This addendum corrects §5 of this record, which is left unchanged above as the
+Cycle 883 statement.** Cycle 883 concluded that no roll date could be detected from the
+continuous series ("the series shows normal crude volatility, 39-96 moves > 2.5% per year,
+with no clean monthly roll signature distinguishable from price moves"). That conclusion
+was **wrong about the dates**, and it is corrected here.
+
+The cached series carry a `Volume` column, and that column is the **front contract's**
+volume: at a roll the contract behind the series is replaced, so the volume identity
+changes with it. The expiring contract's volume runs off as delivery approaches and the
+new front's volume resumes at its typical level, which leaves a **deterministic,
+point-in-time signature**:
+
+| Series | Detected rolls | Rolls/yr | Modal spacing | Contract cycle |
+|---|---:|---:|---:|---|
+| `CL-F` | 127 | 10.98 | 29 d | monthly |
+| `NG-F` | 125 | 10.98 | 30 d | monthly |
+| `GC-F` | 72 | 6.34 | 63 d | bi-monthly |
+| `ZB-F` | 62 | 5.39 | 91 d | quarterly |
+
+The one roll that could be verified independently (Yahoo's per-contract volume and price
+series for the currently listed Nov-2026/Dec-2026 contracts show that the cached chain
+held the Nov-2026 contract from **2026-09-23** and the Dec-2026 contract from 2026-10-19)
+is detected in the committed cache by the volume rule alone, with no per-contract data.
+
+**What did not change:** the roll *prices* — the two leg closes at the roll — are still
+unobservable, so the roll spread and the roll cost actually paid still cannot be
+quantified, the candidate is still **Blocked by data/infrastructure**, and no spliced
+series was back-tested. Nine further source classes were probed in Cycle 884 and none
+serves individual contract legs.
+
+Tool: `research/futures_roll_visibility.py` (read-only, offline, exit 0 with
+`OVERALL: PASS`); report: `research/reports/futures_roll_visibility_001.md`; decision
+record: `research/experiments/futuresbasis_001.md`.
+
 ---
 *The shortlist row for rank 7 remains "Blocked by data" (unchanged verdict); see `research/reports/opportunity_shortlist.md` and the experiment record `research/experiments/futuresbasis_001.md`. No row is re-scored or re-ranked.*
