@@ -2,6 +2,17 @@
 
 Autonomous research pipeline for discovering reproducible, net-of-cost trading edges.
 
+## Cycle 874: Post-Backfill Verification Pass — **IMPLEMENTED AND VERIFIED**.
+- UTC 2026-10-19T19:43:35Z. Verification-only; no data, config, strategy, or candidate changes.
+- Acceptance criteria all pass: `python research/month_end_candidate_reaudit.py` → **OVERALL: PASS, 17/17** (macroregime_001 and csmomentum_001 verdicts unchanged, Rejected/Failed on the real VIX gate); `python research/rebalance_schedule_audit.py` → **OVERALL: PASS, 12/12**; `python -m pytest -q` → **82 passed in 86.16s**; `git status --porcelain config/ data/processed/` → empty; `data/raw/^VIX.parquet` → 5,514 rows, 2004-11-18 .. 2026-10-16, 0 duplicate dates, 0 NaN Close.
+- Handoff: `.kilo-runtime/worker-disposition.json` updated (disposition superseded — the pending supervisor recommendation concerns a prior cycle's trailing_window_attribution task, not this session's Cycle 874). NEXT_AGENT_TASK.md replaced with Cycle 875: reconcile the go/no-go deployment decision against the current record.
+
+## Cycle 873: Stale `^VIX` Inventory Row Corrected + Backfill Evidence Artifact — **IMPLEMENTED AND VERIFIED**.
+- UTC 2026-10-19T19:35:19Z. Documentation/data-readiness; no strategy/config/cost/universe changes.
+- Corrected the stale `^VIX` row in `research/reports/data_inventory.md` (claimed 8,502 rows from 1993-01-04 → **5,514 rows, 2004-11-18 .. 2026-10-16**); overview total recomputed 128,042 → 125,054 rows.
+- Wrote `research/reports/vix_backfill_001.md` documenting the backfill (2004-11-18 .. 2026-10-16 via the existing `yfinance` path), overlap integrity vs. the previously cached rows (max relative diff on `Close` = 0.0, sha256 `58da9ca2f088906a`), 0 duplicate dates, 0 NaN `Close`.
+- Handoff: NEXT_AGENT_TASK.md replaced with Cycle 874 (final integrity/verification pass over the VIX cache).
+
 ## Cycle 872: ^VIX Cache Backfill + Non-Ablation Macroregime Re-Audit — **IMPLEMENTED AND VERIFIED**.
 - UTC 2026-10-19T19:32:54Z. Data readiness (priority 1) + measurement; no strategy/config/cost/universe changes.
 - **`data/raw/^VIX.parquet` backfilled** from 2025-01-02 to **2004-11-18** (5,514 rows, 2004-11-18 .. 2026-10-16) via the existing `yfinance` path (`auto_adjust=False`, EOD `Close`, UTC index, `Open High Low Close Volume`). Append-only in time: the previously cached rows are **byte-identical** to the newly downloaded series over the overlap (max relative diff on `Close` = 0.0, sha256 `58da9ca2f088906a`); no duplicate dates, no NaN `Close`.

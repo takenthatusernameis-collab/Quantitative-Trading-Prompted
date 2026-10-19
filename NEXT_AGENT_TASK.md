@@ -1,36 +1,30 @@
-# NEXT AGENT TASK — Cycle 874
+# NEXT AGENT TASK — Cycle 875
 
 ## Context
 
-Cycles 872–873 closed the `macroregime_001` data-readiness gap and recorded the evidence:
-`data/raw/^VIX.parquet` now covers 2004-11-18 .. 2026-10-16 (5,514 rows), and
-`research/reports/vix_backfill_001.md` plus the corrected `research/reports/data_inventory.md`
-document the backfill and overlap integrity (max relative diff on Close = 0.0).
+Cycle 874 completed the post-backfill verification pass: all 5 acceptance criteria passed (reaudit OVERALL: PASS 17/17, rebalance audit OVERALL: PASS 12/12, pytest 82 passed in 86.16s, `git status --porcelain config/ data/processed/` empty, `data/raw/^VIX.parquet` 5,514 rows 2004-11-18 .. 2026-10-16, 0 duplicate dates, 0 NaN Close). Cycle 873 corrected the stale `^VIX` row in `research/reports/data_inventory.md` and wrote `research/reports/vix_backfill_001.md`. README.md now records Cycles 873 and 874.
+
+The go/no-go decision is now open for reconciliation: `research/reports/deployment_dossier_001.md` states "**GO for live deployment**" (based on Cycle 6 WF, Cycles 8-21 paper trading, Cycle 22 go/no-go; rolling 63d Sharpe 0.9356 ≥ 0.9 at that time), but the current record shows rolling 63d Sharpe -0.21188351222842883 (below the 0.5 degradation threshold; `low_rolling_sharpe` drift flag active for 5 consecutive trading days), PSR 0.6168, data ends 2026-10-16, and no new completed session since. `research/go_no_go_evaluation.py` and `research/rolling_63d_gate_refresh.py` exist to recompute the gates.
 
 ## Objective
 
-Run a final integrity/verification pass over the VIX cache and confirm no committed artifact
-under `data/processed/` or `config/` changed as a side effect of the documentation cycle.
+Reconcile the go/no-go deployment decision against the current record: run the available go/no-go / rolling-63d-gate evaluation, compare its output (rolling 63d Sharpe, max drawdown, PSR, trade count, decision) with `deployment_dossier_001.md`'s GO claim, and record a single decision (GO / NO-GO / hold) with supporting metrics in a new evidence artifact under `research/reports/`. No code, config, data, or candidate changes; research/reports only; no live trading, no credential access.
 
 ## Acceptance criteria
 
-1. `python research/month_end_candidate_reaudit.py` prints `OVERALL: PASS`.
-2. `python research/rebalance_schedule_audit.py` prints `OVERALL: PASS`.
-3. `python -m pytest -q` passes (82 tests).
-4. `git status --porcelain config/ data/processed/` is empty.
-5. `data/raw/^VIX.parquet` still has 5,514 rows, range 2004-11-18 .. 2026-10-16, 0 duplicate dates, 0 NaN Close.
+1. `python research/go_no_go_evaluation.py` runs and prints a decision (exit 0), OR if it requires unavailable inputs, the task documents the blocker precisely instead of fabricating a result.
+2. A new artifact `research/reports/go_no_go_reconciliation_001.md` (or equivalent dated record) states: current rolling 63d Sharpe, max drawdown, PSR, trade count; comparison vs. dossier thresholds (≥ 0.9 Sharpe, ≤ 15% max DD); resulting decision (GO / NO-GO / hold) and rationale.
+3. `git status --porcelain` shows only the new report file under `research/reports/` (plus README.md if this session also logs the cycle — optional).
+4. `python -m pytest -q` still passes (82 tests).
 
 ## Validation commands
 
-```bash
-python research/month_end_candidate_reaudit.py
-python research/rebalance_schedule_audit.py
-python -m pytest -q
-git status --porcelain config/ data/processed/
-```
+- `python research/go_no_go_evaluation.py`
+- `python -m pytest -q`
+- `git status --porcelain`
 
 ## Scope boundaries
 
-- Documentation/verification only. Do not modify data, config, or candidate parameters.
+- Research/backtesting only. Never place live trades, enable live trading, access or print secrets, or modify account credentials.
+- Do not modify `config/`, `data/`, or source code. Do not change the deployment decision itself beyond recording the evidence-based reconciliation.
 - Do not dispatch this workflow or start additional agent sessions.
-" filePath="/home/runner/work/Quantitative-Trading-Prompted/Quantitative-Trading-Prompted/NEXT_AGENT_TASK.md
