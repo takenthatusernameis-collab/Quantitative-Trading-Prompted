@@ -2,6 +2,13 @@
 
 Autonomous research pipeline for discovering reproducible, net-of-cost trading edges.
 
+## Cycle 852: Post-Gate Monitoring — **NO NEW REAL TRADING DAY, DRIFT FLAG PERSISTS**.
+- UTC 2026-10-19T14:22:44Z. Post-gate monitoring-only; no strategy/data/infrastructure changes made.
+- Per-symbol data check: raw parquet index max — SPY/QQQ/IWM/TLT/GLD/EFA/EEM/^VIX all 2026-10-16 00:00:00+00:00 (SPY 8487, QQQ 6945, IWM 6637, TLT 6094, GLD 5512, EFA 6322, EEM 5916, ^VIX 451 rows as expected). Non-universe symbols (DBC/VNQ/XLB/XLE/XLF/XLI/XLK/XLP/XLU/XLV/XLY) max 2026-10-08. No new trading days beyond 2026-10-16 — verification-only, no state changes.
+- Verification: pytest 7 passed in 118.96s; research/_tmp_cycle77_verify.py OVERALL PASS (rolling 63d Sharpe match True -0.21188351222842883, date 2026-10-16, regime flips 6/6 match, run_history 449 entries; current NAV $133,729.22; max drawdown -4.9857%); .github/scripts/test_kilo_supervisor_loop.py OK 10/10 in 0.497s. Drift flag `low_rolling_sharpe` persists (-0.21188351222842883); independent recomputation of the rolling 63d Sharpe series shows the current streak below the 0.5 threshold is **5 consecutive trading days** (2026-10-12 → 2026-10-16), consistent with research/reports/drift_flag_escalation_001.md §3, and 21 of the last 46 calendar days. Data ends 2026-10-16.
+- New evidence: at 2026-10-19T14:21Z Yahoo Finance already serves a **partial** 2026-10-19 bar (SPY volume 6,508,028 vs 40–65M typical; US session opened 13:30Z, closes 20:00Z), so no completed session is yet available. Network access to Yahoo Finance is functional in this environment.
+- Handoff: `.kilo-runtime/worker-disposition.json` updated (schema_version 1, recommendation_id "unknown", disposition "verified", updated_at 2026-10-19T14:22:44Z). NEXT_AGENT_TASK.md replaced with Cycle 853. Next task: build a deterministic, session-safe incremental paper-trading state extension tool and make the verification harness state-agnostic (evidence in NEXT_AGENT_TASK.md).
+
 ## Cycle 847: Post-Gate Monitoring — **NO NEW REAL TRADING DAY, DRIFT FLAG PERSISTS**.
 - UTC 2026-10-19T14:00:03Z. Post-gate monitoring-only; no strategy/data/infrastructure changes made.
 - Per-symbol data check: raw parquet index max — SPY/QQQ/IWM/TLT/GLD/EFA/EEM/^VIX all 2026-10-16 00:00:00+00:00 (SPY 8487, QQQ 6945, IWM 6637, TLT 6094, GLD 5512, EFA 6322, EEM 5916, ^VIX 451 rows as expected). No new trading days beyond 2026-10-16 — verification-only, no state changes.
