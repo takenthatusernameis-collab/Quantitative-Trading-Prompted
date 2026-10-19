@@ -1,6 +1,6 @@
 # Cost-Admissibility Screen (cost_admissibility_screen_001, Cycle 881)
 
-**Generated:** 2026-10-19 | **code revision:** 20bbe66
+**Generated:** 2026-10-19 | **code revision:** 9590cbe
 **Tool:** `research/cost_admissibility_screen.py` (read-only, deterministic, exit 0 on `OVERALL: PASS`)
 **Cost model:** the repository's flat model, `get_cost_params()` = 1 bp commission + 2 bp slippage
 = **3.0 bp per unit of weight change**; sensitivity rows 3 / 5 / 10 bp per unit.
