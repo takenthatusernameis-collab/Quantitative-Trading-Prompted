@@ -413,3 +413,17 @@ ls -la research/reports/deployment_dossier_001.md
 ---
 
 **ADDENDUM (2026-10-19, Cycle 858):** This dossier's "GO for live deployment" / "PROCEED with live deployment" statements were based on the 444-day record through 2026-10-09. Re-evaluation against the current committed paper record (449 days through 2026-10-16) shows: report-level rolling 63d Sharpe = **-0.493** (fails ≥ 0.9 gate), code-level `evaluate_go_no_go` decision = **INCONCLUSIVE** (PSR normal 0.622 in grey zone 0.5–0.95), and `low_rolling_sharpe` drift persists (5 consecutive trading days below threshold as of 2026-10-16). The unqualified "GO for live deployment" claim is **no longer supported** by current data. Promotion requires satisfying the promotion gates on the record at evaluation time. See `research/reports/go_no_go_evaluation_002.md` (2026-10-19) for full reconciliation.
+
+**ADDENDUM (2026-10-19, Cycle 860): the decision is now gate-complete and has changed from INCONCLUSIVE to NO-GO.** The code-level go/no-go decision previously evaluated only a day-count, the PSR, the full-period max drawdown and regime *persistence*; it ignored the rolling 63d Sharpe, the full-period net-of-cost Sharpe, the rolling 63d max DD and the regime-flip gates that this dossier and `research/reports/paper_trading_validation_002.md` document. `config/promotion_gates.yaml` is now the single source of truth for the gate table and `evaluate_go_no_go` enforces **every** gate: "GO" is returned only if all of them pass, and a failing gate can never yield "GO". The gate values for the current 449-session record are unchanged from Cycle 859, but the decision that follows from them is now:
+
+| Gate | Value | Threshold | Result |
+|---|---|---|---|
+| `track_record_length` | 449 | ≥ 126 | PASS |
+| `full_period_sharpe` | 1.638009 | ≥ 0.9 | PASS |
+| `rolling_63d_sharpe` | **-0.493001** | ≥ 0.9 | **FAIL** |
+| `max_drawdown` | -0.049857 | ≥ -0.15 | PASS |
+| `rolling_63d_max_dd` | -0.038564 | ≥ -0.15 | PASS |
+| `regime_flips` | 6 | ≥ 1 | PASS |
+| `psr` | **0.625683** | ≥ 0.95 | **FAIL** |
+
+**Decision: NO-GO** (`psr_zone: grey_zone`; failed gates: `rolling_63d_sharpe`, `psr`). **Live deployment remains unsupported, and is now explicitly rejected on the current record**: two documented promotion gates fail, and the failing rolling 63d Sharpe gate is the same criterion this dossier lists as "Rolling 63d Sharpe < 0.9 → Not met". The earlier "GO (with conditions)" row in the rollout checklist (line 260) and the "PROCEED with live deployment" recommendation (line 365) describe the 444-day record through 2026-10-09 and must not be read as a current authorization. No threshold was changed in Cycle 860 — the enforcement of the already-documented thresholds is what changed. Evidence: `research/reports/monitoring_cycle_860.md`; dated addendum in `research/reports/go_no_go_evaluation_002.md`.

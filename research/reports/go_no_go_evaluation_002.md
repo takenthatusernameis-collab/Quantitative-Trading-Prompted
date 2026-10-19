@@ -80,3 +80,60 @@ No completed US session was available beyond 2026-10-16 at evaluation time (per 
   rolling-63d-Sharpe gate (≥ 0.9) remains **FAILED** (-0.493) and PSR(normal)=0.626 remains in the grey zone
   (0.5–0.95). Promotion to live trading is still not supported by the current record.
 
+## Addendum — Cycle 860 (2026-10-19): the code-level decision is now gate-complete (decision INCONCLUSIVE → **NO-GO**)
+
+The sections above are the Cycle 858/859 reconciliation and are left unchanged. This addendum records what changed in
+the **code** and what the decision now is. Evidence: `research/reports/monitoring_cycle_860.md`.
+
+- **No new completed US session** beyond 2026-10-16 (`research/refresh_raw_cache.py --dry-run` → `no-op`;
+  `research/extend_paper_trading_state.py --dry-run` → `no new completed session`, state write count 0). The paper
+  state was **not** extended, so the evaluation below runs against the same 449-session record used above and the
+  before/after decision comparison is apples-to-apples. `data/processed` + `data/raw` SHA-256 set (1832 files):
+  byte-identical before and after the cycle.
+- **The promotion gates now live in exactly one place.** `config/promotion_gates.yaml` defines every gate with its
+  name, metric, threshold, comparison direction, the formula used to compute the metric and the source artifact.
+  The list covers the complete `paper_trading_validation_002.md` gate table (track record ≥ 126 days, full-period
+  net-of-cost Sharpe ≥ 0.9, rolling 63d Sharpe ≥ 0.9, max DD ≤ 15%, rolling 63d max DD ≤ 15%, ≥ 1 regime flip)
+  **in addition to** the PSR criterion (≥ 0.95, grey zone 0.5–0.95). **No threshold value was changed** — Cycle 860
+  added enforcement and documentation, not re-tuning.
+- **Enforcement.** `evaluate_go_no_go` evaluates every gate and exposes the per-gate outcome (name, metric, value,
+  threshold, comparison, pass/fail, source) on the result object. "GO" is returned only if every gate passes. The
+  decision mapping is read from the same YAML file, so the documented policy and the executed policy cannot drift
+  apart; a missing mapping key, a missing grey-zone block or an unknown metric name is a hard error (the gate
+  evaluation previously defaulted unknown metrics to 0.0, which could have changed a verdict silently).
+- **Conservative mapping (fail → NO-GO, and why).** Track record shorter than the gate → INCONCLUSIVE; every gate
+  passes → GO; **only the PSR gate fails while the PSR is in the grey zone** → INCONCLUSIVE (the evidence really is
+  indeterminate and no economic/risk gate is violated); **any other gate fails → NO-GO**. The previous behaviour
+  (INCONCLUSIVE whenever the PSR was in the grey zone) is gone: it reported a record that *violated* a documented
+  promotion gate as merely undecided. A failing gate can never yield "GO" in any of the four cases.
+- **Current gate table for the 449-session record (through 2026-10-16), reproducible (`evaluation_deterministic: True`):**
+
+  | Gate | Value | Threshold | Result |
+  |---|---|---|---|
+  | `track_record_length` | 449 | ≥ 126 | PASS |
+  | `full_period_sharpe` | 1.638009 | ≥ 0.9 | PASS |
+  | `rolling_63d_sharpe` | **-0.493001** | ≥ 0.9 | **FAIL** |
+  | `max_drawdown` | -0.049857 | ≥ -0.15 | PASS |
+  | `rolling_63d_max_dd` | -0.038564 | ≥ -0.15 | PASS |
+  | `regime_flips` | 6 | ≥ 1 | PASS |
+  | `psr` | **0.625683** | ≥ 0.95 | **FAIL** |
+
+  `psr_zone: grey_zone` (0.625683 ∈ [0.5, 0.95)); `failed_gates: ['rolling_63d_sharpe', 'psr']`.
+- **Decision: NO-GO** (previously INCONCLUSIVE in Cycles 858/859). **No gate value changed** — the decision moved
+  because the decision function now enforces the gates the artifacts document, not because the record changed.
+  **Promotion to live trading remains unsupported.** The unqualified "GO for live deployment" claims in
+  `research/reports/deployment_dossier_001.md` remain unsupported and are now contradicted by a gate-complete NO-GO.
+- **Estimator discrepancy (new finding, decision-neutral).** The code-level rolling 63d Sharpe (-0.493001) uses
+  `src/evaluation/utils.py:sharpe_ratio` ((CAGR − 2% rf) / annualised vol); the validation artifacts and the stored
+  `low_rolling_sharpe` drift flag use `src/evaluation/drift.py:annualized_sharpe` (mean(r)/std(r, ddof=1)·√252),
+  which gives **-0.211884** for the same window and reproduces the documented 0.9356 on the 444-day record (the
+  code-level estimator gives 0.670178 there). Both estimators fail the ≥ 0.9 gate on the current record, so the NO-GO
+  holds either way; the gate estimator was **not** changed in this cycle (changing a monitoring instrument's own
+  measurement definition mid-record would rewrite its history). Reconciliation is the next task.
+- **Verification:** `python -m pytest -q` → **54 passed** (46 pre-existing + 8 new gate-enforcement tests, including
+  "PSR above the GO threshold but rolling 63d Sharpe below 0.9 cannot produce GO" and "a state passing every gate
+  does produce GO"); `python research/go_no_go_evaluation.py` → exit 0, `side_effect_free: True`,
+  `evaluation_deterministic: True`; `python research/drift_persistence_report.py` → persistence 5, stored ==
+  recomputed True; `python research/_tmp_cycle77_verify.py` → OVERALL: PASS; `python
+  .github/scripts/test_kilo_supervisor_loop.py` → OK (10 tests).
+

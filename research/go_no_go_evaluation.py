@@ -15,14 +15,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterable
 
-import numpy as np
-import pandas as pd
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from src.simulation.evaluation import GoNoGoConfig, evaluate_go_no_go
 from src.simulation.paper_trading import PaperTradingConfig, PaperTradingState
-from src.simulation.evaluation import evaluate_go_no_go, GoNoGoConfig
-from src.evaluation.utils import annualize_return, max_drawdown, sharpe_ratio
 
 
 def sha256_file(path: Path) -> str:
@@ -80,18 +76,19 @@ def main() -> int:
         and repeat.sharpe_se == result.sharpe_se
         and repeat.sharpe_ci_lower == result.sharpe_ci_lower
         and repeat.sharpe_ci_upper == result.sharpe_ci_upper
+        and repeat.psr_zone == result.psr_zone
+        and repeat.failed_gates == result.failed_gates
+        and [(g.name, g.value, g.passed) for g in repeat.gates]
+        == [(g.name, g.value, g.passed) for g in result.gates]
     )
 
-    # Compute rolling 63d Sharpe (report-level gate) explicitly
-    returns = state.cumulative_returns
-    dates = state.cumulative_dates
-    window = 63
-    rolling_sharpe_63d = 0.0
-    if len(returns) >= 2:
-        arr = np.array(returns, dtype=float)
-        recent = arr[-window:] if len(arr) >= window else arr
-        if len(recent) >= 2 and np.std(recent) > 0:
-            rolling_sharpe_63d = float(sharpe_ratio(pd.Series(recent)))
+    # Rolling 63d Sharpe values: the code-level estimator that drives the
+    # promotion gate, and the report convention used by the validation
+    # artifacts and the stored drift flag (diagnostic only).
+    rolling_sharpe_63d = next(
+        (g.value for g in result.gates if g.metric == "rolling_sharpe_63d"), 0.0
+    )
+    rolling_sharpe_63d_report_convention = result.rolling_sharpe_63d_report_convention
 
     # Output summary
     print("=== Go/No-Go Evaluation (read-only) ===")
@@ -100,7 +97,8 @@ def main() -> int:
     print(f"state_path: {state_path}")
     print(f"paper_days: {result.paper_days}")
     print(f"paper_sharpe: {result.paper_sharpe:.6f}")
-    print(f"rolling_sharpe_63d (report-level gate): {rolling_sharpe_63d:.6f}")
+    print(f"rolling_sharpe_63d (gate estimator): {rolling_sharpe_63d:.6f}")
+    print(f"rolling_sharpe_63d (report convention, diagnostic): {rolling_sharpe_63d_report_convention:.6f}")
     print(f"paper_ann_return: {result.paper_ann_return:.6f}")
     print(f"paper_volatility: {result.paper_volatility:.6f}")
     print(f"paper_sortino: {result.paper_sortino:.6f}")
@@ -131,6 +129,8 @@ def main() -> int:
     print("promotion_gates:")
     for g in result.gates:
         print(f"  {g.name}: value={g.value} threshold={g.threshold} comparison={g.comparison} pass={g.passed}")
+    print(f"psr_zone: {result.psr_zone}")
+    print(f"failed_gates: {result.failed_gates}")
     print(f"decision (evaluate_go_no_go): {result.decision}")
     print(f"rationale: {result.rationale}")
     print(f"conditions_for_reevaluation: {result.conditions_for_reevaluation}")
