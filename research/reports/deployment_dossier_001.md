@@ -410,3 +410,6 @@ print(f'Max DD: {state[\"max_drawdown\"]:.2%}')
 # Verify deployment dossier exists
 ls -la research/reports/deployment_dossier_001.md
 ```
+---
+
+**ADDENDUM (2026-10-19, Cycle 858):** This dossier's "GO for live deployment" / "PROCEED with live deployment" statements were based on the 444-day record through 2026-10-09. Re-evaluation against the current committed paper record (449 days through 2026-10-16) shows: report-level rolling 63d Sharpe = **-0.493** (fails ≥ 0.9 gate), code-level `evaluate_go_no_go` decision = **INCONCLUSIVE** (PSR normal 0.622 in grey zone 0.5–0.95), and `low_rolling_sharpe` drift persists (5 consecutive trading days below threshold as of 2026-10-16). The unqualified "GO for live deployment" claim is **no longer supported** by current data. Promotion requires satisfying the promotion gates on the record at evaluation time. See `research/reports/go_no_go_evaluation_002.md` (2026-10-19) for full reconciliation.

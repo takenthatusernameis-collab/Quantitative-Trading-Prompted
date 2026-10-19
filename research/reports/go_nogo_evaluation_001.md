@@ -203,3 +203,6 @@ grep -A 5 -B 5 "Cycle 22" README.md
 # Check that NEXT_AGENT_TASK.md has been prepared for subsequent cycle
 cat NEXT_AGENT_TASK.md
 ```
+---
+
+**ADDENDUM (2026-10-19, Cycle 858):** This report contains conflicting verdicts (INCONCLUSIVE on 5-day record 2026-10-12; GO on 444-day record 2026-10-14). Against the current committed paper record (449 days through 2026-10-16), `evaluate_go_no_go` returns **INCONCLUSIVE** (PSR normal 0.622 in grey zone 0.5–0.95). The report-level rolling 63d Sharpe gate is **FAILED** (-0.493 < 0.9). The earlier "GO" statement is inconsistent with current data; the correct decision is **INCONCLUSIVE** pending further observations meeting the existing gates. See `research/reports/go_no_go_evaluation_002.md` (2026-10-19) for full reconciliation and conditions for re-evaluation.
