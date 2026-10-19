@@ -1,120 +1,130 @@
-# NEXT AGENT TASK — Cycle 878
+# NEXT AGENT TASK — Cycle 879
 
 ## Context
 
-Cycle 877 confirmed NO-GO stability on an unchanged record: rolling 63d Sharpe
--0.21188351222842883, PSR 0.684041 (grey zone), max DD -4.99%, 107 trades, 449
-sessions through 2026-10-16; `low_rolling_sharpe` drift flag persists (5
-consecutive trading days below 0.5). Evidence:
-`research/reports/monitoring_cycle_877.md`.
+Cycle 878 measured the incumbent's long-sample mechanism decomposition
+(pre-registered in `research/hypotheses/overlay_mechanism_long_sample_001.md`;
+report `research/reports/long_sample_overlay_attribution_001.md`). Three
+results matter for the research process:
 
-Cycle 862 (`research/reports/trailing_window_attribution_001.md`) localised the
-trailing-window failure to the **volatility-targeting overlay** (-1.497444% over
-the trailing 63 sessions against a +1.078731% raw signal) and explicitly left the
-question open: *"it localises the loss; it does not establish that the signal has
-decayed, and it recommends no re-fit."* That question has never been answered
-with long-sample evidence: the committed long-sample artifact
-(`research/reports/promotion_feasibility_backtest_001.md`, 8,487 sessions
-2004-11-18..2026-10-16, canonical Sharpe 0.5646255767978904, max DD -0.6224126346564325)
-is produced by `src/backtest/engine.py:run_backtest`, which has **no risk
-overlays**, while the paper record is produced by
-`src/simulation/engine.py:run_simulation`, which **has** the SPY-trend filter,
-the 10%/63d volatility target, the 15% drawdown cut and the gross-exposure cap.
-The overlays' long-run net contribution has therefore never been measured.
+1. The trailing 63-session promotion-gate failure is an **overlay-timing**
+   outcome, not signal decay: in the same window the raw signal was
+   profitable (L0-net Sharpe +0.307230) while the executed path lost money
+   (-0.211884).
+2. On the full 8,487-session sample the overlay stack *improves* both risk
+   readings (canonical Sharpe +0.564626 -> +1.485591, max drawdown -62.24%
+   -> -9.93%) and costs compounded return instead.
+3. The report explicitly leaves one question open (§5.2 item 3): **whether the
+   rolling-63-day promotion gate is statistically informative or noisy.** The
+   empirical distribution of that gate statistic over the incumbent's own
+   long-sample history has never been measured, so a single trailing-window
+   NO-GO is currently interpreted without any knowledge of how often the same
+   statistic fails on the same strategy in other periods.
 
 ## Objective
 
-Measurement-only, pre-registered diagnostic (no strategy, universe, cost model,
-gate, threshold, config, state or candidate change): decompose the incumbent's
-**long-sample** record into its mechanisms and decide, from pre-registered
-falsification conditions, whether the volatility overlay is a structural drag and
-whether the trailing 63-session failure is overlay mechanics or signal decay.
+Measurement-only, pre-registered: quantify the **empirical null distribution
+of the promotion gate's rolling-63-day Sharpe statistic** on the incumbent's
+own long-sample paths, and state the gate's false-negative rate, so that the
+loop can interpret trailing-window NO-GOs correctly.
 
-Pre-registration file (write it BEFORE running anything):
-`research/hypotheses/overlay_mechanism_long_sample_001.md`.
+Pre-registration file (write it BEFORE running the measurement):
+`research/hypotheses/promotion_gate_false_negative_001.md`.
+
+**Disclosure requirement (honesty, not optional):** a feasibility probe of this
+exact computation was already run in Cycle 878 (the rolling-63 Sharpe
+distribution of the long-sample executed path), so the pre-registration is
+*not* blind. The hypothesis file must state this explicitly and fix the
+decision rule and the interpretation thresholds in advance, and must record
+that **no candidate, promotion or rejection decision may depend on this
+measurement** — it is a statement about a gate, not about a strategy.
 
 ## Method (fixed by this task; do not re-choose)
 
-- Sample: 2004-11-18 .. 2026-10-16 (the published long-sample window, 8,487
-  sessions), universe = the 7 paper-trading assets, configuration = the frozen
-  `config/simulation_candidate_001.yaml` (226/21 momentum, top 50%, 10% vol
-  target on 63d, dd cut to 0.5 below -15%, SPY-200d trend filter, 3 bp round
-  trip, close execution, 1-day signal lag).
-- Engine: `src/simulation/engine.py:run_simulation` (the pipeline that produced
-  the paper record). Reuse `research/trailing_window_attribution.py:build_layers`
-  and `decompose_window` by import — do not re-implement the layer chain.
-- Counterfactual layers: L0 base signal -> L1 x SPY-trend filter -> L2 x
-  vol_scale -> L3 x dd_scale -> L4 gross-exposure cap -> L5 net of the executed
-  costs. For every layer, also compute that layer's **own** turnover cost
-  (3 bp x |dW|_1) so each layer has a fair net-of-cost path (Cycle 862's
-  counterfactuals were gross, which overstates the cost of the uncosted layers).
-- Rolling 63-session distribution of each mechanism's contribution (mean, median,
-  p05, p95, min, max, and the percentile rank of the trailing-63 window
-  2026-07-21..2026-10-16), plus the trailing-63 canonical Sharpe of L0-net and
-  L5-net (signal-only vs fully overlaid) to separate decay from overlay effect.
-- Reconciliation: reproduce the committed long-sample artifact exactly
-  (`python research/promotion_feasibility_backtest.py` -> canonical Sharpe
-  0.5646255767978904, max DD -0.6224126346564325, decision NO-GO), and quantify
-  the difference between the backtest engine's net path and the simulation
-  engine's L0-net-of-base-costs path (warm-up window and cost base differ by
-  construction; the deviation must be measured, not assumed).
+- Paths: the long-sample paths produced by
+  `research/long_sample_overlay_attribution.py` (executed path L4 and raw
+  signal L0), each net of its own 3 bp turnover cost. Reuse that script's
+  helpers (`own_cost_net_path`, `annualised_turnover`) and
+  `research/trailing_window_attribution.py:build_layers`; do not re-implement
+  the layer chain.
+- Statistic: the rolling-63-session canonical Sharpe, computed with the
+  **live drift-flag estimator** `src/evaluation/drift.py:rolling_sharpe_series`
+  (canonical `arithmetic_annualized_rf0`; zero-dispersion windows return 0.0
+  by the repository convention). Report the number of zero-dispersion windows
+  explicitly.
+- Report for the executed path (and, for the overlay's effect on the gate,
+  the raw-signal path): n windows, mean, sd, min, p01, p05, p25, median, p75,
+  p95, p99, max; failure rates at the gate thresholds (< 0.9 promotion gate,
+  < 0.5 drift threshold, < 0); the value and percentile rank of the current
+  trailing window (2026-07-21..2026-10-16, value -0.211884).
+- **Overlapping windows are not independent.** Report the effective number of
+  independent windows (approximately n / 63), and a standard error for each
+  failure rate, so the rates are not over-read. State the dependence
+  explicitly.
+- No bootstrap, no parameter fitting, no selection: one deterministic
+  measurement of one frozen configuration (**trials = 1**).
 
-## Falsification conditions (pre-registered; evaluate all three)
+## Pre-registered conditions (evaluate all three)
 
-- F1 (overlay is a structural drag): the full-sample net-of-cost canonical
-  Sharpe of L2-net is **not** greater than L0-net, or the full-sample vol-overlay
-  contribution is negative. => The overlay must be dropped in any future
-  candidate; do not re-tune the incumbent.
-- F2 (trailing window is an overlay anomaly): the trailing-63 vol-overlay
-  contribution ranks **below the 50th percentile** of all rolling-63 vol-overlay
-  contributions. => Overlay timing explains a material part of the trailing
-  failure; a different risk treatment is warranted and its expected benefit is
-  pre-quantified by this measurement.
-- F3 (signal decayed): the trailing-63 canonical Sharpe of **L0-net** (raw
-  signal, no overlays) is negative. => The failure is in the signal, not in the
-  overlay; the incumbent's edge is not robust and the next candidate must be a
-  structurally different family (not a variant of this one).
+- **G1 (gate informativeness)**: if the executed path fails the >= 0.9
+  rolling-63 gate in **>= 10%** of windows, the gate has a high
+  false-negative rate and a single trailing-window NO-GO must not be read as
+  evidence that the strategy's edge decayed. If the rate is < 10%, the gate
+  is a low-false-negative criterion and the current NO-GO is informative.
+- **G2 (is the current window extreme?)**: if the current trailing value is
+  below the **1st percentile** of the distribution, the current window is an
+  extreme drawdown of the statistic; otherwise it is an ordinary window
+  failure.
+- **G3 (does the overlay cause gate failures?)**: if the raw-signal path fails
+  the >= 0.9 gate in **materially more** windows than the executed path, the
+  overlay is a cause of gate failures; if the executed path fails *less*
+  often, the overlay **helps** the gate and the Cycle 878 reading of the
+  trailing failure as a pure overlay-timing accident must be stated with that
+  counter-evidence.
 
-Decision rule (fixed in advance): report F1/F2/F3 as PASS/FAIL each with its
-numbers and state which of the three conclusions the evidence supports. A
-candidate is **not** proposed, tuned or promoted in this cycle.
+Decision rule (fixed in advance): report G1/G2/G3 as PASS/FAIL with their
+numbers, state the gate's false-negative rate in words and in percent, and
+state what that implies for how the loop reads a trailing-window NO-GO and for
+the evaluation protocol of the next candidate family.
+
+**Not allowed in this cycle**: changing `config/promotion_gates.yaml`, changing
+the incumbent's decision (**NO-GO** stands), re-fitting or re-optimizing the
+incumbent, promoting or rejecting any candidate, or writing to `data/`,
+`config/` or the paper-trading state.
 
 ## Acceptance criteria
 
-1. `research/hypotheses/overlay_mechanism_long_sample_001.md` exists and contains
-   the mechanism, expected direction, falsification conditions (F1-F3), the
-   decision rule and the fixed method **before** the script is run (it is
-   committed in the same cycle).
-2. New read-only script `research/long_sample_overlay_attribution.py` exists,
-   imports the shared layer helpers, reads only the committed cache, writes
-   nothing under `data/`, `config/` or `data/processed/`, prints every number
-   that appears in the report, and exits 0 with `OVERALL: PASS`.
-3. The script reconciles to the committed long-sample artifact: canonical Sharpe
-   0.5646255767978904 and max DD -0.6224126346564325 reproduced (or the deviation
-   measured and explained), and the 449-session paper window still reproduces the
-   committed record (max |net_return - committed| = 0 over 449 sessions).
-4. New report `research/reports/long_sample_overlay_attribution_001.md` contains:
-   the full-sample decomposition with a telescoping residual <= 1e-12, the
-   canonical Sharpe of every layer (gross and net of its own costs), the
-   rolling-63 distribution of every mechanism's contribution, the trailing-63
-   L0-net vs L5-net Sharpe, the reconciliation table, and the F1/F2/F3 verdicts.
-5. New experiment record `research/experiments/long_sample_overlay_attribution_001.md`
-   follows the repository format (hypothesis reference, data, point-in-time
-   treatment, configuration, splits, results, number of trials = 1, reproduction
+1. `research/hypotheses/promotion_gate_false_negative_001.md` exists, is
+   committed with the cycle, contains the mechanism, the disclosure of the
+   Cycle 878 feasibility probe, the fixed method, the three conditions and the
+   decision rule, and was written before the measurement script was run.
+2. New read-only script `research/gate_false_negative_rate.py` exists, reuses
+   the shared helpers, reads only the committed cache, writes nothing under
+   `data/`, `config/` or `data/processed/`, prints every number that appears
+   in the report, and exits 0 with `OVERALL: PASS`.
+3. New report `research/reports/gate_false_negative_rate_001.md` contains: the
+   two path distributions (executed and raw signal) with all the statistics
+   above, the failure rates at 0.9 / 0.5 / 0 with their standard errors, the
+   current trailing window's value and rank, the zero-dispersion window count,
+   the overlap-dependence statement, and the G1/G2/G3 verdicts with the
+   decision-rule output.
+4. New experiment record `research/experiments/gate_false_negative_rate_001.md`
+   in the repository format (hypothesis reference, data, point-in-time
+   treatment, configuration, splits, results, trials = 1, reproduction
    commands, decision label).
-6. New offline tests in `tests/test_long_sample_overlay_attribution.py` (no
-   network, no data mutation) for the pure helpers (e.g. telescoping residual is
-   zero, percentile rank, own-turnover cost of a layer).
-7. `python -m pytest -q` passes (82 existing + the new tests) and
+5. New offline tests in `tests/test_gate_false_negative_rate.py` (no network,
+   no data mutation) for the pure helpers (e.g. the zero-dispersion
+   convention, the failure-rate computation, the effective-independent-window
+   estimate).
+6. `python -m pytest -q` passes (89 existing + the new tests) and
    `git status --porcelain data/ config/` is empty.
-8. The deployment decision is unchanged: **NO-GO**, live deployment unsupported;
-   `research/go_no_go_evaluation.py` still prints NO-GO with
-   `side_effect_free: True`.
+7. `python research/go_no_go_evaluation.py` still prints **NO-GO** with
+   `side_effect_free: True`; the deployment decision is unchanged.
 
 ## Validation commands
 
+- `python research/gate_false_negative_rate.py`
 - `python research/long_sample_overlay_attribution.py`
-- `python research/promotion_feasibility_backtest.py`
 - `python research/go_no_go_evaluation.py`
 - `python -m pytest -q`
 - `git status --porcelain data/ config/`
@@ -125,5 +135,16 @@ candidate is **not** proposed, tuned or promoted in this cycle.
   scheduled jobs, no new dependencies.
 - Do not modify `config/`, `data/`, `src/`, the paper-trading state, the
   promotion gates, the incumbent configuration or the deployment decision.
-- Do not re-fit, re-optimize or promote the incumbent; this cycle measures.
 - Do not dispatch this workflow or start additional agent sessions.
+
+## Known pending item (deliberately not bundled with this cycle)
+
+The 2026-10-19 US session is published by the provider but only becomes
+*eligible* under the repository's own completeness rule
+(`research/extend_paper_trading_state.py:session_is_complete`, `close_hour + 1`
+= 17:00 ET = 21:00 UTC). Once that time has passed, the paper-trading record
+can be extended from 449 to 450 sessions with the existing session-safe tool
+(`python research/extend_paper_trading_state.py`, then
+`python research/go_no_go_evaluation.py` and
+`python research/drift_persistence_report.py`). Keep this separate from
+measurement cycles so the measured sample stays fixed.
