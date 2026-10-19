@@ -1,7 +1,7 @@
 # Next Agent Task: Post-Gate Monitoring (Next Cycle)
 
 ## Context
-Post-gate monitoring phase (Cycle 838). Monitoring-only, no strategy/data/infrastructure changes. Data ends at 2026-10-16 for all monitored universe symbols (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX), confirmed via per-symbol index max in data/raw/*.parquet at 2026-10-19T11:06:42Z. Non-universe symbols (DBC, VNQ, XLB-XLY) end at 2026-10-08 and are out of monitoring scope. All verification commands pass (pytest 7/7, research/_tmp_cycle77_verify.py OVERALL PASS, .github/scripts/test_kilo_supervisor_loop.py OK 10/10). Rolling 63d Sharpe remains -0.21188351222842883 at 2026-10-16 with drift flag low_rolling_sharpe persisting (>20 consecutive days).
+Post-gate monitoring phase. Monitoring-only, no strategy/data/infrastructure changes. Data ends at 2026-10-16 for monitored universe symbols (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX), confirmed via per-symbol index max in data/raw/*.parquet. Non-universe symbols (DBC, VNQ, XLB-XLY) end at 2026-10-08 and are out of monitoring scope. Drift flag low_rolling_sharpe persists; rolling 63d Sharpe remains negative. Monitoring verification passed on 2026-10-19T11:15:52Z (no new trading days; all three checks passed with no modifications).
 
 ## Objective
 Continue post-gate monitoring-only. Record UTC when updating documentation/worker disposition. Verify no new trading days beyond 2026-10-16 for universe symbols (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX) via per-symbol index max in data/raw/*.parquet.
@@ -28,5 +28,5 @@ Continue post-gate monitoring-only. Record UTC when updating documentation/worke
 - Preserve working baseline and safety controls. Monitor low_rolling_sharpe; do not re-optimize.
 
 ## Known State
-- Data ends 2026-10-16 for monitored universe symbols; no new trading days observed as of 2026-10-19T11:06:42Z.
-- All verification passes. Drift flag persists at -0.21188351222842883 (>20 days). Drift flag remains low_rolling_sharpe.
+- Data ends 2026-10-16 for monitored universe symbols (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX). No new trading days observed as of 2026-10-19T11:15:52Z.
+- All verification passed. Drift flag persists (low_rolling_sharpe). Rolling 63d Sharpe: -0.21188351222842883.
