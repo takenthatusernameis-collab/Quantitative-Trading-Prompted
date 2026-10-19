@@ -3,10 +3,10 @@
 ## Context
 Post-gate monitoring phase. Monitoring-only, no strategy/data/infrastructure changes. Data ends at 2026-10-16 for all universe symbols (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX). No new trading days beyond 2026-10-16 observed.
 
-All verification checks pass:
-- `python -m pytest -q`: 7 passed
+All verification checks pass (UTC 2026-10-19T00:32:00Z):
+- `python -m pytest -q`: 7 passed in 51.14s
 - `python research/_tmp_cycle77_verify.py`: OVERALL PASS
-- `python .github/scripts/test_kilo_supervisor_loop.py`: OK (10/10)
+- `python .github/scripts/test_kilo_supervisor_loop.py`: OK 10/10 in 0.380s
 
 The low_rolling_sharpe drift flag persists at -0.21188351222842883 (exploratory). Escalation assessment: research/reports/drift_flag_escalation_001.md (monitor, do not re-optimize).
 
@@ -39,8 +39,8 @@ Continue post-gate monitoring-only. On each cycle, record UTC. Verify no new tra
 - All verification passes. Drift flag persists at -0.21188351222842883.
 
 ## Handoff
-- Cycle completed: monitoring-only verification (UTC 2026-10-19T00:30:30Z).
-- Per-symbol raw parquet index max dates verified: SPY/QQQ/IWM/TLT/GLD/EFA/EEM/^VIX all 2026-10-16. No new trading days beyond 2026-10-16 — verification-only, no state changes.
-- Verification: all three commands passed (pytest 7/7 in 50.32s; research/_tmp_cycle77_verify.py OVERALL PASS; test_kilo_supervisor_loop.py OK 10/10 in 0.358s).
+- Cycle completed: monitoring-only verification (UTC 2026-10-19T00:32:00Z).
+- Per-symbol raw parquet index max dates verified: SPY/QQQ/IWM/TLT/GLD/EFA/EEM/^VIX all 2026-10-16 00:00:00+00:00. No new trading days beyond 2026-10-16 — verification-only, no state changes.
+- Verification: all three commands passed (pytest 7/7 in 51.14s; research/_tmp_cycle77_verify.py OVERALL PASS; test_kilo_supervisor_loop.py OK 10/10 in 0.380s).
 - Drift flag persists at -0.21188351222842883 (exploratory degradation; monitor, do not re-optimize).
 - Next task: continue post-gate monitoring; verification-only unless new trading days appear.
