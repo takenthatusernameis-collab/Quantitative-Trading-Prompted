@@ -31,6 +31,8 @@ from datetime import date, timedelta
 
 import numpy as np
 
+from src.evaluation.sharpe import sharpe_ratio
+
 TRADING_DAYS_PER_YEAR = 252
 DEFAULT_WINDOW = 63
 DEFAULT_MIN_PERIODS = 20
@@ -44,16 +46,13 @@ def annualized_sharpe(
 ) -> float:
     """Annualized Sharpe ratio of ``returns`` (zero risk-free rate).
 
-    Mirrors the formula used by ``src/simulation/paper_trading.py`` so that
-    offline recomputation and the recorded drift flag agree exactly.
+    Delegates to the repository's canonical Sharpe convention
+    (:func:`src.evaluation.sharpe.sharpe_ratio`,
+    ``mean(r) * 252 / (std(r, ddof=1) * sqrt(252))``), which is exactly the
+    formula of the live paper-trading update, so that offline recomputation,
+    the stored drift flag and the promotion gate all report the same number.
     """
-    arr = np.asarray(list(returns), dtype=float)
-    if arr.size < 2:
-        return 0.0
-    vol = float(np.std(arr, ddof=1)) * np.sqrt(periods_per_year)
-    if vol <= 0.0:
-        return 0.0
-    return float(np.mean(arr) * periods_per_year) / vol
+    return sharpe_ratio(returns, rf_annual=0.0, periods_per_year=periods_per_year)
 
 
 def rolling_sharpe_series(

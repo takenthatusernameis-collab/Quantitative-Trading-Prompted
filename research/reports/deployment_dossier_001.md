@@ -427,3 +427,19 @@ ls -la research/reports/deployment_dossier_001.md
 | `psr` | **0.625683** | ≥ 0.95 | **FAIL** |
 
 **Decision: NO-GO** (`psr_zone: grey_zone`; failed gates: `rolling_63d_sharpe`, `psr`). **Live deployment remains unsupported, and is now explicitly rejected on the current record**: two documented promotion gates fail, and the failing rolling 63d Sharpe gate is the same criterion this dossier lists as "Rolling 63d Sharpe < 0.9 → Not met". The earlier "GO (with conditions)" row in the rollout checklist (line 260) and the "PROCEED with live deployment" recommendation (line 365) describe the 444-day record through 2026-10-09 and must not be read as a current authorization. No threshold was changed in Cycle 860 — the enforcement of the already-documented thresholds is what changed. Evidence: `research/reports/monitoring_cycle_860.md`; dated addendum in `research/reports/go_no_go_evaluation_002.md`.
+
+**ADDENDUM (2026-10-19, Cycle 861): the gate values are now on one documented Sharpe convention; live deployment remains unsupported.** Cycle 861 replaced the three simultaneous Sharpe estimators with one documented convention (`arithmetic_annualized_rf0`: `mean(r) * 252 / (std(r, ddof=1) * sqrt(252))`, zero risk-free rate — the formula of the live `low_rolling_sharpe` drift flag and the scale of every rolling Sharpe quoted in this dossier's source artifacts). The decision on the current record does not change, but two gate values do, and the 444-day record's verdict does:
+
+| Gate | Value (Cycle 861) | Threshold | Result |
+|---|---|---|---|
+| `track_record_length` | 449 | ≥ 126 | PASS |
+| `full_period_sharpe` | 1.748401 | ≥ 0.9 | PASS |
+| `rolling_63d_sharpe` | **-0.211884** | ≥ 0.9 | **FAIL** |
+| `max_drawdown` | -0.049857 | ≥ -0.15 | PASS |
+| `rolling_63d_max_dd` | -0.038564 | ≥ -0.15 | PASS |
+| `regime_flips` | 6 | ≥ 1 | PASS |
+| `psr` | **0.684041** | ≥ 0.95 | **FAIL** |
+
+**Decision on the current 449-session record: NO-GO** (`psr_zone: grey_zone`; failed gates `rolling_63d_sharpe`, `psr`). **Live deployment remains unsupported.** The rolling 63d Sharpe gate value quoted in the Cycle 858/860 addenda (-0.493001) was computed with the backtest-baseline scale; the canonical value for the same window is -0.211884, which is identical to the stored drift flag — the gate still fails, and the discrepancy between the two numbers was a measurement-definition difference, not a data change.
+
+The 444-day record through 2026-10-09 (the record behind this dossier's original "GO (with conditions)" and "PROCEED with live deployment" statements) now evaluates as: rolling 63d Sharpe **0.935578 → PASS** (it was recorded as 0.670178 on the old scale, a FAIL) but `psr` **0.762425 → FAIL** (grey zone), i.e. **INCONCLUSIVE**. It is still not promotable, and the "GO"/"PROCEED" statements in this dossier remain historical and unsupported. Evidence: `research/reports/monitoring_cycle_861.md`; dated addendum in `research/reports/go_no_go_evaluation_002.md`.

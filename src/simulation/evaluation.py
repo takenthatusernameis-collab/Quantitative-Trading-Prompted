@@ -40,9 +40,13 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from src.evaluation.drift import annualized_sharpe
+from src.evaluation.sharpe import (
+    SHARPE_CONVENTION_ID,
+    backtest_sharpe_ratio,
+    sharpe_ratio,
+)
 from src.evaluation.statistics import compute_psr
-from src.evaluation.utils import annualize_return, max_drawdown, sharpe_ratio
+from src.evaluation.utils import annualize_return, max_drawdown
 from src.simulation.paper_trading import (
     PaperTradingConfig,
     PaperTradingState,
@@ -179,7 +183,8 @@ class GoNoGoResult:
     psr_zone: str = "unknown"
     failed_gates: list = field(default_factory=list)
     decision_mapping: dict = field(default_factory=dict)
-    rolling_sharpe_63d_report_convention: float = 0.0
+    rolling_sharpe_63d_backtest_scale: float = 0.0
+    sharpe_convention: str = ""
     gates_source: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -556,6 +561,18 @@ def evaluate_go_no_go(
     if not grey_zone:
         raise ValueError("promotion gate definition is missing 'psr_grey_zone'")
 
+    # The Sharpe convention is declared in the same file. The code and the
+    # declaration must agree, otherwise the gate values would silently be
+    # computed on a different scale than the one the gate table documents.
+    declared_convention = gates_doc.get("sharpe_convention") or {}
+    declared_id = str(declared_convention.get("id", ""))
+    if declared_id != SHARPE_CONVENTION_ID:
+        raise ValueError(
+            "promotion gate definition declares Sharpe convention "
+            f"'{declared_id}' but the implementation uses "
+            f"'{SHARPE_CONVENTION_ID}'; the two must agree"
+        )
+
     metric_values = {
         "paper_days": paper_days,
         "paper_sharpe": paper_sharpe,
@@ -574,11 +591,12 @@ def evaluate_go_no_go(
     failed_gate_names = [g.name for g in gate_evals if not g.passed]
 
     # Diagnostic only (drives no gate): the same trailing 63-session window
-    # scored with the report convention used by the validation artifacts and
-    # by the stored low_rolling_sharpe drift flag
-    # (mean(r)/std(r, ddof=1)*sqrt(252)).
+    # scored on the backtest-baseline scale (CAGR-based, rf 2%), i.e. the
+    # scale of the recorded backtest Sharpe 1.4178. The gate value itself
+    # uses the canonical convention, which is also the scale of the stored
+    # low_rolling_sharpe drift flag.
     trailing = list(state.cumulative_returns)[-63:]
-    rolling_sharpe_63d_report_convention = annualized_sharpe(trailing)
+    rolling_sharpe_63d_backtest_scale = backtest_sharpe_ratio(trailing)
 
     return GoNoGoResult(
         decision=decision,
@@ -614,7 +632,8 @@ def evaluate_go_no_go(
         psr_zone=psr_zone,
         failed_gates=failed_gate_names,
         decision_mapping=dict(decision_mapping),
-        rolling_sharpe_63d_report_convention=float(rolling_sharpe_63d_report_convention),
+        rolling_sharpe_63d_backtest_scale=float(rolling_sharpe_63d_backtest_scale),
+        sharpe_convention=SHARPE_CONVENTION_ID,
         gates_source=str(gates_doc.get("candidate_id", "")),
     )
 

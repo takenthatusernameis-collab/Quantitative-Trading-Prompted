@@ -137,3 +137,49 @@ the **code** and what the decision now is. Evidence: `research/reports/monitorin
   recomputed True; `python research/_tmp_cycle77_verify.py` → OVERALL: PASS; `python
   .github/scripts/test_kilo_supervisor_loop.py` → OK (10 tests).
 
+
+---
+
+**ADDENDUM (2026-10-19, Cycle 861): one Sharpe convention — the gate values change, the NO-GO does not.**
+The "Estimator discrepancy" note above is now resolved. Cycle 861 adopts a single documented convention
+(`arithmetic_annualized_rf0`: `mean(r) * 252 / (std(r, ddof=1) * sqrt(252))`, zero risk-free rate) for every
+promotion-gate, drift-flag and PSR quantity, because it is the formula of the live `low_rolling_sharpe` drift
+flag and the scale of every rolling Sharpe quoted in the validation artifacts. The implementation is
+`src/evaluation.sharpe.sharpe_ratio`; the declaration lives in `config/promotion_gates.yaml`
+(`sharpe_convention`) and the evaluation fails closed if the two disagree. The backtest research metrics keep
+the separate, named *backtest-baseline* scale (`src.evaluation.sharpe.backtest_sharpe_ratio`), which is the
+scale of the recorded backtest baseline 1.4178 and of the published backtest artifacts; it is not used in any
+gate, in the drift flag or in the PSR. **No threshold changed.**
+
+- **Current 449-session record (through 2026-10-16), `evaluation_deterministic: True`:**
+
+  | Gate | Value | Threshold | Result |
+  |---|---|---|---|
+  | `track_record_length` | 449 | ≥ 126 | PASS |
+  | `full_period_sharpe` | 1.748401 | ≥ 0.9 | PASS |
+  | `rolling_63d_sharpe` | **-0.211884** | ≥ 0.9 | **FAIL** |
+  | `max_drawdown` | -0.049857 | ≥ -0.15 | PASS |
+  | `rolling_63d_max_dd` | -0.038564 | ≥ -0.15 | PASS |
+  | `regime_flips` | 6 | ≥ 1 | PASS |
+  | `psr` | **0.684041** | ≥ 0.95 | **FAIL** |
+
+  `psr_zone: grey_zone`; `failed_gates: ['rolling_63d_sharpe', 'psr']`; **decision: NO-GO** — unchanged from
+  Cycle 860. The gate value `rolling_63d_sharpe = -0.21188351222842883` is now *identical* to the stored
+  `state.drift_flags.low_rolling_sharpe` flag, so the gate, the drift flag and the artifacts are one
+  measurement.
+- **Historical verdict flip (444-session record through 2026-10-09):** the rolling 63d gate flips from FAIL
+  (0.670178, backtest-baseline scale) to **PASS (0.935578, canonical)**; the record then fails only the PSR
+  gate (0.762425, grey zone) and the decision becomes **INCONCLUSIVE** (previously NO-GO). This is a
+  measurement fix, not new evidence: the record is still not promotable, and live deployment remains
+  unsupported on the current record.
+- **PSR:** the numerator (canonical) and the bootstrap distribution (canonical) now measure the same
+  statistic; the PSR is 0.684041 (SE 0.690150, empirical 0.741) instead of the mixed 0.625683. The target
+  1.4178 is a fixed external reference on the backtest-baseline scale and is not restated: if it carried the
+  paper series' own scale offset (+0.110392) the PSR would be 0.625165, i.e. the whole apparent change is the
+  scale of the target, not new evidence. Every variant stays in the grey zone, so no verdict changes.
+- **Verification:** `python -m pytest -q` → **61 passed** (54 + 7 new); `python research/go_no_go_evaluation.py`
+  → exit 0, `side_effect_free: True`, `evaluation_deterministic: True`; `python
+  research/drift_persistence_report.py` → persistence 5, stored == recomputed True; `python
+  research/_tmp_cycle77_verify.py` → OVERALL: PASS; `python .github/scripts/test_kilo_supervisor_loop.py` →
+  OK (10 tests); `python research/sharpe_convention_audit.py` reproduces every number above from the
+  committed state alone. Evidence: `research/reports/monitoring_cycle_861.md`.

@@ -3,13 +3,17 @@
 Provides common helpers: data loading, cost parameters, metric computation,
 and period splitting. All evaluation modules import from here to avoid
 duplicated logic and ensure consistent cost assumptions.
+
+The Sharpe ratio itself lives in :mod:`src.evaluation.sharpe`, which holds the
+repository's single canonical convention (used by the promotion gates, the
+drift flag and the PSR) and the separate backtest-baseline scale used by the
+backtest research artifacts. It is re-exported here for convenience.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import yaml
 
@@ -19,7 +23,34 @@ from src.backtest.engine import (
     get_risk_free_rate,
 )
 from src.data.yfinance_fetcher import fetch_universe
+from src.evaluation.sharpe import (
+    BACKTEST_SHARPE_SCALE_FORMULA,
+    BACKTEST_SHARPE_SCALE_ID,
+    SHARPE_CONVENTION_FORMULA,
+    SHARPE_CONVENTION_ID,
+    SHARPE_CONVENTION_RF_ANNUAL,
+    backtest_sharpe_ratio,
+    sharpe_ratio,
+)
 from src.features.momentum import build_weights
+
+__all__ = [
+    "BACKTEST_SHARPE_SCALE_FORMULA",
+    "BACKTEST_SHARPE_SCALE_ID",
+    "SHARPE_CONVENTION_FORMULA",
+    "SHARPE_CONVENTION_ID",
+    "SHARPE_CONVENTION_RF_ANNUAL",
+    "annualize_return",
+    "backtest_sharpe_ratio",
+    "compute_running_drawdown",
+    "fetch_close_prices",
+    "load_settings",
+    "max_drawdown",
+    "period_metrics",
+    "run_backtest_for_config",
+    "sharpe_ratio",
+    "split_by_periods",
+]
 
 
 def _project_root() -> Path:
@@ -115,16 +146,6 @@ def annualize_return(returns: pd.Series, periods: int = 252) -> float:
     if len(returns) == 0:
         return 0.0
     return float((1 + returns).prod() ** (periods / len(returns)) - 1)
-
-
-def sharpe_ratio(returns: pd.Series, rf_annual: float = 0.02) -> float:
-    if len(returns) < 2:
-        return 0.0
-    ann_vol = returns.std() * np.sqrt(252)
-    if ann_vol == 0:
-        return 0.0
-    ann_ret = annualize_return(returns)
-    return float((ann_ret - rf_annual) / ann_vol)
 
 
 def max_drawdown(returns: pd.Series) -> float:

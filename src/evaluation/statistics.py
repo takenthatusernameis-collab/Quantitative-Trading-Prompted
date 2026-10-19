@@ -18,12 +18,11 @@ import pandas as pd
 from arch.bootstrap import MovingBlockBootstrap
 from scipy import stats
 
+from src.evaluation.sharpe import backtest_sharpe_ratio, sharpe_ratio
 from src.evaluation.utils import (
     annualize_return,
     get_cost_params,
-    get_risk_free_rate,
     max_drawdown,
-    sharpe_ratio,
 )
 from src.features.momentum import build_weights
 
@@ -57,26 +56,21 @@ def block_bootstrap_sharpe(
 
 
 def _safe_sharpe(sample: np.ndarray) -> float | None:
-    """Compute annualized Sharpe from a 1-D return array, guarding against overflow."""
-    if len(sample) < 2:
+    """Canonical Sharpe of a 1-D return array, or None if it is degenerate.
+
+    Uses the repository's single Sharpe convention
+    (:func:`src.evaluation.sharpe.sharpe_ratio`), so the bootstrap
+    distribution and the PSR numerator measure the same statistic. The
+    convention compounds no wealth path, so it cannot overflow on a
+    resample with a non-positive growth factor.
+    """
+    sample = np.asarray(sample, dtype=float).ravel()
+    if sample.size < 2:
         return None
-    sample = np.asarray(sample, dtype=float)
     std = sample.std(ddof=1)
     if std == 0 or np.isnan(std) or std < 1e-12:
         return None
-    # Use log-mean-exp trick to avoid overflow on product
-    log_ret = np.log(np.clip(1.0 + sample, 1e-10, None))
-    mean_log = log_ret.mean()
-    georGrowth = math.exp(mean_log * 252 / len(sample))
-    if not np.isfinite(georGrowth):
-        return None
-    ann_vol = std * math.sqrt(252)
-    if ann_vol < 1e-12:
-        return None
-    rf_daily = get_risk_free_rate() / 252.0
-    excess_daily = sample.mean() - rf_daily
-    ann_excess = excess_daily * 252
-    sharpe = float(ann_excess / ann_vol)
+    sharpe = sharpe_ratio(sample)
     if not np.isfinite(sharpe):
         return None
     return sharpe
@@ -93,6 +87,19 @@ def compute_psr(
 
     Uses the block bootstrap to estimate the Sharpe ratio standard error,
     then computes PSR = Φ((SR − SR_target) / SE) and an empirical PSR.
+
+    The observed Sharpe (the numerator) and every bootstrap resample (the
+    distribution behind the standard error) are computed with the *same*
+    estimator, the repository's canonical Sharpe convention
+    (:func:`src.evaluation.sharpe.sharpe_ratio`). Before Cycle 861 the
+    numerator used the geometric, risk-free-adjusted estimator while the
+    bootstrap used an arithmetic one, so the PSR mixed two statistics.
+
+    Note that *sr_target* is an external reference expressed on the
+    backtest-baseline scale (CAGR-based, rf 2%); it is not restated here.
+    See ``config/promotion_gates.yaml`` (``sharpe_convention``) and
+    ``research/reports/monitoring_cycle_861.md`` for the quantified effect of
+    that residual scale mismatch.
     """
     sharpes = block_bootstrap_sharpe(returns, n_bootstrap, block_size, seed=seed)
     se = float(np.std(sharpes, ddof=1)) if len(sharpes) > 1 else 0.0
@@ -185,6 +192,20 @@ def _evaluate_config(
 
     Extracted so the baseline reference point can be evaluated with the same
     code path as the perturbations (see parameter_perturbation).
+
+    Returns
+    -------
+    dict
+        The per-period Sharpe ratios of the configuration.
+
+    Notes
+    -----
+    The per-period Sharpe ratios are computed on the *backtest-baseline*
+    scale (:func:`src.evaluation.sharpe.backtest_sharpe_ratio`), because the
+    parameter-plateau, PBO and FDR analyses are compared against the
+    recorded backtest baseline (Sharpe 1.4178) and against the published
+    backtest artifacts. Promotion gates, the drift flag and the PSR use the
+    canonical convention instead.
     """
     weights = build_weights(close, lookback=lookback, skip=skip, top_fraction=top_fraction)
     common = close.index.intersection(weights.index)
@@ -207,9 +228,9 @@ def _evaluate_config(
         "lookback": lookback,
         "skip": skip,
         "top_fraction": top_fraction,
-        "train_sharpe": sharpe_ratio(tr_ret) if len(tr_ret) > 1 else np.nan,
-        "val_sharpe": sharpe_ratio(va_ret) if len(va_ret) > 1 else np.nan,
-        "test_sharpe": sharpe_ratio(te_ret) if len(te_ret) > 1 else np.nan,
+        "train_sharpe": backtest_sharpe_ratio(tr_ret) if len(tr_ret) > 1 else np.nan,
+        "val_sharpe": backtest_sharpe_ratio(va_ret) if len(va_ret) > 1 else np.nan,
+        "test_sharpe": backtest_sharpe_ratio(te_ret) if len(te_ret) > 1 else np.nan,
         "test_ann_return": annualize_return(te_ret) if len(te_ret) > 0 else np.nan,
         "test_max_dd": max_drawdown(te_ret) if len(te_ret) > 0 else np.nan,
     }

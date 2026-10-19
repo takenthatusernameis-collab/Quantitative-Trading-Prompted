@@ -23,6 +23,7 @@ from src.evaluation.drift import (
     DEFAULT_SHARPE_THRESHOLD,
     sharpe_persistence,
 )
+from src.evaluation.sharpe import sharpe_ratio
 from src.evaluation.utils import compute_running_drawdown
 from src.simulation.engine import (
     SimulationConfig,
@@ -288,12 +289,11 @@ def run_daily_paper_update(
     else:
         recent_returns = returns_arr
 
-    if len(recent_returns) > 1:
-        recent_vol = np.std(recent_returns, ddof=1) * np.sqrt(252)
-        recent_ann_ret = np.mean(recent_returns) * 252
-        rolling_sharpe = recent_ann_ret / recent_vol if recent_vol > 0 else 0.0
-    else:
-        rolling_sharpe = 0.0
+    # Rolling 63-day Sharpe, computed with the repository's canonical Sharpe
+    # convention (src/evaluation/sharpe.py). The live drift flag, the
+    # offline recomputation (research/drift_persistence_report.py) and the
+    # promotion gate therefore report exactly the same number.
+    rolling_sharpe = sharpe_ratio(recent_returns)
 
     # Persistence of the low-Sharpe condition: the number of consecutive
     # sessions for which the rolling Sharpe stayed below the alert threshold.

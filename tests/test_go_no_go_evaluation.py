@@ -4,12 +4,14 @@ Invariants covered:
 
 * the tool runs standalone from the repository root (no ``PYTHONPATH`` help),
 * running it never mutates the committed state or the raw cache,
-* repeated evaluations of the same state reproduce the same PSR numbers,
+* repeated evaluations of the same record reproduce the same PSR numbers,
   because the Probabilistic Sharpe Ratio bootstrap is seeded,
 * the promotion-gate table in ``config/promotion_gates.yaml`` still carries the
   thresholds documented in the validation artifacts, and
 * the code-level decision is gate-complete: a failing gate can never produce
-  "GO", including when the PSR itself clears the GO threshold.
+  "GO", including when the PSR itself clears the GO threshold, and
+* one Sharpe convention is used by the promotion gates, the drift flag and
+  both sides of the PSR (Cycle 861).
 """
 
 import hashlib
@@ -20,11 +22,23 @@ from datetime import date, timedelta
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from src.evaluation import statistics as statistics_module  # noqa: E402
+from src.evaluation.drift import sharpe_persistence  # noqa: E402
+from src.evaluation.sharpe import (  # noqa: E402
+    SHARPE_CONVENTION_FORMULA,
+    SHARPE_CONVENTION_ID,
+    backtest_sharpe_ratio,
+    sharpe_ratio,
+)
+from src.evaluation.statistics import compute_psr  # noqa: E402
+from src.simulation import evaluation as evaluation_module  # noqa: E402
 from src.simulation.evaluation import (  # noqa: E402
     DEFAULT_PSR_SEED,
     GateEvaluation,
@@ -224,11 +238,18 @@ def test_gate_evaluation_fails_closed_on_unknown_metric():
 
 def test_psr_above_go_threshold_with_failing_rolling_sharpe_cannot_yield_go():
     """AC4: a record whose PSR clears the GO threshold but whose rolling 63d
-    Sharpe is below 0.9 must never be promoted."""
+    Sharpe is below 0.9 must never be promoted.
+
+    The synthetic series was re-specified in Cycle 861: the PSR now compares
+    two numbers on the same (canonical) scale, so the previous series no
+    longer cleared the PSR GO threshold and the premise of the test would
+    have been void. The series keeps a strong first half and a weak trailing
+    63-day window, so the rolling gate fails while the PSR gate passes.
+    """
     rng = np.random.default_rng(20240101)
     n = 200
-    early = 0.02 + rng.normal(0.0, 0.002, size=n - 63)
-    trailing = np.array([0.02 if i % 2 == 0 else -0.0198 for i in range(63)])
+    early = 0.003 + rng.normal(0.0, 0.002, size=n - 63)
+    trailing = np.array([0.005 if i % 2 == 0 else -0.005 for i in range(63)])
     returns = np.concatenate([early, trailing])
 
     config = _paper_config()
@@ -357,3 +378,152 @@ def test_committed_record_is_not_promoted():
     assert result.decision != "GO"
     assert result.failed_gates
     assert result.gates
+
+
+# ----------------------------------------------------------------------
+# Cycle 861: one documented Sharpe convention
+# ----------------------------------------------------------------------
+
+# The rolling 63d Sharpe series quoted in
+# research/reports/paper_trading_validation_002.md and reproduced in the
+# monitoring artifacts for the last five sessions of the committed record.
+ARTIFACT_ROLLING_SERIES_TAIL = {
+    "2026-10-12": 0.4892,
+    "2026-10-13": 0.3669,
+    "2026-10-14": 0.1133,
+    "2026-10-15": 0.3249,
+    "2026-10-16": -0.2119,
+}
+
+
+def _truncated_state(n_sessions: int) -> PaperTradingState:
+    """The committed state truncated to its first *n_sessions* sessions."""
+    state = PaperTradingState.from_yaml(STATE)
+    state.cumulative_returns = list(state.cumulative_returns)[:n_sessions]
+    state.cumulative_dates = list(state.cumulative_dates)[:n_sessions]
+    state.cumulative_pnl = list(state.cumulative_pnl)[:n_sessions]
+    state.run_history = list(state.run_history)[:n_sessions]
+    return state
+
+
+def test_documented_convention_matches_the_implementation():
+    """AC1: the gate table declares the convention the code implements."""
+    doc = _gates_doc()
+    convention = doc["sharpe_convention"]
+    assert convention["id"] == SHARPE_CONVENTION_ID
+    assert convention["formula"] == SHARPE_CONVENTION_FORMULA
+    assert float(convention["rf_annual"]) == 0.0
+    assert int(convention["periods_per_year"]) == 252
+    assert convention["implementation"] == "src.evaluation.sharpe.sharpe_ratio"
+    # the backtest-baseline scale stays named and confined
+    backtest_scale = convention["backtest_baseline_scale"]
+    assert backtest_scale["id"] == "cagr_annualized_rf2"
+    assert backtest_scale["implementation"] == "src.evaluation.sharpe.backtest_sharpe_ratio"
+
+
+def test_gate_rolling_sharpe_equals_the_stored_drift_flag_value():
+    """AC2: the promotion gate and the stored drift flag are the same
+    measurement, so they must report the same number."""
+    state = PaperTradingState.from_yaml(STATE)
+    config = _paper_config()
+    result = evaluate_go_no_go(
+        state, config, go_no_go_config=_go_no_go_config(config)
+    )
+    gate = next(g for g in result.gates if g.name == "rolling_63d_sharpe")
+    stored = float(state.drift_flags["low_rolling_sharpe"]["value"])
+    assert gate.value == pytest.approx(stored, abs=1e-12)
+    assert gate.value == pytest.approx(-0.21188351222842883, abs=1e-12)
+    # the gate value is on the canonical scale, not on the backtest scale
+    assert gate.value != pytest.approx(
+        backtest_sharpe_ratio(list(state.cumulative_returns)[-63:]), abs=1e-6
+    )
+
+
+def test_rolling_sharpe_series_reproduces_the_validation_artifact_values():
+    """AC2: the gate's rolling Sharpe series reproduces the values quoted in
+    the validation artifacts."""
+    state = PaperTradingState.from_yaml(STATE)
+    persistence = sharpe_persistence(
+        state.cumulative_dates, state.cumulative_returns
+    )
+    tail = {
+        date: round(value, 4)
+        for date, value in persistence["series"][-5:]
+        if value is not None
+    }
+    assert tail == ARTIFACT_ROLLING_SERIES_TAIL
+
+
+def test_psr_numerator_uses_the_canonical_estimator():
+    """AC3: the PSR numerator is the canonical Sharpe of the series."""
+    returns = pd.Series(
+        [0.004, -0.002, 0.006, 0.001, -0.003, 0.005, -0.001, 0.002, 0.003, -0.004]
+    )
+    psr = compute_psr(returns, sr_target=1.4178, n_bootstrap=50, block_size=3, seed=3)
+    assert psr["sharpe_observed"] == pytest.approx(sharpe_ratio(returns), abs=1e-12)
+    # the canonical scale and the backtest-baseline scale are different
+    # measurements; the numerator must not silently use the latter
+    assert psr["sharpe_observed"] != pytest.approx(
+        backtest_sharpe_ratio(returns), abs=1e-3
+    )
+
+
+def test_psr_bootstrap_uses_the_canonical_estimator(monkeypatch):
+    """AC3: every bootstrap resample is scored with the same estimator as
+    the PSR numerator."""
+    sample = np.array([0.004, -0.003, 0.006, -0.001, 0.002, 0.005, -0.004, 0.001])
+
+    class _FixedResample:
+        """Stand-in for MovingBlockBootstrap that yields one known resample."""
+
+        def __init__(self, block_length, x, seed=None):
+            self._x = x
+
+        def bootstrap(self, n_samples):
+            yield ((np.array(sample),), None)
+
+    monkeypatch.setattr(
+        statistics_module, "MovingBlockBootstrap", _FixedResample
+    )
+    values = statistics_module.block_bootstrap_sharpe(
+        pd.Series(sample), n_samples=1, block_size=2, seed=11
+    )
+    assert list(values) == [pytest.approx(sharpe_ratio(sample), abs=1e-12)]
+
+
+def test_evaluation_fails_closed_when_the_declared_convention_differs(
+    tmp_path, monkeypatch
+):
+    """AC1: a gate table that declares a different convention must not be
+    evaluated silently."""
+    doc = _gates_doc()
+    doc["sharpe_convention"]["id"] = "cagr_annualized_rf2"
+    path = tmp_path / "promotion_gates.yaml"
+    with open(path, "w") as fh:
+        yaml.safe_dump(doc, fh)
+    monkeypatch.setattr(evaluation_module, "_PROMOTION_GATES_PATH", path)
+
+    config = _paper_config()
+    with pytest.raises(ValueError, match="Sharpe convention"):
+        evaluate_go_no_go(
+            PaperTradingState.from_yaml(STATE),
+            config,
+            go_no_go_config=_go_no_go_config(config),
+        )
+
+
+def test_444_session_record_verdict_under_the_canonical_convention():
+    """AC4: the convention change flips the 444-session rolling gate from
+    FAIL (0.670178) to PASS (0.935578); the record then fails only the PSR
+    gate, in the grey zone, so the decision is INCONCLUSIVE - never GO."""
+    config = _paper_config()
+    result = evaluate_go_no_go(
+        _truncated_state(444), config, go_no_go_config=_go_no_go_config(config)
+    )
+    gates = {g.name: g for g in result.gates}
+    assert gates["rolling_63d_sharpe"].value == pytest.approx(0.935578, abs=1e-6)
+    assert gates["rolling_63d_sharpe"].passed is True
+    assert result.failed_gates == ["psr"]
+    assert result.psr_zone == "grey_zone"
+    assert result.decision == "INCONCLUSIVE"
+    assert result.decision != "GO"

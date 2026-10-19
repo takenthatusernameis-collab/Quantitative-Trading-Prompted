@@ -82,13 +82,14 @@ def main() -> int:
         == [(g.name, g.value, g.passed) for g in result.gates]
     )
 
-    # Rolling 63d Sharpe values: the code-level estimator that drives the
-    # promotion gate, and the report convention used by the validation
-    # artifacts and the stored drift flag (diagnostic only).
+    # Rolling 63d Sharpe values: the canonical estimator that drives the
+    # promotion gate (the same estimator as the stored low_rolling_sharpe
+    # drift flag), and the backtest-baseline scale used by the research
+    # artifacts (diagnostic only).
     rolling_sharpe_63d = next(
         (g.value for g in result.gates if g.metric == "rolling_sharpe_63d"), 0.0
     )
-    rolling_sharpe_63d_report_convention = result.rolling_sharpe_63d_report_convention
+    rolling_sharpe_63d_backtest_scale = result.rolling_sharpe_63d_backtest_scale
 
     # Output summary
     print("=== Go/No-Go Evaluation (read-only) ===")
@@ -97,8 +98,12 @@ def main() -> int:
     print(f"state_path: {state_path}")
     print(f"paper_days: {result.paper_days}")
     print(f"paper_sharpe: {result.paper_sharpe:.6f}")
+    print(f"sharpe_convention: {result.sharpe_convention}")
     print(f"rolling_sharpe_63d (gate estimator): {rolling_sharpe_63d:.6f}")
-    print(f"rolling_sharpe_63d (report convention, diagnostic): {rolling_sharpe_63d_report_convention:.6f}")
+    print(
+        f"rolling_sharpe_63d (backtest-baseline scale, diagnostic): "
+        f"{rolling_sharpe_63d_backtest_scale:.6f}"
+    )
     print(f"paper_ann_return: {result.paper_ann_return:.6f}")
     print(f"paper_volatility: {result.paper_volatility:.6f}")
     print(f"paper_sortino: {result.paper_sortino:.6f}")

@@ -259,3 +259,13 @@ for i in range(1, len(regimes)):
 - **Risk State:** `data/processed/paper_trading/risk_state_YYYYMMDD.parquet` (444 files)
 - **Rolling Report:** `research/reports/paper_trading_rolling.md`
 - **This Report:** `research/reports/paper_trading_validation_002.md`
+---
+
+**ADDENDUM (2026-10-19, Cycle 861): the Sharpe scales used in this report, and the 444-day verdict under the single repository convention.** This report quotes two different Sharpe scales, and Cycle 861 consolidated the promotion path onto one of them (`arithmetic_annualized_rf0`: `mean(r) * 252 / (std(r, ddof=1) * sqrt(252))`, zero risk-free rate — the formula of the live drift flag):
+
+- **"Rolling 63d Sharpe (final) = 0.9356"** is already on the canonical convention and is reproduced *exactly* by the promotion gate (0.935578 for the 444-session record) and by the rolling series quoted elsewhere in the repository (…, 0.4892, 0.3669, 0.1133, 0.3249, -0.2119 for 2026-10-12 → 2026-10-16).
+- **"Net-of-Cost Sharpe (444d) = 2.0548"** is on a third scale: annualised return / annualised volatility with no risk-free subtraction (`research/run_paper_trading_replay.py`). Recomputing that scale on the committed state gives 2.066310 for the same 444-day window (this report predates the last state refresh: it quotes a 37.11% total return against 37.3764% in the committed state). On the canonical convention the same 444-day window is **1.934100**, and the 449-session record through 2026-10-16 is **1.748401**. Both are above the 0.9 gate, so no gate verdict changes.
+- **Verdict under the single convention (code-level, gate-complete):** the 444-session record passes six of seven gates and fails only `psr` (0.762425, grey zone) → **INCONCLUSIVE**, not promotable. The current 449-session record fails `rolling_63d_sharpe` (-0.211884) and `psr` (0.684041) → **NO-GO**. **Live deployment remains unsupported.**
+- **The PSR target 1.4178** is the recorded backtest baseline on the backtest-baseline (CAGR, rf 2%) scale and is kept as a fixed external reference; it is not restated on the canonical scale in this cycle. The effect is quantified in `research/reports/monitoring_cycle_861.md` (§3.3) and does not change any verdict.
+
+No number in the body of this report was edited. Evidence: `research/reports/monitoring_cycle_861.md`; dated addenda in `research/reports/go_no_go_evaluation_002.md` and `research/reports/deployment_dossier_001.md`.

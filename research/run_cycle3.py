@@ -43,9 +43,9 @@ from src.evaluation.statistics import (
 )
 from src.evaluation.utils import (
     annualize_return,
+    backtest_sharpe_ratio,
     fetch_close_prices,
     max_drawdown,
-    sharpe_ratio,
 )
 from src.evaluation.walkforward import (
     generate_walkforward_splits,
@@ -119,9 +119,9 @@ def eval_config(close: pd.DataFrame, lookback: int, skip: int, top_fraction: flo
         "train": _metrics(net_ret[tr_m], weights_a[tr_m]),
         "validation": _metrics(net_ret[va_m], weights_a[va_m]),
         "test": _metrics(net_ret[te_m], weights_a[te_m]),
-        "train_sharpe": sharpe_ratio(net_ret[tr_m]) if tr_m.sum() > 1 else np.nan,
-        "val_sharpe": sharpe_ratio(net_ret[va_m]) if va_m.sum() > 1 else np.nan,
-        "test_sharpe": sharpe_ratio(net_ret[te_m]) if te_m.sum() > 1 else np.nan,
+        "train_sharpe": backtest_sharpe_ratio(net_ret[tr_m]) if tr_m.sum() > 1 else np.nan,
+        "val_sharpe": backtest_sharpe_ratio(net_ret[va_m]) if va_m.sum() > 1 else np.nan,
+        "test_sharpe": backtest_sharpe_ratio(net_ret[te_m]) if te_m.sum() > 1 else np.nan,
         "test_ann_return": annualize_return(net_ret[te_m]) if te_m.sum() > 0 else np.nan,
         "test_max_dd": max_drawdown(net_ret[te_m]) if te_m.sum() > 0 else np.nan,
         "test_trades": _metrics(net_ret[te_m], weights_a[te_m]).get("trade_count", 0),
@@ -553,8 +553,8 @@ def _build_pbo_grid(close: pd.DataFrame) -> pd.DataFrame:
                 is_mask = r["net_ret"].index <= val_end_dt
                 oos_mask = r["net_ret"].index > val_end_dt
 
-                train_sharpe = sharpe_ratio(r["net_ret"][is_mask]) if is_mask.sum() > 1 else np.nan
-                test_sharpe = sharpe_ratio(r["net_ret"][oos_mask]) if oos_mask.sum() > 1 else np.nan
+                train_sharpe = backtest_sharpe_ratio(r["net_ret"][is_mask]) if is_mask.sum() > 1 else np.nan
+                test_sharpe = backtest_sharpe_ratio(r["net_ret"][oos_mask]) if oos_mask.sum() > 1 else np.nan
 
                 rows.append({"train_sharpe": train_sharpe, "test_sharpe": test_sharpe})
 

@@ -14,13 +14,13 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 
+from src.evaluation.sharpe import backtest_sharpe_ratio
 from src.evaluation.utils import (
     annualize_return,
     fetch_close_prices,
     get_cost_params,
     get_risk_free_rate,
     max_drawdown,
-    sharpe_ratio,
 )
 from src.features.momentum import build_weights
 
@@ -202,7 +202,7 @@ def full_benchmark_comparison(
             r = ret[mask]
             if len(r) > 0:
                 bench_stats[f"{name}_{pname}"] = {
-                    "sharpe": sharpe_ratio(r),
+                    "sharpe": backtest_sharpe_ratio(r),
                     "ann_return": annualize_return(r),
                     "max_dd": max_drawdown(r),
                     "n_days": len(r),

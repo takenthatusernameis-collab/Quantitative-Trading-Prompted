@@ -51,9 +51,9 @@ from src.backtest.engine import (
 from src.evaluation.statistics import compute_dsr, compute_pbo, compute_psr
 from src.evaluation.utils import (
     annualize_return,
+    backtest_sharpe_ratio,
     fetch_close_prices,
     max_drawdown,
-    sharpe_ratio,
 )
 from src.evaluation.walkforward import (
     generate_walkforward_splits,
@@ -645,11 +645,11 @@ def _benchmark_comparison(
     return {
         "name": name,
         "bench_ann_return": annualize_return(bench),
-        "bench_sharpe": sharpe_ratio(bench, RF_ANNUAL),
+        "bench_sharpe": backtest_sharpe_ratio(bench, RF_ANNUAL),
         "bench_max_dd": max_drawdown(bench),
         "excess_ann_return": float(ann_excess),
         "excess_sharpe": float(excess_sharpe),
-        "sharpe_difference": float(sharpe_ratio(cs, RF_ANNUAL) - sharpe_ratio(bench, RF_ANNUAL)),
+        "sharpe_difference": float(backtest_sharpe_ratio(cs, RF_ANNUAL) - backtest_sharpe_ratio(bench, RF_ANNUAL)),
         "correlation": float(cs.corr(bench)),
         "relative_max_dd": rel_dd,
         "n_days": len(aligned),
