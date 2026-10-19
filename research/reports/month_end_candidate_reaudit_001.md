@@ -13,11 +13,11 @@ published results.
 | Candidate | Published (legacy) test Sharpe | Config-faithful test Sharpe | Published WF mean OOS Sharpe | Config-faithful WF mean OOS Sharpe | Verdict |
 |---|---|---|---|---|---|
 | `csmomentum_001` | 0.4101 | 0.4878 | 0.6868 | 0.6975 | **verdict unchanged** |
-| `macroregime_001` | 0.2950 (published artifact) / 0.3371 (cache-reproducible) | 0.1705 (cache-reproducible) | 0.4331 (published artifact) / 0.4628 (cache-reproducible) | 0.2838 (cache-reproducible) | **verdict unchanged** |
+| `macroregime_001` | 0.2950 (published artifact) / 0.2950 (cache-reproducible) | 0.1428 (cache-reproducible) | 0.4331 (published artifact) / 0.4331 (cache-reproducible) | 0.2636 (cache-reproducible) | **verdict unchanged** |
 
 **Headline:** the schedule defect moved the *numbers* materially — the walk-forward mean OOS
 Sharpe changes by +0.0107 for
-`csmomentum_001` and by -0.1790
+`csmomentum_001` and by -0.1695
 for `macroregime_001` (cache-reproducible paths) — but it did **not** move either candidate across
 its own pre-registered gates: both were rejected before and both are rejected after. The published
 rejections are robust to the defect.
@@ -214,15 +214,15 @@ published numbers exactly:
 | `total_test_trades` | 137 | 137.000000 | 0.000e+00 | MATCH |
 
 **Data gap.** The committed `^VIX` cache starts
-**2025-01-02**, i.e. **5063 of
+**2004-11-18**, i.e. **0 of
 5507 sessions** of the candidate's sample have no VIX observation
-(444 of 5507 sessions are covered). The published
+(5507 of 5507 sessions are covered). The published
 run had the full VIX history, so the VIX regime gate was active before 2025; the cache-reproducible
 path cannot activate it and therefore differs from the published path by up to
-0.125000 in weight (published test Sharpe
+0.000000 in weight (published test Sharpe
 0.2950 vs cache-reproducible
-0.3371; published WF mean OOS Sharpe
-0.4331 vs cache-reproducible 0.4628).
+0.2950; published WF mean OOS Sharpe
+0.4331 vs cache-reproducible 0.4331).
 
 **Consequence for this cycle.** The config-faithful path *with the published VIX gate* is **not
 computable from the committed cache**. The deviation below is therefore measured on the
@@ -236,28 +236,28 @@ so the *published* result is not in doubt; only the *config-faithful* counterpar
 | Metric | Legacy (calendar) | Config-faithful | Delta |
 |---|---|---|---|
 | **full sample** | | | |
-| sharpe_canonical | 0.7547 | 0.7109 | -0.0438 |
-| sharpe_backtest_scale | 0.5270 | 0.4806 | -0.0464 |
-| annualized_return | 0.0718 | 0.0674 | -0.0045 |
-| annualized_volatility | 0.0984 | 0.0986 | 0.0002 |
-| max_drawdown | -0.1794 | -0.2227 | -0.0434 |
-| annualized_turnover | 2.66 | 3.42 | 0.75 |
-| trade_days | 127 | 180 | 53 |
-| avg_exposure | 0.6391 | 0.6471 | 0.0080 |
-| profit_factor | 1.1630 | 1.1522 | -0.0108 |
-| cost_drag_total | 0.0175 | 0.0224 | 0.0049 |
+| sharpe_canonical | 0.7365 | 0.7039 | -0.0326 |
+| sharpe_backtest_scale | 0.5081 | 0.4677 | -0.0403 |
+| annualized_return | 0.0701 | 0.0647 | -0.0054 |
+| annualized_volatility | 0.0987 | 0.0956 | -0.0031 |
+| max_drawdown | -0.1807 | -0.2240 | -0.0433 |
+| annualized_turnover | 2.67 | 3.53 | 0.86 |
+| trade_days | 127 | 181 | 54 |
+| avg_exposure | 0.6401 | 0.6421 | 0.0020 |
+| profit_factor | 1.1589 | 1.1482 | -0.0106 |
+| cost_drag_total | 0.0175 | 0.0231 | 0.0056 |
 | sessions | 5507 | 5507 | 0 |
 | **test sample** | | | |
-| sharpe_canonical | 0.5630 | 0.4010 | -0.1620 |
-| sharpe_backtest_scale | 0.3371 | 0.1705 | -0.1666 |
-| annualized_return | 0.0562 | 0.0387 | -0.0175 |
-| annualized_volatility | 0.1075 | 0.1099 | 0.0024 |
-| max_drawdown | -0.1794 | -0.2227 | -0.0434 |
-| annualized_turnover | 3.11 | 4.03 | 0.92 |
-| trade_days | 58 | 83 | 25 |
-| avg_exposure | 0.6735 | 0.6851 | 0.0116 |
-| profit_factor | 1.1174 | 1.0819 | -0.0355 |
-| cost_drag_total | 0.0082 | 0.0106 | 0.0024 |
+| sharpe_canonical | 0.5222 | 0.3823 | -0.1398 |
+| sharpe_backtest_scale | 0.2950 | 0.1428 | -0.1523 |
+| annualized_return | 0.0519 | 0.0348 | -0.0172 |
+| annualized_volatility | 0.1082 | 0.1034 | -0.0048 |
+| max_drawdown | -0.1807 | -0.2240 | -0.0433 |
+| annualized_turnover | 3.13 | 4.22 | 1.09 |
+| trade_days | 58 | 84 | 26 |
+| avg_exposure | 0.6758 | 0.6735 | -0.0023 |
+| profit_factor | 1.1085 | 1.0756 | -0.0329 |
+| cost_drag_total | 0.0082 | 0.0111 | 0.0029 |
 | sessions | 2205 | 2205 | 0 |
 
 ### 3.3 Walk-forward (24 folds)
@@ -265,26 +265,26 @@ so the *published* result is not in doubt; only the *config-faithful* counterpar
 | Metric | Legacy (calendar) | Config-faithful | Delta |
 |---|---|---|---|
 | folds | 24 | 24 | 0 |
-| mean OOS Sharpe (backtest scale) | 0.4628 | 0.2838 | -0.1790 |
-| mean OOS Sharpe (canonical) | 0.6605 | 0.4762 | -0.1844 |
-| median OOS Sharpe | 0.5275 | 0.5022 | -0.0252 |
-| % positive folds | 0.7500 | 0.6250 | -0.1250 |
-| pooled OOS trades | 137 | 191 | 54 |
-| std OOS Sharpe | 0.9693 | 1.1155 | 0.1462 |
+| mean OOS Sharpe (backtest scale) | 0.4331 | 0.2636 | -0.1695 |
+| mean OOS Sharpe (canonical) | 0.6327 | 0.4608 | -0.1719 |
+| median OOS Sharpe | 0.4950 | 0.5023 | 0.0073 |
+| % positive folds | 0.7500 | 0.6667 | -0.0833 |
+| pooled OOS trades | 137 | 193 | 56 |
+| std OOS Sharpe | 0.9609 | 1.1055 | 0.1446 |
 
 ### 3.4 Gates
 
 | Gate | Threshold | Legacy (cache) | Config-faithful (cache) | Status |
 |---|---|---|---|---|
-| 1. WF mean OOS Sharpe | >= 0.9 | 0.4628 | 0.2838 | FAIL in both |
-| 2. Positive fold rate | >= 50% | 75.0% | 62.5% | PASS in both |
-| 3. Pooled OOS trades | > 100 | 137 | 191 | PASS in both |
+| 1. WF mean OOS Sharpe | >= 0.9 | 0.4331 | 0.2636 | FAIL in both |
+| 2. Positive fold rate | >= 50% | 75.0% | 66.7% | PASS in both |
+| 3. Pooled OOS trades | > 100 | 137 | 193 | PASS in both |
 
 Pre-registered falsification condition: **met in both paths**. Verdict:
 **Rejected/Failed** (legacy) and **Rejected/Failed** (config-faithful) →
 **verdict unchanged**. The gate-1 margin on the config-faithful path is
-0.6162 Sharpe,
-which is 3.4x
+0.6364 Sharpe,
+which is 3.8x
 the measured schedule effect, so the verdict is not sensitive to the missing VIX history.
 
 ## 4. What the schedule defect actually did
@@ -292,10 +292,10 @@ the measured schedule effect, so the verdict is not sensitive to the missing VIX
 | | `csmomentum_001` | `macroregime_001` |
 |---|---|---|
 | Months with no rebalance at all (legacy) | 122 of 406 (30.0%) | 77 of 264 (29.2%) |
-| Test-period trade days (legacy → faithful) | 62 → 77 | 58 → 83 |
-| Test-period annualized turnover (legacy → faithful) | 2.06x → 2.47x | 3.11x → 4.03x |
-| Test-period Sharpe (legacy → faithful) | 0.4101 → 0.4878 | 0.3371 → 0.1705 |
-| WF mean OOS Sharpe (legacy → faithful) | 0.6868 → 0.6975 | 0.4628 → 0.2838 |
+| Test-period trade days (legacy → faithful) | 62 → 77 | 58 → 84 |
+| Test-period annualized turnover (legacy → faithful) | 2.06x → 2.47x | 3.13x → 4.22x |
+| Test-period Sharpe (legacy → faithful) | 0.4101 → 0.4878 | 0.2950 → 0.1428 |
+| WF mean OOS Sharpe (legacy → faithful) | 0.6868 → 0.6975 | 0.4331 → 0.2636 |
 
 The defect is a **timing** defect, not a cost defect in the sense of a wrong cost model: it made the
 strategy hold a stale selection for a whole month in roughly a quarter to a third of all months and
@@ -327,7 +327,7 @@ This cycle's conclusions are wrong if any of the following holds:
 ## 6. Limitations
 
 1. The `macroregime_001` config-faithful path is **not computable with the published VIX gate**:
-   the committed `^VIX` cache starts 2025-01-02. The
+   the committed `^VIX` cache starts 2004-11-18. The
    deviation is measured on cache-reproducible paths and the missing input is quantified; the
    published result itself is reproduced from the committed artifact.
 2. `csmomentum_001` has **two** published records with different numbers; this report does not
@@ -362,9 +362,9 @@ This cycle's conclusions are wrong if any of the following holds:
 | `macroregime_legacy_reproduces_published_metrics` | PASS | the committed legacy weights artifact reproduces the test-period metrics of research/experiments/macroregime_baseline_wf_001.md exactly |
 | `macroregime_legacy_reproduces_published_walkforward` | PASS | the committed legacy weights artifact reproduces the walk-forward block of research/experiments/macroregime_baseline_wf_001.md and of research/experiments/macroregime_001_experiment_002.md (folds 24, mean OOS Sharpe 0.4331, pooled trades 137). |
 | `macroregime_001_experiment_002_restates_the_same_numbers` | PASS | the walk-forward numbers restated in research/experiments/macroregime_001_experiment_002.md (24 folds, mean OOS Sharpe 0.4331, 75.0% positive, 137 pooled trades) are reproduced by the committed legacy weights artifact. |
-| `macroregime_vix_history_gap_is_quantified` | PASS | the committed ^VIX cache starts 2025-01-02, i.e. 5063 of 5507 sessions of the candidate's sample have no VIX observation; the cache-reproducible legacy path therefore differs from the published path by at most 0.125000 in weight (published test Sharpe 0.2950 vs cache-reproducible 0.3371). |
+| `macroregime_vix_history_gap_is_quantified` | PASS | the committed ^VIX cache now covers the full sample (2004-11-18 .. 2026-10-09); 0 of 5507 sessions have no VIX observation, so the legacy path computed from the cache reproduces the published path (published test Sharpe 0.2950 vs cache-reproducible 0.2950). |
 | `macroregime_faithful_path_is_point_in_time` | PASS | 251 month-end signals; every segment holds only the assets its own signal date selected and becomes effective strictly after it. |
-| `schedule_defect_does_not_move_either_candidate_across_its_gates` | PASS | csmomentum_001: verdict unchanged (WF mean OOS Sharpe 0.6868 -> 0.6975, gate 0.9); macroregime_001: verdict unchanged (WF mean OOS Sharpe 0.4628 -> 0.2838). |
+| `schedule_defect_does_not_move_either_candidate_across_its_gates` | PASS | csmomentum_001: verdict unchanged (WF mean OOS Sharpe 0.6868 -> 0.6975, gate 0.9); macroregime_001: verdict unchanged (WF mean OOS Sharpe 0.4331 -> 0.2636). |
 | `calendar_rule_actually_skips_months` | PASS | the calendar rule has no rebalance at all in 122 of 406 months (csmomentum_001) and in 77 of 264 months (macroregime_001). |
 | `raw_cache_unchanged` | PASS | all 19 cached parquet files are SHA-256 byte-identical before and after the run. |
 | `no_new_processed_artifacts` | PASS | data/processed contains the same 16 parquet files before and after the run; the tool writes no simulation artifact. |
