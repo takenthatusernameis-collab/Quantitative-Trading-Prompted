@@ -832,6 +832,15 @@ def screen_candidate(cand: Candidate) -> dict[str, Any]:
 
     parity_full = solve_break_even_cost_bps(parity_gap_full)
 
+    # Gate headroom: cost per unit at which the candidate's net walk-forward
+    # mean OOS Sharpe falls to the repository's promotion threshold (0.9).
+    def gate_gap(c: float) -> float:
+        return wf_mean_sharpe(
+            cand.gross, cand.turnover, cand.weights, cand.splits, c, cand.explicit_turnover
+        ) - 0.9
+
+    gate_headroom = solve_break_even_cost_bps(gate_gap)
+
     df, pooled = walkforward_table(
         cand.gross,
         cand.turnover,
@@ -871,6 +880,8 @@ def screen_candidate(cand: Candidate) -> dict[str, Any]:
         "break_even_cost": be,
         "benchmark_parity_cost": parity,
         "benchmark_parity_cost_full_window": parity_full,
+        "gate_headroom": gate_headroom,
+        "promotion_threshold": 0.9,
         "benchmark_wf_sharpe_is_cost_invariant": bool(
             abs(
                 wf_mean_sharpe(
