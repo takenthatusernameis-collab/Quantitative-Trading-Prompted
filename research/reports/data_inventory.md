@@ -3,10 +3,11 @@
 **Generated:** 2026-10-12 07:52:57 UTC
 **Code revision:** a5d5971
 **Method:** Programmatic scan of `data/raw/` and `data/processed/` by `research/run_cycle11.py` (Cycle 11). No backtests run; all statistics are descriptive properties of cached artifacts.
+**Revision (Cycle 873):** `^VIX` row corrected to real cache (5,514 rows, 2004-11-18 .. 2026-10-16); overview total recomputed (128,042 → 125,054).
 
 ## Overview
 
-The repository currently caches **19 raw price files** (128,042 total rows, 4.53 MB) covering **19 symbols** at daily frequency, plus **6 processed artifacts** from Cycles 2-10 (simulation, trades, weights, go/no-go history, paper-trading state).
+The repository currently caches **19 raw price files** (125,054 total rows, 4.53 MB) covering **19 symbols** at daily frequency, plus **6 processed artifacts** from Cycles 2-10 (simulation, trades, weights, go/no-go history, paper-trading state).
 
 All raw data was sourced from Yahoo Finance via `yfinance` (see `src/data/yfinance_fetcher.py`) and cached as parquet in `data/raw/`. Point-in-time safety: the fetcher only downloads data up to the requested end date; signals in the simulation engine are shifted by one day.
 
@@ -32,7 +33,7 @@ All raw data was sourced from Yahoo Finance via `yfinance` (see `src/data/yfinan
 | XLU | Utilities sector ETF | 6,991 | Open, High, Low, Close, Volume | 1998-12-22 | 2026-10-08 | 27.8 | Daily | 100.0% | 19.3% | 0 |
 | XLV | Health Care sector ETF | 6,991 | Open, High, Low, Close, Volume | 1998-12-22 | 2026-10-08 | 27.8 | Daily | 100.0% | 17.9% | 0 |
 | XLY | Consumer Discretionary sector ETF | 6,991 | Open, High, Low, Close, Volume | 1998-12-22 | 2026-10-08 | 27.8 | Daily | 100.0% | 22.6% | 0 |
-| ^VIX | CBOE Volatility Index (NOT directly tradeable) | 8,502 | Open, High, Low, Close, Volume | 1993-01-04 | 2026-10-08 | 33.8 | Daily | 100.0% | 114.2% | 0 |
+| ^VIX | CBOE Volatility Index (NOT directly tradeable) | 5,514 | Open, High, Low, Close, Volume | 2004-11-18 | 2026-10-16 | 21.9 | Daily | 100.0% | 114.2% | 0 |
 
 **Source:** Yahoo Finance (yfinance 1.7.0), daily OHLCV, timezone-normalized to UTC, cached as parquet.
 
