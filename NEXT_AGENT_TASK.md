@@ -1,66 +1,80 @@
-# Next Agent Task: Cycle 870 — make the frozen month-end rebalance schedule executable in shared code
+# Next Agent Task: Cycle 871 — re-derive the two remaining frozen month-end candidates on the config-faithful path
 
 ## Context
-- Cycle 869 ran the long-sample feasibility backtest of the frozen `sectorrotation_001` candidate
-  and **rejected it** on its own pre-registered falsification condition (walk-forward mean OOS
-  Sharpe 0.847243 < 0.9; long-sample canonical Sharpe 0.472367; repository gate table NO-GO).
-  Evidence: `research/reports/sectorrotation_long_sample_feasibility_001.md`,
-  `research/experiments/sectorrotation_long_sample_feasibility_001.md`.
-- Cycle 869 also measured **two defects in the shared engines** (evidence: the report's §2 and
-  §10). No repository code path currently executes the frozen candidate configurations as frozen:
-  1. `src/backtest/engine.py:run_backtest` accepts a `rebalance_freq` argument and **never uses
-     it**: `build_weights` re-ranks the universe every session. Measured on the 9-sector universe
-     (1998-12-22..2026-10-08): engine path 1,088 trade days / 16.4849x annualized turnover /
-     Sharpe 0.471379 vs config-faithful month-end path 175 trade days / 2.9961x / Sharpe 0.472367.
-     The frozen month-end schedule appears in `config/sectorrotation_candidate_001.yaml`,
-     `config/csmomentum_candidate_001.yaml` and `config/macroregime_candidate_001.yaml`.
-  2. `src/simulation/engine.py:_apply_rebalance_schedule` ("M") uses the **calendar**
-     `index.is_month_end` on a *trading* calendar: it is True on only 235 of the 6,991 sector
-     sessions and equals the month's last trading session in **0 of 335** months, so it rebalances
-     on the wrong session and carries the previous month's weights through ~30% of months.
-- The live paper-trading path is unaffected by both defects (`config/simulation_candidate_001.yaml`
-  uses `rebalance_schedule: "daily"`), and the incumbent's recorded artifacts must not move.
+- Cycle 869 measured the long-sample feasibility of the frozen `sectorrotation_001` candidate and
+  **rejected** it on its own pre-registered falsification condition (walk-forward mean OOS Sharpe
+  0.847243 < 0.9; long-sample canonical Sharpe 0.472367; repository gate table NO-GO).
+  Evidence: `research/reports/sectorrotation_long_sample_feasibility_001.md`.
+- Cycle 870 implemented **one** correct month-end rebalance schedule in shared code
+  (`src/backtest/rebalance.py`), exposed it through the opt-in engine parameter
+  `run_backtest(..., rebalance_schedule="month_end")`, and measured the remaining calendar-based
+  defect in `src/simulation/engine.py` ("M" branch: no rebalance at all in 100 of the 335 months).
+  Evidence: `research/reports/rebalance_schedule_001.md`,
+  `research/experiments/rebalance_schedule_001.md`.
+- **New finding that motivates this cycle:** the two *other* frozen candidates that specify the same
+  month-end schedule were evaluated with a **calendar-based** `is_month_end` schedule of exactly the
+  same defective kind:
+  - `config/csmomentum_candidate_001.yaml` (`execution.rebalance_schedule: "monthly"`) was run by
+    `research/run_cycle13.py:160-168` (`_apply_monthly_schedule`: `weights.where(is_month_end).ffill()`);
+  - `config/macroregime_candidate_001.yaml` (`execution.rebalance_schedule: "monthly"`) was run by
+    `research/run_cycle19.py:148-151` (the same calendar rule).
+  Both therefore (a) rebalance one session earlier than the frozen configuration specifies
+  (signal formed on the month's last session, effective from the next one) and (b) never rebalance in
+  the ~30% of months whose last calendar day was a weekend or a market holiday, carrying the
+  previous month's weights through the whole month. **Their published numbers have never been
+  re-derived on a correct schedule.**
 
 ## Objective
-Implement **one** correct month-end rebalance schedule in shared code — month-end = the last
-*trading* session of the calendar month, signal formed on that session, positions effective from
-the next session — and make it executable from the backtest engine behind an **explicit opt-in**
-parameter, without changing any existing default behavior or artifact.
+Quantify, read-only, how much the defective calendar schedule changed the published results of
+`csmomentum_001` and `macroregime_001`, using the now-executable config-faithful path, and label
+whether each candidate's pre-registered verdict changes. **Measurement, not re-optimisation**: no
+parameter, universe, cost model, gate threshold or configuration may change.
 
 ## Acceptance Criteria
-1. `src/backtest/engine.py` gains an opt-in rebalance-schedule parameter whose **default
-   preserves today's behavior**, so `research/promotion_feasibility_backtest.py` still reproduces
-   the committed incumbent numbers exactly (canonical Sharpe 0.5646255767978904, max DD
-   -0.6224126346564325, PSR 2.2219753177036448e-08, decision NO-GO, failed gates
-   `['full_period_sharpe', 'rolling_63d_sharpe', 'max_drawdown', 'psr']`).
-2. With the opt-in enabled, the engine reproduces the config-faithful monthly path of
-   `research/sectorrotation_long_sample_feasibility.py` on the 9-sector universe
-   (1998-12-22..2026-10-08) to `max |net_return - research path| <= 1e-12`.
-3. Deterministic tests pin: (a) a month whose last calendar day is a weekend rebalances on the
-   Friday session; (b) the 1-day lag (a signal formed on the month-end session is held from the
-   next session); (c) no position exists before the first valid signal; (d) the incumbent
-   artifacts of criterion 1 are unchanged.
-4. `research/reports/rebalance_schedule_001.md` documents both defects, the fix, the before/after
-   numbers, the falsification conditions and the explicit statement that the simulation engine's
-   "M" branch was left behaviorally unchanged (its live path is "daily") and how much it differs
-   from the shared implementation.
-5. `python -m pytest -q` passes, `git status --porcelain data/` is empty, `config/` is unchanged,
-   and the incumbent's code-level decision stays **NO-GO**.
+1. A new read-only tool (e.g. `research/month_end_candidate_reaudit.py`) computes, for **each** of
+   `csmomentum_001` and `macroregime_001`, on the same cached data, universe and 3 bps cost model:
+   - the **legacy** path, reproducing the calendar `is_month_end` rule exactly as
+     `research/run_cycle13.py` / `research/run_cycle19.py` implemented it;
+   - the **config-faithful** path, via `src/backtest/rebalance.py`
+     (`build_month_end_weights`) or `run_backtest(..., rebalance_schedule="month_end")`;
+   and reports the deviation in canonical Sharpe, max drawdown, annualized turnover, trade days and
+   the candidate's pre-registered walk-forward mean OOS Sharpe (36 folds, 10y/12m/6m, 21d purge,
+   21d embargo) where the published record contains it.
+2. The legacy path **reproduces the committed published numbers** of
+   `research/experiments/csmomentum_001_experiment_001.md` and
+   `research/experiments/macroregime_001_experiment_002.md` (state the tolerance and the exact
+   numbers; if a published number cannot be reproduced from the committed cache, say so explicitly
+   and quantify the difference instead of hiding it).
+3. Each candidate gets an explicit **verdict label** (`verdict unchanged` / `verdict changed` /
+   `indeterminate`), stating whether the schedule defect moves the candidate across its own
+   pre-registered gates (`config/csmomentum_candidate_001.yaml`,
+   `config/macroregime_candidate_001.yaml`), with the numbers that decide it.
+4. `research/reports/month_end_candidate_reaudit_001.md` and
+   `research/experiments/month_end_candidate_reaudit_001.md` document the method, the deviation
+   table, the verdicts, the falsification conditions and the reproduction commands.
+5. `python -m pytest -q` passes, `git status --porcelain data/` is empty, `config/` is unchanged, the
+   committed experiment records and `data/processed/*.parquet` are unchanged, and the incumbent's
+   code-level decision stays **NO-GO**.
 
 ## Validation
 ```
 python -m pytest -q
-python research/sectorrotation_long_sample_feasibility.py   # must still print OVERALL: PASS and Sharpe 0.472367
-python research/promotion_feasibility_backtest.py             # incumbent artifacts must be unchanged
-git status --porcelain data/                                 # empty
+python research/month_end_candidate_reaudit.py       # new tool; must print OVERALL: PASS
+python research/rebalance_schedule_audit.py           # Cycle 870 tool must still print OVERALL: PASS
+python research/sectorrotation_long_sample_feasibility.py
+python research/promotion_feasibility_backtest.py     # incumbent artifacts unchanged (NO-GO)
+git status --porcelain data/                          # empty
 ```
 
 ## Scope boundaries
-- No change to any gate threshold, candidate configuration, cost model, universe or Sharpe
-  convention; no change to the default behavior of `run_backtest` or of the live paper-trading
-  path; no write to `data/`.
-- Do not re-open the `sectorrotation_001` verdict in this cycle (rejected on its pre-registered
-  condition; its long-sample excess over 1/N is +0.0156 pp annualized at 3.0x turnover).
-- Known limitation, out of scope here: the 9 sector ETFs are not covered by
-  `research/refresh_raw_cache.py` and are 6 sessions stale (2026-10-08 vs the core cache's
-  2026-10-16); a later cycle may extend the refresh scope.
+- **No re-run and no rewrite** of `research/run_cycle13.py`, `research/run_cycle19.py` or
+  `src/simulation/engine.py`: this cycle *measures*; adopting the shared schedule in those code
+  paths is a separate, explicitly scoped change (and would move committed artifacts).
+- No change to any candidate configuration, gate threshold, cost model, universe or Sharpe
+  convention; no write to `data/` (the new tool must not create `data/processed/*.parquet`).
+- Do not re-open the `sectorrotation_001` verdict (rejected on its pre-registered condition in
+  Cycle 869); do not re-open the incumbent's NO-GO decision.
+- Known limitation to state in the report: the 9 sector ETFs (and DBC, VNQ) are not covered by
+  `research/refresh_raw_cache.py` and end 2026-10-08, six sessions behind the core cache
+  (2026-10-16); the `csmomentum_001` universe therefore has an 18-asset common calendar that starts
+  at the youngest asset's inception.

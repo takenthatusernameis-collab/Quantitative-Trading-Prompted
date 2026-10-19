@@ -47,6 +47,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from src.backtest.engine import get_cost_params, run_backtest
+from src.backtest.rebalance import build_month_end_weights, month_end_sessions
 from src.data.yfinance_fetcher import fetch_universe
 from src.evaluation.sharpe import backtest_sharpe_ratio, sharpe_ratio
 from src.evaluation.statistics import compute_dsr, compute_psr
@@ -121,11 +122,13 @@ def git_revision() -> str:
 
 
 def month_end_dates(index: pd.DatetimeIndex) -> list[pd.Timestamp]:
-    """Last trading date of every calendar month present in *index*."""
-    last: dict[str, pd.Timestamp] = {}
-    for d, key in zip(index, index.strftime("%Y-%m")):
-        last[key] = d
-    return [last[k] for k in sorted(last)]
+    """Last trading date of every calendar month present in *index*.
+
+    Delegates to the shared implementation (``src/backtest/rebalance.py``),
+    which is the single source of truth for the month-end schedule since
+    Cycle 870.
+    """
+    return month_end_sessions(index)
 
 
 # ----------------------------------------------------------------------
@@ -143,34 +146,13 @@ def build_monthly_weights(
     configuration's ``rebalance_schedule: month-end`` + ``signal_lag_days: 1``.
     Months whose signal is not yet defined carry no positions (point-in-time,
     no back-fill).
+
+    Delegates to the shared implementation (``src/backtest/rebalance.py``);
+    ``close`` is accepted for signature compatibility and is not used, because
+    the schedule is a function of the session calendar and the selection mask
+    alone.
     """
-    idx = close.index
-    weights = pd.DataFrame(0.0, index=idx, columns=close.columns)
-    segments: list[dict[str, Any]] = []
-
-    for d in month_ends[:-1]:
-        sel = mask.loc[d]
-        n_selected = int(sel.sum())
-        if n_selected == 0:
-            continue
-        eff_pos = int(idx.searchsorted(d, side="right"))
-        if eff_pos >= len(idx):
-            break
-        eff = idx[eff_pos]
-        segments.append(
-            {
-                "signal_date": d,
-                "effective_date": eff,
-                "n_selected": n_selected,
-                "weights": sel.astype(float).to_numpy() / n_selected,
-            }
-        )
-
-    for j, seg in enumerate(segments):
-        start = int(idx.get_loc(seg["effective_date"]))
-        end = int(idx.get_loc(segments[j + 1]["effective_date"])) if j + 1 < len(segments) else len(idx)
-        weights.iloc[start:end, :] = seg["weights"]
-
+    weights, segments = build_month_end_weights(mask, month_ends=month_ends)
     return weights, segments
 
 

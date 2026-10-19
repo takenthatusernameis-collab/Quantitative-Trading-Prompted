@@ -18,8 +18,18 @@ import numpy as np
 import pandas as pd
 import yaml
 
+from src.backtest.rebalance import (
+    DAILY_SCHEDULE,
+    build_month_end_weights,
+    normalize_schedule,
+)
 from src.data.yfinance_fetcher import fetch_universe
-from src.features.momentum import build_weights, compute_momentum, signal_summary
+from src.features.momentum import (
+    build_weights,
+    compute_momentum,
+    select_top_decile,
+    signal_summary,
+)
 
 
 def _project_root() -> Path:
@@ -123,8 +133,32 @@ def run_backtest(
     skip: int = 21,
     top_fraction: float = 0.5,
     rebalance_freq: str = "M",
+    rebalance_schedule: Optional[str] = None,
 ) -> tuple[pd.Series, pd.DataFrame, dict]:
-    """Run the full backtest pipeline."""
+    """Run the full backtest pipeline.
+
+    Parameters
+    ----------
+    rebalance_freq:
+        Legacy, **descriptive only** argument (it is recorded in the
+        experiment metadata and never changed any computation). It is *not*
+        the rebalancing calendar; use ``rebalance_schedule`` for that.
+    rebalance_schedule:
+        Opt-in rebalancing calendar (default ``None`` keeps the historical
+        behaviour):
+
+        * ``None`` / ``"daily"``: the universe is re-ranked every session
+          and each signal is held for one session (the repository's
+          behaviour since the first cycle; every committed artifact was
+          produced this way).
+        * ``"month_end"`` / ``"monthly"``: the frozen month-end schedule of
+          ``config/sectorrotation_candidate_001.yaml`` -- the signal is
+          formed on the last session of each calendar month and the positions
+          become effective on the next session (see
+          :mod:`src.backtest.rebalance`).
+
+        An unknown schedule is a hard error, never a silent fallback.
+    """
     # Fetch data
     print(f"Fetching data for {symbols} from {start_date} to {end_date}...")
     data = fetch_universe(symbols, start_date, end_date, force=False)
@@ -138,7 +172,15 @@ def run_backtest(
 
     # Compute weights using momentum strategy
     print("Computing momentum signals...")
-    weights = build_weights(close, lookback=lookback, skip=skip, top_fraction=top_fraction)
+    schedule = (
+        DAILY_SCHEDULE if rebalance_schedule is None else normalize_schedule(rebalance_schedule)
+    )
+    if schedule == DAILY_SCHEDULE:
+        weights = build_weights(close, lookback=lookback, skip=skip, top_fraction=top_fraction)
+    else:
+        momentum = compute_momentum(close, lookback=lookback, skip=skip)
+        mask = select_top_decile(momentum, top_fraction=top_fraction)
+        weights, _segments = build_month_end_weights(mask)
 
     # Align weights to close prices (weights shifted by 1 day in build_weights)
     common_index = close.index.intersection(weights.index)
