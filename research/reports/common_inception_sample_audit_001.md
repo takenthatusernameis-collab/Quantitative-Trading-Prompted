@@ -830,7 +830,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
     "expected": "identical SHA-256 fingerprint of every file under data/ and config/",
     "observed": {
       "data_files": 1855,
-      "config_files": 11,
+      "config_files": 12,
       "data_unchanged": true,
       "config_unchanged": true
     },
@@ -1002,3 +1002,4 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
 - a file under data/ or config/ changed during the run -> reject.
 - the common-inception sample does not have seven assets with a price -> reject.
 - two runs of the tool disagree -> reject.
+

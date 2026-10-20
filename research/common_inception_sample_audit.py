@@ -52,6 +52,7 @@ import sys
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
+import argparse
 
 import numpy as np
 import pandas as pd
@@ -87,6 +88,7 @@ PROCESSED_DIR = REPO_ROOT / "data" / "processed"
 REPORTS_DIR = REPO_ROOT / "research" / "reports"
 COMMITTED_REPORT = REPORTS_DIR / "promotion_feasibility_backtest_001.md"
 OUT_REPORT = REPORTS_DIR / "common_inception_sample_audit_001.md"
+POLICY_DEFAULT = REPO_ROOT / "config" / "sample_policy.yaml"
 
 PSR_SEED = 20240101
 ROLLING_WINDOW = 63
@@ -261,10 +263,58 @@ def evaluate_gates(gates: dict, metrics: dict, regime_flips: int) -> dict[str, A
     }
 
 
+
+# ----------------------------------------------------------------------
+# Policy loading/validation
+# ----------------------------------------------------------------------
+def load_policy(path: Path) -> dict[str, Any]:
+    try:
+        policy = load_yaml(path)
+    except Exception as e:
+        raise SystemExit(f"ERROR: failed to load policy from {path}: {e}")
+
+    if not isinstance(policy, dict):
+        raise SystemExit(f"ERROR: policy is not a dict at {path}")
+
+    try:
+        schema_version = policy["schema_version"]
+    except KeyError:
+        raise SystemExit(f"ERROR: policy missing schema_version at {path}")
+    if schema_version != 1:
+        raise SystemExit(f"ERROR: unsupported policy schema_version {schema_version} at {path}")
+
+    # Validate rule
+    try:
+        rule = policy["long_sample_diagnostic"]["evaluation_rule"]
+    except Exception:
+        raise SystemExit(f"ERROR: policy missing long_sample_diagnostic.evaluation_rule at {path}")
+
+    # Check for expected rule text (we implement this rule)
+    if "common_inception_slice" not in rule:
+        raise SystemExit(f"ERROR: policy specifies unknown evaluation rule: {rule}")
+
+    return policy
+
+
+def rederive_common_inception(universe: list[str]) -> tuple[pd.Timestamp, str]:
+    per_symbol_stats, _, _ = scan_raw_cache(universe)
+    common_inception = pd.Timestamp(
+        max(stats["first_date"] for stats in per_symbol_stats.values()), tz="UTC"
+    )
+    return common_inception, common_inception.date().isoformat()
 # ----------------------------------------------------------------------
 # Main
 # ----------------------------------------------------------------------
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Common-inception sample audit")
+    parser.add_argument("--policy", type=Path, default=POLICY_DEFAULT, help="Path to sample policy YAML")
+    args = parser.parse_args(argv)
+
+    policy_path = args.policy
+    if not policy_path.exists():
+        raise SystemExit(f"ERROR: policy file missing: {policy_path}")
+    policy = load_policy(policy_path)
+
     cand = load_yaml(CONFIG_CAND)
     gates = load_yaml(CONFIG_GATES)
     universe = list(cand["universe"])
@@ -281,10 +331,8 @@ def main() -> int:
     per_symbol_stats, raw_hashes, union_index = scan_raw_cache(universe)
     union_start = union_index.min().date().isoformat()
     union_end = union_index.max().date().isoformat()
-    common_inception = pd.Timestamp(
-        max(stats["first_date"] for stats in per_symbol_stats.values()), tz="UTC"
-    )
-    common_inception_str = common_inception.date().isoformat()
+    # Re-derive common inception from raw cache (never trust policy's date)
+    common_inception, common_inception_str = rederive_common_inception(universe)
 
     close = aligned_close(universe, union_start, union_end)
     union_width = width_series(close, union_index)
