@@ -735,19 +735,28 @@ The committed Cycle 893 fixed-coin portfolio adds the two symbols' **separately 
 
 ### The capital base the reconciled book ties up
 
-The combined equity is the book *accounting* base; the capital the spot leg actually ties up is the **marked-to-market spot notional**, and the two are not the same thing in this construction. The fixed coin quantity drifts with the coin's price while the equity compounds only on the carry, so the ratio leaves its entry level. It is measured here rather than assumed:
+The combined equity is the book *accounting* base; the capital the spot leg actually ties up is the **marked-to-market spot notional**, and the two are not the same thing in this construction. The fixed coin quantity drifts with the coin's price while the equity compounds only on the carry, so the ratio leaves its entry level. It is measured here rather than assumed. The definitions precede the numbers:
 
-| Rule | Spot notional / combined equity: min | average (full sample) | max | last session | constant-notional book, same equity (average) |
-|---|---|---|---|---|---|
-| `always_on` | 0.36x | 1.60x | 3.90x | 1.44x | 1.00x |
-| `funding_positive_lagged` | 0.00x | 0.59x | 2.47x | 0.60x | 0.88x |
-| `funding_positive_sameday` | 0.00x | 0.60x | 2.47x | 0.62x | 0.88x |
+#### Definitions
+
+* **Leverage** — the marked-to-market spot notional of the two legs as a fraction of the book's combined equity: the capital the spot leg actually ties up. For the constant-notional book it is 1.00x while invested.
+* **Funding gap** — `(leverage − 1)^+`: the notional above the stated equity that the fixed-coin construction must fund, because its spot notional drifts with the coin price while its equity compounds only on the carry.
+* **Gross per unit of capital employed** — `gross / leverage`: the same trade measured on the capital it actually employs, not on the stated equity.
+* **Self-funded restatement** — `gross − funding_gap × capital_rate / 365` per day, annualized at 365 days, with the named capital rate `capital_rate_annual = 2.00%/yr` (the repository's risk-free rate). This prices the funding of the gap and states what the fixed-coin construction is worth on a self-funded basis.
+
+| Rule | Leverage min/avg/max | Funding gap avg | Capital rate | Gross on stated equity | Gross per capital employed | Constant-notional gross | Self-funded net |
+|---|---|---|---|---|---|---|---|
+| `always_on` | 0.36x / 1.60x / 3.90x | 0.63x | 2.00%/yr | +29.52% | +13.89% | +13.40% | +27.89% |
+| `funding_positive_lagged` | 0.00x / 0.59x / 2.47x | 0.04x | 2.00%/yr | +13.44% | +14.35% | +13.80% | +13.36% |
+| `funding_positive_sameday` | 0.00x / 0.60x / 2.47x | 0.04x | 2.00%/yr | +13.93% | +15.06% | +14.67% | +13.85% |
+
+**Self-funded basis: does the fixed-coin advantage survive?** Pricing the funding of the gap at the named capital rate 2.00%/yr, the `always_on` book's self-funded net +27.89%/yr still beats the constant-notional book's gross +13.40%/yr (+14.50%/yr), so the advantage survives for `always_on`. For the funding-positive rules it does not: `funding_positive_lagged` self-funds at +13.36%/yr against a constant-notional gross of +13.80%/yr (-0.44%/yr), and `funding_positive_sameday` self-funds at +13.85%/yr against +14.67%/yr (-0.82%/yr). The two constructions earn the same gross per unit of capital employed -- they are the same trade -- so what the fixed-coin book reports on the stated equity is implicit leverage, not a better carry. **Headline: fixed coin quantity survives self-funding only for `always_on`; for the funding-positive rules the advantage does not survive, so the constant-notional book remains the headline there.**
 
 **The advantage is the leverage, not a better carry.** The same trade measured on the capital it actually employs - the gross P&L per unit of the marked-to-market spot notional - is **+13.89%/yr** for `always_on`, against the constant-notional book's **+13.40%/yr** on its constant 1.0x spot notional, while the fixed-coin book's gross on the **stated** equity is **+29.52%/yr** (the same three numbers for every rule are in the machine-readable payload). The two constructions therefore earn the **same gross return per unit of capital**; what the fixed-coin book reports on the stated equity is the return of a notional that grows with the price while the equity does not. That is an implicit leverage of up to 3.90x, and it needs margin that the stated equity does not provide.
 
 **The reconciled headline is a return on the stated combined equity, not on the capital the spot leg ties up.** The always-on book enters both symbols on the first session, so it ties up 0.5 of the combined equity in spot at the entry; marked to market that notional drifts above the equity - it averages 1.60x over the full sample, peaks at 3.90x and ends the sample at 1.44x - so the stated equity alone does not fund the spot leg and the construction is implicitly levered by the drift. The funding-positive rules are flat on the days they are out of the market, so their average is lower, but while a position is held their notional drifts the same way (peak 2.47x). Two consequences are already priced in the numbers above and are stated here so that the comparison is not misread: the capital charge is levied on the marked-to-market notional, so the drift raises the charge (at the headline's 2%/yr the always-on book pays about 3.2%/yr of capital drag against the constant-notional book's 2.0%/yr), and the constant-notional book holds a constant spot notional by construction, so the two books are compared on the same *equity* but not on the same *capital*. This is a property of the fixed-coin construction, not of the accounting convention: the committed Cycle 893 book drifts the same way, with the capital counted twice.
 
-The **cost** of that leverage is not priced in the numbers above: the capital charge is levied on the spot notional, which is the cost of the capital employed, but the *return* is still measured on the stated equity. Pricing the margin and the funding of the gap, and stating what the fixed-coin construction is worth on a self-funded basis, is the next cycle's pre-registered question; this cycle measures the capital base, reports it and stops there.
+The capital charge is levied on the marked-to-market spot notional, so the drift raises the charge (at the headline's 2%/yr the always-on book pays about 3.2%/yr of capital drag against the constant-notional book's 2.0%/yr). The self-funded restatement above prices the funding of the gap and states what the fixed-coin construction is worth on a self-funded basis; the constant-notional book holds a constant spot notional by construction, so the two books are compared on the same *equity* but not on the same *capital*. This is a property of the fixed-coin construction, not of the accounting convention: the committed Cycle 893 book drifts the same way, with the capital counted twice.
 
 ### Break-evens (portfolio, headline cost model)
 
@@ -5672,7 +5681,7 @@ python -m pytest -q
         "ETHUSDT perp"
       ]
     },
-    "generated_at": "2026-10-20T09:20:55.482940+00:00",
+    "generated_at": "2026-10-20T09:45:41.225071+00:00",
     "periods_per_year": 365,
     "promotion_gates": {
       "min_pooled_oos_trades": 100,

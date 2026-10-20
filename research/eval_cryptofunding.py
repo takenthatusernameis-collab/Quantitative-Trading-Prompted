@@ -3447,25 +3447,88 @@ def render_artifact(summary: dict[str, Any]) -> str:
         "and the two are not the same thing in this construction. The fixed "
         "coin quantity drifts with the coin's price while the equity compounds "
         "only on the carry, so the ratio leaves its entry level. It is "
-        "measured here rather than assumed:"
+        "measured here rather than assumed. The definitions precede the "
+        "numbers:"
+    )
+    add("")
+    add("#### Definitions")
+    add("")
+    add(
+        "* **Leverage** — the marked-to-market spot notional of the two legs as "
+        "a fraction of the book's combined equity: the capital the spot leg "
+        "actually ties up. For the constant-notional book it is 1.00x while "
+        "invested."
+    )
+    add(
+        "* **Funding gap** — `(leverage − 1)^+`: the notional above the stated "
+        "equity that the fixed-coin construction must fund, because its spot "
+        "notional drifts with the coin price while its equity compounds only on "
+        "the carry."
+    )
+    add(
+        "* **Gross per unit of capital employed** — `gross / leverage`: the "
+        "same trade measured on the capital it actually employs, not on the "
+        "stated equity."
+    )
+    add(
+        "* **Self-funded restatement** — `gross − funding_gap × capital_rate / "
+        "365` per day, annualized at 365 days, with the named capital rate "
+        "`capital_rate_annual = 2.00%/yr` (the repository's risk-free rate). "
+        "This prices the funding of the gap and states what the fixed-coin "
+        "construction is worth on a self-funded basis."
     )
     add("")
     add(
-        "| Rule | Spot notional / combined equity: min | average (full sample) "
-        "| max | last session | constant-notional book, same equity (average) |"
+        "| Rule | Leverage min/avg/max | Funding gap avg | Capital rate | "
+        "Gross on stated equity | Gross per capital employed | "
+        "Constant-notional gross | Self-funded net |"
     )
-    add("|---|---|---|---|---|---|")
+    add("|---|---|---|---|---|---|---|---|")
     reconciled_capital_base = cost_eval.get("fixed_coin_reconciled_capital_base", {})
+    cn_gross = {
+        rule_id: float(row["constant_notional_gross_annualized"])
+        for rule_id, row in reconciled_capital_base.items()
+    }
     for rule_id in sorted(reconciled_capital_base):
         row = reconciled_capital_base[rule_id]
         add(
             f"| `{rule_id}` | "
-            f"{row['min_spot_notional_fraction_full']:.2f}x | "
-            f"{row['avg_spot_notional_fraction_full']:.2f}x | "
-            f"{row['max_spot_notional_fraction_full']:.2f}x | "
-            f"{row['last_spot_notional_fraction']:.2f}x | "
-            f"{row['constant_notional_spot_notional_fraction']:.2f}x |"
+            f"{row['min_leverage_full']:.2f}x / {row['avg_leverage_full']:.2f}x / {row['max_leverage_full']:.2f}x | "
+            f"{row['avg_funding_gap_full']:.2f}x | "
+            f"{row['capital_rate_annual']:.2%}/yr | "
+            f"{_fmt_pct(row['gross_on_stated_equity_annualized'], 2)} | "
+            f"{_fmt_pct(row['gross_per_capital_employed_annualized'], 2)} | "
+            f"{_fmt_pct(cn_gross[rule_id], 2)} | "
+            f"{_fmt_pct(row['self_funded_net_annualized'], 2)} |"
         )
+    add("")
+    always_capital = reconciled_capital_base.get("always_on", {})
+    lagged_capital = reconciled_capital_base.get("funding_positive_lagged", {})
+    sameday_capital = reconciled_capital_base.get("funding_positive_sameday", {})
+    add(
+        "**Self-funded basis: does the fixed-coin advantage survive?** Pricing "
+        "the funding of the gap at the named capital rate "
+        f"{always_capital['capital_rate_annual']:.2%}/yr, the `always_on` "
+        "book's self-funded net "
+        f"{_fmt_pct(always_capital['self_funded_net_annualized'], 2)}/yr still "
+        f"beats the constant-notional book's gross {_fmt_pct(cn_gross['always_on'], 2)}/yr "
+        f"(+{_fmt_pct(always_capital['self_funded_net_annualized'] - cn_gross['always_on'], 2)[1:]}/yr), "
+        "so the advantage survives for `always_on`. For the funding-positive "
+        "rules it does not: `funding_positive_lagged` self-funds at "
+        f"{_fmt_pct(lagged_capital['self_funded_net_annualized'], 2)}/yr "
+        f"against a constant-notional gross of {_fmt_pct(cn_gross['funding_positive_lagged'], 2)}/yr "
+        f"({_fmt_pct(lagged_capital['self_funded_net_annualized'] - cn_gross['funding_positive_lagged'], 2)}/yr), "
+        "and `funding_positive_sameday` self-funds at "
+        f"{_fmt_pct(sameday_capital['self_funded_net_annualized'], 2)}/yr "
+        f"against {_fmt_pct(cn_gross['funding_positive_sameday'], 2)}/yr "
+        f"({_fmt_pct(sameday_capital['self_funded_net_annualized'] - cn_gross['funding_positive_sameday'], 2)}/yr). "
+        "The two constructions earn the same gross per unit of capital employed "
+        "-- they are the same trade -- so what the fixed-coin book reports on "
+        "the stated equity is implicit leverage, not a better carry. "
+        "**Headline: fixed coin quantity survives self-funding only for "
+        "`always_on`; for the funding-positive rules the advantage does not "
+        "survive, so the constant-notional book remains the headline there.**"
+    )
     add("")
     add(
         "**The advantage is the leverage, not a better carry.** The same trade "
@@ -3521,13 +3584,17 @@ def render_artifact(summary: dict[str, Any]) -> str:
     )
     add("")
     add(
-        "The **cost** of that leverage is not priced in the numbers above: the "
-        "capital charge is levied on the spot notional, which is the cost of "
-        "the capital employed, but the *return* is still measured on the stated "
-        "equity. Pricing the margin and the funding of the gap, and stating "
-        "what the fixed-coin construction is worth on a self-funded basis, is "
-        "the next cycle's pre-registered question; this cycle measures the "
-        "capital base, reports it and stops there."
+        "The capital charge is levied on the marked-to-market spot notional, "
+        "so the drift raises the charge (at the headline's 2%/yr the "
+        "always-on book pays about 3.2%/yr of capital drag against the "
+        "constant-notional book's 2.0%/yr). The self-funded restatement above "
+        "prices the funding of the gap and states what the fixed-coin "
+        "construction is worth on a self-funded basis; the constant-notional "
+        "book holds a constant spot notional by construction, so the two books "
+        "are compared on the same *equity* but not on the same *capital*. "
+        "This is a property of the fixed-coin construction, not of the "
+        "accounting convention: the committed Cycle 893 book drifts the same "
+        "way, with the capital counted twice."
     )
     add("")
 

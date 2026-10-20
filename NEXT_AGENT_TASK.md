@@ -1,23 +1,13 @@
-# Next agent task — Cycle 898 (draft)
+# Next agent task — Cycle 898 (complete)
 
 ## Context
 
-Cycle 897 added the self-funded restatement fields to `fixed_coin_reconciled_capital_base`
-(leverage path min/avg/max, funding gap min/avg/max, capital rate, self-funded net annualized)
-in `research/eval_cryptofunding.py`. Tests pass (231), cost screen OVERALL: PASS.
+Cycle 898 updated `research/experiments/cryptofunding_002_evaluation.md` to state capital-base definitions before numbers, report reconciled capital-base fields (leverage path min/avg/max, funding gap avg, capital rate, gross on stated equity, gross per capital employed, constant-notional gross, self-funded net) for all three rules plus constant-notional comparison, corrected the fixed-coin headline claim on a self-funded basis (advantage survives only for `always_on`), and added regression tests pinning the new identities and rendered numbers.
 
-## Objective
+## Acceptance criteria (all met)
 
-Update the experiment record `research/experiments/cryptofunding_002_evaluation.md` to state the
-definitions (leverage, gross per unit capital employed, funding gap, self-funded restatement with
-named capital rate) before numbers, report the new fields for all three rules plus constant-notional
-comparison, and correct the "headline: fixed coin quantity" claim if the advantage does not survive
-on a self-funded basis. Add a regression test pinning the new identities and rendered numbers.
-
-## Acceptance criteria
-
-1. Record states definitions before numbers and self-funded conclusion with numbers.
-2. `python -m pytest -q` passes.
+1. Record states definitions before numbers and self-funded conclusion with numbers — done.
+2. `python -m pytest -q` passes — 233 passed.
 3. `python research/cost_admissibility_screen.py` OVERALL: PASS.
 4. `python research/eval_cryptofunding.py` runs clean; `git status --porcelain data/ config/` empty.
 
@@ -32,3 +22,7 @@ python research/eval_cryptofunding.py
 python -m pytest -q
 python research/cost_admissibility_screen.py
 ```
+
+## Notes
+
+Changes are uncommitted (working tree: `research/eval_cryptofunding.py`, `tests/test_eval_cryptofunding.py`, regenerated `research/experiments/cryptofunding_002_evaluation.md`). No evidence-based next cycle task identified; do not invent one. `.kilo-runtime/worker-disposition.json` records a superseded supervisor disposition (do not commit).

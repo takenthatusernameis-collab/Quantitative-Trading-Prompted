@@ -1063,6 +1063,104 @@ def test_committed_artifact_states_the_reconciled_capital_base():
             ), rule_id
 
 
+def test_capital_base_definitions_precede_numbers() -> None:
+    """The record states the definitions (leverage, funding gap, gross per
+    unit of capital employed, self-funded restatement with the named capital
+    rate) before the capital-base numbers."""
+    text = ARTIFACT.read_text()
+    definitions_idx = text.index("#### Definitions")
+    table_idx = text.index("| Rule | Leverage min/avg/max |")
+    assert definitions_idx < table_idx
+    definitions = text[definitions_idx:table_idx]
+    for term in (
+        "Leverage",
+        "Funding gap",
+        "Gross per unit of capital employed",
+        "Self-funded restatement",
+        "capital_rate_annual = 2.00%/yr",
+    ):
+        assert term in definitions, term
+
+
+def test_capital_base_self_funded_identity_and_rendered_values(paths) -> None:
+    """The self-funded restatement is gross minus the funding gap priced at
+    the named capital rate, gross per unit of capital employed is gross divided
+    by leverage, and the record reports all three rules plus the
+    constant-notional comparison with rendered values that match the code."""
+    model = ev.COST_MODEL_BY_KEY[ev.HEADLINE_COST_MODEL]
+    rate = float(model.capital_rate_annual)
+    assert rate == pytest.approx(0.02)
+    text = ARTIFACT.read_text()
+    start = text.index("```json") + len("```json")
+    end = text.index("```", start)
+    payload = json.loads(text[start:end])
+    capital_base = payload["cost_model_evaluation"]["fixed_coin_reconciled_capital_base"]
+    assert set(capital_base) == {"always_on", "funding_positive_sameday", "funding_positive_lagged"}
+
+    # Rendered table: every rule present with the new fields and the
+    # constant-notional comparison column, at 2 decimal places.
+    assert "| Rule | Leverage min/avg/max |" in text
+    assert (
+        "| `always_on` | 0.36x / 1.60x / 3.90x | 0.63x | 2.00%/yr | "
+        "+29.52% | +13.89% | +13.40% | +27.89% |"
+        in text
+    )
+    assert (
+        "| `funding_positive_lagged` | 0.00x / 0.59x / 2.47x | 0.04x | 2.00%/yr | "
+        "+13.44% | +14.35% | +13.80% | +13.36% |"
+        in text
+    )
+    assert (
+        "| `funding_positive_sameday` | 0.00x / 0.60x / 2.47x | 0.04x | 2.00%/yr | "
+        "+13.93% | +15.06% | +14.67% | +13.85% |"
+        in text
+    )
+
+    # Identity: gross per capital employed = gross / leverage; self-funded net
+    # = gross - funding_gap * rate / 365, annualized on the full sample.
+    for rule in ev.RULES:
+        book = ev.build_fixed_coin_portfolio_book(
+            paths, rule, capital_consistent=True
+        )
+        leverage = book.spot_notional
+        funding_gap = (leverage - 1.0).clip(lower=0.0)
+        self_funded = book.gross - funding_gap * (rate / ev.PERIODS_PER_YEAR)
+        idx = ev.sample_index(self_funded.index, "full")
+        growth = float((1.0 + self_funded.loc[idx]).prod())
+        self_funded_ann = growth ** (ev.PERIODS_PER_YEAR / len(idx)) - 1.0
+        per_capital = (book.gross / leverage.replace(0.0, np.nan)).fillna(0.0)
+        per_capital_ann = ev.annualized_return(
+            per_capital.loc[idx], ev.PERIODS_PER_YEAR
+        )
+        row = capital_base[rule.rule_id]
+        assert row["self_funded_net_annualized"] == pytest.approx(self_funded_ann, abs=1e-9), rule.rule_id
+        assert row["gross_per_capital_employed_annualized"] == pytest.approx(
+            per_capital_ann, abs=1e-9
+        ), rule.rule_id
+        assert row["avg_funding_gap_full"] == pytest.approx(
+            float(funding_gap.mean()), abs=1e-12
+        ), rule.rule_id
+        assert row["capital_rate_annual"] == pytest.approx(rate), rule.rule_id
+
+    # Corrected headline: the self-funded advantage survives only for
+    # `always_on`; for the funding-positive rules the constant-notional book
+    # earns at least as much per unit of capital.
+    assert (
+        capital_base["always_on"]["self_funded_net_annualized"]
+        > capital_base["always_on"]["constant_notional_gross_annualized"]
+    )
+    assert (
+        capital_base["funding_positive_lagged"]["self_funded_net_annualized"]
+        <= capital_base["funding_positive_lagged"]["constant_notional_gross_annualized"]
+    )
+    assert (
+        capital_base["funding_positive_sameday"]["self_funded_net_annualized"]
+        <= capital_base["funding_positive_sameday"]["constant_notional_gross_annualized"]
+    )
+    assert "survives self-funding only for" in text
+    assert "Headline: fixed coin quantity survives self-funding only for" in text
+
+
 def test_committed_artifact_carries_reconciled_fixed_coin():
     """The artifact payload keeps the reconciled figures and all gate rows
     failing; the reconciliation-with-cost-screen fields are unchanged."""
