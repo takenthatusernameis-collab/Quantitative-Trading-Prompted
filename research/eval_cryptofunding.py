@@ -1695,11 +1695,23 @@ def evaluate_cost_models(paths: dict[str, pd.DataFrame]) -> dict[str, Any]:
             portfolio_fixed_consistent.gross
             / reconciled_leverage.replace(0.0, np.nan)
         ).fillna(0.0)
+        funding_gap = (reconciled_leverage - 1.0).clip(lower=0.0)
+        capital_rate = float(headline_model.capital_rate_annual)
+        self_funded_net_series = portfolio_fixed_consistent.gross - funding_gap * (
+            capital_rate / PERIODS_PER_YEAR
+        )
         fixed_coin_reconciled_capital_base[rule.rule_id] = {
             "min_spot_notional_fraction_full": float(reconciled_spot_fraction.min()),
             "avg_spot_notional_fraction_full": float(reconciled_spot_fraction.mean()),
             "max_spot_notional_fraction_full": float(reconciled_spot_fraction.max()),
             "last_spot_notional_fraction": float(reconciled_spot_fraction.iloc[-1]),
+            "min_leverage_full": float(reconciled_leverage.min()),
+            "avg_leverage_full": float(reconciled_leverage.mean()),
+            "max_leverage_full": float(reconciled_leverage.max()),
+            "min_funding_gap_full": float(funding_gap.min()),
+            "avg_funding_gap_full": float(funding_gap.mean()),
+            "max_funding_gap_full": float(funding_gap.max()),
+            "capital_rate_annual": capital_rate,
             "constant_notional_spot_notional_fraction": float(
                 drift_book.spot_notional.mean()
             ),
@@ -1711,6 +1723,9 @@ def evaluate_cost_models(paths: dict[str, pd.DataFrame]) -> dict[str, Any]:
             ),
             "constant_notional_gross_annualized": float(
                 annualized_return(drift_book.gross, PERIODS_PER_YEAR)
+            ),
+            "self_funded_net_annualized": float(
+                annualized_return(self_funded_net_series, PERIODS_PER_YEAR)
             ),
         }
         gross_paths[rule.rule_id] = {

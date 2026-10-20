@@ -1723,34 +1723,58 @@ python -m pytest -q
     },
     "fixed_coin_reconciled_capital_base": {
       "always_on": {
+        "avg_funding_gap_full": 0.6325464432365491,
+        "avg_leverage_full": 1.5955933237109332,
         "avg_spot_notional_fraction_full": 1.5955933237109332,
+        "capital_rate_annual": 0.02,
         "constant_notional_gross_annualized": 0.13395684247803485,
         "constant_notional_spot_notional_fraction": 1.0,
         "gross_on_stated_equity_annualized": 0.29518089562289185,
         "gross_per_capital_employed_annualized": 0.13891516340907395,
         "last_spot_notional_fraction": 1.4446545193986722,
+        "max_funding_gap_full": 2.896931604203751,
+        "max_leverage_full": 3.896931604203751,
         "max_spot_notional_fraction_full": 3.896931604203751,
-        "min_spot_notional_fraction_full": 0.3601527851032979
+        "min_funding_gap_full": 0.0,
+        "min_leverage_full": 0.3601527851032979,
+        "min_spot_notional_fraction_full": 0.3601527851032979,
+        "self_funded_net_annualized": 0.2789229922166807
       },
       "funding_positive_lagged": {
+        "avg_funding_gap_full": 0.03602654118681473,
+        "avg_leverage_full": 0.5920721331098223,
         "avg_spot_notional_fraction_full": 0.5920721331098223,
+        "capital_rate_annual": 0.02,
         "constant_notional_gross_annualized": 0.1379663195439036,
         "constant_notional_spot_notional_fraction": 0.8792613636363636,
         "gross_on_stated_equity_annualized": 0.13436541861816464,
         "gross_per_capital_employed_annualized": 0.1435459878337919,
         "last_spot_notional_fraction": 0.6020881931319317,
+        "max_funding_gap_full": 1.4652111915428332,
+        "max_leverage_full": 2.465211191542833,
         "max_spot_notional_fraction_full": 2.465211191542833,
-        "min_spot_notional_fraction_full": 0.0
+        "min_funding_gap_full": 0.0,
+        "min_leverage_full": 0.0,
+        "min_spot_notional_fraction_full": 0.0,
+        "self_funded_net_annualized": 0.13355083877595386
       },
       "funding_positive_sameday": {
+        "avg_funding_gap_full": 0.035540822959319006,
+        "avg_leverage_full": 0.5959862525077622,
         "avg_spot_notional_fraction_full": 0.5959862525077622,
+        "capital_rate_annual": 0.02,
         "constant_notional_gross_annualized": 0.14674174146729246,
         "constant_notional_spot_notional_fraction": 0.8796672077922078,
         "gross_on_stated_equity_annualized": 0.13931473300718022,
         "gross_per_capital_employed_annualized": 0.15058723618470982,
         "last_spot_notional_fraction": 0.6188433820747361,
+        "max_funding_gap_full": 1.468797031946862,
+        "max_leverage_full": 2.468797031946862,
         "max_spot_notional_fraction_full": 2.468797031946862,
-        "min_spot_notional_fraction_full": 0.0
+        "min_funding_gap_full": 0.0,
+        "min_leverage_full": 0.0,
+        "min_spot_notional_fraction_full": 0.0,
+        "self_funded_net_annualized": 0.1385076857650711
       }
     },
     "gates": {
@@ -5648,7 +5672,7 @@ python -m pytest -q
         "ETHUSDT perp"
       ]
     },
-    "generated_at": "2026-10-20T09:17:26.224608+00:00",
+    "generated_at": "2026-10-20T09:20:55.482940+00:00",
     "periods_per_year": 365,
     "promotion_gates": {
       "min_pooled_oos_trades": 100,
