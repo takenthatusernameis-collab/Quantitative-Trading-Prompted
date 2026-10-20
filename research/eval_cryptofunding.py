@@ -232,6 +232,27 @@ TURNOVER_NOTES: dict[str, str] = {
 #: ``HEADLINE_CONVENTION`` in the rendered record.
 HEADLINE_CONVENTION = "drift"
 
+#: The turnover convention name of the threshold-rebalanced constant-notional
+#: construction (Cycle 894). It is deliberately **not** part of
+#: ``TURNOVER_CONVENTIONS``: that tuple enumerates the trading conventions of
+#: the pre-registered gross path (the cost screen's bounds), while this
+#: convention is a separate book with its own gross path.
+THRESHOLD_CONVENTION = "threshold_rebalanced"
+
+#: The **pre-registered** drift threshold of the threshold-rebalanced
+#: constant-notional construction (Cycle 894): the legs are reset to
+#: ``weight * equity`` only on the days where the cumulative price drift of
+#: either leg since the last rebalance exceeds this fraction of its price.
+#: Fixed before any out-of-sample number was inspected, in the same style as
+#: the pre-registered rules.
+THRESHOLD_REBALANCE = 0.02
+
+#: The threshold sensitivity grid. It is a sensitivity of the same six
+#: configurations (the rebalancing frequency is a property of the
+#: construction, not a new trial), reported next to the pre-registered
+#: threshold and never used to select one.
+THRESHOLD_SENSITIVITY_GRID: tuple[float, ...] = (0.01, 0.02, 0.05, 0.10)
+
 
 # ======================================================================
 # Cost models (Cycle 892)
@@ -459,6 +480,7 @@ class Book:
     equity_path: pd.Series | None = None
     coin_quantity: pd.Series | None = None
     notes: list[str] = field(default_factory=list)
+    rebalances: dict[str, int] | None = None
 
     @property
     def position(self) -> pd.Series:
@@ -1484,6 +1506,18 @@ def _slim_samples(samples: dict[str, Any], fields: tuple[str, ...] = _SLIM_METRI
     return out
 
 
+def _annualized_fee_drag(book: Book, model: CostModel) -> float:
+    """The annualized trading-fee drag of *book* under the venue *model*."""
+    return float(
+        (
+            book.turnover_spot.mean() * float(model.spot_bps)
+            + book.turnover_perp.mean() * float(model.perp_bps)
+        )
+        / 10000.0
+        * PERIODS_PER_YEAR
+    )
+
+
 def evaluate_cost_models(paths: dict[str, pd.DataFrame]) -> dict[str, Any]:
     """Every rule under every cost model: metrics, break-evens and gates.
 
@@ -1499,6 +1533,13 @@ def evaluate_cost_models(paths: dict[str, pd.DataFrame]) -> dict[str, Any]:
     fixed_coin_per_symbol: dict[str, dict[str, Any]] = {}
     fixed_coin_gates: dict[str, dict[str, Any]] = {}
     fixed_coin_break_evens: dict[str, dict[str, Any]] = {}
+    threshold: dict[str, dict[str, Any]] = {}
+    threshold_per_symbol: dict[str, dict[str, Any]] = {}
+    threshold_gates: dict[str, dict[str, Any]] = {}
+    threshold_break_evens: dict[str, dict[str, Any]] = {}
+    threshold_sensitivity: dict[str, dict[str, Any]] = {}
+    fixed_coin_accounting: dict[str, dict[str, Any]] = {}
+    gross_paths: dict[str, dict[str, Any]] = {}
     headline_model = COST_MODEL_BY_KEY[HEADLINE_COST_MODEL]
 
     for rule in RULES:
@@ -1569,6 +1610,89 @@ def evaluate_cost_models(paths: dict[str, pd.DataFrame]) -> dict[str, Any]:
             book = portfolio_book(paths, rule, turnover_convention=HEADLINE_CONVENTION)
             break_evens[rule.rule_id][sample] = break_even_table(book, sample)
 
+        # Threshold-rebalanced constant notional (Cycle 894): the same three
+        # rules and the same two symbols, with the legs reset to
+        # ``weight * equity`` only when the cumulative price drift of either
+        # leg since the last rebalance exceeds the pre-registered threshold.
+        # Same six configurations under a different rebalancing frequency of
+        # the same construction - a sensitivity, not a new trial.
+        threshold_symbol_books = {
+            base: build_threshold_book(
+                {base: paths[base]},
+                rule,
+                {base: 1.0},
+                THRESHOLD_REBALANCE,
+                name=f"{base}_{rule.rule_id}_threshold",
+            )
+            for base in BASE_SYMBOLS
+        }
+        threshold_symbol_results = {
+            base: evaluate_book(sb, bootstrap_samples=(), cost_model=headline_model)
+            for base, sb in threshold_symbol_books.items()
+        }
+        threshold_portfolio = build_threshold_book(
+            paths,
+            rule,
+            {base: 0.5 for base in BASE_SYMBOLS},
+            THRESHOLD_REBALANCE,
+            name=f"PORTFOLIO_{rule.rule_id}_threshold",
+        )
+        threshold_portfolio_result = evaluate_book(
+            threshold_portfolio, bootstrap_samples=(), cost_model=headline_model
+        )
+        threshold[rule.rule_id] = {
+            headline_model.key: {"samples": threshold_portfolio_result["samples"]}
+        }
+        threshold_per_symbol[rule.rule_id] = {
+            headline_model.key: {
+                base: _slim_samples(result["samples"])
+                for base, result in threshold_symbol_results.items()
+            }
+        }
+        threshold_gates[rule.rule_id] = {
+            headline_model.key: promotion_gate(threshold_symbol_results)
+        }
+        threshold_break_evens[rule.rule_id] = {
+            sample: break_even_table(threshold_portfolio, sample)
+            for sample in ("full", "test_oos")
+        }
+        fixed_coin_accounting[rule.rule_id] = fixed_coin_portfolio_accounting(paths, rule)
+        drift_book = portfolio_book(paths, rule, turnover_convention=HEADLINE_CONVENTION)
+        gross_paths[rule.rule_id] = {
+            "daily_drift_ann_gross": float(
+                annualized_return(drift_book.gross, PERIODS_PER_YEAR)
+            ),
+            "threshold_ann_gross": float(
+                annualized_return(threshold_portfolio.gross, PERIODS_PER_YEAR)
+            ),
+            "daily_drift_annualized_fee_drag": _annualized_fee_drag(
+                drift_book, headline_model
+            ),
+            "threshold_annualized_fee_drag": _annualized_fee_drag(
+                threshold_portfolio, headline_model
+            ),
+        }
+
+    # The threshold sensitivity grid: the rebalancing frequency of the same
+    # construction. It is reported next to the pre-registered threshold and is
+    # never used to select one.
+    for grid_threshold in THRESHOLD_SENSITIVITY_GRID:
+        rows: dict[str, Any] = {}
+        for rule in RULES:
+            book = build_threshold_book(
+                paths,
+                rule,
+                {base: 0.5 for base in BASE_SYMBOLS},
+                grid_threshold,
+                name=f"PORTFOLIO_{rule.rule_id}_threshold_{grid_threshold:.4f}",
+            )
+            result = evaluate_book(book, bootstrap_samples=(), cost_model=headline_model)
+            rows[rule.rule_id] = {
+                "samples": _slim_samples(result["samples"]),
+                "rebalances": book.rebalances,
+            }
+        threshold_sensitivity[f"{grid_threshold:.4f}"] = rows
+
     return {
         "headline_cost_model": HEADLINE_COST_MODEL,
         "headline_turnover_convention": HEADLINE_CONVENTION,
@@ -1580,6 +1704,18 @@ def evaluate_cost_models(paths: dict[str, pd.DataFrame]) -> dict[str, Any]:
         "fixed_coin_per_symbol": fixed_coin_per_symbol,
         "fixed_coin_gates": fixed_coin_gates,
         "fixed_coin_break_evens": fixed_coin_break_evens,
+        "threshold_rebalance": {
+            "pre_registered_threshold": THRESHOLD_REBALANCE,
+            "convention": THRESHOLD_CONVENTION,
+            "sensitivity_grid": list(THRESHOLD_SENSITIVITY_GRID),
+        },
+        "threshold": threshold,
+        "threshold_per_symbol": threshold_per_symbol,
+        "threshold_gates": threshold_gates,
+        "threshold_break_evens": threshold_break_evens,
+        "threshold_sensitivity": threshold_sensitivity,
+        "fixed_coin_portfolio_accounting": fixed_coin_accounting,
+        "gross_paths": gross_paths,
     }
 
 
@@ -1937,6 +2073,22 @@ def _compact_summary(summary: dict[str, Any]) -> dict[str, Any]:
         "per_symbol": cost_eval["per_symbol"],
         "gates": cost_eval["gates"],
         "break_evens": cost_eval["break_evens"],
+        "threshold_rebalance": cost_eval["threshold_rebalance"],
+        "threshold": cost_eval["threshold"],
+        "threshold_per_symbol": cost_eval["threshold_per_symbol"],
+        "threshold_gates": cost_eval["threshold_gates"],
+        "threshold_break_evens": cost_eval["threshold_break_evens"],
+        "threshold_sensitivity": {
+            grid: {
+                rule_id: {
+                    "samples": {"full": row["samples"]["full"]},
+                    "rebalances": row["rebalances"],
+                }
+                for rule_id, row in rows.items()
+            }
+            for grid, rows in cost_eval["threshold_sensitivity"].items()
+        },
+        "fixed_coin_portfolio_accounting": cost_eval["fixed_coin_portfolio_accounting"],
     }
     return compact
 
@@ -2874,6 +3026,284 @@ def render_artifact(summary: dict[str, Any]) -> str:
     )
     add("")
 
+    # ---- threshold-rebalanced constant notional (Cycle 894) ---------------
+    threshold_meta = cost_eval["threshold_rebalance"]
+    threshold_value = threshold_meta["pre_registered_threshold"]
+    add(
+        "## The threshold-rebalanced constant notional (Cycle 894)"
+    )
+    add("")
+    add(
+        "The pre-registered book resets both legs to constant notional every "
+        "day. This section measures the **threshold-rebalanced** version of "
+        "that same construction: the legs are reset to `weight * equity` only "
+        "on the days where the cumulative price drift of either leg since the "
+        "last rebalance exceeds a pre-registered threshold of "
+        f"**{threshold_value:.0%}**; between those days the notional floats "
+        "with the price and nothing is traded. It answers one question: how "
+        "much of the daily-rebalanced answer is an artefact of rebalancing "
+        "every day? It is a sensitivity of the same six configurations (3 "
+        "rules x 2 symbols) under the Cycle 892 headline cost model, not a "
+        "new trial."
+    )
+    add("")
+    add("### Accounting conventions")
+    add("")
+    add(
+        "* Equal **notional** on the two legs at every rebalance (the "
+        "pre-registered book's convention); between rebalances each leg keeps "
+        "its own coin quantity, so the two notionals drift apart by the basis "
+        "move."
+    )
+    add(
+        "* The daily P&L of a held leg is `notional_spot * spot_return - "
+        "notional_perp * perp_return + funding_cashflow * notional_perp`, with "
+        "the notionals in effect from the previous close; the equity "
+        "compounds on it."
+    )
+    add(
+        "* The book has **one** equity for all the symbols it holds: the "
+        "equal-weight BTC/ETH book is one book with a shared equity, not two "
+        "books added up."
+    )
+    add(
+        "* A position transition is charged on both legs with the target "
+        "notional `weight` per leg, exactly as the pre-registered book charges "
+        "it, and the entry day's carry is earned."
+    )
+    add(
+        "* The turnover of a rebalance is the cumulative price drift of the "
+        "leg since the last rebalance, `weight * |P_t / P_k - 1|` per leg - "
+        "the same linearized convention the pre-registered `drift` turnover "
+        "uses. **With a threshold of 0 the book rebalances every day and "
+        "reproduces the pre-registered book exactly** (gross, turnover, leg "
+        "weights and capital base), which is the regression guard of this "
+        "section."
+    )
+    add(
+        "* The capital charge is applied to the marked-to-market spot notional "
+        "(the notional actually tied up), the same convention the fixed-coin "
+        "construction uses."
+    )
+    add("")
+    add(
+        "### Results (net of the Cycle 892 headline cost model, 365-day "
+        "annualization, equal-weight BTC/ETH portfolio)"
+    )
+    add("")
+    add(
+        "| Rule | Sample | Sessions | Ann. net (geo) | Sharpe (canonical) | "
+        "Max DD | Turnover/yr | Entries | Exits |"
+    )
+    add("|---|---|---|---|---|---|---|---|---|")
+    threshold_rows = cost_eval["threshold"]
+    for rule_id, models in threshold_rows.items():
+        for model_key, result in models.items():
+            for sample in ("full", "train", "val", "test_oos", "post2022"):
+                m = result["samples"][sample]
+                add(
+                    f"| `{rule_id}` | {sample} | {m['sessions']} | "
+                    f"{_fmt_pct(m['ann_return_geometric'])} | "
+                    f"{m['sharpe_canonical']:.3f} | {_fmt_pct(m['max_drawdown'])} | "
+                    f"{m['annualized_turnover_units']:.2f} | "
+                    f"{m['position_entries']} | {m['position_exits']} |"
+                )
+    add("")
+    add(
+        "### Sensitivity: the rebalancing frequency (portfolio, headline model)"
+    )
+    add("")
+    add(
+        "| Threshold | Rule | Ann. net (geo) | Sharpe (canonical) | Max DD | "
+        "Turnover/yr | Rebalances (BTC, ETH) |"
+    )
+    add("|---|---|---|---|---|---|---|")
+    for grid_threshold, rows in cost_eval["threshold_sensitivity"].items():
+        for rule_id, row in rows.items():
+            m = row["samples"]["full"]
+            rebalances = row["rebalances"] or {}
+            add(
+                f"| {float(grid_threshold):.0%} | `{rule_id}` | "
+                f"{_fmt_pct(m['ann_return_geometric'])} | "
+                f"{m['sharpe_canonical']:.3f} | {_fmt_pct(m['max_drawdown'])} | "
+                f"{m['annualized_turnover_units']:.2f} | "
+                f"{rebalances.get('BTCUSDT', 0)}, {rebalances.get('ETHUSDT', 0)} |"
+            )
+    add("")
+    add(
+        "The grid is a sensitivity of the same construction, reported next "
+        "to the pre-registered threshold and never used to select one: the "
+        "headline of this section is the pre-registered "
+        f"{threshold_value:.0%} row."
+    )
+    add("")
+    add("### Break-evens (portfolio, headline cost model)")
+    add("")
+    add(
+        "| Rule | Sample | Break-even flat cost/unit | Break-even capital charge "
+        "(annual, spot notional) | Break-even venue fee multiple |"
+    )
+    add("|---|---|---|---|---|")
+    for rule_id, samples in cost_eval["threshold_break_evens"].items():
+        for sample, row in samples.items():
+            flat = row["break_even_flat_cost_bps"]["solution_bps"]
+            cap = row["break_even_capital_charge_annual"]["solution_annual_rate"]
+            mult = row["break_even_venue_fee_multiplier"]["solution_multiplier"]
+            flat_txt = _fmt_bp(flat) if flat is not None else "none"
+            cap_txt = _fmt_pct(cap, 2) if cap is not None else "none"
+            mult_txt = f"{mult:.2f}x" if mult is not None else "none"
+            add(
+                f"| `{rule_id}` | {sample} | {flat_txt} | {cap_txt} | {mult_txt} |"
+            )
+    add("")
+    add("### Promotion gate (threshold-rebalanced constant notional)")
+    add("")
+    add(
+        "| Rule | Cost model | Net OOS Sharpe (canonical, 365) | Sharpe criterion | "
+        "Pooled OOS round trips | Trade-count criterion | Gate |"
+    )
+    add("|---|---|---|---|---|---|---|")
+    for rule_id, models in cost_eval["threshold_gates"].items():
+        for model_key, gate in models.items():
+            add(
+                f"| `{rule_id}` | `{model_key}` | "
+                f"{gate['net_oos_sharpe_canonical_365']:.3f} | "
+                f"{'PASS' if gate['sharpe_criterion_pass'] else 'FAIL'} | "
+                f"{gate['pooled_oos_position_round_trips']} | "
+                f"{'PASS' if gate['trade_count_criterion_pass'] else 'FAIL'} | "
+                f"**{'PASS' if gate['promotion_gate_pass'] else 'FAIL'}** |"
+            )
+    add("")
+    add(
+        "The gate is re-evaluated for this construction on the same "
+        "thresholds as every other row and is never relaxed: it **fails** in "
+        "every row, on the same trade-count criterion as the other "
+        "constructions (the pooled out-of-sample round trips are a property of "
+        "the position path, not of the rebalancing frequency)."
+    )
+    add("")
+
+    # ---- three constructions --------------------------------------------
+    add("### The three constructions on the same committed path")
+    add("")
+    add(
+        "The three constructions are compared below on the **per-symbol** "
+        "basis (one symbol at a time, `weight = 1`, each book measured "
+        "against its own equity), because that is the only comparison in "
+        "which all three use the same accounting. The portfolio rows follow "
+        "below with their accounting stated."
+    )
+    add("")
+    add(
+        "| Rule | Symbol | Daily drift (ann. net) | Threshold "
+        f"{threshold_value:.0%} (ann. net) | Fixed coin (ann. net) | "
+        "Threshold minus daily drift |"
+    )
+    add("|---|---|---|---|---|---|")
+    headline_key = cost_eval["headline_cost_model"]
+    for rule_id in threshold_rows:
+        for base in BASE_SYMBOLS:
+            drift = cost_eval["per_symbol"][rule_id][headline_key][base]["full"]
+            thresh = cost_eval["threshold_per_symbol"][rule_id][headline_key][base]["full"]
+            fixed = cost_eval["fixed_coin_per_symbol"][rule_id][headline_key][base]["full"]
+            diff = thresh["ann_return_geometric"] - drift["ann_return_geometric"]
+            add(
+                f"| `{rule_id}` | {base} | "
+                f"{_fmt_pct(drift['ann_return_geometric'])} | "
+                f"{_fmt_pct(thresh['ann_return_geometric'])} | "
+                f"{_fmt_pct(fixed['ann_return_geometric'])} | "
+                f"{_fmt_pct(diff)} |"
+            )
+    add("")
+    add(
+        "| Rule | Construction | Portfolio ann. net | Sharpe | Turnover/yr | "
+        "Accounting |"
+    )
+    add("|---|---|---|---|---|---|")
+    for rule_id in threshold_rows:
+        drift = cost_eval["portfolio"][rule_id][headline_key]["samples"]["full"]
+        thresh = threshold_rows[rule_id][headline_key]["samples"]["full"]
+        fixed = cost_eval["fixed_coin"][rule_id][headline_key]["samples"]["full"]
+        add(
+            f"| `{rule_id}` | daily drift (pre-registered) | "
+            f"{_fmt_pct(drift['ann_return_geometric'])} | "
+            f"{drift['sharpe_canonical']:.3f} | "
+            f"{drift['annualized_turnover_units']:.2f} | one shared equity |"
+        )
+        add(
+            f"| `{rule_id}` | threshold {threshold_value:.0%} | "
+            f"{_fmt_pct(thresh['ann_return_geometric'])} | "
+            f"{thresh['sharpe_canonical']:.3f} | "
+            f"{thresh['annualized_turnover_units']:.2f} | one shared equity |"
+        )
+        add(
+            f"| `{rule_id}` | fixed coin (Cycle 893) | "
+            f"{_fmt_pct(fixed['ann_return_geometric'])} | "
+            f"{fixed['sharpe_canonical']:.3f} | "
+            f"{fixed['annualized_turnover_units']:.2f} | "
+            "sum of the two symbols' separately compounded returns |"
+        )
+    add("")
+    add(
+        "**Which convention nets more.** On the consistent per-symbol basis "
+        "the threshold-rebalanced constant notional nets **more** than the "
+        "daily-rebalanced one on every rule and symbol. The mechanism is "
+        "measured, not assumed: on the always-on rule the *gross* path barely "
+        "moves (the gross annualized return of the portfolio is "
+        f"{_fmt_pct(cost_eval['gross_paths']['always_on']['daily_drift_ann_gross'])}/yr "
+        "for the daily-rebalanced book and "
+        f"{_fmt_pct(cost_eval['gross_paths']['always_on']['threshold_ann_gross'])}/yr "
+        "for the threshold-rebalanced one - the funding is earned on a "
+        "notional that is larger after a price rise and smaller after a fall, "
+        "and the two effects very nearly cancel), so almost the whole "
+        "difference is the trading cost that the fewer rebalances avoid: the "
+        "annualized fee drag falls from "
+        f"{_fmt_pct(cost_eval['gross_paths']['always_on']['daily_drift_annualized_fee_drag'])}/yr "
+        "to "
+        f"{_fmt_pct(cost_eval['gross_paths']['always_on']['threshold_annualized_fee_drag'])}/yr "
+        "under the headline model. The fixed-coin "
+        "construction nets more than both, but it is **a different book, not "
+        "a different rebalancing frequency**: it holds one coin quantity on "
+        "both legs for the whole holding stretch, so its perp notional scales "
+        "with the coin's price while its equity compounds only on the carry, "
+        "and its return on equity is a different quantity from the "
+        "constant-notional book's. The threshold construction does **not** "
+        "converge to it as the threshold grows: at an unbounded threshold it "
+        "holds equal *notional* on the two legs, whose coin quantities drift "
+        "apart, and it accumulates a directional exposure to the spot's "
+        "relative performance since the last rebalance."
+    )
+    add("")
+    add(
+        "**A portfolio-accounting caveat on the Cycle 893 fixed-coin "
+        "portfolio.** The fixed-coin portfolio row above is the committed "
+        "Cycle 893 number: it adds the two symbols' returns, each measured "
+        "against its own equity, so each symbol's capital is counted twice. "
+        "The capital-consistent account of the same construction (the capital "
+        "split once at the entry, never rebalanced) is materially lower. The "
+        "diagnostic below reports both, gross, so that the difference is "
+        "visible and reproducible; reconciling the committed Cycle 893 "
+        "portfolio number is a separate, bounded task and this section does "
+        "not change it."
+    )
+    add("")
+    add(
+        "| Rule | Committed (sum of sub-book returns) | Capital-consistent "
+        "equal-weight split | Ratio |"
+    )
+    add("|---|---|---|---|")
+    for rule_id, row in cost_eval["fixed_coin_portfolio_accounting"].items():
+        committed = row["committed_sum_of_sub_book_returns"]["ann_return_geometric_gross"]
+        consistent = row["capital_consistent_equal_weight_split"][
+            "ann_return_geometric_gross"
+        ]
+        add(
+            f"| `{rule_id}` | {_fmt_pct(committed)}/yr (gross) | "
+            f"{_fmt_pct(consistent)}/yr (gross) | "
+            f"{row['ratio_committed_over_capital_consistent']:.2f}x |"
+        )
+    add("")
+
     # ---- verdict --------------------------------------------------------
     headline_rows = cost_eval["portfolio"]
     always = headline_rows["always_on"][HEADLINE_COST_MODEL]["samples"]
@@ -3127,6 +3557,269 @@ def build_fixed_coin_portfolio_book(
             "rebalancing; entry and exit only"
         ],
     )
+
+def build_threshold_book(
+    paths: dict[str, pd.DataFrame],
+    rule: RuleSpec,
+    weights: dict[str, float],
+    threshold: float,
+    name: str | None = None,
+) -> Book:
+    """Threshold-rebalanced constant notional: the leg notional floats between rebalances.
+
+    The construction starts from the pre-registered constant-notional book and
+    changes **only the rebalancing frequency**: both legs are reset to
+    ``weight * equity`` on the days where the cumulative price drift of
+    either leg since the last rebalance exceeds *threshold*, and between
+    those days the notional floats with the price (no turnover).
+
+    Accounting (stated, because it is a different book from the pre-registered
+    daily-rebalanced one):
+
+    * The book holds ``+weight`` spot and ``-weight`` perp at every rebalance,
+      i.e. **equal notional** on the two legs (the pre-registered book's
+      convention). Between rebalances the two legs keep their own coin
+      quantities, so their notionals drift apart by the basis move.
+    * The daily P&L of a held leg is ``notional_spot * spot_return -
+      notional_perp * perp_return + funding_cashflow * notional_perp``, with
+      the notionals in effect from the previous close.
+    * The equity compounds on that P&L; the book has **one** equity for all
+      the symbols it holds (the equal-weight BTC/ETH portfolio is one book
+      with a shared equity, not two books added up).
+    * A position transition (entry or exit) is charged on both legs with the
+      target notional ``weight`` per leg, exactly as the pre-registered book
+      charges it; the entry day's carry is earned, as in the pre-registered
+      book.
+    * The turnover of a rebalance is the cumulative price drift of the leg
+      since the last rebalance, ``weight * |P_t / P_k - 1|`` per leg - the
+      same linearized convention the pre-registered ``drift`` turnover uses
+      (``weight * |return|`` per leg). With ``threshold = 0`` the book
+      rebalances every day and reproduces the pre-registered book exactly.
+    * The capital charge is applied to the **marked-to-market** spot notional
+      (the notional actually tied up, as a fraction of the equity), the same
+      convention the fixed-coin construction uses.
+    """
+    symbols = list(paths)
+    if not symbols:
+        raise ValueError("no symbols given")
+    index = paths[symbols[0]].index
+    n = len(index)
+
+    data: dict[str, dict[str, np.ndarray]] = {}
+    for base in symbols:
+        path = paths[base]
+        spot_close = path["spot_close"].to_numpy(dtype=float)
+        perp_close = path["perp_close"].to_numpy(dtype=float)
+        spot_return = path["spot_return"].to_numpy(dtype=float)
+        perp_return = path["perp_return"].to_numpy(dtype=float)
+        # The committed path starts at the first session that has a return, so
+        # the close before the first session is recoverable from it. It is the
+        # reference price of the opening position.
+        prev_spot = np.empty(n)
+        prev_perp = np.empty(n)
+        prev_spot[0] = (
+            spot_close[0] / (1.0 + spot_return[0]) if spot_return[0] != -1.0 else spot_close[0]
+        )
+        prev_perp[0] = (
+            perp_close[0] / (1.0 + perp_return[0]) if perp_return[0] != -1.0 else perp_close[0]
+        )
+        prev_spot[1:] = spot_close[:-1]
+        prev_perp[1:] = perp_close[:-1]
+        data[base] = {
+            "position": position_series(path, rule).to_numpy(dtype=float),
+            "spot_close": spot_close,
+            "perp_close": perp_close,
+            "spot_return": spot_return,
+            "perp_return": perp_return,
+            "funding": path["funding_cashflow"].to_numpy(dtype=float),
+            "prev_spot": prev_spot,
+            "prev_perp": prev_perp,
+        }
+
+    gross = np.zeros(n)
+    turn_spot = np.zeros(n)
+    turn_perp = np.zeros(n)
+    spot_notional = np.zeros(n)
+    equity_path = np.zeros(n)
+    leg_weights: dict[str, np.ndarray] = {}
+    position_rows: dict[str, np.ndarray] = {}
+    entries = {base: 0 for base in symbols}
+    exits = {base: 0 for base in symbols}
+    rebalances = {base: 0 for base in symbols}
+
+    state: dict[str, dict[str, Any]] = {}
+    for base in symbols:
+        state[base] = {
+            "held": False,
+            "notional_spot": 0.0,
+            "notional_perp": 0.0,
+            "ref_spot": float(data[base]["prev_spot"][0]),
+            "ref_perp": float(data[base]["prev_perp"][0]),
+        }
+
+    equity = 1.0
+    for i in range(n):
+        # ---- position transitions (at the start of the session) -----------
+        for base in symbols:
+            st = state[base]
+            position = float(data[base]["position"][i])
+            weight = float(weights[base])
+            if position > 0.5 and not st["held"]:
+                st["held"] = True
+                st["notional_spot"] = weight * equity
+                st["notional_perp"] = weight * equity
+                st["ref_spot"] = float(data[base]["prev_spot"][i])
+                st["ref_perp"] = float(data[base]["prev_perp"][i])
+                entries[base] += 1
+                turn_spot[i] += weight
+                turn_perp[i] += weight
+            elif position < 0.5 and st["held"]:
+                st["held"] = False
+                st["notional_spot"] = 0.0
+                st["notional_perp"] = 0.0
+                exits[base] += 1
+                turn_spot[i] += weight
+                turn_perp[i] += weight
+
+        # ---- the day's P&L on the notionals in effect -------------------
+        pnl_total = 0.0
+        for base in symbols:
+            st = state[base]
+            if not st["held"]:
+                continue
+            pnl_total += (
+                st["notional_spot"] * float(data[base]["spot_return"][i])
+                - st["notional_perp"] * float(data[base]["perp_return"][i])
+                + float(data[base]["funding"][i]) * st["notional_perp"]
+            )
+        gross[i] = pnl_total / equity if equity != 0.0 else 0.0
+        equity += pnl_total
+        equity_path[i] = equity
+
+        # ---- the close: drift check and the rebalance -------------------
+        for base in symbols:
+            st = state[base]
+            if not st["held"]:
+                continue
+            weight = float(weights[base])
+            drift_spot = abs(float(data[base]["spot_close"][i]) / st["ref_spot"] - 1.0)
+            drift_perp = abs(float(data[base]["perp_close"][i]) / st["ref_perp"] - 1.0)
+            if max(drift_spot, drift_perp) > threshold:
+                turn_spot[i] += weight * drift_spot
+                turn_perp[i] += weight * drift_perp
+                st["notional_spot"] = weight * equity
+                st["notional_perp"] = weight * equity
+                st["ref_spot"] = float(data[base]["spot_close"][i])
+                st["ref_perp"] = float(data[base]["perp_close"][i])
+                rebalances[base] += 1
+            else:
+                st["notional_spot"] *= 1.0 + float(data[base]["spot_return"][i])
+                st["notional_perp"] *= 1.0 + float(data[base]["perp_return"][i])
+
+        # ---- the marked-to-market state ---------------------------------
+        spot_notional[i] = (
+            sum(state[base]["notional_spot"] for base in symbols) / equity if equity != 0.0 else 0.0
+        )
+        for base in symbols:
+            st = state[base]
+            leg_weights.setdefault(f"{base}_spot", np.zeros(n))[i] = (
+                st["notional_spot"] / equity if equity != 0.0 else 0.0
+            )
+            leg_weights.setdefault(f"{base}_perp", np.zeros(n))[i] = (
+                -st["notional_perp"] / equity if equity != 0.0 else 0.0
+            )
+            position_rows.setdefault(f"{base}_position", np.zeros(n))[i] = float(
+                data[base]["position"][i]
+            )
+
+    weights_frame = pd.DataFrame(leg_weights, index=index)
+    positions = pd.DataFrame(position_rows, index=index)
+    turnover_spot_series = pd.Series(turn_spot, index=index, dtype=float)
+    turnover_perp_series = pd.Series(turn_perp, index=index, dtype=float)
+
+    return Book(
+        name=name or f"THRESHOLD_{rule.rule_id}",
+        symbol="+".join(symbols) if len(symbols) > 1 else symbols[0],
+        rule=rule,
+        weight=float(sum(weights.values()) / len(weights)),
+        turnover_convention=THRESHOLD_CONVENTION,
+        gross=pd.Series(gross, index=index, dtype=float),
+        turnover=(turnover_spot_series + turnover_perp_series),
+        turnover_spot=turnover_spot_series,
+        turnover_perp=turnover_perp_series,
+        positions=positions,
+        weights=weights_frame,
+        entries=int(sum(entries.values())),
+        exits=int(sum(exits.values())),
+        spot_notional_series=pd.Series(spot_notional, index=index, dtype=float),
+        equity_path=pd.Series(equity_path, index=index, dtype=float),
+        notes=[
+            "threshold-rebalanced constant notional: the legs are reset to "
+            "weight * equity only when the cumulative price drift of either leg "
+            f"since the last rebalance exceeds {threshold:.2%}; the notional "
+            "floats between rebalances; one shared equity for all symbols",
+        ],
+        rebalances=dict(rebalances),
+    )
+
+
+def fixed_coin_portfolio_accounting(
+    paths: dict[str, pd.DataFrame], rule: RuleSpec
+) -> dict[str, Any]:
+    """The two portfolio accountings of the fixed-coin construction (Cycle 894).
+
+    The Cycle 893 fixed-coin portfolio adds the two symbols' **separately
+    compounded** returns: each symbol's return is measured against its own
+    equity and the two are added, so each symbol's capital is counted twice.
+    The capital-consistent account of the *same* construction splits the
+    capital once (half per symbol at the entry, never rebalanced) and adds the
+    two books' P&L against their combined equity.
+
+    The diagnostic reports the gross annualized return of both so that the
+    difference is visible and reproducible; it does not change the committed
+    Cycle 893 number, and the reconciliation of that number is a separate,
+    bounded task.
+    """
+    subs = {
+        base: build_fixed_coin_book(paths[base], rule, weight=1.0)
+        for base in BASE_SYMBOLS
+    }
+    committed = sum(sub.gross for sub in subs.values())
+    equity_sum = sum(sub.equity_path for sub in subs.values())
+    pnl_sum = sum(
+        sub.gross * sub.equity_path.shift(1).fillna(1.0) for sub in subs.values()
+    )
+    denominator = equity_sum.shift(1).fillna(2.0)
+    consistent = pnl_sum / denominator
+    committed_ann = annualized_return(committed, PERIODS_PER_YEAR)
+    consistent_ann = annualized_return(consistent, PERIODS_PER_YEAR)
+    return {
+        "committed_sum_of_sub_book_returns": {
+            "ann_return_geometric_gross": float(committed_ann),
+            "note": (
+                "The Cycle 893 accounting: the two symbols' returns are "
+                "measured against their own equities and added, so each "
+                "symbol's capital is counted twice."
+            ),
+        },
+        "capital_consistent_equal_weight_split": {
+            "ann_return_geometric_gross": float(consistent_ann),
+            "note": (
+                "The capital-consistent account of the same construction: the "
+                "capital is split once (half per symbol at the entry, never "
+                "rebalanced) and the two books' P&L is added against their "
+                "combined equity."
+            ),
+        },
+        "ratio_committed_over_capital_consistent": (
+            float(committed_ann / consistent_ann) if consistent_ann != 0.0 else float("nan")
+        ),
+        "per_symbol_ann_return_geometric_gross": {
+            base: float(annualized_return(sub.gross, PERIODS_PER_YEAR))
+            for base, sub in subs.items()
+        },
+    }
+
 
 if __name__ == "__main__":
     sys.exit(main())

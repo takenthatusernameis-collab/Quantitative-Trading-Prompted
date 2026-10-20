@@ -729,3 +729,148 @@ def test_committed_artifact_states_the_realistic_cost_model() -> None:
     for rule_id, rows in gates.items():
         for model_key, gate in rows.items():
             assert gate["promotion_gate_pass"] is False, (rule_id, model_key)
+
+
+# ======================================================================
+# Threshold-rebalanced constant notional (Cycle 894)
+# ======================================================================
+def test_threshold_zero_reproduces_the_daily_drift_convention(paths) -> None:
+    """With a threshold of 0 the book rebalances every day and must reproduce
+    the pre-registered ``drift`` book exactly: gross, both leg turnovers, the
+    leg weights and the capital base."""
+    for rule in ev.RULES:
+        drift = ev.portfolio_book(paths, rule, turnover_convention="drift")
+        threshold = ev.build_threshold_book(
+            paths,
+            rule,
+            {base: 0.5 for base in ev.BASE_SYMBOLS},
+            0.0,
+        )
+        np.testing.assert_allclose(
+            threshold.gross.to_numpy(), drift.gross.to_numpy(), rtol=1e-12, atol=1e-15
+        )
+        np.testing.assert_allclose(
+            threshold.turnover_spot.to_numpy(),
+            drift.turnover_spot.to_numpy(),
+            rtol=1e-12,
+            atol=1e-15,
+        )
+        np.testing.assert_allclose(
+            threshold.turnover_perp.to_numpy(),
+            drift.turnover_perp.to_numpy(),
+            rtol=1e-12,
+            atol=1e-15,
+        )
+        np.testing.assert_allclose(
+            threshold.weights.to_numpy(), drift.weights.to_numpy(), rtol=1e-12, atol=1e-15
+        )
+        np.testing.assert_allclose(
+            threshold.spot_notional.to_numpy(),
+            drift.spot_notional.to_numpy(),
+            rtol=1e-12,
+            atol=1e-15,
+        )
+        # The same for the single-symbol books (the books the gate uses).
+        for base in ev.BASE_SYMBOLS:
+            single = ev.build_book(paths[base], rule, weight=1.0)
+            one = ev.build_threshold_book({base: paths[base]}, rule, {base: 1.0}, 0.0)
+            np.testing.assert_allclose(
+                one.gross.to_numpy(), single.gross.to_numpy(), rtol=1e-12, atol=1e-15
+            )
+            np.testing.assert_allclose(
+                one.turnover.to_numpy(), single.turnover.to_numpy(), rtol=1e-12, atol=1e-15
+            )
+
+
+def test_threshold_turnover_is_weakly_below_the_daily_drift_turnover(paths) -> None:
+    """Rebalancing less often cannot cost more turnover: the cumulative
+    turnover of the threshold book is weakly below the daily-drift book's on
+    every day (the drift of a leg over a stretch is at most the sum of its
+    daily drifts)."""
+    for rule in ev.RULES:
+        drift = ev.portfolio_book(paths, rule, turnover_convention="drift")
+        threshold = ev.build_threshold_book(
+            paths,
+            rule,
+            {base: 0.5 for base in ev.BASE_SYMBOLS},
+            ev.THRESHOLD_REBALANCE,
+        )
+        drift_cumulative = drift.turnover.cumsum().to_numpy()
+        threshold_cumulative = threshold.turnover.cumsum().to_numpy()
+        assert (threshold_cumulative <= drift_cumulative + 1e-12).all(), rule.rule_id
+        # Strictly lower over the full sample: the threshold book trades less.
+        assert threshold.turnover.sum() < drift.turnover.sum(), rule.rule_id
+
+
+def test_threshold_book_charges_entry_and_exit_on_both_legs(paths) -> None:
+    """A position transition trades the target notional on both legs, exactly
+    as the pre-registered book charges it."""
+    for rule in ev.RULES:
+        book = ev.build_threshold_book(
+            paths,
+            rule,
+            {base: 0.5 for base in ev.BASE_SYMBOLS},
+            ev.THRESHOLD_REBALANCE,
+        )
+        change = ev.position_changes(book.positions)
+        transitions = change.abs().sum(axis=1)
+        # The transition part of the turnover is exactly the target notional
+        # per leg; the rest is the rebalance drift.
+        assert (book.turnover_spot >= 0.5 * transitions - 1e-12).all()
+        assert (book.turnover_perp >= 0.5 * transitions - 1e-12).all()
+        assert book.entries == int((change > 0).to_numpy().sum())
+        assert book.exits == int((change < 0).to_numpy().sum())
+
+
+def test_threshold_promotion_gate_never_passes(paths) -> None:
+    """The gate is re-evaluated for the threshold construction and never passes."""
+    model = ev.COST_MODEL_BY_KEY[ev.HEADLINE_COST_MODEL]
+    for rule in ev.RULES:
+        books = {
+            base: ev.evaluate_book(
+                ev.build_threshold_book(
+                    {base: paths[base]}, rule, {base: 1.0}, ev.THRESHOLD_REBALANCE
+                ),
+                bootstrap_samples=(),
+                cost_model=model,
+            )
+            for base in ev.BASE_SYMBOLS
+        }
+        gate = ev.promotion_gate(books)
+        assert gate["promotion_gate_pass"] is False, (rule.rule_id,)
+        assert gate["pooled_oos_position_round_trips"] < ev.PROMOTION_MIN_POOLED_OOS_TRADES
+
+
+def test_threshold_book_marks_the_spot_notional_to_market(paths) -> None:
+    """The capital base is the spot notional actually tied up, as a fraction
+    of the equity, and it stays inside the drift band of the threshold."""
+    book = ev.build_threshold_book(
+        paths,
+        ev.RULES[0],
+        {base: 0.5 for base in ev.BASE_SYMBOLS},
+        ev.THRESHOLD_REBALANCE,
+    )
+    notional = book.spot_notional
+    assert (notional > 0.0).all()
+    # Equal-weight book: the spot notional is bounded by the threshold.
+    assert notional.max() <= 1.0 * (1.0 + ev.THRESHOLD_REBALANCE) + 1e-9
+
+
+def test_committed_artifact_reports_the_threshold_construction() -> None:
+    """The committed record carries the Cycle 894 section and its payload."""
+    text = ARTIFACT.read_text()
+    assert "## The threshold-rebalanced constant notional (Cycle 894)" in text
+    start = text.index("```json") + len("```json")
+    end = text.index("```", start)
+    payload = json.loads(text[start:end])
+    cost_eval = payload["cost_model_evaluation"]
+    assert cost_eval["threshold_rebalance"]["pre_registered_threshold"] == 0.02
+    # The gate never passes for the threshold construction either.
+    for rule_id, rows in cost_eval["threshold_gates"].items():
+        for model_key, gate in rows.items():
+            assert gate["promotion_gate_pass"] is False, (rule_id, model_key)
+    # The reconciliation with the cost screen is unchanged.
+    recon = payload["reconciliation_with_cost_screen"]
+    assert recon["same_gross_series"] is True
+    assert recon["same_turnover_series"] is True
+

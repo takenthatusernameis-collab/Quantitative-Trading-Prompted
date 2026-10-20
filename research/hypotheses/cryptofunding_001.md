@@ -284,3 +284,70 @@ fixed coin quantity"),
 `tests/test_eval_cryptofunding.py` (fixed-coin invariants: funding reconciliation with the
 committed carry path, notional fraction vs the constant-notional funding-only component, turnover
 consistent with claimed trades).
+
+## Cycle 894 amendment (threshold-rebalanced constant notional)
+
+The rule set, the symbols, the splits and the 365-day annualization are **unchanged**. Cycle 894
+adds the **threshold-rebalanced** version of the pre-registered constant-notional construction and
+measures the same three pre-registered rules under it, under the Cycle 892 headline cost model
+(Binance VIP 0 taker plus the repository's slippage on the legs actually traded, plus the capital
+charge on the marked-to-market spot notional). It is a sensitivity of the same six configurations
+(the rebalancing frequency of one construction), not a new trial.
+
+**Construction.** The legs are reset to ``weight * equity`` only on the days where the cumulative
+price drift of either leg since the last rebalance exceeds a pre-registered threshold of **2%**;
+between two rebalances the notional floats with the price and nothing is traded. The two legs
+carry **equal notional** at every rebalance (the pre-registered book's convention) and each leg
+keeps its own coin quantity between rebalances. The daily P&L of a held leg is
+``notional_spot * spot_return - notional_perp * perp_return + funding_cashflow * notional_perp``
+with the notionals in effect from the previous close; the equity compounds on it, and the book has
+**one** equity for all the symbols it holds (the equal-weight BTC/ETH book is one book with a
+shared equity, not two books added up). A position transition is charged on both legs with the
+target notional ``weight`` per leg, exactly as the pre-registered book charges it, and the entry
+day's carry is earned. The turnover of a rebalance is the cumulative price drift of the leg since
+the last rebalance, ``weight * |P_t / P_k - 1|`` per leg - the same linearized convention the
+pre-registered ``drift`` turnover uses - so **a threshold of 0 reproduces the pre-registered book
+exactly** (gross, both leg turnovers, leg weights and capital base), which is the regression guard
+of the cycle.
+
+**Results (net of the headline cost model, 365-day annualization, equal-weight BTC/ETH
+portfolio).** Always-on: **+9.51%/yr**, canonical Sharpe **6.144**, max drawdown -2.02%, turnover
+15.64 units/yr (2 entries, 0 exits). Implementable funding-positive rule (previous-day signal):
+**+2.21%/yr**, canonical Sharpe **1.218**, max drawdown -22.43%, turnover 94.42 units/yr (275
+entries, 273 exits). Out of sample (2025-01-01..2026-09-30): always-on Sharpe **2.088** with 0
+round trips; funding-positive Sharpe **-6.276** with 95 round trips.
+
+**Headline: the threshold-rebalanced constant notional nets more than the daily-rebalanced one, and
+the reason is the trading cost, not the carry.** On the consistent per-symbol basis it nets more on
+every rule and symbol (always-on: BTC **+8.74%/yr** vs **+8.43%/yr**, ETH **+10.28%/yr** vs
+**+10.01%/yr**), but the *gross* path barely moves (the portfolio's gross annualized return is
++13.3957%/yr daily-rebalanced and +13.3901%/yr threshold-rebalanced): the annualized fee drag falls
+from +1.75%/yr to +1.49%/yr because there are fewer trades. The threshold is a sensitivity of the
+construction, not a new configuration: the pre-registered 2% is the headline and the 1%/5%/10% rows
+are reported next to it, never used to select one.
+
+**The threshold construction is not the fixed-coin construction.** It holds equal *notional* on the
+two legs, so as the threshold grows the two coin quantities drift apart and the book accumulates a
+directional exposure to the spot's relative performance since the last rebalance; the fixed-coin
+construction holds one coin quantity on both legs, so its perp notional scales with the coin's
+price while its equity compounds only on the carry. They are different books with different return
+quantities, and the threshold construction does not converge to the fixed-coin one.
+
+**A portfolio-accounting caveat on the committed Cycle 893 fixed-coin portfolio.** The committed
+fixed-coin portfolio adds the two symbols' separately compounded returns, so each symbol's capital
+is counted twice; the capital-consistent account of the same construction (the capital split once
+at the entry, never rebalanced) is 2.19x-2.28x lower in gross annualized return (always-on:
++94.88%/yr committed vs +41.60%/yr capital-consistent). This cycle reports the diagnostic and
+**does not change** the committed Cycle 893 number; reconciling it is a separate, bounded task.
+
+**Gate.** FAIL under the headline model: the trade-count criterion (0 and 95 pooled out-of-sample
+independent round trips against the repository's 100) fails, and the gate is never relaxed.
+
+**Verdict: exploratory signal (not promoted), unchanged.** The rebalancing frequency of the
+constant-notional construction moves the net result by a few tenths of a percentage point per year
+and does not change the gate, the out-of-sample failure of the implementable rule, or the
+candidate's status. Evidence:
+`research/experiments/cryptofunding_002_evaluation.md` (section "The threshold-rebalanced constant
+notional"),
+`tests/test_eval_cryptofunding.py` (threshold invariants: exact reproduction of the daily-drift book
+at a threshold of 0, the cumulative-turnover inequality, the transition charge, the gate).
