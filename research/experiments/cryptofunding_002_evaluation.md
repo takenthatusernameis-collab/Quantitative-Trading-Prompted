@@ -1,8 +1,8 @@
-# Experiment: cryptofunding_002_evaluation — hardened net-of-cost evaluation (Cycle 891)
+# Experiment: cryptofunding_002_evaluation — realistic execution and capital-cost model (Cycle 892)
 
 Hypothesis: `research/hypotheses/cryptofunding_001.md`
 
-This record supersedes the Cycle 890 evaluation (`research/experiments/cryptofunding_002_evaluation.md`, previous revision), which annualized a 24/7 crypto series at 252 periods/year and never charged the entry or the exit of the funding-positive rule.
+This record supersedes the Cycle 891 evaluation (`research/experiments/cryptofunding_002_evaluation.md`, previous revision), which measured the net capture of the carry with the repository's flat 3 bp/unit turnover cost alone: no charge for the capital the book ties up in the spot leg and no venue-specific fee schedule. Cycle 892 measures the same three pre-registered rules under a realistic execution and capital-cost model and re-evaluates the promotion gates under it. The Cycle 891 numbers (flat model, 365-day annualization, charged entry/exit transitions, previous-day funding signal) are unchanged and are reported below as the flat-model rows.
 
 ## Data used
 
@@ -32,7 +32,53 @@ The price legs come from a single venue (Binance). The OKX funding series collec
   * `val`: 2023-01-01 .. 2024-12-31
   * `test_oos`: 2025-01-01 .. 2026-09-30
   * `post2022`: 2023-01-01 .. 2026-09-30
-* **Trial count:** 6 candidate configurations (3 rules x 2 symbols); the BTC/ETH portfolio is an equal-weight combination of the two symbol books, not an additional configuration. The robustness rows are sensitivity analyses of the same configurations, not new trials.
+* **Trial count:** 6 candidate configurations (3 rules x 2 symbols); the BTC/ETH portfolio is an equal-weight combination of the two symbol books, not an additional configuration. The robustness rows and the cost-model rows (capital charge, venue fee schedule, turnover convention) are sensitivity analyses of the same configurations, not new trials.
+
+## Cost models (Cycle 892)
+
+The repository's flat model charges one number per unit of weight change and nothing for the capital the book ties up. Cycle 892 measures the same three pre-registered rules under a realistic execution and capital-cost model:
+
+| Model | Trading cost | Capital charge | Source |
+|---|---|---|---|
+| `flat_3bp` | 3.0 bp per unit of weight change (both legs) | 0.00%/yr on the spot leg's notional | src/backtest/engine.py:get_cost_params (config/settings.yaml) |
+| `flat_3bp_capital_rf` | 3.0 bp per unit of weight change (both legs) | 2.00%/yr on the spot leg's notional | src/backtest/engine.py:get_cost_params + get_risk_free_rate |
+| `venue_taker` | spot 10.0 bp / perp 5.0 bp per unit of leg turnover | 0.00%/yr on the spot leg's notional | Binance published VIP 0 fee schedule (accessed 2026-10-20) |
+| `venue_taker_slippage` | spot 12.0 bp / perp 7.0 bp per unit of leg turnover | 0.00%/yr on the spot leg's notional | Binance VIP 0 published spot taker 10 bp and USDⓈ-M perp taker 5 bp (accessed 2026-10-20) + the repository's 2 bp/unit slippage assumption |
+| `venue_maker_slippage` | spot 12.0 bp / perp 4.0 bp per unit of leg turnover | 0.00%/yr on the spot leg's notional | Binance published VIP 0 fee schedule, maker (spot 10 bp, perp 2 bp, accessed 2026-10-20) + the repository's 2 bp/unit slippage assumption |
+| `realistic_rf` **(headline)** | spot 12.0 bp / perp 7.0 bp per unit of leg turnover | 2.00%/yr on the spot leg's notional | Binance VIP 0 published spot taker 10 bp and USDⓈ-M perp taker 5 bp (accessed 2026-10-20) + the repository's 2 bp/unit slippage assumption + get_risk_free_rate() |
+| `realistic_no_capital_charge` | spot 12.0 bp / perp 7.0 bp per unit of leg turnover | 0.00%/yr on the spot leg's notional | Binance VIP 0 published spot taker 10 bp and USDⓈ-M perp taker 5 bp (accessed 2026-10-20) + the repository's 2 bp/unit slippage assumption |
+| `realistic_usdt_5pct` | spot 12.0 bp / perp 7.0 bp per unit of leg turnover | 5.00%/yr on the spot leg's notional | Binance VIP 0 published spot taker 10 bp and USDⓈ-M perp taker 5 bp (accessed 2026-10-20) + the repository's 2 bp/unit slippage assumption + 5% USDT-equivalent yield assumption |
+
+### The venue fee schedule
+
+**Binance VIP 0 (standard, published schedule)** (published schedule, accessed 2026-10-20):
+
+| Leg | Maker | Taker |
+|---|---|---|
+| Spot | 10.0 bp | 10.0 bp |
+| USDⓈ-M perp | 2.0 bp | 5.0 bp |
+
+* Binance, 'VIP Program: Updates to Spot and Margin Trading Fees for VIP 3 - VIP 9 Users' (2024-10-07): Normal User maker 0.1000% / taker 0.1000% on spot.
+* Binance futures fee explainer (support FAQ 360033544231): a Regular User's maker fee is 0.02% and taker fee 0.05% on USDⓈ-M futures.
+* config/settings.yaml: default_slippage_bps (the repository's own slippage assumption).
+
+The published fees are applied to the **leg weights that are actually traded**, and the repository's own slippage assumption (2.0 bp per unit of weight change) is added on top, because a fee schedule does not model execution slippage. Published schedule used as a documented assumption; no live fees are implied (the account-specific table is only visible after login). The BNB fee discount is not claimed.
+
+### The capital charge
+
+The charge is applied to the spot leg's notional (the cash the delta-neutral book ties up; the short perp leg is self-financing because its own proceeds are posted as its margin). The repository's backtest-baseline Sharpe/Sortino already subtract the 2% risk-free rate from the ratio's numerator while the return series does not pay it, so the backtest-scale metrics of a capital-charge row are computed with a zero risk-free rate (no double counting). The canonical gate convention (arithmetic_annualized_rf0) is unaffected either way.
+
+| Sensitivity | Annual rate on the spot leg's notional |
+|---|---|
+| `none` | 0.00% |
+| `repo_rf` | 2.00% |
+| `usdt_5pct` | 5.00% |
+
+The 0% row is the row in which the capital is free; the `repo_rf` row is the repository's own risk-free rate and is the **headline**; the `usdt_5pct` row is the opportunity cost of the locked cash at a stablecoin-equivalent lending yield (a documented assumption, not a quoted rate).
+
+### Which model is the headline, and why
+
+**Headline: `realistic_rf` under the `drift` turnover convention.** It is the conservative end of both cost axes at once: the *taker* fee schedule (the more expensive of the two published rates on the perp leg), the repository's slippage assumption on top of it, and the repository's risk-free rate as the charge for the capital the spot leg ties up. The cheaper corners - the maker schedule, no capital charge, a 5% yield - are reported as rows, and the flat model is reported unchanged so that the cost-model effect is isolated.
 
 ## Rules evaluated
 
@@ -99,6 +145,197 @@ The price legs come from a single venue (Binance). The OKX funding series collec
 | test_oos | 638 | -7.1962% | 0.135 | -59.9292% |
 | post2022 | 1369 | +40.5376% | 0.911 | -59.9292% |
 
+## Results under the cost models (portfolio, equal weight BTC/ETH)
+
+Every pre-registered rule under every cost model, on every pre-registered sample. The rules and the symbols are the same as in the flat-model table above; only the cost model changes.
+
+| Rule | Cost model | Sample | Ann. net (geo) | Sharpe (canonical) | Max DD | Turnover/yr | Fee drag/yr | Capital drag/yr |
+|---|---|---|---|---|---|---|---|---|
+| `always_on` | `flat_3bp` | full | +12.7694% | 8.135 | -1.7213% | 18.47 | +0.5540% | +0.0000% |
+| `always_on` | `flat_3bp` | train | +20.3240% | 8.892 | -1.7213% | 23.50 | +0.7050% | +0.0000% |
+| `always_on` | `flat_3bp` | val | +10.2744% | 15.009 | -0.1039% | 14.04 | +0.4212% | +0.0000% |
+| `always_on` | `flat_3bp` | test_oos | +3.5123% | 11.144 | -0.6535% | 14.90 | +0.4470% | +0.0000% |
+| `always_on` | `flat_3bp` | post2022 | +7.0697% | 12.501 | -0.6535% | 14.44 | +0.4332% | +0.0000% |
+| `always_on` | `flat_3bp_capital_rf` | full | +10.5371% | 6.783 | -1.8354% | 18.47 | +0.5540% | +2.0000% |
+| `always_on` | `flat_3bp_capital_rf` | train | +17.9425% | 7.932 | -1.8354% | 23.50 | +0.7050% | +2.0000% |
+| `always_on` | `flat_3bp_capital_rf` | val | +8.0913% | 11.941 | -0.2204% | 14.04 | +0.4212% | +2.0000% |
+| `always_on` | `flat_3bp_capital_rf` | test_oos | +1.4627% | 4.689 | -1.1856% | 14.90 | +0.4470% | +2.0000% |
+| `always_on` | `flat_3bp_capital_rf` | post2022 | +4.9500% | 8.842 | -1.1856% | 14.44 | +0.4332% | +2.0000% |
+| `always_on` | `venue_taker` | full | +11.8370% | 7.570 | -1.8206% | 18.47 | +1.3846% | +0.0000% |
+| `always_on` | `venue_taker` | train | +19.0597% | 8.371 | -1.8206% | 23.50 | +1.7618% | +0.0000% |
+| `always_on` | `venue_taker` | val | +9.5803% | 13.988 | -0.1161% | 14.04 | +1.0527% | +0.0000% |
+| `always_on` | `venue_taker` | test_oos | +2.8207% | 8.815 | -0.8590% | 14.90 | +1.1174% | +0.0000% |
+| `always_on` | `venue_taker` | post2022 | +6.3765% | 11.243 | -0.8590% | 14.44 | +1.0829% | +0.0000% |
+| `always_on` | `venue_taker_slippage` | full | +11.4248% | 7.315 | -1.8649% | 18.47 | +1.7539% | +0.0000% |
+| `always_on` | `venue_taker_slippage` | train | +18.5016% | 8.137 | -1.8649% | 23.50 | +2.2318% | +0.0000% |
+| `always_on` | `venue_taker_slippage` | val | +9.2732% | 13.526 | -0.1267% | 14.04 | +1.3335% | +0.0000% |
+| `always_on` | `venue_taker_slippage` | test_oos | +2.5147% | 7.778 | -0.9502% | 14.90 | +1.4154% | +0.0000% |
+| `always_on` | `venue_taker_slippage` | post2022 | +6.0698% | 10.676 | -0.9502% | 14.44 | +1.3717% | +0.0000% |
+| `always_on` | `venue_maker_slippage` | full | +11.7341% | 7.507 | -1.8315% | 18.47 | +1.4766% | +0.0000% |
+| `always_on` | `venue_maker_slippage` | train | +18.9205% | 8.313 | -1.8315% | 23.50 | +1.8788% | +0.0000% |
+| `always_on` | `venue_maker_slippage` | val | +9.5036% | 13.873 | -0.1174% | 14.04 | +1.1227% | +0.0000% |
+| `always_on` | `venue_maker_slippage` | test_oos | +2.7442% | 8.556 | -0.8818% | 14.90 | +1.1918% | +0.0000% |
+| `always_on` | `venue_maker_slippage` | post2022 | +6.2999% | 11.101 | -0.8818% | 14.44 | +1.1549% | +0.0000% |
+| `always_on` | `realistic_rf` | full | +9.2190% | 5.964 | -2.1235% | 18.47 | +1.7539% | +2.0000% |
+| `always_on` | `realistic_rf` | train | +16.1561% | 7.180 | -2.1235% | 23.50 | +2.2318% | +2.0000% |
+| `always_on` | `realistic_rf` | val | +7.1099% | 10.477 | -0.3670% | 14.04 | +1.3335% | +2.0000% |
+| `always_on` | `realistic_rf` | test_oos | +0.4849% | 1.516 | -1.5131% | 14.90 | +1.4154% | +2.0000% |
+| `always_on` | `realistic_rf` | post2022 | +3.9697% | 7.054 | -1.5131% | 14.44 | +1.3717% | +2.0000% |
+| `always_on` | `realistic_no_capital_charge` | full | +11.4248% | 7.315 | -1.8649% | 18.47 | +1.7539% | +0.0000% |
+| `always_on` | `realistic_no_capital_charge` | train | +18.5016% | 8.137 | -1.8649% | 23.50 | +2.2318% | +0.0000% |
+| `always_on` | `realistic_no_capital_charge` | val | +9.2732% | 13.526 | -0.1267% | 14.04 | +1.3335% | +0.0000% |
+| `always_on` | `realistic_no_capital_charge` | test_oos | +2.5147% | 7.778 | -0.9502% | 14.90 | +1.4154% | +0.0000% |
+| `always_on` | `realistic_no_capital_charge` | post2022 | +6.0698% | 10.676 | -0.9502% | 14.44 | +1.3717% | +0.0000% |
+| `always_on` | `realistic_usdt_5pct` | full | +5.9917% | 3.938 | -4.6018% | 18.47 | +1.7539% | +5.0000% |
+| `always_on` | `realistic_usdt_5pct` | train | +12.7244% | 5.744 | -4.6018% | 23.50 | +2.2318% | +5.0000% |
+| `always_on` | `realistic_usdt_5pct` | val | +3.9447% | 5.902 | -0.7809% | 14.04 | +1.3335% | +5.0000% |
+| `always_on` | `realistic_usdt_5pct` | test_oos | -2.4850% | -7.877 | -4.5436% | 14.90 | +1.4154% | +5.0000% |
+| `always_on` | `realistic_usdt_5pct` | post2022 | +0.8972% | 1.620 | -4.5436% | 14.44 | +1.3717% | +5.0000% |
+| `funding_positive_sameday` | `flat_3bp` | full | +11.3923% | 7.701 | -2.2058% | 96.79 | +2.9036% | +0.0000% |
+| `funding_positive_sameday` | `flat_3bp` | train | +19.6502% | 9.383 | -1.3464% | 108.64 | +3.2593% | +0.0000% |
+| `funding_positive_sameday` | `flat_3bp` | val | +9.0468% | 12.084 | -0.6742% | 58.21 | +1.7463% | +0.0000% |
+| `funding_positive_sameday` | `flat_3bp` | test_oos | +0.9577% | 2.131 | -2.2058% | 120.64 | +3.6193% | +0.0000% |
+| `funding_positive_sameday` | `flat_3bp` | post2022 | +5.1994% | 7.936 | -2.2058% | 87.31 | +2.6192% | +0.0000% |
+| `funding_positive_sameday` | `flat_3bp_capital_rf` | full | +9.4503% | 6.484 | -2.6445% | 96.79 | +2.9036% | +1.7593% |
+| `funding_positive_sameday` | `flat_3bp_capital_rf` | train | +17.5932% | 8.518 | -2.4353% | 108.64 | +3.2593% | +1.7352% |
+| `funding_positive_sameday` | `flat_3bp_capital_rf` | val | +7.0138% | 9.554 | -0.8999% | 58.21 | +1.7463% | +1.8824% |
+| `funding_positive_sameday` | `flat_3bp_capital_rf` | test_oos | -0.7041% | -1.635 | -2.6445% | 120.64 | +3.6193% | +1.6599% |
+| `funding_positive_sameday` | `flat_3bp_capital_rf` | post2022 | +3.3450% | 5.246 | -2.6445% | 87.31 | +2.6192% | +1.7787% |
+| `funding_positive_sameday` | `venue_taker` | full | +6.6432% | 4.027 | -9.1045% | 96.79 | +7.2587% | +0.0000% |
+| `funding_positive_sameday` | `venue_taker` | train | +13.9401% | 6.206 | -9.1045% | 108.64 | +8.1475% | +0.0000% |
+| `funding_positive_sameday` | `venue_taker` | val | +6.2265% | 6.573 | -2.1989% | 58.21 | +4.3655% | +0.0000% |
+| `funding_positive_sameday` | `venue_taker` | test_oos | -4.3800% | -5.075 | -8.9275% | 120.64 | +9.0481% | +0.0000% |
+| `funding_positive_sameday` | `venue_taker` | post2022 | +1.1446% | 1.212 | -8.9275% | 87.31 | +6.5477% | +0.0000% |
+| `funding_positive_sameday` | `venue_taker_slippage` | full | +4.5970% | 2.631 | -14.8601% | 96.79 | +9.1944% | +0.0000% |
+| `funding_positive_sameday` | `venue_taker_slippage` | train | +11.4892% | 4.923 | -12.4660% | 108.64 | +10.3203% | +0.0000% |
+| `funding_positive_sameday` | `venue_taker_slippage` | val | +4.9961% | 4.740 | -2.8858% | 58.21 | +5.5296% | +0.0000% |
+| `funding_positive_sameday` | `venue_taker_slippage` | test_oos | -6.6617% | -6.357 | -12.5118% | 120.64 | +11.4610% | +0.0000% |
+| `funding_positive_sameday` | `venue_taker_slippage` | post2022 | -0.6078% | -0.549 | -12.5118% | 87.31 | +8.2938% | +0.0000% |
+| `funding_positive_sameday` | `venue_maker_slippage` | full | +6.1282% | 3.663 | -10.0095% | 96.79 | +7.7423% | +0.0000% |
+| `funding_positive_sameday` | `venue_maker_slippage` | train | +13.3229% | 5.877 | -9.9507% | 108.64 | +8.6903% | +0.0000% |
+| `funding_positive_sameday` | `venue_maker_slippage` | val | +5.9177% | 6.080 | -2.3710% | 58.21 | +4.6564% | +0.0000% |
+| `funding_positive_sameday` | `venue_maker_slippage` | test_oos | -4.9555% | -5.449 | -9.8369% | 120.64 | +9.6513% | +0.0000% |
+| `funding_positive_sameday` | `venue_maker_slippage` | post2022 | +0.7038% | 0.720 | -9.8369% | 87.31 | +6.9841% | +0.0000% |
+| `funding_positive_sameday` | `realistic_rf` | full | +2.7733% | 1.615 | -21.1033% | 96.79 | +9.1944% | +1.7593% |
+| `funding_positive_sameday` | `realistic_rf` | train | +9.5722% | 4.162 | -13.6502% | 108.64 | +10.3203% | +1.7352% |
+| `funding_positive_sameday` | `realistic_rf` | val | +3.0385% | 2.940 | -3.6067% | 58.21 | +5.5296% | +1.8824% |
+| `funding_positive_sameday` | `realistic_rf` | test_oos | -8.1984% | -8.001 | -14.4549% | 120.64 | +11.4610% | +1.6599% |
+| `funding_positive_sameday` | `realistic_rf` | post2022 | -2.3599% | -2.196 | -14.4549% | 87.31 | +8.2938% | +1.7787% |
+| `funding_positive_sameday` | `realistic_no_capital_charge` | full | +4.5970% | 2.631 | -14.8601% | 96.79 | +9.1944% | +0.0000% |
+| `funding_positive_sameday` | `realistic_no_capital_charge` | train | +11.4892% | 4.923 | -12.4660% | 108.64 | +10.3203% | +0.0000% |
+| `funding_positive_sameday` | `realistic_no_capital_charge` | val | +4.9961% | 4.740 | -2.8858% | 58.21 | +5.5296% | +0.0000% |
+| `funding_positive_sameday` | `realistic_no_capital_charge` | test_oos | -6.6617% | -6.357 | -12.5118% | 120.64 | +11.4610% | +0.0000% |
+| `funding_positive_sameday` | `realistic_no_capital_charge` | post2022 | -0.6078% | -0.549 | -12.5118% | 87.31 | +8.2938% | +0.0000% |
+| `funding_positive_sameday` | `realistic_usdt_5pct` | full | +0.0969% | 0.066 | -30.0153% | 96.79 | +9.1944% | +4.3983% |
+| `funding_positive_sameday` | `realistic_usdt_5pct` | train | +6.7581% | 3.004 | -15.4101% | 108.64 | +10.3203% | +4.3379% |
+| `funding_positive_sameday` | `realistic_usdt_5pct` | val | +0.1701% | 0.174 | -5.2127% | 58.21 | +5.5296% | +4.7059% |
+| `funding_positive_sameday` | `realistic_usdt_5pct` | test_oos | -10.4563% | -10.539 | -17.7598% | 120.64 | +11.4610% | +4.1497% |
+| `funding_positive_sameday` | `realistic_usdt_5pct` | post2022 | -4.9306% | -4.739 | -18.8548% | 87.31 | +8.2938% | +4.4467% |
+| `funding_positive_lagged` | `flat_3bp` | full | +10.5340% | 6.597 | -2.6594% | 96.96 | +2.9088% | +0.0000% |
+| `funding_positive_lagged` | `flat_3bp` | train | +18.0646% | 7.881 | -2.6050% | 108.93 | +3.2679% | +0.0000% |
+| `funding_positive_lagged` | `flat_3bp` | val | +8.7877% | 11.586 | -0.8010% | 58.21 | +1.7463% | +0.0000% |
+| `funding_positive_lagged` | `flat_3bp` | test_oos | +0.5295% | 1.128 | -2.6594% | 120.81 | +3.6244% | +0.0000% |
+| `funding_positive_lagged` | `flat_3bp` | post2022 | +4.8579% | 7.261 | -2.6594% | 87.39 | +2.6216% | +0.0000% |
+| `funding_positive_lagged` | `flat_3bp_capital_rf` | full | +8.6079% | 5.466 | -3.8833% | 96.96 | +2.9088% | +1.7585% |
+| `funding_positive_lagged` | `flat_3bp_capital_rf` | train | +16.0369% | 7.086 | -3.8833% | 108.93 | +3.2679% | +1.7333% |
+| `funding_positive_lagged` | `flat_3bp_capital_rf` | val | +6.7596% | 9.087 | -1.0188% | 58.21 | +1.7463% | +1.8824% |
+| `funding_positive_lagged` | `flat_3bp_capital_rf` | test_oos | -1.1254% | -2.489 | -3.2078% | 120.81 | +3.6244% | +1.6599% |
+| `funding_positive_lagged` | `flat_3bp_capital_rf` | post2022 | +3.0096% | 4.617 | -3.2078% | 87.39 | +2.6216% | +1.7787% |
+| `funding_positive_lagged` | `venue_taker` | full | +5.8132% | 3.313 | -10.5445% | 96.96 | +7.2715% | +0.0000% |
+| `funding_positive_lagged` | `venue_taker` | train | +12.4154% | 5.118 | -10.4945% | 108.93 | +8.1690% | +0.0000% |
+| `funding_positive_lagged` | `venue_taker` | val | +5.9741% | 6.235 | -2.3253% | 58.21 | +4.3655% | +0.0000% |
+| `funding_positive_lagged` | `venue_taker` | test_oos | -4.7930% | -5.456 | -9.5845% | 120.81 | +9.0609% | +0.0000% |
+| `funding_positive_lagged` | `venue_taker` | post2022 | +0.8126% | 0.849 | -9.5845% | 87.39 | +6.5537% | +0.0000% |
+| `funding_positive_lagged` | `venue_taker_slippage` | full | +3.7793% | 2.048 | -17.1892% | 96.96 | +9.2107% | +0.0000% |
+| `funding_positive_lagged` | `venue_taker_slippage` | train | +9.9908% | 3.990 | -13.8252% | 108.93 | +10.3476% | +0.0000% |
+| `funding_positive_lagged` | `venue_taker_slippage` | val | +4.7465% | 4.457 | -3.0131% | 58.21 | +5.5297% | +0.0000% |
+| `funding_positive_lagged` | `venue_taker_slippage` | test_oos | -7.0681% | -6.655 | -13.1477% | 120.81 | +11.4771% | +0.0000% |
+| `funding_positive_lagged` | `venue_taker_slippage` | post2022 | -0.9356% | -0.838 | -13.1477% | 87.39 | +8.3014% | +0.0000% |
+| `funding_positive_lagged` | `venue_maker_slippage` | full | +5.3013% | 2.984 | -11.6847% | 96.96 | +7.7560% | +0.0000% |
+| `funding_positive_lagged` | `venue_maker_slippage` | train | +11.8049% | 4.829 | -11.3389% | 108.93 | +8.7131% | +0.0000% |
+| `funding_positive_lagged` | `venue_maker_slippage` | val | +5.6660% | 5.757 | -2.4977% | 58.21 | +4.6564% | +0.0000% |
+| `funding_positive_lagged` | `venue_maker_slippage` | test_oos | -5.3668% | -5.805 | -10.4886% | 120.81 | +9.6649% | +0.0000% |
+| `funding_positive_lagged` | `venue_maker_slippage` | post2022 | +0.3728% | 0.378 | -10.4886% | 87.39 | +6.9905% | +0.0000% |
+| `funding_positive_lagged` | `realistic_rf` | full | +1.9706% | 1.088 | -23.2602% | 96.96 | +9.2107% | +1.7585% |
+| `funding_positive_lagged` | `realistic_rf` | train | +8.1015% | 3.280 | -14.9929% | 108.93 | +10.3476% | +1.7333% |
+| `funding_positive_lagged` | `realistic_rf` | val | +2.7936% | 2.675 | -3.8952% | 58.21 | +5.5297% | +1.8824% |
+| `funding_positive_lagged` | `realistic_rf` | test_oos | -8.5981% | -8.272 | -15.0756% | 120.81 | +11.4771% | +1.6599% |
+| `funding_positive_lagged` | `realistic_rf` | post2022 | -2.6820% | -2.464 | -15.0795% | 87.39 | +8.3014% | +1.7787% |
+| `funding_positive_lagged` | `realistic_no_capital_charge` | full | +3.7793% | 2.048 | -17.1892% | 96.96 | +9.2107% | +0.0000% |
+| `funding_positive_lagged` | `realistic_no_capital_charge` | train | +9.9908% | 3.990 | -13.8252% | 108.93 | +10.3476% | +0.0000% |
+| `funding_positive_lagged` | `realistic_no_capital_charge` | val | +4.7465% | 4.457 | -3.0131% | 58.21 | +5.5297% | +0.0000% |
+| `funding_positive_lagged` | `realistic_no_capital_charge` | test_oos | -7.0681% | -6.655 | -13.1477% | 120.81 | +11.4771% | +0.0000% |
+| `funding_positive_lagged` | `realistic_no_capital_charge` | post2022 | -0.9356% | -0.838 | -13.1477% | 87.39 | +8.3014% | +0.0000% |
+| `funding_positive_lagged` | `realistic_usdt_5pct` | full | -0.6837% | -0.373 | -31.9522% | 96.96 | +9.2107% | +4.3963% |
+| `funding_positive_lagged` | `realistic_usdt_5pct` | train | +5.3279% | 2.204 | -16.7256% | 108.93 | +10.3476% | +4.3333% |
+| `funding_positive_lagged` | `realistic_usdt_5pct` | val | -0.0680% | -0.062 | -5.4964% | 58.21 | +5.5297% | +4.7059% |
+| `funding_positive_lagged` | `realistic_usdt_5pct` | test_oos | -10.8462% | -10.766 | -18.3847% | 120.81 | +11.4771% | +4.1497% |
+| `funding_positive_lagged` | `realistic_usdt_5pct` | post2022 | -5.2442% | -4.974 | -19.6015% | 87.39 | +8.3014% | +4.4467% |
+
+The venue model charges the spot leg and the perp leg separately, so the two legs' turnovers are reported as well (the fee drag is the weighted average of the two published rates over the turnover that is actually traded):
+
+| Rule | Cost model | Spot turnover/yr | Perp turnover/yr | Spot notional (mean share of equity) | Fee drag/yr |
+|---|---|---|---|---|---|
+| `always_on` | `flat_3bp` | 9.22 | 9.24 | 1.000 | +0.5540% |
+| `always_on` | `flat_3bp_capital_rf` | 9.22 | 9.24 | 1.000 | +0.5540% |
+| `always_on` | `venue_taker` | 9.22 | 9.24 | 1.000 | +1.3846% |
+| `always_on` | `venue_taker_slippage` | 9.22 | 9.24 | 1.000 | +1.7539% |
+| `always_on` | `venue_maker_slippage` | 9.22 | 9.24 | 1.000 | +1.4766% |
+| `always_on` | `realistic_rf` | 9.22 | 9.24 | 1.000 | +1.7539% |
+| `always_on` | `realistic_no_capital_charge` | 9.22 | 9.24 | 1.000 | +1.7539% |
+| `always_on` | `realistic_usdt_5pct` | 9.22 | 9.24 | 1.000 | +1.7539% |
+| `funding_positive_sameday` | `flat_3bp` | 48.39 | 48.40 | 0.880 | +2.9036% |
+| `funding_positive_sameday` | `flat_3bp_capital_rf` | 48.39 | 48.40 | 0.880 | +2.9036% |
+| `funding_positive_sameday` | `venue_taker` | 48.39 | 48.40 | 0.880 | +7.2587% |
+| `funding_positive_sameday` | `venue_taker_slippage` | 48.39 | 48.40 | 0.880 | +9.1944% |
+| `funding_positive_sameday` | `venue_maker_slippage` | 48.39 | 48.40 | 0.880 | +7.7423% |
+| `funding_positive_sameday` | `realistic_rf` | 48.39 | 48.40 | 0.880 | +9.1944% |
+| `funding_positive_sameday` | `realistic_no_capital_charge` | 48.39 | 48.40 | 0.880 | +9.1944% |
+| `funding_positive_sameday` | `realistic_usdt_5pct` | 48.39 | 48.40 | 0.880 | +9.1944% |
+| `funding_positive_lagged` | `flat_3bp` | 48.47 | 48.49 | 0.879 | +2.9088% |
+| `funding_positive_lagged` | `flat_3bp_capital_rf` | 48.47 | 48.49 | 0.879 | +2.9088% |
+| `funding_positive_lagged` | `venue_taker` | 48.47 | 48.49 | 0.879 | +7.2715% |
+| `funding_positive_lagged` | `venue_taker_slippage` | 48.47 | 48.49 | 0.879 | +9.2107% |
+| `funding_positive_lagged` | `venue_maker_slippage` | 48.47 | 48.49 | 0.879 | +7.7560% |
+| `funding_positive_lagged` | `realistic_rf` | 48.47 | 48.49 | 0.879 | +9.2107% |
+| `funding_positive_lagged` | `realistic_no_capital_charge` | 48.47 | 48.49 | 0.879 | +9.2107% |
+| `funding_positive_lagged` | `realistic_usdt_5pct` | 48.47 | 48.49 | 0.879 | +9.2107% |
+
+### Break-evens
+
+The three break-evens of every rule (portfolio), on the full sample and on the out-of-sample window:
+
+| Rule | Sample | Break-even flat cost/unit | Break-even capital charge (annual, on the spot leg) | Break-even multiple of the venue schedule |
+|---|---|---|---|---|
+| `always_on` | full | 68.0677 bp | +10.82% | 6.03x |
+| `always_on` | test_oos | 26.1668 bp | +2.48% | 1.34x |
+| `funding_positive_sameday` | full | 14.1376 bp | +5.11% | 1.30x |
+| `funding_positive_sameday` | test_oos | 3.7898 bp | -8.31% | 0.25x |
+| `funding_positive_lagged` | full | 13.3208 bp | +4.22% | 1.21x |
+| `funding_positive_lagged` | test_oos | 3.4369 bp | -8.83% | 0.22x |
+
+* The **break-even flat cost per unit** is the cost screen's own measure, computed on the same series: the flat cost at which the net annualized return is exactly zero.
+* The **break-even capital charge** holds the venue fees (taker + repository slippage) fixed and solves for the annual rate on the spot leg's notional at which the net annualized return is zero. A negative value means the book is already unprofitable before the capital is charged.
+* The **break-even multiple of the venue schedule** holds the capital charge (at the repository's risk-free rate) fixed and solves for the multiple of the published fee schedule at which the net annualized return is zero.
+
+### The turnover convention: the headline and the bound
+
+The pre-registered gross path is the **constant-notional** construction: the book resets the spot and the perp notionals to `w * equity` every day. The only turnover convention that is internally consistent with that gross path is therefore the daily constant-notional rebalance (`drift`), and that is the headline: the other two conventions do not describe the same book traded less often, they describe a *different* book (a fixed-coin book is paid its funding on a notional that scales with the coin's price, so its return on equity is a different quantity), and adopting them would require a self-consistent gross path that is outside this cycle's scope.
+
+What an implementer would actually trade is a constant-notional target rebalanced on a *threshold* rather than every day, so the headline's daily cadence **over**-states the trading cost. The two other conventions bound the other end. The rows below are the headline cost model under each convention, and they bound how much the trading-frequency question can move the answer:
+
+| Rule | Convention | Consistent with the pre-registered gross path | Ann. net | Sharpe | Turnover/yr | Fee drag/yr |
+|---|---|---|---|---|---|---|
+| `always_on` | `drift` | yes | +9.2190% | 5.964 | 18.47 | +1.7539% |
+| `always_on` | `parity` | no (cost-only bound) | +11.1090% | 7.117 | 0.38 | +0.0378% |
+| `always_on` | `fixed_quantity` | no (cost-only bound) | +11.1197% | 7.123 | 0.30 | +0.0281% |
+| `funding_positive_sameday` | `drift` | yes | +2.7733% | 1.615 | 96.79 | +9.1944% |
+| `funding_positive_sameday` | `parity` | no (cost-only bound) | +4.2989% | 2.454 | 81.25 | +7.7204% |
+| `funding_positive_sameday` | `fixed_quantity` | no (cost-only bound) | +4.3079% | 2.458 | 81.18 | +7.7118% |
+| `funding_positive_lagged` | `drift` | yes | +1.9706% | 1.088 | 96.96 | +9.2107% |
+| `funding_positive_lagged` | `parity` | no (cost-only bound) | +3.5011% | 1.898 | 81.25 | +7.7206% |
+| `funding_positive_lagged` | `fixed_quantity` | no (cost-only bound) | +3.5102% | 1.903 | 81.18 | +7.7118% |
+
 ## Block-bootstrap intervals (moving block, 126-day blocks, 2000 draws)
 
 | Book | Sample | Sharpe 95% CI | Ann. net (geometric) 95% CI | Ann. net (arithmetic) 95% CI |
@@ -125,6 +362,10 @@ The price legs come from a single venue (Binance). The OKX funding series collec
 ## Reconciliation with the cost screen
 
 The screen (`research/cost_admissibility_screen.py`, row `cryptofunding_001`) screens the **same** series at the repository-wide 252 convention and without the position transitions. The screen's series and this evaluation's series are identical (gross identical: True, turnover identical: True), so the two rows describe the same candidate under two annualization conventions.
+
+**The screen uses the repository's flat 3 bp/unit cost model.** It does not use the venue fee schedule and it does not charge the capital the spot leg ties up, so the screen's crypto row is the flat-model row of this record and not its headline. The screen is left untouched (the shared machinery and the other candidates' rows are unchanged) and it still ends with `OVERALL: PASS`.
+
+**The screen's ADMISSIBLE verdict is therefore a statement about the flat 3 bp/unit model only.** It does not describe the headline model of this record, in which the traded cost per unit is several times the flat cost and the capital charge is not in the screen at all. The question the screen answers for the headline is answered here instead, by the break-evens: under the headline model the always-on book still nets a positive return, its break-even multiple of the published fee schedule is 6.03x on the full sample, and its break-even capital charge is +10.82% per year on the spot leg's notional.
 
 | Quantity | Screen (252) | This evaluation (365) |
 |---|---|---|
@@ -166,8 +407,8 @@ The screen's cost drag understates the crypto drag by the factor 365/252 = 1.452
 | `funding_positive_lagged` | parity | +11.0560% | 6.889 | 81.25 | +2.4375% |
 | `funding_positive_lagged` | fixed_quantity | +11.0584% | 6.891 | 81.18 | +2.4353% |
 
-* `drift`: Constant-notional rebalance of both legs every day (the cost screen's convention): w*(|spot_return| + |perp_return|) while the pair is held.
-* `parity`: Equal-notional maintenance: only the basis drift is traded, w*|spot_return - perp_return| while the pair is held.
+* `drift`: Constant-notional rebalance of both legs every day (the cost screen's convention): w*(|spot_return| + |perp_return|) while the pair is held, of which the spot leg trades w*|spot_return| and the perp leg w*|perp_return|.
+* `parity`: Equal-notional maintenance: only the basis drift is traded, w*|spot_return - perp_return| while the pair is held. The adjustment is executed on the spot leg (the perp leg keeps its drifted notional), which is the conservative choice under a per-leg fee schedule.
 * `fixed_quantity`: Fixed coin quantity on both legs (no daily rebalancing at all): the pair is entered and exited only.
 
 ### Funding precision, rounding and settlement timing
@@ -256,6 +497,8 @@ The basis-convergence term is a near zero-sum change of the price difference bet
 
 ## Promotion gates
 
+### Under the repository's flat model (Cycle 891, unchanged)
+
 | Rule | Net OOS Sharpe (canonical, 365) | Sharpe criterion | Pooled OOS round trips | Repo rebalance-day count | Settlement observations | Trade-count criterion | Gate |
 |---|---|---|---|---|---|---|---|
 | `always_on` | 9.209 | PASS | 0 | 1276 | 3828 | FAIL | **FAIL** |
@@ -264,15 +507,51 @@ The basis-convergence term is a near zero-sum change of the price difference bet
 
 The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.
 
+### Under every cost model (the gate is re-evaluated, never relaxed)
+
+The gates are the repository's own thresholds, unchanged: a net out-of-sample Sharpe (canonical, 365) of at least 0.9 and more than 100 pooled out-of-sample independent trades. Only the cost model changes between the rows. The trade count is a property of the position path, not of the cost model, so it does not move between the rows.
+
+| Rule | Cost model | Net OOS Sharpe (canonical, 365) | Sharpe criterion | Pooled OOS round trips | Trade-count criterion | Gate |
+|---|---|---|---|---|---|---|
+| `always_on` | `flat_3bp` | 9.209 | PASS | 0 | FAIL | **FAIL** |
+| `always_on` | `flat_3bp_capital_rf` | 3.936 | PASS | 0 | FAIL | **FAIL** |
+| `always_on` | `venue_taker` | 7.388 | PASS | 0 | FAIL | **FAIL** |
+| `always_on` | `venue_taker_slippage` | 6.577 | PASS | 0 | FAIL | **FAIL** |
+| `always_on` | `venue_maker_slippage` | 7.185 | PASS | 0 | FAIL | **FAIL** |
+| `always_on` | `realistic_rf` | 1.412 | PASS | 0 | FAIL | **FAIL** |
+| `always_on` | `realistic_no_capital_charge` | 6.577 | PASS | 0 | FAIL | **FAIL** |
+| `always_on` | `realistic_usdt_5pct` | -6.336 | FAIL | 0 | FAIL | **FAIL** |
+| `funding_positive_sameday` | `flat_3bp` | 1.762 | PASS | 95 | FAIL | **FAIL** |
+| `funding_positive_sameday` | `flat_3bp_capital_rf` | -1.286 | FAIL | 95 | FAIL | **FAIL** |
+| `funding_positive_sameday` | `venue_taker` | -3.953 | FAIL | 95 | FAIL | **FAIL** |
+| `funding_positive_sameday` | `venue_taker_slippage` | -4.941 | FAIL | 95 | FAIL | **FAIL** |
+| `funding_positive_sameday` | `venue_maker_slippage` | -4.242 | FAIL | 95 | FAIL | **FAIL** |
+| `funding_positive_sameday` | `realistic_rf` | -6.220 | FAIL | 95 | FAIL | **FAIL** |
+| `funding_positive_sameday` | `realistic_no_capital_charge` | -4.941 | FAIL | 95 | FAIL | **FAIL** |
+| `funding_positive_sameday` | `realistic_usdt_5pct` | -8.183 | FAIL | 95 | FAIL | **FAIL** |
+| `funding_positive_lagged` | `flat_3bp` | 0.977 | PASS | 95 | FAIL | **FAIL** |
+| `funding_positive_lagged` | `flat_3bp_capital_rf` | -1.961 | FAIL | 95 | FAIL | **FAIL** |
+| `funding_positive_lagged` | `venue_taker` | -4.269 | FAIL | 95 | FAIL | **FAIL** |
+| `funding_positive_lagged` | `venue_taker_slippage` | -5.194 | FAIL | 95 | FAIL | **FAIL** |
+| `funding_positive_lagged` | `venue_maker_slippage` | -4.540 | FAIL | 95 | FAIL | **FAIL** |
+| `funding_positive_lagged` | `realistic_rf` | -6.459 | FAIL | 95 | FAIL | **FAIL** |
+| `funding_positive_lagged` | `realistic_no_capital_charge` | -5.194 | FAIL | 95 | FAIL | **FAIL** |
+| `funding_positive_lagged` | `realistic_usdt_5pct` | -8.398 | FAIL | 95 | FAIL | **FAIL** |
+
+**Which criterion fails:** the trade-count criterion fails in all 24 of the 24 rows (the pooled out-of-sample round trips are a property of the position path, not of the cost model); the Sharpe criterion passes in 9 and fails in 15 of them. The gate is therefore **FAIL** under every cost model, and the gate is never relaxed: the thresholds are the repository's own and are applied unchanged.
+
 ## Verdict
 
-**Exploratory signal — not promoted.** The carry is real and large net of the repository's cost model on every rule, symbol and sample, and it survives the post-2022 falsification condition, but the candidate is **not** promoted, for three measured reasons:
+**Exploratory signal — not promoted.** Under the **realistic** cost model of this cycle (the published Binance VIP0 taker schedule plus the repository's slippage assumption, plus the repository's risk-free rate as the charge for the capital the spot leg ties up) the always-on BTC/ETH carry still nets +9.2190%/yr with a canonical Sharpe of 5.964 on the full sample, and the implementable funding-positive rule nets +1.9706%/yr with a canonical Sharpe of 1.088. The carry survives the realistic cost model, but the candidate is **not** promoted, for four measured reasons:
 
-1. The pre-registered funding-positive rule is contaminated by a look-ahead (the same day's aggregate funding). The implementable variant, which also pays for its entries and exits, is materially weaker than the Cycle 890 record reported.
-2. The Cycle 890 record reported `promotion_gate_pass: true` on a trade count that counted daily rebalances of a single position rather than independent round trips. On the honest count the trade criterion is not met.
-3. The edge is venue-specific (Binance only), regime-dependent (2021 is the best year by a wide margin) and structurally exposed to the funding-positive regime that produced it: a long period of negative funding removes the return *and* adds trading costs.
+1. **The trade-count criterion of the promotion gate is not met** under any cost model: the pooled out-of-sample independent round trips are 95 (funding-positive) and 0 (always-on, which opens its position before the out-of-sample window), against the repository's 100.
+2. **The realistic cost model removes most of the out-of-sample edge.** The always-on book's out-of-sample net return falls from +3.5123%/yr (flat model) to +0.4849%/yr and its out-of-sample canonical Sharpe from 11.144 to 1.516; the implementable funding-positive rule's out-of-sample Sharpe is **negative** under the headline model. The carry is a low-volatility, low-return stream whose out-of-sample margin does not survive a realistic fee schedule and a realistic charge for the capital.
+3. The pre-registered funding-positive rule is contaminated by a look-ahead (the same day's aggregate funding). The implementable variant, which also pays for its entries and exits, is materially weaker than the Cycle 890 record reported.
+4. The edge is venue-specific (Binance only), regime-dependent (2021 is the best year by a wide margin) and structurally exposed to the funding-positive regime that produced it: a long period of negative funding removes the return *and* adds trading costs.
 
-The Sharpe criterion is met with a very large margin, so the candidate deserves one more validation cycle (independent venue, live-fee schedule, borrow/financing costs on the spot leg) before it is either promoted or rejected.
+**What the realistic model changed.** The venue fee schedule is 3x (spot) and 2x (perp) the repository's flat 3 bp per unit, and the capital charge adds 2%/yr on the spot leg's notional; together they take the always-on book from +12.7694%/yr to +9.2190%/yr. The break-even columns show how much room is left: the always-on book's break-even multiple of the published fee schedule is 6.03x and its break-even capital charge is +10.82%/yr.
+
+The Sharpe criterion is met on the full sample, so the candidate deserves one more validation cycle (an independent venue's price and funding history, a self-consistent fixed-quantity or threshold-rebalanced construction, and the borrow/financing side of the spot leg) before it is either promoted or rejected.
 
 ## Reproduction
 
@@ -319,6 +598,2235 @@ python -m pytest -q
       "sharpe_canonical": 1.6529042070382414
     }
   },
+  "cost_model_evaluation": {
+    "break_evens": {
+      "always_on": {
+        "full": {
+          "break_even_capital_charge_annual": {
+            "bracketed": true,
+            "fee_model": "venue_taker_slippage",
+            "note": "The annual rate charged on the spot leg's notional at which the net annualized return is exactly zero, with the trading fees held at the stated model.",
+            "reason": "",
+            "sample": "full",
+            "solution_annual_rate": 0.108195333275944
+          },
+          "break_even_flat_cost_bps": {
+            "bracketed": true,
+            "note": "The flat cost per unit (both legs, one number) at which the net annualized return is exactly zero.",
+            "reason": "",
+            "sample": "full",
+            "solution_bps": 68.06774032438625
+          },
+          "break_even_venue_fee_multiplier": {
+            "bracketed": true,
+            "cost_model": "realistic_rf",
+            "note": "The multiple of the published fee schedule at which the net annualized return is exactly zero.",
+            "reason": "",
+            "sample": "full",
+            "solution_multiplier": 6.027192874535103
+          }
+        },
+        "test_oos": {
+          "break_even_capital_charge_annual": {
+            "bracketed": true,
+            "fee_model": "venue_taker_slippage",
+            "note": "The annual rate charged on the spot leg's notional at which the net annualized return is exactly zero, with the trading fees held at the stated model.",
+            "reason": "",
+            "sample": "test_oos",
+            "solution_annual_rate": 0.024837287608534098
+          },
+          "break_even_flat_cost_bps": {
+            "bracketed": true,
+            "note": "The flat cost per unit (both legs, one number) at which the net annualized return is exactly zero.",
+            "reason": "",
+            "sample": "test_oos",
+            "solution_bps": 26.166763003402593
+          },
+          "break_even_venue_fee_multiplier": {
+            "bracketed": true,
+            "cost_model": "realistic_rf",
+            "note": "The multiple of the published fee schedule at which the net annualized return is exactly zero.",
+            "reason": "",
+            "sample": "test_oos",
+            "solution_multiplier": 1.3417378217127407
+          }
+        }
+      },
+      "funding_positive_lagged": {
+        "full": {
+          "break_even_capital_charge_annual": {
+            "bracketed": true,
+            "fee_model": "venue_taker_slippage",
+            "note": "The annual rate charged on the spot leg's notional at which the net annualized return is exactly zero, with the trading fees held at the stated model.",
+            "reason": "",
+            "sample": "full",
+            "solution_annual_rate": 0.0421965210698545
+          },
+          "break_even_flat_cost_bps": {
+            "bracketed": true,
+            "note": "The flat cost per unit (both legs, one number) at which the net annualized return is exactly zero.",
+            "reason": "",
+            "sample": "full",
+            "solution_bps": 13.320842811390321
+          },
+          "break_even_venue_fee_multiplier": {
+            "bracketed": true,
+            "cost_model": "realistic_rf",
+            "note": "The multiple of the published fee schedule at which the net annualized return is exactly zero.",
+            "reason": "",
+            "sample": "full",
+            "solution_multiplier": 1.2116223584598629
+          }
+        },
+        "test_oos": {
+          "break_even_capital_charge_annual": {
+            "bracketed": true,
+            "fee_model": "venue_taker_slippage",
+            "note": "The annual rate charged on the spot leg's notional at which the net annualized return is exactly zero, with the trading fees held at the stated model.",
+            "reason": "",
+            "sample": "test_oos",
+            "solution_annual_rate": -0.08832536498084664
+          },
+          "break_even_flat_cost_bps": {
+            "bracketed": true,
+            "note": "The flat cost per unit (both legs, one number) at which the net annualized return is exactly zero.",
+            "reason": "",
+            "sample": "test_oos",
+            "solution_bps": 3.4369360656455683
+          },
+          "break_even_venue_fee_multiplier": {
+            "bracketed": true,
+            "cost_model": "realistic_rf",
+            "note": "The multiple of the published fee schedule at which the net annualized return is exactly zero.",
+            "reason": "",
+            "sample": "test_oos",
+            "solution_multiplier": 0.2172129421524005
+          }
+        }
+      },
+      "funding_positive_sameday": {
+        "full": {
+          "break_even_capital_charge_annual": {
+            "bracketed": true,
+            "fee_model": "venue_taker_slippage",
+            "note": "The annual rate charged on the spot leg's notional at which the net annualized return is exactly zero, with the trading fees held at the stated model.",
+            "reason": "",
+            "sample": "full",
+            "solution_annual_rate": 0.051101692486554384
+          },
+          "break_even_flat_cost_bps": {
+            "bracketed": true,
+            "note": "The flat cost per unit (both legs, one number) at which the net annualized return is exactly zero.",
+            "reason": "",
+            "sample": "full",
+            "solution_bps": 14.137637722069485
+          },
+          "break_even_venue_fee_multiplier": {
+            "bracketed": true,
+            "cost_model": "realistic_rf",
+            "note": "The multiple of the published fee schedule at which the net annualized return is exactly zero.",
+            "reason": "",
+            "sample": "full",
+            "solution_multiplier": 1.2971819527592743
+          }
+        },
+        "test_oos": {
+          "break_even_capital_charge_annual": {
+            "bracketed": true,
+            "fee_model": "venue_taker_slippage",
+            "note": "The annual rate charged on the spot leg's notional at which the net annualized return is exactly zero, with the trading fees held at the stated model.",
+            "reason": "",
+            "sample": "test_oos",
+            "solution_annual_rate": -0.08306832192465663
+          },
+          "break_even_flat_cost_bps": {
+            "bracketed": true,
+            "note": "The flat cost per unit (both legs, one number) at which the net annualized return is exactly zero.",
+            "reason": "",
+            "sample": "test_oos",
+            "solution_bps": 3.7897931116276595
+          },
+          "break_even_venue_fee_multiplier": {
+            "bracketed": true,
+            "cost_model": "realistic_rf",
+            "note": "The multiple of the published fee schedule at which the net annualized return is exactly zero.",
+            "reason": "",
+            "sample": "test_oos",
+            "solution_multiplier": 0.25415542659175117
+          }
+        }
+      }
+    },
+    "gates": {
+      "always_on": {
+        "flat_3bp": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": 9.208538388105994,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 0,
+          "pooled_oos_rebalance_days_repo_convention": 1276,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": true,
+          "trade_count_criterion_pass": false
+        },
+        "flat_3bp_capital_rf": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": 3.9361759261455935,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 0,
+          "pooled_oos_rebalance_days_repo_convention": 1276,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": true,
+          "trade_count_criterion_pass": false
+        },
+        "realistic_no_capital_charge": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": 6.576697948284435,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 0,
+          "pooled_oos_rebalance_days_repo_convention": 1276,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": true,
+          "trade_count_criterion_pass": false
+        },
+        "realistic_rf": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": 1.4116469529792166,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 0,
+          "pooled_oos_rebalance_days_repo_convention": 1276,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": true,
+          "trade_count_criterion_pass": false
+        },
+        "realistic_usdt_5pct": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": -6.335929539978615,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 0,
+          "pooled_oos_rebalance_days_repo_convention": 1276,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": false,
+          "trade_count_criterion_pass": false
+        },
+        "venue_maker_slippage": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": 7.185325829493877,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 0,
+          "pooled_oos_rebalance_days_repo_convention": 1276,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": true,
+          "trade_count_criterion_pass": false
+        },
+        "venue_taker": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": 7.388335607515721,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 0,
+          "pooled_oos_rebalance_days_repo_convention": 1276,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": true,
+          "trade_count_criterion_pass": false
+        },
+        "venue_taker_slippage": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": 6.576697948284435,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 0,
+          "pooled_oos_rebalance_days_repo_convention": 1276,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": true,
+          "trade_count_criterion_pass": false
+        }
+      },
+      "funding_positive_lagged": {
+        "flat_3bp": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": 0.9768777369185657,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 95,
+          "pooled_oos_rebalance_days_repo_convention": 1154,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": true,
+          "trade_count_criterion_pass": false
+        },
+        "flat_3bp_capital_rf": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": -1.9612867792302175,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 95,
+          "pooled_oos_rebalance_days_repo_convention": 1154,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": false,
+          "trade_count_criterion_pass": false
+        },
+        "realistic_no_capital_charge": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": -5.1939090306461235,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 95,
+          "pooled_oos_rebalance_days_repo_convention": 1154,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": false,
+          "trade_count_criterion_pass": false
+        },
+        "realistic_rf": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": -6.45925537793317,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 95,
+          "pooled_oos_rebalance_days_repo_convention": 1154,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": false,
+          "trade_count_criterion_pass": false
+        },
+        "realistic_usdt_5pct": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": -8.397861016566758,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 95,
+          "pooled_oos_rebalance_days_repo_convention": 1154,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": false,
+          "trade_count_criterion_pass": false
+        },
+        "venue_maker_slippage": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": -4.5395524598257655,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 95,
+          "pooled_oos_rebalance_days_repo_convention": 1154,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": false,
+          "trade_count_criterion_pass": false
+        },
+        "venue_taker": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": -4.269411757535707,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 95,
+          "pooled_oos_rebalance_days_repo_convention": 1154,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": false,
+          "trade_count_criterion_pass": false
+        },
+        "venue_taker_slippage": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": -5.1939090306461235,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 95,
+          "pooled_oos_rebalance_days_repo_convention": 1154,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": false,
+          "trade_count_criterion_pass": false
+        }
+      },
+      "funding_positive_sameday": {
+        "flat_3bp": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": 1.7616431492349476,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 95,
+          "pooled_oos_rebalance_days_repo_convention": 1154,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": true,
+          "trade_count_criterion_pass": false
+        },
+        "flat_3bp_capital_rf": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": -1.2856474528917414,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 95,
+          "pooled_oos_rebalance_days_repo_convention": 1154,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": false,
+          "trade_count_criterion_pass": false
+        },
+        "realistic_no_capital_charge": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": -4.940762700978757,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 95,
+          "pooled_oos_rebalance_days_repo_convention": 1154,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": false,
+          "trade_count_criterion_pass": false
+        },
+        "realistic_rf": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": -6.220178769039983,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 95,
+          "pooled_oos_rebalance_days_repo_convention": 1154,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": false,
+          "trade_count_criterion_pass": false
+        },
+        "realistic_usdt_5pct": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": -8.182918085107076,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 95,
+          "pooled_oos_rebalance_days_repo_convention": 1154,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": false,
+          "trade_count_criterion_pass": false
+        },
+        "venue_maker_slippage": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": -4.241941489765794,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 95,
+          "pooled_oos_rebalance_days_repo_convention": 1154,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": false,
+          "trade_count_criterion_pass": false
+        },
+        "venue_taker": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": -3.952913539397108,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 95,
+          "pooled_oos_rebalance_days_repo_convention": 1154,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": false,
+          "trade_count_criterion_pass": false
+        },
+        "venue_taker_slippage": {
+          "gate_pass_note": "The Sharpe criterion is met by a wide margin. The trade-count criterion is not met on independent position round trips; the repository's rebalance-day count is reported next to it because for a continuously held carry position it counts daily rebalances of one position, not independent trades. The always-on book reports 0 round trips in the out-of-sample window because it opens its position once, before that window, and never closes it: its independent observations are the daily funding settlements (3,828 eight-hour settlements in the window), not new positions. That is a counting convention, stated here so that '0 trades' is not read as a defect in the construction.",
+          "min_pooled_oos_trades": 100,
+          "net_oos_sharpe_canonical_365": -4.940762700978757,
+          "net_oos_sharpe_min": 0.9,
+          "pooled_oos_position_round_trips": 95,
+          "pooled_oos_rebalance_days_repo_convention": 1154,
+          "pooled_oos_settlement_observations": 3828,
+          "promotion_gate_pass": false,
+          "sharpe_criterion_pass": false,
+          "trade_count_criterion_pass": false
+        }
+      }
+    },
+    "headline_cost_model": "realistic_rf",
+    "headline_turnover_convention": "drift",
+    "per_symbol": {
+      "always_on": {
+        "realistic_rf": {
+          "BTCUSDT": {
+            "full": {
+              "ann_return_arithmetic": 0.08107319095086563,
+              "ann_return_geometric": 0.08434195149957624,
+              "ann_volatility": 0.013489443394123432,
+              "annualized_capital_charge_drag": 0.02,
+              "annualized_cost_drag": 0.034875577527905356,
+              "annualized_fee_drag": 0.014875577527905356,
+              "annualized_turnover_perp_units": 7.837953879120338,
+              "annualized_turnover_spot_units": 7.8241748437676,
+              "annualized_turnover_units": 15.66212872288794,
+              "avg_spot_notional_fraction": 1.0,
+              "invested_fraction": 1.0,
+              "max_drawdown": -0.028592995793232823,
+              "position_entries": 1,
+              "position_exits": 0,
+              "rebalance_days": 2464,
+              "sessions": 2464,
+              "sharpe_backtest_scale": 6.252441189405868,
+              "sharpe_canonical": 6.010121291304318
+            },
+            "post2022": {
+              "ann_return_arithmetic": 0.0404187519256596,
+              "ann_return_geometric": 0.04122712832146247,
+              "ann_volatility": 0.0057597580930329375,
+              "annualized_capital_charge_drag": 0.02,
+              "annualized_cost_drag": 0.031730512904515014,
+              "annualized_fee_drag": 0.011730512904515013,
+              "annualized_turnover_perp_units": 6.178120730133934,
+              "annualized_turnover_spot_units": 6.171523661184383,
+              "annualized_turnover_units": 12.349644391318316,
+              "avg_spot_notional_fraction": 1.0,
+              "invested_fraction": 1.0,
+              "max_drawdown": -0.013217948163700366,
+              "position_entries": 0,
+              "position_exits": 0,
+              "rebalance_days": 1369,
+              "sessions": 1369,
+              "sharpe_backtest_scale": 7.157788166716798,
+              "sharpe_canonical": 7.0174391481042475
+            },
+            "test_oos": {
+              "ann_return_arithmetic": 0.010880114750584247,
+              "ann_return_geometric": 0.0109331386312852,
+              "ann_volatility": 0.0035095960610079806,
+              "annualized_capital_charge_drag": 0.02,
+              "annualized_cost_drag": 0.031037245101014767,
+              "annualized_fee_drag": 0.011037245101014767,
+              "annualized_turnover_perp_units": 5.811416918002974,
+              "annualized_turnover_spot_units": 5.8077110486772385,
+              "annualized_turnover_units": 11.619127966680214,
+              "avg_spot_notional_fraction": 1.0,
+              "invested_fraction": 1.0,
+              "max_drawdown": -0.013217948163700921,
+              "position_entries": 0,
+              "position_exits": 0,
+              "rebalance_days": 638,
+              "sessions": 638,
+              "sharpe_backtest_scale": 3.1152128168690516,
+              "sharpe_canonical": 3.1001045594573076
+            },
+            "train": {
+              "ann_return_arithmetic": 0.13190052156776705,
+              "ann_return_geometric": 0.14076520255193836,
+              "ann_volatility": 0.018853023668962722,
+              "annualized_capital_charge_drag": 0.02,
+              "annualized_cost_drag": 0.03880762635842716,
+              "annualized_fee_drag": 0.018807626358427164,
+              "annualized_turnover_perp_units": 9.913124272693297,
+              "annualized_turnover_spot_units": 9.890366139618214,
+              "annualized_turnover_units": 19.803490412311508,
+              "avg_spot_notional_fraction": 1.0,
+              "invested_fraction": 1.0,
+              "max_drawdown": -0.028592995793232823,
+              "position_entries": 1,
+              "position_exits": 0,
+              "rebalance_days": 1095,
+              "sessions": 1095,
+              "sharpe_backtest_scale": 7.466452332719272,
+              "sharpe_canonical": 6.996252902653048
+            },
+            "val": {
+              "ann_return_arithmetic": 0.06619939558872125,
+              "ann_return_geometric": 0.06840799906404738,
+              "ann_volatility": 0.0068926013984201865,
+              "annualized_capital_charge_drag": 0.02,
+              "annualized_cost_drag": 0.03233558111057952,
+              "annualized_fee_drag": 0.012335581110579523,
+              "annualized_turnover_perp_units": 6.498171389695564,
+              "annualized_turnover_spot_units": 6.489050948160524,
+              "annualized_turnover_units": 12.987222337856089,
+              "avg_spot_notional_fraction": 1.0,
+              "invested_fraction": 1.0,
+              "max_drawdown": -0.004624420745970137,
+              "position_entries": 0,
+              "position_exits": 0,
+              "rebalance_days": 731,
+              "sessions": 731,
+              "sharpe_backtest_scale": 9.924844787880346,
+              "sharpe_canonical": 9.604413741942835
+            }
+          },
+          "ETHUSDT": {
+            "full": {
+              "ann_return_arithmetic": 0.09553657991595053,
+              "ann_return_geometric": 0.1000576659597261,
+              "ann_volatility": 0.017978613926166724,
+              "annualized_capital_charge_drag": 0.02,
+              "annualized_cost_drag": 0.04020293636832828,
+              "annualized_fee_drag": 0.02020293636832828,
+              "annualized_turnover_perp_units": 10.647880386106714,
+              "annualized_turnover_spot_units": 10.624516748377983,
+              "annualized_turnover_units": 21.2723971344847,
+              "avg_spot_notional_fraction": 1.0,
+              "invested_fraction": 1.0,
+              "max_drawdown": -0.039772359016844616,
+              "position_entries": 1,
+              "position_exits": 0,
+              "rebalance_days": 2464,
+              "sessions": 2464,
+              "sharpe_backtest_scale": 5.5653715225565055,
+              "sharpe_canonical": 5.313901300083159
+            },
+            "post2022": {
+              "ann_return_arithmetic": 0.03747531253290634,
+              "ann_return_geometric": 0.0381637711892584,
+              "ann_volatility": 0.006303021881323162,
+              "annualized_capital_charge_drag": 0.02,
+              "annualized_cost_drag": 0.03570285369465649,
+              "annualized_fee_drag": 0.01570285369465649,
+              "annualized_turnover_perp_units": 8.269804993354063,
+              "annualized_turnover_spot_units": 8.261658499423875,
+              "annualized_turnover_units": 16.531463492777934,
+              "avg_spot_notional_fraction": 1.0,
+              "invested_fraction": 1.0,
+              "max_drawdown": -0.017746285109485394,
+              "position_entries": 0,
+              "position_exits": 0,
+              "rebalance_days": 1369,
+              "sessions": 1369,
+              "sharpe_backtest_scale": 6.054837172998496,
+              "sharpe_canonical": 5.945610413308502
+            },
+            "test_oos": {
+              "ann_return_arithmetic": -0.0011953544684568534,
+              "ann_return_geometric": -0.0012039423485151746,
+              "ann_volatility": 0.0043183109224577375,
+              "annualized_capital_charge_drag": 0.02,
+              "annualized_cost_drag": 0.03727125774677188,
+              "annualized_fee_drag": 0.017271257746771886,
+              "annualized_turnover_perp_units": 9.093666523546988,
+              "annualized_turnover_spot_units": 9.08807598357416,
+              "annualized_turnover_units": 18.181742507121147,
+              "avg_spot_notional_fraction": 1.0,
+              "invested_fraction": 1.0,
+              "max_drawdown": -0.017746285109486726,
+              "position_entries": 0,
+              "position_exits": 0,
+              "rebalance_days": 638,
+              "sessions": 638,
+              "sharpe_backtest_scale": -0.27879936626470586,
+              "sharpe_canonical": -0.2768106534988744
+            },
+            "train": {
+              "ann_return_arithmetic": 0.16812642014187518,
+              "ann_return_geometric": 0.1826552717521619,
+              "ann_volatility": 0.025534810038977795,
+              "annualized_capital_charge_drag": 0.02,
+              "annualized_cost_drag": 0.04582906712655355,
+              "annualized_fee_drag": 0.025829067126553553,
+              "annualized_turnover_perp_units": 13.621017566634913,
+              "annualized_turnover_spot_units": 13.578629024924265,
+              "annualized_turnover_units": 27.199646591559176,
+              "avg_spot_notional_fraction": 1.0,
+              "invested_fraction": 1.0,
+              "max_drawdown": -0.039772359016844616,
+              "position_entries": 1,
+              "position_exits": 0,
+              "rebalance_days": 1095,
+              "sessions": 1095,
+              "sharpe_backtest_scale": 7.15318702090779,
+              "sharpe_canonical": 6.58420485154334
+            },
+            "val": {
+              "ann_return_arithmetic": 0.07122618195406874,
+              "ann_return_geometric": 0.07378903784464774,
+              "ann_volatility": 0.007174353988253047,
+              "annualized_capital_charge_drag": 0.02,
+              "annualized_cost_drag": 0.03433398668337111,
+              "annualized_fee_drag": 0.014333986683371103,
+              "annualized_turnover_perp_units": 7.550757583965434,
+              "annualized_turnover_spot_units": 7.540380312162751,
+              "annualized_turnover_units": 15.091137896128187,
+              "avg_spot_notional_fraction": 1.0,
+              "invested_fraction": 1.0,
+              "max_drawdown": -0.0030865796564878423,
+              "position_entries": 0,
+              "position_exits": 0,
+              "rebalance_days": 731,
+              "sessions": 731,
+              "sharpe_backtest_scale": 10.285112494513998,
+              "sharpe_canonical": 9.927887872649046
+            }
+          }
+        }
+      },
+      "funding_positive_lagged": {
+        "realistic_rf": {
+          "BTCUSDT": {
+            "full": {
+              "ann_return_arithmetic": 0.012004962137140937,
+              "ann_return_geometric": 0.011905859253431794,
+              "ann_volatility": 0.018399054458607705,
+              "annualized_capital_charge_drag": 0.017564935064935065,
+              "annualized_cost_drag": 0.10710592450061972,
+              "annualized_fee_drag": 0.08954098943568466,
+              "annualized_turnover_perp_units": 47.135878473350886,
+              "annualized_turnover_spot_units": 47.121562086949204,
+              "annualized_turnover_units": 94.25744056030008,
+              "avg_spot_notional_fraction": 0.8782467532467533,
+              "invested_fraction": 0.8782467532467533,
+              "max_drawdown": -0.20199522085517363,
+              "position_entries": 137,
+              "position_exits": 136,
+              "rebalance_days": 2300,
+              "sessions": 2464,
+              "sharpe_backtest_scale": 0.6470908209014962,
+              "sharpe_canonical": 0.6524771239820211
+            },
+            "post2022": {
+              "ann_return_arithmetic": -0.023566517877662913,
+              "ann_return_geometric": -0.02337395892507943,
+              "ann_volatility": 0.012974441180806552,
+              "annualized_capital_charge_drag": 0.017837837837837836,
+              "annualized_cost_drag": 0.09618308448218651,
+              "annualized_fee_drag": 0.07834524664434868,
+              "annualized_turnover_perp_units": 41.23891183929234,
+              "annualized_turnover_spot_units": 41.231673630703376,
+              "annualized_turnover_units": 82.47058546999571,
+              "avg_spot_notional_fraction": 0.8918918918918919,
+              "invested_fraction": 0.8918918918918919,
+              "max_drawdown": -0.13503606472619722,
+              "position_entries": 67,
+              "position_exits": 67,
+              "rebalance_days": 1288,
+              "sessions": 1369,
+              "sharpe_backtest_scale": -1.8015387791542938,
+              "sharpe_canonical": -1.8163801854160402
+            },
+            "test_oos": {
+              "ann_return_arithmetic": -0.06962360647642289,
+              "ann_return_geometric": -0.06734046476145428,
+              "ann_volatility": 0.013025559642200786,
+              "annualized_capital_charge_drag": 0.016990595611285266,
+              "annualized_cost_drag": 0.11325164383428785,
+              "annualized_fee_drag": 0.09626104822300258,
+              "annualized_turnover_perp_units": 50.66681098167943,
+              "annualized_turnover_spot_units": 50.66190044652249,
+              "annualized_turnover_units": 101.32871142820193,
+              "avg_spot_notional_fraction": 0.8495297805642633,
+              "invested_fraction": 0.8495297805642633,
+              "max_drawdown": -0.12741509301780973,
+              "position_entries": 40,
+              "position_exits": 40,
+              "rebalance_days": 582,
+              "sessions": 638,
+              "sharpe_backtest_scale": -5.169871131162891,
+              "sharpe_canonical": -5.345152791044251
+            },
+            "train": {
+              "ann_return_arithmetic": 0.056477433498114876,
+              "ann_return_geometric": 0.05781176326603532,
+              "ann_volatility": 0.023278468943058142,
+              "annualized_capital_charge_drag": 0.017223744292237445,
+              "annualized_cost_drag": 0.1207619683227522,
+              "annualized_fee_drag": 0.10353822403051476,
+              "annualized_turnover_perp_units": 54.508433105338234,
+              "annualized_turnover_spot_units": 54.48526738064833,
+              "annualized_turnover_units": 108.99370048598657,
+              "avg_spot_notional_fraction": 0.8611872146118722,
+              "invested_fraction": 0.8611872146118722,
+              "max_drawdown": -0.1219083084153948,
+              "position_entries": 70,
+              "position_exits": 69,
+              "rebalance_days": 1012,
+              "sessions": 1095,
+              "sharpe_backtest_scale": 2.4834864959310536,
+              "sharpe_canonical": 2.4261661553543443
+            },
+            "val": {
+              "ann_return_arithmetic": 0.01663105055736974,
+              "ann_return_geometric": 0.01668952501807408,
+              "ann_volatility": 0.012565615641849019,
+              "annualized_capital_charge_drag": 0.018577291381668946,
+              "annualized_cost_drag": 0.08128603815299276,
+              "annualized_fee_drag": 0.06270874677132382,
+              "annualized_turnover_perp_units": 33.01045814183276,
+              "annualized_turnover_spot_units": 33.001188393367414,
+              "annualized_turnover_units": 66.01164653520017,
+              "avg_spot_notional_fraction": 0.9288645690834473,
+              "invested_fraction": 0.9288645690834473,
+              "max_drawdown": -0.04612269891127019,
+              "position_entries": 27,
+              "position_exits": 27,
+              "rebalance_days": 706,
+              "sessions": 731,
+              "sharpe_backtest_scale": 1.3281899983070176,
+              "sharpe_canonical": 1.3235364689956803
+            }
+          },
+          "ETHUSDT": {
+            "full": {
+              "ann_return_arithmetic": 0.0273511456916221,
+              "ann_return_geometric": 0.02748275010914525,
+              "ann_volatility": 0.021832911866479985,
+              "annualized_capital_charge_drag": 0.01760551948051948,
+              "annualized_cost_drag": 0.11227871183329771,
+              "annualized_fee_drag": 0.09467319235277824,
+              "annualized_turnover_perp_units": 49.84235545280386,
+              "annualized_turnover_spot_units": 49.81961961317965,
+              "annualized_turnover_units": 99.66197506598347,
+              "avg_spot_notional_fraction": 0.880275974025974,
+              "invested_fraction": 0.880275974025974,
+              "max_drawdown": -0.26866771744760154,
+              "position_entries": 138,
+              "position_exits": 137,
+              "rebalance_days": 2306,
+              "sessions": 2464,
+              "sharpe_backtest_scale": 1.258776212592121,
+              "sharpe_canonical": 1.252748412987195
+            },
+            "post2022": {
+              "ann_return_arithmetic": -0.030682957397706063,
+              "ann_return_geometric": -0.03030566868152962,
+              "ann_volatility": 0.013425013658518309,
+              "annualized_capital_charge_drag": 0.017735573411249088,
+              "annualized_cost_drag": 0.10541824099823471,
+              "annualized_fee_drag": 0.08768266758698563,
+              "annualized_turnover_perp_units": 46.153790096700355,
+              "annualized_turnover_spot_units": 46.14584543274615,
+              "annualized_turnover_units": 92.2996355294465,
+              "avg_spot_notional_fraction": 0.8867786705624543,
+              "invested_fraction": 0.8867786705624543,
+              "max_drawdown": -0.18051319115388575,
+              "position_entries": 73,
+              "position_exits": 73,
+              "rebalance_days": 1287,
+              "sessions": 1369,
+              "sharpe_backtest_scale": -2.257403191712983,
+              "sharpe_canonical": -2.2855066056664612
+            },
+            "test_oos": {
+              "ann_return_arithmetic": -0.11004531406984262,
+              "ann_return_geometric": -0.10431586637509993,
+              "ann_volatility": 0.014530583999990257,
+              "annualized_capital_charge_drag": 0.016206896551724137,
+              "annualized_cost_drag": 0.149488518744542,
+              "annualized_fee_drag": 0.13328162219281786,
+              "annualized_turnover_perp_units": 70.1513745766121,
+              "annualized_turnover_spot_units": 70.1463833243245,
+              "annualized_turnover_units": 140.2977579009366,
+              "avg_spot_notional_fraction": 0.8103448275862069,
+              "invested_fraction": 0.8103448275862069,
+              "max_drawdown": -0.18051319115388453,
+              "position_entries": 55,
+              "position_exits": 55,
+              "rebalance_days": 572,
+              "sessions": 638,
+              "sharpe_backtest_scale": -7.179055320499842,
+              "sharpe_canonical": -7.5733579648220894
+            },
+            "train": {
+              "ann_return_arithmetic": 0.09990702434850814,
+              "ann_return_geometric": 0.10459960206961005,
+              "ann_volatility": 0.02866741582363882,
+              "annualized_capital_charge_drag": 0.017442922374429223,
+              "annualized_cost_drag": 0.12085586669466877,
+              "annualized_fee_drag": 0.10341294432023955,
+              "annualized_turnover_perp_units": 54.45390428614238,
+              "annualized_turnover_spot_units": 54.41267609994991,
+              "annualized_turnover_units": 108.8665803860923,
+              "avg_spot_notional_fraction": 0.8721461187214612,
+              "invested_fraction": 0.8721461187214612,
+              "max_drawdown": -0.1786749341524867,
+              "position_entries": 65,
+              "position_exits": 64,
+              "rebalance_days": 1019,
+              "sessions": 1095,
+              "sharpe_backtest_scale": 3.6487279744049492,
+              "sharpe_canonical": 3.4850376805197056
+            },
+            "val": {
+              "ann_return_arithmetic": 0.03858268358290013,
+              "ann_return_geometric": 0.03926951239979837,
+              "ann_volatility": 0.011192178078344429,
+              "annualized_capital_charge_drag": 0.019069767441860466,
+              "annualized_cost_drag": 0.06695471541390634,
+              "annualized_fee_drag": 0.04788494797204587,
+              "annualized_turnover_perp_units": 25.209249880306807,
+              "annualized_turnover_spot_units": 25.19872754652592,
+              "annualized_turnover_units": 50.40797742683274,
+              "avg_spot_notional_fraction": 0.9534883720930233,
+              "invested_fraction": 0.9534883720930233,
+              "max_drawdown": -0.03211888443830502,
+              "position_entries": 18,
+              "position_exits": 18,
+              "rebalance_days": 715,
+              "sessions": 731,
+              "sharpe_backtest_scale": 3.5086568606141406,
+              "sharpe_canonical": 3.4472900013584633
+            }
+          }
+        }
+      },
+      "funding_positive_sameday": {
+        "realistic_rf": {
+          "BTCUSDT": {
+            "full": {
+              "ann_return_arithmetic": 0.019472839869940046,
+              "ann_return_geometric": 0.019503597087483282,
+              "ann_volatility": 0.017696857252172443,
+              "annualized_capital_charge_drag": 0.01757305194805195,
+              "annualized_cost_drag": 0.10691278608841803,
+              "annualized_fee_drag": 0.08933973414036608,
+              "annualized_turnover_perp_units": 47.02882576435699,
+              "annualized_turnover_spot_units": 47.01629675443016,
+              "annualized_turnover_units": 94.04512251878714,
+              "avg_spot_notional_fraction": 0.8786525974025974,
+              "invested_fraction": 0.8786525974025974,
+              "max_drawdown": -0.18288596645345234,
+              "position_entries": 137,
+              "position_exits": 136,
+              "rebalance_days": 2301,
+              "sessions": 2464,
+              "sharpe_backtest_scale": 1.1020938243195155,
+              "sharpe_canonical": 1.1003558198193404
+            },
+            "post2022": {
+              "ann_return_arithmetic": -0.02034528917572779,
+              "ann_return_geometric": -0.020220803465188397,
+              "ann_volatility": 0.012819742656840572,
+              "annualized_capital_charge_drag": 0.017837837837837836,
+              "annualized_cost_drag": 0.09611154417091707,
+              "annualized_fee_drag": 0.07827370633307923,
+              "annualized_turnover_perp_units": 41.20098931797935,
+              "annualized_turnover_spot_units": 41.194178175411416,
+              "annualized_turnover_units": 82.39516749339077,
+              "avg_spot_notional_fraction": 0.8918918918918919,
+              "invested_fraction": 0.8918918918918919,
+              "max_drawdown": -0.12809631447319458,
+              "position_entries": 67,
+              "position_exits": 67,
+              "rebalance_days": 1288,
+              "sessions": 1369,
+              "sharpe_backtest_scale": -1.5773174241059078,
+              "sharpe_canonical": -1.587027892862702
+            },
+            "test_oos": {
+              "ann_return_arithmetic": -0.0660127854775205,
+              "ann_return_geometric": -0.06396444900471099,
+              "ann_volatility": 0.012891009976227195,
+              "annualized_capital_charge_drag": 0.016990595611285266,
+              "annualized_cost_drag": 0.11307011665686033,
+              "annualized_fee_drag": 0.09607952104557506,
+              "annualized_turnover_perp_units": 50.57100214930303,
+              "annualized_turnover_spot_units": 50.56651628421912,
+              "annualized_turnover_units": 101.13751843352213,
+              "avg_spot_notional_fraction": 0.8495297805642633,
+              "invested_fraction": 0.8495297805642633,
+              "max_drawdown": -0.12200375145078046,
+              "position_entries": 40,
+              "position_exits": 40,
+              "rebalance_days": 582,
+              "sessions": 638,
+              "sharpe_backtest_scale": -4.961942401927411,
+              "sharpe_canonical": -5.120838910159654
+            },
+            "train": {
+              "ann_return_arithmetic": 0.06925459207406726,
+              "ann_return_geometric": 0.0714413149291604,
+              "ann_volatility": 0.022075839519812315,
+              "annualized_capital_charge_drag": 0.01724200913242009,
+              "annualized_cost_drag": 0.12041680452226168,
+              "annualized_fee_drag": 0.10317479538984159,
+              "annualized_turnover_perp_units": 54.31495187859533,
+              "annualized_turnover_spot_units": 54.29527422902072,
+              "annualized_turnover_units": 108.61022610761606,
+              "avg_spot_notional_fraction": 0.8621004566210045,
+              "invested_fraction": 0.8621004566210045,
+              "max_drawdown": -0.11156770328011723,
+              "position_entries": 70,
+              "position_exits": 69,
+              "rebalance_days": 1013,
+              "sessions": 1095,
+              "sharpe_backtest_scale": 3.236176584135985,
+              "sharpe_canonical": 3.1371215582498513
+            },
+            "val": {
+              "ann_return_arithmetic": 0.019512252056206204,
+              "ann_return_geometric": 0.019625071020336282,
+              "ann_volatility": 0.012394354004128716,
+              "annualized_capital_charge_drag": 0.018577291381668946,
+              "annualized_cost_drag": 0.08131049185076415,
+              "annualized_fee_drag": 0.06273320046909521,
+              "annualized_turnover_perp_units": 33.02305746246018,
+              "annualized_turnover_spot_units": 33.01421687114423,
+              "annualized_turnover_units": 66.03727433360439,
+              "avg_spot_notional_fraction": 0.9288645690834473,
+              "invested_fraction": 0.9288645690834473,
+              "max_drawdown": -0.04262343283508918,
+              "position_entries": 27,
+              "position_exits": 27,
+              "rebalance_days": 706,
+              "sessions": 731,
+              "sharpe_backtest_scale": 1.5833879695383013,
+              "sharpe_canonical": 1.5742855214322928
+            }
+          },
+          "ETHUSDT": {
+            "full": {
+              "ann_return_arithmetic": 0.035529192475817324,
+              "ann_return_geometric": 0.03594661829820822,
+              "ann_volatility": 0.020600558265959492,
+              "annualized_capital_charge_drag": 0.017613636363636366,
+              "annualized_cost_drag": 0.11216196238211062,
+              "annualized_fee_drag": 0.09454832601847427,
+              "annualized_turnover_perp_units": 49.77500189894696,
+              "annualized_turnover_spot_units": 49.75485390767618,
+              "annualized_turnover_units": 99.52985580662315,
+              "avg_spot_notional_fraction": 0.8806818181818182,
+              "invested_fraction": 0.8806818181818182,
+              "max_drawdown": -0.2446467695491107,
+              "position_entries": 138,
+              "position_exits": 137,
+              "rebalance_days": 2307,
+              "sessions": 2464,
+              "sharpe_backtest_scale": 1.7449341825656572,
+              "sharpe_canonical": 1.7246713422580402
+            },
+            "post2022": {
+              "ann_return_arithmetic": -0.02729966063531996,
+              "ann_return_geometric": -0.027016995234139585,
+              "ann_volatility": 0.013264040789120683,
+              "annualized_capital_charge_drag": 0.017735573411249088,
+              "annualized_cost_drag": 0.10533864024721692,
+              "annualized_fee_drag": 0.08760306683596783,
+              "annualized_turnover_perp_units": 46.1115889995682,
+              "annualized_turnover_spot_units": 46.10412878022507,
+              "annualized_turnover_units": 92.21571777979327,
+              "avg_spot_notional_fraction": 0.8867786705624543,
+              "invested_fraction": 0.8867786705624543,
+              "max_drawdown": -0.17316809260814048,
+              "position_entries": 73,
+              "position_exits": 73,
+              "rebalance_days": 1287,
+              "sessions": 1369,
+              "sharpe_backtest_scale": -2.0368600838666926,
+              "sharpe_canonical": -2.058170739169579
+            },
+            "test_oos": {
+              "ann_return_arithmetic": -0.10493463836276845,
+              "ann_return_geometric": -0.09972271653007736,
+              "ann_volatility": 0.014336275880560663,
+              "annualized_capital_charge_drag": 0.016206896551724137,
+              "annualized_cost_drag": 0.14934657291125977,
+              "annualized_fee_drag": 0.13313967635953564,
+              "annualized_turnover_perp_units": 70.07625909337838,
+              "annualized_turnover_spot_units": 70.07191249514231,
+              "annualized_turnover_units": 140.1481715885207,
+              "avg_spot_notional_fraction": 0.8103448275862069,
+              "invested_fraction": 0.8103448275862069,
+              "max_drawdown": -0.17316809260814103,
+              "position_entries": 55,
+              "position_exits": 55,
+              "rebalance_days": 572,
+              "sessions": 638,
+              "sharpe_backtest_scale": -6.955970808660066,
+              "sharpe_canonical": -7.319518627920312
+            },
+            "train": {
+              "ann_return_arithmetic": 0.11407960335175059,
+              "ann_return_geometric": 0.1204274690264937,
+              "ann_volatility": 0.026551670107501982,
+              "annualized_capital_charge_drag": 0.017461187214611873,
+              "annualized_cost_drag": 0.12069267288683168,
+              "annualized_fee_drag": 0.1032314856722198,
+              "annualized_turnover_perp_units": 54.355104418809546,
+              "annualized_turnover_spot_units": 54.31909381587761,
+              "annualized_turnover_units": 108.67419823468715,
+              "avg_spot_notional_fraction": 0.8730593607305936,
+              "invested_fraction": 0.8730593607305936,
+              "max_drawdown": -0.1623923275518082,
+              "position_entries": 65,
+              "position_exits": 64,
+              "rebalance_days": 1020,
+              "sessions": 1095,
+              "sharpe_backtest_scale": 4.535589231822664,
+              "sharpe_canonical": 4.29651328484675
+            },
+            "val": {
+              "ann_return_arithmetic": 0.04045836370135875,
+              "ann_return_geometric": 0.04122147764544648,
+              "ann_volatility": 0.011105154375709253,
+              "annualized_capital_charge_drag": 0.019069767441860466,
+              "annualized_cost_drag": 0.06692952801786076,
+              "annualized_fee_drag": 0.04785976057600028,
+              "annualized_turnover_perp_units": 25.19577570291855,
+              "annualized_turnover_spot_units": 25.185597986631084,
+              "annualized_turnover_units": 50.381373689549626,
+              "avg_spot_notional_fraction": 0.9534883720930233,
+              "invested_fraction": 0.9534883720930233,
+              "max_drawdown": -0.03006632704175982,
+              "position_entries": 18,
+              "position_exits": 18,
+              "rebalance_days": 715,
+              "sessions": 731,
+              "sharpe_backtest_scale": 3.7119229729585625,
+              "sharpe_canonical": 3.643205878331142
+            }
+          }
+        }
+      }
+    },
+    "portfolio": {
+      "always_on": {
+        "flat_3bp": {
+          "samples": {
+            "full": {
+              "ann_return_geometric": 0.12769409977315704,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.005540178878605894,
+              "max_drawdown": -0.017213345266197444,
+              "sharpe_canonical": 8.135176202397444
+            },
+            "post2022": {
+              "ann_return_geometric": 0.07069742761785203,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.004332166182614438,
+              "max_drawdown": -0.00653462754284051,
+              "sharpe_canonical": 12.501155455995837
+            },
+            "test_oos": {
+              "ann_return_geometric": 0.03512280994305561,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.004470130571070204,
+              "max_drawdown": -0.006534627542839289,
+              "sharpe_canonical": 11.143762440982155
+            },
+            "train": {
+              "ann_return_geometric": 0.20323965609904593,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.007050470550580602,
+              "max_drawdown": -0.017213345266197444,
+              "sharpe_canonical": 8.892251140300534
+            },
+            "val": {
+              "ann_return_geometric": 0.10274388375148735,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.00421175403509764,
+              "max_drawdown": -0.0010388388997484288,
+              "sharpe_canonical": 15.009375936977383
+            }
+          }
+        },
+        "flat_3bp_capital_rf": {
+          "samples": {
+            "full": {
+              "ann_return_geometric": 0.10537092614398569,
+              "annualized_capital_charge_drag": 0.02,
+              "annualized_fee_drag": 0.005540178878605894,
+              "max_drawdown": -0.018353683481735383,
+              "sharpe_canonical": 6.782739264241195
+            },
+            "post2022": {
+              "ann_return_geometric": 0.04949955026448816,
+              "annualized_capital_charge_drag": 0.02,
+              "annualized_fee_drag": 0.004332166182614438,
+              "max_drawdown": -0.011855603057085662,
+              "sharpe_canonical": 8.842185163181565
+            },
+            "test_oos": {
+              "ann_return_geometric": 0.014627367961192572,
+              "annualized_capital_charge_drag": 0.02,
+              "annualized_fee_drag": 0.004470130571070204,
+              "max_drawdown": -0.011855603057084996,
+              "sharpe_canonical": 4.6885688243714
+            },
+            "train": {
+              "ann_return_geometric": 0.17942520881940238,
+              "annualized_capital_charge_drag": 0.02,
+              "annualized_fee_drag": 0.007050470550580602,
+              "max_drawdown": -0.018353683481735383,
+              "sharpe_canonical": 7.932386449975524
+            },
+            "val": {
+              "ann_return_geometric": 0.08091329042197182,
+              "annualized_capital_charge_drag": 0.02,
+              "annualized_fee_drag": 0.00421175403509764,
+              "max_drawdown": -0.0022035071439726606,
+              "sharpe_canonical": 11.941097642452457
+            }
+          }
+        },
+        "realistic_no_capital_charge": {
+          "samples": {
+            "full": {
+              "ann_return_geometric": 0.11424754929139191,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.017539256948116817,
+              "max_drawdown": -0.01864871064496043,
+              "sharpe_canonical": 7.315299579271961
+            },
+            "post2022": {
+              "ann_return_geometric": 0.06069786043334191,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.01371668329958575,
+              "max_drawdown": -0.009502266490638789,
+              "sharpe_canonical": 10.67573720148079
+            },
+            "test_oos": {
+              "ann_return_geometric": 0.025147436593969452,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.014154251423893326,
+              "max_drawdown": -0.009502266490637457,
+              "sharpe_canonical": 7.778252149337728
+            },
+            "train": {
+              "ann_return_geometric": 0.18501559164056447,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.022318346742490353,
+              "max_drawdown": -0.01864871064496043,
+              "sharpe_canonical": 8.136830581493964
+            },
+            "val": {
+              "ann_return_geometric": 0.0927315266187494,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.013334783896975313,
+              "max_drawdown": -0.0012671923759368653,
+              "sharpe_canonical": 13.525931264329946
+            }
+          }
+        },
+        "realistic_rf": {
+          "samples": {
+            "samples": {
+              "full": {
+                "ann_return_arithmetic": 0.08830488543340807,
+                "ann_return_geometric": 0.09218983799950076,
+                "ann_volatility": 0.01480525633431227,
+                "annualized_capital_charge_drag": 0.02,
+                "annualized_cost_drag": 0.037539256948116814,
+                "annualized_fee_drag": 0.017539256948116817,
+                "annualized_turnover_perp_units": 9.242917132613526,
+                "annualized_turnover_spot_units": 9.224345796072793,
+                "annualized_turnover_units": 18.467262928686317,
+                "avg_spot_notional_fraction": 1.0,
+                "invested_fraction": 1.0,
+                "max_drawdown": -0.021235065443034107,
+                "position_entries": 2,
+                "position_exits": 0,
+                "rebalance_days": 2464,
+                "sessions": 2464,
+                "sharpe_backtest_scale": 6.226831600736559,
+                "sharpe_canonical": 5.964428000395712
+              },
+              "post2022": {
+                "ann_return_arithmetic": 0.03894703222928297,
+                "ann_return_geometric": 0.039697421958073464,
+                "ann_volatility": 0.005521588918571981,
+                "annualized_capital_charge_drag": 0.02,
+                "annualized_cost_drag": 0.03371668329958575,
+                "annualized_fee_drag": 0.01371668329958575,
+                "annualized_turnover_perp_units": 7.223962861743997,
+                "annualized_turnover_spot_units": 7.216591080304129,
+                "annualized_turnover_units": 14.440553942048126,
+                "avg_spot_notional_fraction": 1.0,
+                "invested_fraction": 1.0,
+                "max_drawdown": -0.0151306136188738,
+                "position_entries": 0,
+                "position_exits": 0,
+                "rebalance_days": 1369,
+                "sessions": 1369,
+                "sharpe_backtest_scale": 7.18949247100782,
+                "sharpe_canonical": 7.053591421535168
+              },
+              "test_oos": {
+                "ann_return_arithmetic": 0.004842380141063697,
+                "ann_return_geometric": 0.0048489739185648695,
+                "ann_volatility": 0.0031938255104238143,
+                "annualized_capital_charge_drag": 0.02,
+                "annualized_cost_drag": 0.03415425142389333,
+                "annualized_fee_drag": 0.014154251423893326,
+                "annualized_turnover_perp_units": 7.45254172077498,
+                "annualized_turnover_spot_units": 7.447893516125698,
+                "annualized_turnover_units": 14.900435236900682,
+                "avg_spot_notional_fraction": 1.0,
+                "invested_fraction": 1.0,
+                "max_drawdown": -0.015130613618873912,
+                "position_entries": 0,
+                "position_exits": 0,
+                "rebalance_days": 638,
+                "sessions": 638,
+                "sharpe_backtest_scale": 1.5182338242145923,
+                "sharpe_canonical": 1.5161692851595774
+              },
+              "train": {
+                "ann_return_arithmetic": 0.1500134708548211,
+                "ann_return_geometric": 0.16156086292679173,
+                "ann_volatility": 0.02089431126186798,
+                "annualized_capital_charge_drag": 0.02,
+                "annualized_cost_drag": 0.042318346742490354,
+                "annualized_fee_drag": 0.022318346742490353,
+                "annualized_turnover_perp_units": 11.767070919664105,
+                "annualized_turnover_spot_units": 11.734497582271237,
+                "annualized_turnover_units": 23.501568501935342,
+                "avg_spot_notional_fraction": 1.0,
+                "invested_fraction": 1.0,
+                "max_drawdown": -0.021235065443034107,
+                "position_entries": 2,
+                "position_exits": 0,
+                "rebalance_days": 1095,
+                "sessions": 1095,
+                "sharpe_backtest_scale": 7.732289468743558,
+                "sharpe_canonical": 7.179632244140777
+              },
+              "val": {
+                "ann_return_arithmetic": 0.068712788771395,
+                "ann_return_geometric": 0.07109860882257468,
+                "ann_volatility": 0.006558719472820691,
+                "annualized_capital_charge_drag": 0.02,
+                "annualized_cost_drag": 0.03333478389697531,
+                "annualized_fee_drag": 0.013334783896975313,
+                "annualized_turnover_perp_units": 7.024464486830499,
+                "annualized_turnover_spot_units": 7.014715630161637,
+                "annualized_turnover_units": 14.039180116992133,
+                "avg_spot_notional_fraction": 1.0,
+                "invested_fraction": 1.0,
+                "max_drawdown": -0.003669875554275226,
+                "position_entries": 0,
+                "position_exits": 0,
+                "rebalance_days": 731,
+                "sessions": 731,
+                "sharpe_backtest_scale": 10.840318619695058,
+                "sharpe_canonical": 10.476555531325976
+              }
+            }
+          }
+        },
+        "realistic_usdt_5pct": {
+          "samples": {
+            "full": {
+              "ann_return_geometric": 0.059917115741551674,
+              "annualized_capital_charge_drag": 0.05000000000000001,
+              "annualized_fee_drag": 0.017539256948116817,
+              "max_drawdown": -0.04601755693071141,
+              "sharpe_canonical": 3.9381206320813384
+            },
+            "post2022": {
+              "ann_return_geometric": 0.008971702614989363,
+              "annualized_capital_charge_drag": 0.05000000000000001,
+              "annualized_fee_drag": 0.01371668329958575,
+              "max_drawdown": -0.045436310464386453,
+              "sharpe_canonical": 1.620372751616737
+            },
+            "test_oos": {
+              "ann_return_geometric": -0.02484961635243288,
+              "annualized_capital_charge_drag": 0.05000000000000001,
+              "annualized_fee_drag": 0.014154251423893326,
+              "max_drawdown": -0.04543631046438934,
+              "sharpe_canonical": -7.87695501110765
+            },
+            "train": {
+              "ann_return_geometric": 0.12724401529566842,
+              "annualized_capital_charge_drag": 0.05000000000000001,
+              "annualized_fee_drag": 0.022318346742490353,
+              "max_drawdown": -0.04601755693071141,
+              "sharpe_canonical": 5.743834738110996
+            },
+            "val": {
+              "ann_return_geometric": 0.03944744545299761,
+              "annualized_capital_charge_drag": 0.05000000000000001,
+              "annualized_fee_drag": 0.013334783896975313,
+              "max_drawdown": -0.007808681066037493,
+              "sharpe_canonical": 5.902491931820023
+            }
+          }
+        },
+        "venue_maker_slippage": {
+          "samples": {
+            "full": {
+              "ann_return_geometric": 0.11734071459324547,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.01476638180833276,
+              "max_drawdown": -0.01831481849251093,
+              "sharpe_canonical": 7.506699097866459
+            },
+            "post2022": {
+              "ann_return_geometric": 0.06299880374323208,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.011549494441062555,
+              "max_drawdown": -0.008818021889281491,
+              "sharpe_canonical": 11.101395549473322
+            },
+            "test_oos": {
+              "ann_return_geometric": 0.0274419176622287,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.011918488907660832,
+              "max_drawdown": -0.008818021889282046,
+              "sharpe_canonical": 8.555531099002714
+            },
+            "train": {
+              "ann_return_geometric": 0.18920473125495962,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.018788225466591126,
+              "max_drawdown": -0.01831481849251093,
+              "sharpe_canonical": 8.31318143390346
+            },
+            "val": {
+              "ann_return_geometric": 0.09503623121838323,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.011227444550926162,
+              "max_drawdown": -0.0011741225244538134,
+              "sharpe_canonical": 13.87304022276938
+            }
+          }
+        },
+        "venue_taker": {
+          "samples": {
+            "full": {
+              "ann_return_geometric": 0.11836950636866139,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.013845804362379558,
+              "max_drawdown": -0.018206217220493315,
+              "sharpe_canonical": 7.569913808297439
+            },
+            "post2022": {
+              "ann_return_geometric": 0.06376531927293794,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.010828572511176127,
+              "max_drawdown": -0.00859000723598402,
+              "sharpe_canonical": 11.242523944056046
+            },
+            "test_oos": {
+              "ann_return_geometric": 0.02820692345152298,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.01117416437651319,
+              "max_drawdown": -0.008590007235984465,
+              "sharpe_canonical": 8.815091066399285
+            },
+            "train": {
+              "ann_return_geometric": 0.19059661206450929,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.01761803304210329,
+              "max_drawdown": -0.018206217220493315,
+              "sharpe_canonical": 8.37131251689669
+            },
+            "val": {
+              "ann_return_geometric": 0.09580340350409156,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.010526947873576886,
+              "max_drawdown": -0.0011607142546706806,
+              "sharpe_canonical": 13.987763867713884
+            }
+          }
+        },
+        "venue_taker_slippage": {
+          "samples": {
+            "full": {
+              "ann_return_geometric": 0.11424754929139191,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.017539256948116817,
+              "max_drawdown": -0.01864871064496043,
+              "sharpe_canonical": 7.315299579271961
+            },
+            "post2022": {
+              "ann_return_geometric": 0.06069786043334191,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.01371668329958575,
+              "max_drawdown": -0.009502266490638789,
+              "sharpe_canonical": 10.67573720148079
+            },
+            "test_oos": {
+              "ann_return_geometric": 0.025147436593969452,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.014154251423893326,
+              "max_drawdown": -0.009502266490637457,
+              "sharpe_canonical": 7.778252149337728
+            },
+            "train": {
+              "ann_return_geometric": 0.18501559164056447,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.022318346742490353,
+              "max_drawdown": -0.01864871064496043,
+              "sharpe_canonical": 8.136830581493964
+            },
+            "val": {
+              "ann_return_geometric": 0.0927315266187494,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.013334783896975313,
+              "max_drawdown": -0.0012671923759368653,
+              "sharpe_canonical": 13.525931264329946
+            }
+          }
+        }
+      },
+      "funding_positive_lagged": {
+        "flat_3bp": {
+          "samples": {
+            "full": {
+              "ann_return_geometric": 0.10534031886718953,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.029087912343942538,
+              "max_drawdown": -0.02659446105343266,
+              "sharpe_canonical": 6.596559909105592
+            },
+            "post2022": {
+              "ann_return_geometric": 0.04857905751574387,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.026215533149916335,
+              "max_drawdown": -0.02659446105343144,
+              "sharpe_canonical": 7.260671172958309
+            },
+            "test_oos": {
+              "ann_return_geometric": 0.005294594808492592,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.03624397039937078,
+              "max_drawdown": -0.026594461053432328,
+              "sharpe_canonical": 1.128147113688549
+            },
+            "train": {
+              "ann_return_geometric": 0.18064621510461643,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.032679042130811825,
+              "max_drawdown": -0.026049549193389976,
+              "sharpe_canonical": 7.881277789367736
+            },
+            "val": {
+              "ann_return_geometric": 0.08787709972546165,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.01746294359430493,
+              "max_drawdown": -0.00800954354080008,
+              "sharpe_canonical": 11.585742447012395
+            }
+          }
+        },
+        "flat_3bp_capital_rf": {
+          "samples": {
+            "full": {
+              "ann_return_geometric": 0.08607853222483319,
+              "annualized_capital_charge_drag": 0.017585227272727273,
+              "annualized_fee_drag": 0.029087912343942538,
+              "max_drawdown": -0.038833431917071004,
+              "sharpe_canonical": 5.465818644295653
+            },
+            "post2022": {
+              "ann_return_geometric": 0.030095845752937223,
+              "annualized_capital_charge_drag": 0.017786705624543462,
+              "annualized_fee_drag": 0.026215533149916335,
+              "max_drawdown": -0.03207825281432286,
+              "sharpe_canonical": 4.617185197779982
+            },
+            "test_oos": {
+              "ann_return_geometric": -0.011253772566930054,
+              "annualized_capital_charge_drag": 0.016598746081504703,
+              "annualized_fee_drag": 0.03624397039937078,
+              "max_drawdown": -0.032078252814322306,
+              "sharpe_canonical": -2.4889524728309937
+            },
+            "train": {
+              "ann_return_geometric": 0.1603686019306918,
+              "annualized_capital_charge_drag": 0.017333333333333333,
+              "annualized_fee_drag": 0.032679042130811825,
+              "max_drawdown": -0.038833431917071004,
+              "sharpe_canonical": 7.0864243030437555
+            },
+            "val": {
+              "ann_return_geometric": 0.06759561024557414,
+              "annualized_capital_charge_drag": 0.018823529411764708,
+              "annualized_fee_drag": 0.01746294359430493,
+              "max_drawdown": -0.010187569224678006,
+              "sharpe_canonical": 9.087059569378575
+            }
+          }
+        },
+        "realistic_no_capital_charge": {
+          "samples": {
+            "full": {
+              "ann_return_geometric": 0.03779264686226158,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.09210709089423148,
+              "max_drawdown": -0.1718916383596557,
+              "sharpe_canonical": 2.0483459546916043
+            },
+            "post2022": {
+              "ann_return_geometric": -0.009356128615761405,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.08301395711566717,
+              "max_drawdown": -0.13147692392172883,
+              "sharpe_canonical": -0.8383352130884232
+            },
+            "test_oos": {
+              "ann_return_geometric": -0.07068133226379414,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.11477133520791022,
+              "max_drawdown": -0.13147692392172816,
+              "sharpe_canonical": -6.655047927057315
+            },
+            "train": {
+              "ann_return_geometric": 0.09990832629060376,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.10347558417537717,
+              "max_drawdown": -0.1382524033434831,
+              "sharpe_canonical": 3.9900164525478914
+            },
+            "val": {
+              "ann_return_geometric": 0.04746530518682479,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.055296847371684846,
+              "max_drawdown": -0.03013053534637944,
+              "sharpe_canonical": 4.456896818689791
+            }
+          }
+        },
+        "realistic_rf": {
+          "samples": {
+            "samples": {
+              "full": {
+                "ann_return_arithmetic": 0.01967805391438151,
+                "ann_return_geometric": 0.01970566667269469,
+                "ann_volatility": 0.018087521756042613,
+                "annualized_capital_charge_drag": 0.017585227272727273,
+                "annualized_cost_drag": 0.10969231816695876,
+                "annualized_fee_drag": 0.09210709089423148,
+                "annualized_turnover_perp_units": 48.48911696307737,
+                "annualized_turnover_spot_units": 48.470590850064426,
+                "annualized_turnover_units": 96.9597078131418,
+                "avg_spot_notional_fraction": 0.8792613636363636,
+                "invested_fraction": 0.9460227272727273,
+                "max_drawdown": -0.23260191941836283,
+                "position_entries": 275,
+                "position_exits": 273,
+                "rebalance_days": 2413,
+                "sessions": 2464,
+                "sharpe_backtest_scale": 1.0894619472184734,
+                "sharpe_canonical": 1.0879353280007824
+              },
+              "post2022": {
+                "ann_return_arithmetic": -0.027124737637684488,
+                "ann_return_geometric": -0.02682008320756213,
+                "ann_volatility": 0.011006252489510952,
+                "annualized_capital_charge_drag": 0.017786705624543462,
+                "annualized_cost_drag": 0.10080066274021063,
+                "annualized_fee_drag": 0.08301395711566717,
+                "annualized_turnover_perp_units": 43.696350967996345,
+                "annualized_turnover_spot_units": 43.68875953172476,
+                "annualized_turnover_units": 87.38511049972112,
+                "avg_spot_notional_fraction": 0.8893352812271731,
+                "invested_fraction": 0.9503287070854638,
+                "max_drawdown": -0.15079485126556458,
+                "position_entries": 140,
+                "position_exits": 140,
+                "rebalance_days": 1341,
+                "sessions": 1369,
+                "sharpe_backtest_scale": -2.43680428312197,
+                "sharpe_canonical": -2.4644844067982796
+              },
+              "test_oos": {
+                "ann_return_arithmetic": -0.08983446027313276,
+                "ann_return_geometric": -0.08598148551658547,
+                "ann_volatility": 0.010859414035587262,
+                "annualized_capital_charge_drag": 0.016598746081504703,
+                "annualized_cost_drag": 0.1313700812894149,
+                "annualized_fee_drag": 0.11477133520791022,
+                "annualized_turnover_perp_units": 60.40909277914575,
+                "annualized_turnover_spot_units": 60.404141885423506,
+                "annualized_turnover_units": 120.81323466456928,
+                "avg_spot_notional_fraction": 0.8299373040752351,
+                "invested_fraction": 0.9122257053291536,
+                "max_drawdown": -0.15075570536760852,
+                "position_entries": 95,
+                "position_exits": 95,
+                "rebalance_days": 613,
+                "sessions": 638,
+                "sharpe_backtest_scale": -7.9176910683041015,
+                "sharpe_canonical": -8.2724961014229
+              },
+              "train": {
+                "ann_return_arithmetic": 0.07819222892331151,
+                "ann_return_geometric": 0.08101465546364373,
+                "ann_volatility": 0.023836497661991928,
+                "annualized_capital_charge_drag": 0.017333333333333333,
+                "annualized_cost_drag": 0.1208089175087105,
+                "annualized_fee_drag": 0.10347558417537717,
+                "annualized_turnover_perp_units": 54.4811686957403,
+                "annualized_turnover_spot_units": 54.448971740299115,
+                "annualized_turnover_units": 108.93014043603944,
+                "avg_spot_notional_fraction": 0.8666666666666667,
+                "invested_fraction": 0.9406392694063926,
+                "max_drawdown": -0.14992899786170033,
+                "position_entries": 135,
+                "position_exits": 133,
+                "rebalance_days": 1072,
+                "sessions": 1095,
+                "sharpe_backtest_scale": 3.3987650624036196,
+                "sharpe_canonical": 3.2803572920862267
+              },
+              "val": {
+                "ann_return_arithmetic": 0.02760686707013493,
+                "ann_return_geometric": 0.02793573700907359,
+                "ann_volatility": 0.010318469628023148,
+                "annualized_capital_charge_drag": 0.018823529411764708,
+                "annualized_cost_drag": 0.07412037678344956,
+                "annualized_fee_drag": 0.055296847371684846,
+                "annualized_turnover_perp_units": 29.109854011069775,
+                "annualized_turnover_spot_units": 29.09995796994666,
+                "annualized_turnover_units": 58.20981198101644,
+                "avg_spot_notional_fraction": 0.9411764705882353,
+                "invested_fraction": 0.9835841313269493,
+                "max_drawdown": -0.03895184624452375,
+                "position_entries": 45,
+                "position_exits": 45,
+                "rebalance_days": 728,
+                "sessions": 731,
+                "sharpe_backtest_scale": 2.7073527389376664,
+                "sharpe_canonical": 2.6754807704390133
+              }
+            }
+          }
+        },
+        "realistic_usdt_5pct": {
+          "samples": {
+            "full": {
+              "ann_return_geometric": -0.00683720173412572,
+              "annualized_capital_charge_drag": 0.043963068181818186,
+              "annualized_fee_drag": 0.09210709089423148,
+              "max_drawdown": -0.3195219106202398,
+              "sharpe_canonical": -0.37349323773311277
+            },
+            "post2022": {
+              "ann_return_geometric": -0.05244213044917867,
+              "annualized_capital_charge_drag": 0.04446676406135866,
+              "annualized_fee_drag": 0.08301395711566717,
+              "max_drawdown": -0.1960149053981839,
+              "sharpe_canonical": -4.973943395018612
+            },
+            "test_oos": {
+              "ann_return_geometric": -0.10846214837399304,
+              "annualized_capital_charge_drag": 0.04149686520376176,
+              "annualized_fee_drag": 0.11477133520791022,
+              "max_drawdown": -0.1838473195891931,
+              "sharpe_canonical": -10.765584797126213
+            },
+            "train": {
+              "ann_return_geometric": 0.05327913270026707,
+              "annualized_capital_charge_drag": 0.04333333333333334,
+              "annualized_fee_drag": 0.10347558417537717,
+              "max_drawdown": -0.16725551372255865,
+              "sharpe_canonical": 2.2035535041671515
+            },
+            "val": {
+              "ann_return_geometric": -0.0006799035751945404,
+              "annualized_capital_charge_drag": 0.047058823529411764,
+              "annualized_fee_drag": 0.055296847371684846,
+              "max_drawdown": -0.05496412563341524,
+              "sharpe_canonical": -0.06176312398801381
+            }
+          }
+        },
+        "venue_maker_slippage": {
+          "samples": {
+            "full": {
+              "ann_return_geometric": 0.053013179008492006,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.07756035580530826,
+              "max_drawdown": -0.11684682162951487,
+              "sharpe_canonical": 2.984267058739648
+            },
+            "post2022": {
+              "ann_return_geometric": 0.003728177734629634,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.06990505182526827,
+              "max_drawdown": -0.1048861223446893,
+              "sharpe_canonical": 0.3784834945547191
+            },
+            "test_oos": {
+              "ann_return_geometric": -0.05366834382480157,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.0966486073741665,
+              "max_drawdown": -0.10488612234468986,
+              "sharpe_canonical": -5.804827180647245
+            },
+            "train": {
+              "ann_return_geometric": 0.1180485751103495,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.08713123356665507,
+              "max_drawdown": -0.11338907353747985,
+              "sharpe_canonical": 4.829123786293636
+            },
+            "val": {
+              "ann_return_geometric": 0.056660378914673126,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.046563891168363916,
+              "max_drawdown": -0.02497675264091892,
+              "sharpe_canonical": 5.757112786789561
+            }
+          }
+        },
+        "venue_taker": {
+          "samples": {
+            "full": {
+              "ann_return_geometric": 0.05813161682901424,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.07271514933160311,
+              "max_drawdown": -0.10544542724560146,
+              "sharpe_canonical": 3.3130521291981143
+            },
+            "post2022": {
+              "ann_return_geometric": 0.008125861834893833,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.06553693501572293,
+              "max_drawdown": -0.09584546476538214,
+              "sharpe_canonical": 0.8494766335946426
+            },
+            "test_oos": {
+              "ann_return_geometric": -0.04793006203435135,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.09060868827499638,
+              "max_drawdown": -0.09584546476538192,
+              "sharpe_canonical": -5.455884417406628
+            },
+            "train": {
+              "ann_return_geometric": 0.12415361266382674,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.08168955608816927,
+              "max_drawdown": -0.10494547461049208,
+              "sharpe_canonical": 5.117846972160528
+            },
+            "val": {
+              "ann_return_geometric": 0.05974088475643047,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.04365488497548156,
+              "max_drawdown": -0.02325324148310426,
+              "sharpe_canonical": 6.234754879251051
+            }
+          }
+        },
+        "venue_taker_slippage": {
+          "samples": {
+            "full": {
+              "ann_return_geometric": 0.03779264686226158,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.09210709089423148,
+              "max_drawdown": -0.1718916383596557,
+              "sharpe_canonical": 2.0483459546916043
+            },
+            "post2022": {
+              "ann_return_geometric": -0.009356128615761405,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.08301395711566717,
+              "max_drawdown": -0.13147692392172883,
+              "sharpe_canonical": -0.8383352130884232
+            },
+            "test_oos": {
+              "ann_return_geometric": -0.07068133226379414,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.11477133520791022,
+              "max_drawdown": -0.13147692392172816,
+              "sharpe_canonical": -6.655047927057315
+            },
+            "train": {
+              "ann_return_geometric": 0.09990832629060376,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.10347558417537717,
+              "max_drawdown": -0.1382524033434831,
+              "sharpe_canonical": 3.9900164525478914
+            },
+            "val": {
+              "ann_return_geometric": 0.04746530518682479,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.055296847371684846,
+              "max_drawdown": -0.03013053534637944,
+              "sharpe_canonical": 4.456896818689791
+            }
+          }
+        }
+      },
+      "funding_positive_sameday": {
+        "flat_3bp": {
+          "samples": {
+            "full": {
+              "ann_return_geometric": 0.11392306271560937,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.02903624674881154,
+              "max_drawdown": -0.022058153706212558,
+              "sharpe_canonical": 7.700593065862711
+            },
+            "post2022": {
+              "ann_return_geometric": 0.051993645521325904,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.0261916327909776,
+              "max_drawdown": -0.022058153706213335,
+              "sharpe_canonical": 7.936389073269703
+            },
+            "test_oos": {
+              "ann_return_geometric": 0.009577212655276668,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.03619285350330643,
+              "max_drawdown": -0.022058153706213113,
+              "sharpe_canonical": 2.1306383517096585
+            },
+            "train": {
+              "ann_return_geometric": 0.1965021032917953,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.03259266365134548,
+              "max_drawdown": -0.013464298117546125,
+              "sharpe_canonical": 9.38319739502189
+            },
+            "val": {
+              "ann_return_geometric": 0.0904675935428374,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.017462797203473105,
+              "max_drawdown": -0.006741817363101088,
+              "sharpe_canonical": 12.08396792369904
+            }
+          }
+        },
+        "flat_3bp_capital_rf": {
+          "samples": {
+            "full": {
+              "ann_return_geometric": 0.0945033020081183,
+              "annualized_capital_charge_drag": 0.017593344155844157,
+              "annualized_fee_drag": 0.02903624674881154,
+              "max_drawdown": -0.026444918159319153,
+              "sharpe_canonical": 6.484351173028158
+            },
+            "post2022": {
+              "ann_return_geometric": 0.033450419638031414,
+              "annualized_capital_charge_drag": 0.017786705624543462,
+              "annualized_fee_drag": 0.0261916327909776,
+              "max_drawdown": -0.026444918159318376,
+              "sharpe_canonical": 5.246394602598087
+            },
+            "test_oos": {
+              "ann_return_geometric": -0.007041425565567749,
+              "annualized_capital_charge_drag": 0.016598746081504703,
+              "annualized_fee_drag": 0.03619285350330643,
+              "max_drawdown": -0.026444918159318598,
+              "sharpe_canonical": -1.635266697100663
+            },
+            "train": {
+              "ann_return_geometric": 0.1759315838538993,
+              "annualized_capital_charge_drag": 0.017351598173515982,
+              "annualized_fee_drag": 0.03259266365134548,
+              "max_drawdown": -0.024352730677198342,
+              "sharpe_canonical": 8.518319218702237
+            },
+            "val": {
+              "ann_return_geometric": 0.07013793466818186,
+              "annualized_capital_charge_drag": 0.018823529411764708,
+              "annualized_fee_drag": 0.017462797203473105,
+              "max_drawdown": -0.008998783387997089,
+              "sharpe_canonical": 9.554429793565854
+            }
+          }
+        },
+        "realistic_no_capital_charge": {
+          "samples": {
+            "full": {
+              "ann_return_geometric": 0.04597022763201575,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.09194403007942017,
+              "max_drawdown": -0.14860121932028014,
+              "sharpe_canonical": 2.630825368819771
+            },
+            "post2022": {
+              "ann_return_geometric": -0.006077603274039278,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.08293838658452352,
+              "max_drawdown": -0.12511798612843217,
+              "sharpe_canonical": -0.5494117312351042
+            },
+            "test_oos": {
+              "ann_return_geometric": -0.06661742586470665,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.11460959870255535,
+              "max_drawdown": -0.12511798612843228,
+              "sharpe_canonical": -6.357325893699512
+            },
+            "train": {
+              "ann_return_geometric": 0.11489236535522407,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.10320314053103072,
+              "max_drawdown": -0.12466011890076589,
+              "sharpe_canonical": 4.923051749006123
+            },
+            "val": {
+              "ann_return_geometric": 0.049960583271813075,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.055296480522547736,
+              "max_drawdown": -0.02885840227569436,
+              "sharpe_canonical": 4.739835902663224
+            }
+          }
+        },
+        "realistic_rf": {
+          "samples": {
+            "samples": {
+              "full": {
+                "ann_return_arithmetic": 0.027501016172878694,
+                "ann_return_geometric": 0.027732835648205834,
+                "ann_volatility": 0.017026455724279358,
+                "annualized_capital_charge_drag": 0.017593344155844157,
+                "annualized_cost_drag": 0.10953737423526433,
+                "annualized_fee_drag": 0.09194403007942017,
+                "annualized_turnover_perp_units": 48.40191383165196,
+                "annualized_turnover_spot_units": 48.38557533105317,
+                "annualized_turnover_units": 96.78748916270514,
+                "avg_spot_notional_fraction": 0.8796672077922078,
+                "invested_fraction": 0.9464285714285714,
+                "max_drawdown": -0.2110329827390569,
+                "position_entries": 275,
+                "position_exits": 273,
+                "rebalance_days": 2414,
+                "sessions": 2464,
+                "sharpe_backtest_scale": 1.628808490580891,
+                "sharpe_canonical": 1.6151932391697257
+              },
+              "post2022": {
+                "ann_return_arithmetic": -0.023822474905523874,
+                "ann_return_geometric": -0.02359918607305833,
+                "ann_volatility": 0.010850419206127573,
+                "annualized_capital_charge_drag": 0.017786705624543462,
+                "annualized_cost_drag": 0.10072509220906697,
+                "annualized_fee_drag": 0.08293838658452352,
+                "annualized_turnover_perp_units": 43.65628915877378,
+                "annualized_turnover_spot_units": 43.649153477818246,
+                "annualized_turnover_units": 87.305442636592,
+                "avg_spot_notional_fraction": 0.8893352812271731,
+                "invested_fraction": 0.9503287070854638,
+                "max_drawdown": -0.1445490365503087,
+                "position_entries": 140,
+                "position_exits": 140,
+                "rebalance_days": 1341,
+                "sessions": 1369,
+                "sharpe_backtest_scale": -2.1749561583511103,
+                "sharpe_canonical": -2.1955349791527476
+              },
+              "test_oos": {
+                "ann_return_arithmetic": -0.08547371192014448,
+                "ann_return_geometric": -0.081984271450389,
+                "ann_volatility": 0.010683163478067005,
+                "annualized_capital_charge_drag": 0.016598746081504703,
+                "annualized_cost_drag": 0.13120834478406007,
+                "annualized_fee_drag": 0.11460959870255535,
+                "annualized_turnover_perp_units": 60.3236306213407,
+                "annualized_turnover_spot_units": 60.31921438968072,
+                "annualized_turnover_units": 120.64284501102144,
+                "avg_spot_notional_fraction": 0.8299373040752351,
+                "invested_fraction": 0.9122257053291536,
+                "max_drawdown": -0.14454903655030993,
+                "position_entries": 95,
+                "position_exits": 95,
+                "rebalance_days": 613,
+                "sessions": 638,
+                "sharpe_backtest_scale": -7.674156781248012,
+                "sharpe_canonical": -8.000786667322437
+              },
+              "train": {
+                "ann_return_arithmetic": 0.09166709771290892,
+                "ann_return_geometric": 0.09572214007387903,
+                "ann_volatility": 0.02202574143250209,
+                "annualized_capital_charge_drag": 0.017351598173515982,
+                "annualized_cost_drag": 0.1205547387045467,
+                "annualized_fee_drag": 0.10320314053103072,
+                "annualized_turnover_perp_units": 54.335028148702435,
+                "annualized_turnover_spot_units": 54.307184022449164,
+                "annualized_turnover_units": 108.64221217115161,
+                "avg_spot_notional_fraction": 0.867579908675799,
+                "invested_fraction": 0.9415525114155251,
+                "max_drawdown": -0.13650221556154096,
+                "position_entries": 135,
+                "position_exits": 133,
+                "rebalance_days": 1073,
+                "sessions": 1095,
+                "sharpe_backtest_scale": 4.345921356028792,
+                "sharpe_canonical": 4.161816663190333
+              },
+              "val": {
+                "ann_return_arithmetic": 0.029985307878782477,
+                "ann_return_geometric": 0.030384613996349064,
+                "ann_volatility": 0.01019762379220389,
+                "annualized_capital_charge_drag": 0.018823529411764708,
+                "annualized_cost_drag": 0.07412000993431245,
+                "annualized_fee_drag": 0.055296480522547736,
+                "annualized_turnover_perp_units": 29.109416582689363,
+                "annualized_turnover_spot_units": 29.099907428887658,
+                "annualized_turnover_units": 58.209324011577024,
+                "avg_spot_notional_fraction": 0.9411764705882353,
+                "invested_fraction": 0.9835841313269493,
+                "max_drawdown": -0.036067329337652665,
+                "position_entries": 45,
+                "position_exits": 45,
+                "rebalance_days": 728,
+                "sessions": 731,
+                "sharpe_backtest_scale": 2.9795778522029983,
+                "sharpe_canonical": 2.9404210715937884
+              }
+            }
+          }
+        },
+        "realistic_usdt_5pct": {
+          "samples": {
+            "full": {
+              "ann_return_geometric": 0.0009694925535974619,
+              "annualized_capital_charge_drag": 0.04398336038961039,
+              "annualized_fee_drag": 0.09194403007942017,
+              "max_drawdown": -0.30015256975826676,
+              "sharpe_canonical": 0.06588632708806845
+            },
+            "post2022": {
+              "ann_return_geometric": -0.04930578742239311,
+              "annualized_capital_charge_drag": 0.04446676406135866,
+              "annualized_fee_drag": 0.08293838658452352,
+              "max_drawdown": -0.18854768762822316,
+              "sharpe_canonical": -4.738855788095243
+            },
+            "test_oos": {
+              "ann_return_geometric": -0.10456293258026561,
+              "annualized_capital_charge_drag": 0.04149686520376176,
+              "annualized_fee_drag": 0.11460959870255535,
+              "max_drawdown": -0.1775978062156892,
+              "sharpe_canonical": -10.539133303504597
+            },
+            "train": {
+              "ann_return_geometric": 0.06758125545840121,
+              "annualized_capital_charge_drag": 0.04337899543378996,
+              "annualized_fee_drag": 0.10320314053103072,
+              "max_drawdown": -0.15410130139175648,
+              "sharpe_canonical": 3.0036006481289883
+            },
+            "val": {
+              "ann_return_geometric": 0.0017009801044576278,
+              "annualized_capital_charge_drag": 0.047058823529411764,
+              "annualized_fee_drag": 0.055296480522547736,
+              "max_drawdown": -0.052127439752180926,
+              "sharpe_canonical": 0.17408188058196242
+            }
+          }
+        },
+        "venue_maker_slippage": {
+          "samples": {
+            "full": {
+              "ann_return_geometric": 0.06128225869822934,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.07742345592992458,
+              "max_drawdown": -0.10009537029282123,
+              "sharpe_canonical": 3.662734791086345
+            },
+            "post2022": {
+              "ann_return_geometric": 0.0070376061247392485,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.06984149983689139,
+              "max_drawdown": -0.09836893298312988,
+              "sharpe_canonical": 0.7198075652901373
+            },
+            "test_oos": {
+              "ann_return_geometric": -0.049554815272422115,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.09651250951615313,
+              "max_drawdown": -0.0983689329831311,
+              "sharpe_canonical": -5.449238071221437
+            },
+            "train": {
+              "ann_return_geometric": 0.13322885847520638,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.08690263208641999,
+              "max_drawdown": -0.09950666432060629,
+              "sharpe_canonical": 5.876526753182781
+            },
+            "val": {
+              "ann_return_geometric": 0.0591772352510187,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.04656365554774093,
+              "max_drawdown": -0.023710423137023984,
+              "sharpe_canonical": 6.080203023813844
+            }
+          }
+        },
+        "venue_taker": {
+          "samples": {
+            "full": {
+              "ann_return_geometric": 0.06643183801746932,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.07258653224687917,
+              "max_drawdown": -0.0910445600101033,
+              "sharpe_canonical": 4.027133368475372
+            },
+            "post2022": {
+              "ann_return_geometric": 0.011445731831047468,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.06547729805720513,
+              "max_drawdown": -0.08927452943562697,
+              "sharpe_canonical": 1.211886543738044
+            },
+            "test_oos": {
+              "ann_return_geometric": -0.04379979565284686,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.09048102970035106,
+              "max_drawdown": -0.08927452943562775,
+              "sharpe_canonical": -5.075379702870726
+            },
+            "train": {
+              "ann_return_geometric": 0.13940073860191649,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.08147469809680039,
+              "max_drawdown": -0.0910445600101033,
+              "sharpe_canonical": 6.2061522849007735
+            },
+            "val": {
+              "ann_return_geometric": 0.062265052521319975,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.04365461572023234,
+              "max_drawdown": -0.02198887396225091,
+              "sharpe_canonical": 6.572782998334156
+            }
+          }
+        },
+        "venue_taker_slippage": {
+          "samples": {
+            "full": {
+              "ann_return_geometric": 0.04597022763201575,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.09194403007942017,
+              "max_drawdown": -0.14860121932028014,
+              "sharpe_canonical": 2.630825368819771
+            },
+            "post2022": {
+              "ann_return_geometric": -0.006077603274039278,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.08293838658452352,
+              "max_drawdown": -0.12511798612843217,
+              "sharpe_canonical": -0.5494117312351042
+            },
+            "test_oos": {
+              "ann_return_geometric": -0.06661742586470665,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.11460959870255535,
+              "max_drawdown": -0.12511798612843228,
+              "sharpe_canonical": -6.357325893699512
+            },
+            "train": {
+              "ann_return_geometric": 0.11489236535522407,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.10320314053103072,
+              "max_drawdown": -0.12466011890076589,
+              "sharpe_canonical": 4.923051749006123
+            },
+            "val": {
+              "ann_return_geometric": 0.049960583271813075,
+              "annualized_capital_charge_drag": 0.0,
+              "annualized_fee_drag": 0.055296480522547736,
+              "max_drawdown": -0.02885840227569436,
+              "sharpe_canonical": 4.739835902663224
+            }
+          }
+        }
+      }
+    }
+  },
   "meta": {
     "bootstrap": {
       "block_days": 126,
@@ -336,6 +2844,114 @@ python -m pytest -q
       "slippage_bps": 2.0,
       "source": "src/backtest/engine.py:get_cost_params (config/settings.yaml)"
     },
+    "cost_models": {
+      "capital_charge_convention": "The charge is applied to the spot leg's notional (the cash the delta-neutral book ties up; the short perp leg is self-financing because its own proceeds are posted as its margin). The repository's backtest-baseline Sharpe/Sortino already subtract the 2% risk-free rate from the ratio's numerator while the return series does not pay it, so the backtest-scale metrics of a capital-charge row are computed with a zero risk-free rate (no double counting). The canonical gate convention (arithmetic_annualized_rf0) is unaffected either way.",
+      "capital_charge_grid": {
+        "none": 0.0,
+        "repo_rf": 0.02,
+        "usdt_5pct": 0.05
+      },
+      "headline": "realistic_rf",
+      "headline_turnover_convention": "drift",
+      "models": {
+        "flat_3bp": {
+          "capital_rate_annual": 0.0,
+          "flat_bps_per_unit": 3.0,
+          "kind": "flat",
+          "label": "Repository flat model (3 bp per unit of weight change)",
+          "note": "The repository-wide convention (1 bp commission + 2 bp slippage per unit of weight change) and the convention the cost screen uses. No capital charge.",
+          "perp_bps_per_unit": 0.0,
+          "source": "src/backtest/engine.py:get_cost_params (config/settings.yaml)",
+          "spot_bps_per_unit": 0.0
+        },
+        "flat_3bp_capital_rf": {
+          "capital_rate_annual": 0.02,
+          "flat_bps_per_unit": 3.0,
+          "kind": "flat",
+          "label": "Flat model + capital charge at the repository risk-free rate",
+          "note": "Isolates the capital charge: the same flat trading cost, plus the cost of the capital the spot leg ties up.",
+          "perp_bps_per_unit": 0.0,
+          "source": "src/backtest/engine.py:get_cost_params + get_risk_free_rate",
+          "spot_bps_per_unit": 0.0
+        },
+        "realistic_no_capital_charge": {
+          "capital_rate_annual": 0.0,
+          "flat_bps_per_unit": 0.0,
+          "kind": "venue",
+          "label": "Venue taker + slippage, no capital charge",
+          "note": "The capital-charge sensitivity row 'none' (0%): the book is charged only what it trades.",
+          "perp_bps_per_unit": 7.0,
+          "source": "Binance VIP 0 published spot taker 10 bp and USD\u24c8-M perp taker 5 bp (accessed 2026-10-20) + the repository's 2 bp/unit slippage assumption",
+          "spot_bps_per_unit": 12.0
+        },
+        "realistic_rf": {
+          "capital_rate_annual": 0.02,
+          "flat_bps_per_unit": 0.0,
+          "kind": "venue",
+          "label": "HEADLINE: venue taker + slippage + capital charge at the repository rf",
+          "note": "The realistic model of this evaluation: the conservative end of both the fee schedule (taker) and the capital charge (the repository's risk-free rate).",
+          "perp_bps_per_unit": 7.0,
+          "source": "Binance VIP 0 published spot taker 10 bp and USD\u24c8-M perp taker 5 bp (accessed 2026-10-20) + the repository's 2 bp/unit slippage assumption + get_risk_free_rate()",
+          "spot_bps_per_unit": 12.0
+        },
+        "realistic_usdt_5pct": {
+          "capital_rate_annual": 0.05,
+          "flat_bps_per_unit": 0.0,
+          "kind": "venue",
+          "label": "Venue taker + slippage + capital charge at a 5% USDT-equivalent yield",
+          "note": "The capital-charge sensitivity row 'usdt_5pct': the cash the spot leg ties up could have earned a stablecoin lending yield instead.",
+          "perp_bps_per_unit": 7.0,
+          "source": "Binance VIP 0 published spot taker 10 bp and USD\u24c8-M perp taker 5 bp (accessed 2026-10-20) + the repository's 2 bp/unit slippage assumption + 5% USDT-equivalent yield assumption",
+          "spot_bps_per_unit": 12.0
+        },
+        "venue_maker_slippage": {
+          "capital_rate_annual": 0.0,
+          "flat_bps_per_unit": 0.0,
+          "kind": "venue",
+          "label": "Binance VIP 0 venue fees, maker + repository slippage (spot 12 bp, perp 4 bp)",
+          "note": "The maker alternative: at VIP 0 the spot fee is the same for maker and taker, so only the perp leg gets cheaper.",
+          "perp_bps_per_unit": 4.0,
+          "source": "Binance published VIP 0 fee schedule, maker (spot 10 bp, perp 2 bp, accessed 2026-10-20) + the repository's 2 bp/unit slippage assumption",
+          "spot_bps_per_unit": 12.0
+        },
+        "venue_taker": {
+          "capital_rate_annual": 0.0,
+          "flat_bps_per_unit": 0.0,
+          "kind": "venue",
+          "label": "Binance VIP 0 venue fees, taker (spot 10 bp, perp 5 bp)",
+          "note": "The published fee schedule alone: no slippage, no capital charge.",
+          "perp_bps_per_unit": 5.0,
+          "source": "Binance published VIP 0 fee schedule (accessed 2026-10-20)",
+          "spot_bps_per_unit": 10.0
+        },
+        "venue_taker_slippage": {
+          "capital_rate_annual": 0.0,
+          "flat_bps_per_unit": 0.0,
+          "kind": "venue",
+          "label": "Binance VIP 0 venue fees, taker + repository slippage (spot 12 bp, perp 7 bp)",
+          "note": "The published fee schedule plus the repository's slippage assumption, which a fee schedule does not model.",
+          "perp_bps_per_unit": 7.0,
+          "source": "Binance VIP 0 published spot taker 10 bp and USD\u24c8-M perp taker 5 bp (accessed 2026-10-20) + the repository's 2 bp/unit slippage assumption",
+          "spot_bps_per_unit": 12.0
+        }
+      },
+      "venue_fee_schedule": {
+        "accessed": "2026-10-20",
+        "note": "Published schedule used as a documented assumption; no live fees are implied (the account-specific table is only visible after login). The BNB fee discount is not claimed.",
+        "perp_maker_bps": 2.0,
+        "perp_taker_bps": 5.0,
+        "repository_slippage_bps_per_unit": 2.0,
+        "sources": [
+          "Binance, 'VIP Program: Updates to Spot and Margin Trading Fees for VIP 3 - VIP 9 Users' (2024-10-07): Normal User maker 0.1000% / taker 0.1000% on spot.",
+          "Binance futures fee explainer (support FAQ 360033544231): a Regular User's maker fee is 0.02% and taker fee 0.05% on USD\u24c8-M futures.",
+          "config/settings.yaml: default_slippage_bps (the repository's own slippage assumption)."
+        ],
+        "spot_maker_bps": 10.0,
+        "spot_taker_bps": 10.0,
+        "tier": "VIP 0 (standard, published schedule)",
+        "venue": "Binance"
+      }
+    },
     "data": {
       "carry_paths": "data/processed/crypto/{BTCUSDT,ETHUSDT}_carry_path.parquet",
       "end": "2026-09-30",
@@ -352,7 +2968,7 @@ python -m pytest -q
         "ETHUSDT perp"
       ]
     },
-    "generated_at": "2026-10-20T04:42:37.217803+00:00",
+    "generated_at": "2026-10-20T05:02:49.017576+00:00",
     "periods_per_year": 365,
     "promotion_gates": {
       "min_pooled_oos_trades": 100,
@@ -382,7 +2998,7 @@ python -m pytest -q
         "start": "2023-01-01"
       }
     },
-    "trial_count": "6 candidate configurations (3 rules x 2 symbols); the BTC/ETH portfolio is an equal-weight combination of the two symbol books, not an additional configuration. The robustness rows are sensitivity analyses of the same configurations, not new trials."
+    "trial_count": "6 candidate configurations (3 rules x 2 symbols); the BTC/ETH portfolio is an equal-weight combination of the two symbol books, not an additional configuration. The robustness rows and the cost-model rows (capital charge, venue fee schedule, turnover convention) are sensitivity analyses of the same configurations, not new trials."
   },
   "per_symbol": {
     "BTCUSDT_always_on": {
@@ -441,6 +3057,7 @@ python -m pytest -q
         }
       },
       "cost_bps_per_unit": 3.0,
+      "cost_model": "flat_3bp",
       "cost_sensitivity": {
         "1.5bp": {
           "ann_return_arithmetic": 0.1135994491703378,
@@ -481,11 +3098,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.11125012986190459,
           "ann_return_geometric": 0.11755418977192233,
           "ann_volatility": 0.013473221141464483,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.0046986386168663815,
+          "annualized_fee_drag": 0.0046986386168663815,
+          "annualized_turnover_perp_units": 7.837953879120338,
+          "annualized_turnover_spot_units": 7.8241748437676,
           "annualized_turnover_units": 15.66212872288794,
           "avg_gross_exposure": 2.0,
+          "avg_spot_notional_fraction": 1.0,
           "downside_deviation_annualized": 0.010459428920534206,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 1.0,
           "max_drawdown": -0.024283209961711516,
           "max_drawdown_recomputed": -0.024283209961711516,
@@ -507,11 +3130,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.0684443715127791,
           "ann_return_geometric": 0.07081663052281706,
           "ann_volatility": 0.00572994538618933,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.0037048933173954943,
+          "annualized_fee_drag": 0.0037048933173954943,
+          "annualized_turnover_perp_units": 6.178120730133934,
+          "annualized_turnover_spot_units": 6.171523661184383,
           "annualized_turnover_units": 12.349644391318316,
           "avg_gross_exposure": 2.0,
+          "avg_spot_notional_fraction": 1.0,
           "downside_deviation_annualized": 0.002353162093355494,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 1.0,
           "max_drawdown": -0.005261919452998809,
           "max_drawdown_recomputed": -0.005261919452998809,
@@ -533,11 +3162,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.03843162146159495,
           "ann_return_geometric": 0.03917143888543295,
           "ann_volatility": 0.0034370386705364644,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.0034857383900040637,
+          "annualized_fee_drag": 0.0034857383900040637,
+          "annualized_turnover_perp_units": 5.811416918002974,
+          "annualized_turnover_spot_units": 5.8077110486772385,
           "annualized_turnover_units": 11.619127966680214,
           "avg_gross_exposure": 2.0,
+          "avg_spot_notional_fraction": 1.0,
           "downside_deviation_annualized": 0.0018935214198159596,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 1.0,
           "max_drawdown": -0.005261919452999364,
           "max_drawdown_recomputed": -0.005261919452999364,
@@ -559,11 +3194,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.16476710080250076,
           "ann_return_geometric": 0.17886664956942577,
           "ann_volatility": 0.018801460575792583,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.005941047123693452,
+          "annualized_fee_drag": 0.005941047123693452,
+          "annualized_turnover_perp_units": 9.913124272693297,
+          "annualized_turnover_spot_units": 9.890366139618214,
           "annualized_turnover_units": 19.803490412311508,
           "avg_gross_exposure": 2.0,
+          "avg_spot_notional_fraction": 1.0,
           "downside_deviation_annualized": 0.014435001055015034,
           "end": "2022-12-31",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 1.0,
           "max_drawdown": -0.024283209961711516,
           "max_drawdown_recomputed": -0.024283209961711516,
@@ -585,11 +3226,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.09463880999794395,
           "ann_return_geometric": 0.09922238527712546,
           "ann_volatility": 0.006868715578436114,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.0038961667013568263,
+          "annualized_fee_drag": 0.0038961667013568263,
+          "annualized_turnover_perp_units": 6.498171389695564,
+          "annualized_turnover_spot_units": 6.489050948160524,
           "annualized_turnover_units": 12.987222337856089,
           "avg_gross_exposure": 2.0,
+          "avg_spot_notional_fraction": 1.0,
           "downside_deviation_annualized": 0.0027963440013734193,
           "end": "2024-12-31",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 1.0,
           "max_drawdown": -0.0013521862122445327,
           "max_drawdown_recomputed": -0.0013521862122445327,
@@ -725,6 +3372,7 @@ python -m pytest -q
         }
       },
       "cost_bps_per_unit": 3.0,
+      "cost_model": "flat_3bp",
       "cost_sensitivity": {
         "1.5bp": {
           "ann_return_arithmetic": 0.10497227055371566,
@@ -765,11 +3413,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.09083365446967066,
           "ann_return_geometric": 0.09496606726132817,
           "ann_volatility": 0.014078886427671102,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.028277232168090024,
+          "annualized_fee_drag": 0.028277232168090024,
+          "annualized_turnover_perp_units": 47.135878473350886,
+          "annualized_turnover_spot_units": 47.121562086949204,
           "annualized_turnover_units": 94.25744056030008,
           "avg_gross_exposure": 1.7564935064935066,
+          "avg_spot_notional_fraction": 0.8782467532467533,
           "downside_deviation_annualized": 0.010019484705020225,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.8782467532467533,
           "max_drawdown": -0.025662769071929104,
           "max_drawdown_recomputed": -0.025662769071929104,
@@ -791,11 +3445,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.0478753909635249,
           "ann_return_geometric": 0.04900995154069965,
           "ann_volatility": 0.007136427710894931,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.02474117564099871,
+          "annualized_fee_drag": 0.02474117564099871,
+          "annualized_turnover_perp_units": 41.23891183929234,
+          "annualized_turnover_spot_units": 41.231673630703376,
           "annualized_turnover_units": 82.47058546999571,
           "avg_gross_exposure": 1.7837837837837838,
+          "avg_spot_notional_fraction": 0.8918918918918919,
           "downside_deviation_annualized": 0.005029948200981187,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.8918918918918919,
           "max_drawdown": -0.02566276907192988,
           "max_drawdown_recomputed": -0.02566276907192988,
@@ -817,11 +3477,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.013229423929404377,
           "ann_return_geometric": 0.013301632627365167,
           "ann_volatility": 0.005525077933013873,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.030398613428460574,
+          "annualized_fee_drag": 0.030398613428460574,
+          "annualized_turnover_perp_units": 50.66681098167943,
+          "annualized_turnover_spot_units": 50.66190044652249,
           "annualized_turnover_units": 101.32871142820193,
           "avg_gross_exposure": 1.6990595611285266,
+          "avg_spot_notional_fraction": 0.8495297805642633,
           "downside_deviation_annualized": 0.00513516009148698,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.8495297805642633,
           "max_drawdown": -0.02566276907192888,
           "max_drawdown_recomputed": -0.02566276907192888,
@@ -843,11 +3509,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.14454129167507113,
           "ann_return_geometric": 0.15526396681551535,
           "ann_volatility": 0.019192049556311493,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.03269811014579597,
+          "annualized_fee_drag": 0.03269811014579597,
+          "annualized_turnover_perp_units": 54.508433105338234,
+          "annualized_turnover_spot_units": 54.48526738064833,
           "annualized_turnover_units": 108.99370048598657,
           "avg_gross_exposure": 1.7223744292237444,
+          "avg_spot_notional_fraction": 0.8611872146118722,
           "downside_deviation_annualized": 0.013291062197839007,
           "end": "2022-12-31",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.8611872146118722,
           "max_drawdown": -0.01899735262103741,
           "max_drawdown_recomputed": -0.01899735262103741,
@@ -869,11 +3541,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.07811359474980246,
           "ann_return_geometric": 0.08120222359678464,
           "ann_volatility": 0.00796358294369561,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.01980349396056005,
+          "annualized_fee_drag": 0.01980349396056005,
+          "annualized_turnover_perp_units": 33.01045814183276,
+          "annualized_turnover_spot_units": 33.001188393367414,
           "annualized_turnover_units": 66.01164653520017,
           "avg_gross_exposure": 1.8577291381668946,
+          "avg_spot_notional_fraction": 0.9288645690834473,
           "downside_deviation_annualized": 0.004899294489306789,
           "end": "2024-12-31",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.9288645690834473,
           "max_drawdown": -0.010491344356507892,
           "max_drawdown_recomputed": -0.010491344356507892,
@@ -1009,6 +3687,7 @@ python -m pytest -q
         }
       },
       "cost_bps_per_unit": 3.0,
+      "cost_model": "flat_3bp",
       "cost_sensitivity": {
         "1.5bp": {
           "ann_return_arithmetic": 0.11227885758054,
@@ -1049,11 +3728,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.09817208920272193,
           "ann_return_geometric": 0.10304153602679245,
           "ann_volatility": 0.013242222753005186,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.028213536755636138,
+          "annualized_fee_drag": 0.028213536755636138,
+          "annualized_turnover_perp_units": 47.02882576435699,
+          "annualized_turnover_spot_units": 47.01629675443016,
           "annualized_turnover_units": 94.04512251878714,
           "avg_gross_exposure": 1.7573051948051948,
+          "avg_spot_notional_fraction": 0.8786525974025974,
           "downside_deviation_annualized": 0.00589876757003913,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.8786525974025974,
           "max_drawdown": -0.022839405196975804,
           "max_drawdown_recomputed": -0.022839405196975804,
@@ -1075,11 +3760,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.05104770474717205,
           "ann_return_geometric": 0.052343629245548584,
           "ann_volatility": 0.006994172856006488,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.02471855024801723,
+          "annualized_fee_drag": 0.02471855024801723,
+          "annualized_turnover_perp_units": 41.20098931797935,
+          "annualized_turnover_spot_units": 41.194178175411416,
           "annualized_turnover_units": 82.39516749339077,
           "avg_gross_exposure": 1.7837837837837838,
+          "avg_spot_notional_fraction": 0.8918918918918919,
           "downside_deviation_annualized": 0.004878979506541928,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.8918918918918919,
           "max_drawdown": -0.022839405196974805,
           "max_drawdown_recomputed": -0.022839405196974805,
@@ -1101,11 +3792,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.016716075649283173,
           "ann_return_geometric": 0.016841474043362226,
           "ann_volatility": 0.005382390355268952,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.03034125553005664,
+          "annualized_fee_drag": 0.03034125553005664,
+          "annualized_turnover_perp_units": 50.57100214930303,
+          "annualized_turnover_spot_units": 50.56651628421912,
           "annualized_turnover_units": 101.13751843352213,
           "avg_gross_exposure": 1.6990595611285266,
+          "avg_spot_notional_fraction": 0.8495297805642633,
           "downside_deviation_annualized": 0.004914974144620865,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.8495297805642633,
           "max_drawdown": -0.022839405196976137,
           "max_drawdown_recomputed": -0.022839405196976137,
@@ -1127,11 +3824,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.1570883287640441,
           "ann_return_geometric": 0.16987482329683234,
           "ann_volatility": 0.017790163768518007,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.03258306783228482,
+          "annualized_fee_drag": 0.03258306783228482,
+          "annualized_turnover_perp_units": 54.31495187859533,
+          "annualized_turnover_spot_units": 54.29527422902072,
           "annualized_turnover_units": 108.61022610761606,
           "avg_gross_exposure": 1.724200913242009,
+          "avg_spot_notional_fraction": 0.8621004566210045,
           "downside_deviation_annualized": 0.006773625463460127,
           "end": "2022-12-31",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.8621004566210045,
           "max_drawdown": -0.007507608913492336,
           "max_drawdown_recomputed": -0.007507608913492336,
@@ -1153,11 +3856,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.08101156160688903,
           "ann_return_geometric": 0.08434062330111103,
           "ann_volatility": 0.00781709709443918,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.019811182300081314,
+          "annualized_fee_drag": 0.019811182300081314,
+          "annualized_turnover_perp_units": 33.02305746246018,
+          "annualized_turnover_spot_units": 33.01421687114423,
           "annualized_turnover_units": 66.03727433360439,
           "avg_gross_exposure": 1.8577291381668946,
+          "avg_spot_notional_fraction": 0.9288645690834473,
           "downside_deviation_annualized": 0.00480785180014237,
           "end": "2024-12-31",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.9288645690834473,
           "max_drawdown": -0.009265098618627232,
           "max_drawdown_recomputed": -0.009265098618627232,
@@ -1293,6 +4002,7 @@ python -m pytest -q
         }
       },
       "cost_bps_per_unit": 3.0,
+      "cost_model": "flat_3bp",
       "cost_sensitivity": {
         "1.5bp": {
           "ann_return_arithmetic": 0.13254865671410607,
@@ -1333,11 +4043,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.1293577971439334,
           "ann_return_geometric": 0.13788810359464332,
           "ann_volatility": 0.017948093867643157,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.006381719140345409,
+          "annualized_fee_drag": 0.006381719140345409,
+          "annualized_turnover_perp_units": 10.647880386106714,
+          "annualized_turnover_spot_units": 10.624516748377983,
           "annualized_turnover_units": 21.2723971344847,
           "avg_gross_exposure": 2.0,
+          "avg_spot_notional_fraction": 1.0,
           "downside_deviation_annualized": 0.015346424876721856,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 1.0,
           "max_drawdown": -0.01910783258033777,
           "max_drawdown_recomputed": -0.01910783258033777,
@@ -1359,11 +4075,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.06821872717972946,
           "ann_return_geometric": 0.0705719291700091,
           "ann_volatility": 0.00622261734856071,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.00495943904783338,
+          "annualized_fee_drag": 0.00495943904783338,
+          "annualized_turnover_perp_units": 8.269804993354063,
+          "annualized_turnover_spot_units": 8.261658499423875,
           "annualized_turnover_units": 16.531463492777934,
           "avg_gross_exposure": 2.0,
+          "avg_spot_notional_fraction": 1.0,
           "downside_deviation_annualized": 0.0038839564869855743,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 1.0,
           "max_drawdown": -0.00792716300651708,
           "max_drawdown_recomputed": -0.00792716300651708,
@@ -1385,11 +4107,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.030621380526178688,
           "ann_return_geometric": 0.031084493567453908,
           "ann_volatility": 0.004232121564974176,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.0054545227521363435,
+          "annualized_fee_drag": 0.0054545227521363435,
+          "annualized_turnover_perp_units": 9.093666523546988,
+          "annualized_turnover_spot_units": 9.08807598357416,
           "annualized_turnover_units": 18.181742507121147,
           "avg_gross_exposure": 2.0,
+          "avg_spot_notional_fraction": 1.0,
           "downside_deviation_annualized": 0.0037773852885606305,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 1.0,
           "max_drawdown": -0.007927163006516524,
           "max_drawdown_recomputed": -0.007927163006516524,
@@ -1411,11 +4139,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.20579559329096095,
           "ann_return_geometric": 0.22803355848660023,
           "ann_volatility": 0.025455587794256582,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.008159893977467752,
+          "annualized_fee_drag": 0.008159893977467752,
+          "annualized_turnover_perp_units": 13.621017566634913,
+          "annualized_turnover_spot_units": 13.578629024924265,
           "annualized_turnover_units": 27.199646591559176,
           "avg_gross_exposure": 2.0,
+          "avg_spot_notional_fraction": 1.0,
           "downside_deviation_annualized": 0.02104738135167717,
           "end": "2022-12-31",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 1.0,
           "max_drawdown": -0.01910783258033777,
           "max_drawdown_recomputed": -0.01910783258033777,
@@ -1437,11 +4171,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.1010328272686014,
           "ann_return_geometric": 0.10626956857151737,
           "ann_volatility": 0.007112959660880824,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.004527341368838455,
+          "annualized_fee_drag": 0.004527341368838455,
+          "annualized_turnover_perp_units": 7.550757583965434,
+          "annualized_turnover_spot_units": 7.540380312162751,
           "annualized_turnover_units": 15.091137896128187,
           "avg_gross_exposure": 2.0,
+          "avg_spot_notional_fraction": 1.0,
           "downside_deviation_annualized": 0.004052341340476993,
           "end": "2024-12-31",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 1.0,
           "max_drawdown": -0.001273566865419462,
           "max_drawdown_recomputed": -0.001273566865419462,
@@ -1577,6 +4317,7 @@ python -m pytest -q
         }
       },
       "cost_bps_per_unit": 3.0,
+      "cost_model": "flat_3bp",
       "cost_sensitivity": {
         "1.5bp": {
           "ann_return_arithmetic": 0.1246805612650223,
@@ -1617,11 +4358,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.1097312650051248,
           "ann_return_geometric": 0.11577454756247829,
           "ann_volatility": 0.018229585273567526,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.02989859251979504,
+          "annualized_fee_drag": 0.02989859251979504,
+          "annualized_turnover_perp_units": 49.84235545280386,
+          "annualized_turnover_spot_units": 49.81961961317965,
           "annualized_turnover_units": 99.66197506598347,
           "avg_gross_exposure": 1.760551948051948,
+          "avg_spot_notional_fraction": 0.880275974025974,
           "downside_deviation_annualized": 0.013676816637986595,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.880275974025974,
           "max_drawdown": -0.04194463793488845,
           "max_drawdown_recomputed": -0.04194463793488845,
@@ -1643,11 +4390,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.047045392941694714,
           "ann_return_geometric": 0.048137478664466826,
           "ann_volatility": 0.007434140877915205,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.027689890658833947,
+          "annualized_fee_drag": 0.027689890658833947,
+          "annualized_turnover_perp_units": 46.153790096700355,
+          "annualized_turnover_spot_units": 46.14584543274615,
           "annualized_turnover_units": 92.2996355294465,
           "avg_gross_exposure": 1.7735573411249086,
+          "avg_spot_notional_fraction": 0.8867786705624543,
           "downside_deviation_annualized": 0.005189824042132622,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.8867786705624543,
           "max_drawdown": -0.02855390379519762,
           "max_drawdown_recomputed": -0.02855390379519762,
@@ -1669,11 +4422,17 @@ python -m pytest -q
           "ann_return_arithmetic": -0.0026461226955815926,
           "ann_return_geometric": -0.0026605892411433185,
           "ann_volatility": 0.006004681368044835,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.042089327370280975,
+          "annualized_fee_drag": 0.042089327370280975,
+          "annualized_turnover_perp_units": 70.1513745766121,
+          "annualized_turnover_spot_units": 70.1463833243245,
           "annualized_turnover_units": 140.2977579009366,
           "avg_gross_exposure": 1.6206896551724137,
+          "avg_spot_notional_fraction": 0.8103448275862069,
           "downside_deviation_annualized": 0.005177750595056256,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.8103448275862069,
           "max_drawdown": -0.028553903795197844,
           "max_drawdown_recomputed": -0.028553903795197844,
@@ -1695,11 +4454,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.18810291692734926,
           "ann_return_geometric": 0.20650854066474889,
           "ann_volatility": 0.02547051656765773,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.03265997411582769,
+          "annualized_fee_drag": 0.03265997411582769,
+          "annualized_turnover_perp_units": 54.45390428614238,
+          "annualized_turnover_spot_units": 54.41267609994991,
           "annualized_turnover_units": 108.8665803860923,
           "avg_gross_exposure": 1.7442922374429224,
+          "avg_spot_notional_fraction": 0.8721461187214612,
           "downside_deviation_annualized": 0.01875506571929408,
           "end": "2022-12-31",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.8721461187214612,
           "max_drawdown": -0.04194463793488845,
           "max_drawdown_recomputed": -0.04194463793488845,
@@ -1721,11 +4486,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.09041500576875666,
           "ann_return_geometric": 0.09458287682615985,
           "ann_volatility": 0.0078123188854789,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.01512239322804982,
+          "annualized_fee_drag": 0.01512239322804982,
+          "annualized_turnover_perp_units": 25.209249880306807,
+          "annualized_turnover_spot_units": 25.19872754652592,
           "annualized_turnover_units": 50.40797742683274,
           "avg_gross_exposure": 1.9069767441860466,
+          "avg_spot_notional_fraction": 0.9534883720930233,
           "downside_deviation_annualized": 0.005091411330251628,
           "end": "2024-12-31",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.9534883720930233,
           "max_drawdown": -0.006478716812333474,
           "max_drawdown_recomputed": -0.006478716812333474,
@@ -1861,6 +4632,7 @@ python -m pytest -q
         }
       },
       "cost_bps_per_unit": 3.0,
+      "cost_model": "flat_3bp",
       "cost_sensitivity": {
         "1.5bp": {
           "ann_return_arithmetic": 0.1327616764869345,
@@ -1901,11 +4673,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.11783219811594103,
           "ann_return_geometric": 0.1248756427440827,
           "ann_volatility": 0.016800618266774064,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.02985895674198694,
+          "annualized_fee_drag": 0.02985895674198694,
+          "annualized_turnover_perp_units": 49.77500189894696,
+          "annualized_turnover_spot_units": 49.75485390767618,
           "annualized_turnover_units": 99.52985580662315,
           "avg_gross_exposure": 1.7613636363636365,
+          "avg_spot_notional_fraction": 0.8806818181818182,
           "downside_deviation_annualized": 0.005758428120825902,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.8806818181818182,
           "max_drawdown": -0.026403648650787148,
           "max_drawdown_recomputed": -0.026403648650787148,
@@ -1927,11 +4705,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.05037426427795896,
           "ann_return_geometric": 0.05163346538279123,
           "ann_volatility": 0.00723628567813396,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.027664715333937977,
+          "annualized_fee_drag": 0.027664715333937977,
+          "annualized_turnover_perp_units": 46.1115889995682,
+          "annualized_turnover_spot_units": 46.10412878022507,
           "annualized_turnover_units": 92.21571777979327,
           "avg_gross_exposure": 1.7735573411249086,
+          "avg_spot_notional_fraction": 0.8867786705624543,
           "downside_deviation_annualized": 0.005028932436300118,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.8867786705624543,
           "max_drawdown": -0.022406561162124805,
           "max_drawdown_recomputed": -0.022406561162124805,
@@ -1953,11 +4737,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.0023674830719351125,
           "ann_return_geometric": 0.0023541934962125755,
           "ann_volatility": 0.005669410737044503,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.04204445147655621,
+          "annualized_fee_drag": 0.04204445147655621,
+          "annualized_turnover_perp_units": 70.07625909337838,
+          "annualized_turnover_spot_units": 70.07191249514231,
           "annualized_turnover_units": 140.1481715885207,
           "avg_gross_exposure": 1.6206896551724137,
+          "avg_spot_notional_fraction": 0.8103448275862069,
           "downside_deviation_annualized": 0.00489058220012769,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.8103448275862069,
           "max_drawdown": -0.022406561162125693,
           "max_drawdown_recomputed": -0.022406561162125693,
@@ -1979,11 +4769,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.20217001676817614,
           "ann_return_geometric": 0.22366160307387517,
           "ann_volatility": 0.023127660156807082,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.032602259470406146,
+          "annualized_fee_drag": 0.032602259470406146,
+          "annualized_turnover_perp_units": 54.355104418809546,
+          "annualized_turnover_spot_units": 54.31909381587761,
           "annualized_turnover_units": 108.67419823468715,
           "avg_gross_exposure": 1.7461187214611873,
+          "avg_spot_notional_fraction": 0.8730593607305936,
           "downside_deviation_annualized": 0.006353739145349651,
           "end": "2022-12-31",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.8730593607305936,
           "max_drawdown": -0.026403648650787148,
           "max_drawdown_recomputed": -0.026403648650787148,
@@ -2005,11 +4801,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.09227347961235462,
           "ann_return_geometric": 0.09661921625018,
           "ann_volatility": 0.0077295753959406915,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.015114412106864887,
+          "annualized_fee_drag": 0.015114412106864887,
+          "annualized_turnover_perp_units": 25.19577570291855,
+          "annualized_turnover_spot_units": 25.185597986631084,
           "annualized_turnover_units": 50.381373689549626,
           "avg_gross_exposure": 1.9069767441860466,
+          "avg_spot_notional_fraction": 0.9534883720930233,
           "downside_deviation_annualized": 0.005096635436352339,
           "end": "2024-12-31",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.9534883720930233,
           "max_drawdown": -0.005833685187965898,
           "max_drawdown_recomputed": -0.005833685187965898,
@@ -2147,6 +4949,7 @@ python -m pytest -q
         }
       },
       "cost_bps_per_unit": 3.0,
+      "cost_model": "flat_3bp",
       "cost_sensitivity": {
         "1.5bp": {
           "ann_return_arithmetic": 0.12307405294222194,
@@ -2187,11 +4990,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.120303963502919,
           "ann_return_geometric": 0.12769409977315704,
           "ann_volatility": 0.014788120196765415,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.005540178878605894,
+          "annualized_fee_drag": 0.005540178878605894,
+          "annualized_turnover_perp_units": 9.242917132613526,
+          "annualized_turnover_spot_units": 9.224345796072793,
           "annualized_turnover_units": 18.467262928686317,
           "avg_gross_exposure": 2.0,
+          "avg_spot_notional_fraction": 1.0,
           "downside_deviation_annualized": 0.01294182069423682,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 1.0,
           "max_drawdown": -0.017213345266197444,
           "max_drawdown_recomputed": -0.017213345266197444,
@@ -2213,11 +5022,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.0683315493462543,
           "ann_return_geometric": 0.07069742761785203,
           "ann_volatility": 0.005466018688175015,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.004332166182614438,
+          "annualized_fee_drag": 0.004332166182614438,
+          "annualized_turnover_perp_units": 7.223962861743997,
+          "annualized_turnover_spot_units": 7.216591080304129,
           "annualized_turnover_units": 14.440553942048126,
           "avg_gross_exposure": 2.0,
+          "avg_spot_notional_fraction": 1.0,
           "downside_deviation_annualized": 0.0026760951902644304,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 1.0,
           "max_drawdown": -0.00653462754284051,
           "max_drawdown_recomputed": -0.00653462754284051,
@@ -2239,11 +5054,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.034526500993886815,
           "ann_return_geometric": 0.03512280994305561,
           "ann_volatility": 0.003098280421602726,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.004470130571070204,
+          "annualized_fee_drag": 0.004470130571070204,
+          "annualized_turnover_perp_units": 7.45254172077498,
+          "annualized_turnover_spot_units": 7.447893516125698,
           "annualized_turnover_units": 14.900435236900682,
           "avg_gross_exposure": 2.0,
+          "avg_spot_notional_fraction": 1.0,
           "downside_deviation_annualized": 0.0022811608681107373,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 1.0,
           "max_drawdown": -0.006534627542839289,
           "max_drawdown_recomputed": -0.006534627542839289,
@@ -2265,11 +5086,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.18528134704673088,
           "ann_return_geometric": 0.20323965609904593,
           "ann_volatility": 0.020836270155148686,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.007050470550580602,
+          "annualized_fee_drag": 0.007050470550580602,
+          "annualized_turnover_perp_units": 11.767070919664105,
+          "annualized_turnover_spot_units": 11.734497582271237,
           "annualized_turnover_units": 23.501568501935342,
           "avg_gross_exposure": 2.0,
+          "avg_spot_notional_fraction": 1.0,
           "downside_deviation_annualized": 0.01767487323956173,
           "end": "2022-12-31",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 1.0,
           "max_drawdown": -0.017213345266197444,
           "max_drawdown_recomputed": -0.017213345266197444,
@@ -2291,11 +5118,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.09783581863327269,
           "ann_return_geometric": 0.10274388375148735,
           "ann_volatility": 0.006518313555745014,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.00421175403509764,
+          "annualized_fee_drag": 0.00421175403509764,
+          "annualized_turnover_perp_units": 7.024464486830499,
+          "annualized_turnover_spot_units": 7.014715630161637,
           "annualized_turnover_units": 14.039180116992133,
           "avg_gross_exposure": 2.0,
+          "avg_spot_notional_fraction": 1.0,
           "downside_deviation_annualized": 0.0031681160135460518,
           "end": "2024-12-31",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 1.0,
           "max_drawdown": -0.0010388388997484288,
           "max_drawdown_recomputed": -0.0010388388997484288,
@@ -2431,6 +5264,7 @@ python -m pytest -q
         }
       },
       "cost_bps_per_unit": 3.0,
+      "cost_model": "flat_3bp",
       "cost_sensitivity": {
         "1.5bp": {
           "ann_return_arithmetic": 0.11482641590936901,
@@ -2471,11 +5305,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.10028245973739773,
           "ann_return_geometric": 0.10534031886718953,
           "ann_volatility": 0.015202235880397656,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.029087912343942538,
+          "annualized_fee_drag": 0.029087912343942538,
+          "annualized_turnover_perp_units": 48.48911696307737,
+          "annualized_turnover_spot_units": 48.470590850064426,
           "annualized_turnover_units": 96.9597078131418,
           "avg_gross_exposure": 1.7585227272727273,
+          "avg_spot_notional_fraction": 0.8792613636363636,
           "downside_deviation_annualized": 0.010780481822342773,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.9460227272727273,
           "max_drawdown": -0.02659446105343266,
           "max_drawdown_recomputed": -0.02659446105343266,
@@ -2497,11 +5337,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.0474603919526098,
           "ann_return_geometric": 0.04857905751574387,
           "ann_volatility": 0.0065366397709032175,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.026215533149916335,
+          "annualized_fee_drag": 0.026215533149916335,
+          "annualized_turnover_perp_units": 43.696350967996345,
+          "annualized_turnover_spot_units": 43.68875953172476,
           "annualized_turnover_units": 87.38511049972112,
           "avg_gross_exposure": 1.7786705624543462,
+          "avg_spot_notional_fraction": 0.8893352812271731,
           "downside_deviation_annualized": 0.0036399801629127546,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.9503287070854638,
           "max_drawdown": -0.02659446105343144,
           "max_drawdown_recomputed": -0.02659446105343144,
@@ -2523,11 +5369,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.0052916506169113885,
           "ann_return_geometric": 0.005294594808492592,
           "ann_volatility": 0.004690567881355473,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.03624397039937078,
+          "annualized_fee_drag": 0.03624397039937078,
+          "annualized_turnover_perp_units": 60.40909277914575,
+          "annualized_turnover_spot_units": 60.404141885423506,
           "annualized_turnover_units": 120.81323466456928,
           "avg_gross_exposure": 1.6598746081504703,
+          "avg_spot_notional_fraction": 0.8299373040752351,
           "downside_deviation_annualized": 0.0036061442898563116,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.9122257053291536,
           "max_drawdown": -0.026594461053432328,
           "max_drawdown_recomputed": -0.026594461053432328,
@@ -2549,11 +5401,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.1663221043012102,
           "ann_return_geometric": 0.18064621510461643,
           "ann_volatility": 0.02110344397777573,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.032679042130811825,
+          "annualized_fee_drag": 0.032679042130811825,
+          "annualized_turnover_perp_units": 54.4811686957403,
+          "annualized_turnover_spot_units": 54.448971740299115,
           "annualized_turnover_units": 108.93014043603944,
           "avg_gross_exposure": 1.7333333333333334,
+          "avg_spot_notional_fraction": 0.8666666666666667,
           "downside_deviation_annualized": 0.015062157196207076,
           "end": "2022-12-31",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.9406392694063926,
           "max_drawdown": -0.026049549193389976,
           "max_drawdown_recomputed": -0.026049549193389976,
@@ -2575,11 +5433,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.08426430025927956,
           "ann_return_geometric": 0.08787709972546165,
           "ann_volatility": 0.007273103182179638,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.01746294359430493,
+          "annualized_fee_drag": 0.01746294359430493,
+          "annualized_turnover_perp_units": 29.109854011069775,
+          "annualized_turnover_spot_units": 29.09995796994666,
           "annualized_turnover_units": 58.20981198101644,
           "avg_gross_exposure": 1.8823529411764706,
+          "avg_spot_notional_fraction": 0.9411764705882353,
           "downside_deviation_annualized": 0.0036966050365012807,
           "end": "2024-12-31",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.9835841313269493,
           "max_drawdown": -0.00800954354080008,
           "max_drawdown_recomputed": -0.00800954354080008,
@@ -2715,6 +5579,7 @@ python -m pytest -q
         }
       },
       "cost_bps_per_unit": 3.0,
+      "cost_model": "flat_3bp",
       "cost_sensitivity": {
         "1.5bp": {
           "ann_return_arithmetic": 0.12252026703373727,
@@ -2755,11 +5620,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.10800214365933147,
           "ann_return_geometric": 0.11392306271560937,
           "ann_volatility": 0.014025172182920927,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.02903624674881154,
+          "annualized_fee_drag": 0.02903624674881154,
+          "annualized_turnover_perp_units": 48.40191383165196,
+          "annualized_turnover_spot_units": 48.38557533105317,
           "annualized_turnover_units": 96.78748916270514,
           "avg_gross_exposure": 1.7593344155844155,
+          "avg_spot_notional_fraction": 0.8796672077922078,
           "downside_deviation_annualized": 0.004315540946656484,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.9464285714285714,
           "max_drawdown": -0.022058153706212558,
           "max_drawdown_recomputed": -0.022058153706212558,
@@ -2781,11 +5652,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.0507109845125655,
           "ann_return_geometric": 0.051993645521325904,
           "ann_volatility": 0.006389679745334504,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.0261916327909776,
+          "annualized_fee_drag": 0.0261916327909776,
+          "annualized_turnover_perp_units": 43.65628915877378,
+          "annualized_turnover_spot_units": 43.649153477818246,
           "annualized_turnover_units": 87.305442636592,
           "avg_gross_exposure": 1.7786705624543462,
+          "avg_spot_notional_fraction": 0.8893352812271731,
           "downside_deviation_annualized": 0.003457008054848606,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.9503287070854638,
           "max_drawdown": -0.022058153706213335,
           "max_drawdown_recomputed": -0.022058153706213335,
@@ -2807,11 +5684,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.009541779360609143,
           "ann_return_geometric": 0.009577212655276668,
           "ann_volatility": 0.0044783664731054265,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.03619285350330643,
+          "annualized_fee_drag": 0.03619285350330643,
+          "annualized_turnover_perp_units": 60.3236306213407,
+          "annualized_turnover_spot_units": 60.31921438968072,
           "annualized_turnover_units": 120.64284501102144,
           "avg_gross_exposure": 1.6598746081504703,
+          "avg_spot_notional_fraction": 0.8299373040752351,
           "downside_deviation_annualized": 0.003159556476958663,
           "end": "2026-09-30",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.9122257053291536,
           "max_drawdown": -0.022058153706213113,
           "max_drawdown_recomputed": -0.022058153706213113,
@@ -2833,11 +5716,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.17962917276611012,
           "ann_return_geometric": 0.1965021032917953,
           "ann_volatility": 0.019143706052843948,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.03259266365134548,
+          "annualized_fee_drag": 0.03259266365134548,
+          "annualized_turnover_perp_units": 54.335028148702435,
+          "annualized_turnover_spot_units": 54.307184022449164,
           "annualized_turnover_units": 108.64221217115161,
           "avg_gross_exposure": 1.735159817351598,
+          "avg_spot_notional_fraction": 0.867579908675799,
           "downside_deviation_annualized": 0.005080660469959611,
           "end": "2022-12-31",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.9415525114155251,
           "max_drawdown": -0.013464298117546125,
           "max_drawdown_recomputed": -0.013464298117546125,
@@ -2859,11 +5748,17 @@ python -m pytest -q
           "ann_return_arithmetic": 0.08664252060962183,
           "ann_return_geometric": 0.0904675935428374,
           "ann_volatility": 0.00717003894388852,
+          "annualized_capital_charge_drag": 0.0,
           "annualized_cost_drag": 0.017462797203473105,
+          "annualized_fee_drag": 0.017462797203473105,
+          "annualized_turnover_perp_units": 29.109416582689363,
+          "annualized_turnover_spot_units": 29.099907428887658,
           "annualized_turnover_units": 58.209324011577024,
           "avg_gross_exposure": 1.8823529411764706,
+          "avg_spot_notional_fraction": 0.9411764705882353,
           "downside_deviation_annualized": 0.003833094571830268,
           "end": "2024-12-31",
+          "engine_risk_free_rate_annual": 0.02,
           "invested_fraction": 0.9835841313269493,
           "max_drawdown": -0.006741817363101088,
           "max_drawdown_recomputed": -0.006741817363101088,
@@ -3225,7 +6120,7 @@ python -m pytest -q
           "ann_return_geometric": 0.12769409977315704,
           "annualized_cost_drag": 0.005540178878605894,
           "annualized_turnover_units": 18.467262928686317,
-          "note": "Constant-notional rebalance of both legs every day (the cost screen's convention): w*(|spot_return| + |perp_return|) while the pair is held.",
+          "note": "Constant-notional rebalance of both legs every day (the cost screen's convention): w*(|spot_return| + |perp_return|) while the pair is held, of which the spot leg trades w*|spot_return| and the perp leg w*|perp_return|.",
           "sharpe_canonical": 8.135176202397444
         },
         "fixed_quantity": {
@@ -3239,7 +6134,7 @@ python -m pytest -q
           "ann_return_geometric": 0.13382863282240387,
           "annualized_cost_drag": 0.00011305088384639818,
           "annualized_turnover_units": 0.376836279487994,
-          "note": "Equal-notional maintenance: only the basis drift is traded, w*|spot_return - perp_return| while the pair is held.",
+          "note": "Equal-notional maintenance: only the basis drift is traded, w*|spot_return - perp_return| while the pair is held. The adjustment is executed on the spot leg (the perp leg keeps its drifted notional), which is the conservative choice under a per-leg fee schedule.",
           "sharpe_canonical": 8.49594634136537
         }
       },
@@ -3248,7 +6143,7 @@ python -m pytest -q
           "ann_return_geometric": 0.10534031886718953,
           "annualized_cost_drag": 0.029087912343942538,
           "annualized_turnover_units": 96.9597078131418,
-          "note": "Constant-notional rebalance of both legs every day (the cost screen's convention): w*(|spot_return| + |perp_return|) while the pair is held.",
+          "note": "Constant-notional rebalance of both legs every day (the cost screen's convention): w*(|spot_return| + |perp_return|) while the pair is held, of which the spot leg trades w*|spot_return| and the perp leg w*|perp_return|.",
           "sharpe_canonical": 6.596559909105592
         },
         "fixed_quantity": {
@@ -3262,7 +6157,7 @@ python -m pytest -q
           "ann_return_geometric": 0.11055994713453576,
           "annualized_cost_drag": 0.02437494231104837,
           "annualized_turnover_units": 81.24980770349458,
-          "note": "Equal-notional maintenance: only the basis drift is traded, w*|spot_return - perp_return| while the pair is held.",
+          "note": "Equal-notional maintenance: only the basis drift is traded, w*|spot_return - perp_return| while the pair is held. The adjustment is executed on the spot leg (the perp leg keeps its drifted notional), which is the conservative choice under a per-leg fee schedule.",
           "sharpe_canonical": 6.889376379713542
         }
       },
@@ -3271,7 +6166,7 @@ python -m pytest -q
           "ann_return_geometric": 0.11392306271560937,
           "annualized_cost_drag": 0.02903624674881154,
           "annualized_turnover_units": 96.78748916270514,
-          "note": "Constant-notional rebalance of both legs every day (the cost screen's convention): w*(|spot_return| + |perp_return|) while the pair is held.",
+          "note": "Constant-notional rebalance of both legs every day (the cost screen's convention): w*(|spot_return| + |perp_return|) while the pair is held, of which the spot leg trades w*|spot_return| and the perp leg w*|perp_return|.",
           "sharpe_canonical": 7.700593065862711
         },
         "fixed_quantity": {
@@ -3285,9 +6180,107 @@ python -m pytest -q
           "ann_return_geometric": 0.11912539196527172,
           "annualized_cost_drag": 0.02437456254894098,
           "annualized_turnover_units": 81.24854182980327,
-          "note": "Equal-notional maintenance: only the basis drift is traded, w*|spot_return - perp_return| while the pair is held.",
+          "note": "Equal-notional maintenance: only the basis drift is traded, w*|spot_return - perp_return| while the pair is held. The adjustment is executed on the spot leg (the perp leg keeps its drifted notional), which is the conservative choice under a per-leg fee schedule.",
           "sharpe_canonical": 7.997429313210894
         }
+      }
+    }
+  },
+  "turnover_convention_bounds": {
+    "always_on": {
+      "drift": {
+        "ann_return_geometric": 0.09218983799950076,
+        "annualized_capital_charge_drag": 0.02,
+        "annualized_fee_drag": 0.017539256948116817,
+        "annualized_turnover_units": 18.467262928686317,
+        "consistent_with_pre_registered_gross_path": true,
+        "max_drawdown": -0.021235065443034107,
+        "note": "Constant-notional rebalance of both legs every day (the cost screen's convention): w*(|spot_return| + |perp_return|) while the pair is held, of which the spot leg trades w*|spot_return| and the perp leg w*|perp_return|.",
+        "sharpe_canonical": 5.964428000395712
+      },
+      "fixed_quantity": {
+        "ann_return_geometric": 0.11119691666287435,
+        "annualized_capital_charge_drag": 0.02,
+        "annualized_fee_drag": 0.000281452922077922,
+        "annualized_turnover_units": 0.2962662337662338,
+        "consistent_with_pre_registered_gross_path": false,
+        "max_drawdown": -0.017680580415810554,
+        "note": "Fixed coin quantity on both legs (no daily rebalancing at all): the pair is entered and exited only.",
+        "sharpe_canonical": 7.12295353639318
+      },
+      "parity": {
+        "ann_return_geometric": 0.11108952219462687,
+        "annualized_capital_charge_drag": 0.02,
+        "annualized_fee_drag": 0.0003781369769440342,
+        "annualized_turnover_units": 0.376836279487994,
+        "consistent_with_pre_registered_gross_path": false,
+        "max_drawdown": -0.017701513687370163,
+        "note": "Equal-notional maintenance: only the basis drift is traded, w*|spot_return - perp_return| while the pair is held. The adjustment is executed on the spot leg (the perp leg keeps its drifted notional), which is the conservative choice under a per-leg fee schedule.",
+        "sharpe_canonical": 7.116572948610952
+      }
+    },
+    "funding_positive_lagged": {
+      "drift": {
+        "ann_return_geometric": 0.01970566667269469,
+        "annualized_capital_charge_drag": 0.017585227272727273,
+        "annualized_fee_drag": 0.09210709089423148,
+        "annualized_turnover_units": 96.9597078131418,
+        "consistent_with_pre_registered_gross_path": true,
+        "max_drawdown": -0.23260191941836283,
+        "note": "Constant-notional rebalance of both legs every day (the cost screen's convention): w*(|spot_return| + |perp_return|) while the pair is held, of which the spot leg trades w*|spot_return| and the perp leg w*|perp_return|.",
+        "sharpe_canonical": 1.0879353280007824
+      },
+      "fixed_quantity": {
+        "ann_return_geometric": 0.03510162728456834,
+        "annualized_capital_charge_drag": 0.017585227272727273,
+        "annualized_fee_drag": 0.07711810064935065,
+        "annualized_turnover_units": 81.17694805194806,
+        "consistent_with_pre_registered_gross_path": false,
+        "max_drawdown": -0.18863627118438275,
+        "note": "Fixed coin quantity on both legs (no daily rebalancing at all): the pair is entered and exited only.",
+        "sharpe_canonical": 1.903193033436771
+      },
+      "parity": {
+        "ann_return_geometric": 0.03501115629720708,
+        "annualized_capital_charge_drag": 0.017585227272727273,
+        "annualized_fee_drag": 0.07720553223120646,
+        "annualized_turnover_units": 81.24980770349458,
+        "consistent_with_pre_registered_gross_path": false,
+        "max_drawdown": -0.18882876746103183,
+        "note": "Equal-notional maintenance: only the basis drift is traded, w*|spot_return - perp_return| while the pair is held. The adjustment is executed on the spot leg (the perp leg keeps its drifted notional), which is the conservative choice under a per-leg fee schedule.",
+        "sharpe_canonical": 1.8984905237108414
+      }
+    },
+    "funding_positive_sameday": {
+      "drift": {
+        "ann_return_geometric": 0.027732835648205834,
+        "annualized_capital_charge_drag": 0.017593344155844157,
+        "annualized_fee_drag": 0.09194403007942017,
+        "annualized_turnover_units": 96.78748916270514,
+        "consistent_with_pre_registered_gross_path": true,
+        "max_drawdown": -0.2110329827390569,
+        "note": "Constant-notional rebalance of both legs every day (the cost screen's convention): w*(|spot_return| + |perp_return|) while the pair is held, of which the spot leg trades w*|spot_return| and the perp leg w*|perp_return|.",
+        "sharpe_canonical": 1.6151932391697257
+      },
+      "fixed_quantity": {
+        "ann_return_geometric": 0.04307855123918802,
+        "annualized_capital_charge_drag": 0.017593344155844157,
+        "annualized_fee_drag": 0.07711810064935065,
+        "annualized_turnover_units": 81.17694805194806,
+        "consistent_with_pre_registered_gross_path": false,
+        "max_drawdown": -0.16619481966808947,
+        "note": "Fixed coin quantity on both legs (no daily rebalancing at all): the pair is entered and exited only.",
+        "sharpe_canonical": 2.4581986249648535
+      },
+      "parity": {
+        "ann_return_geometric": 0.04298899520532218,
+        "annualized_capital_charge_drag": 0.017593344155844157,
+        "annualized_fee_drag": 0.07720401318277689,
+        "annualized_turnover_units": 81.24854182980327,
+        "consistent_with_pre_registered_gross_path": false,
+        "max_drawdown": -0.16639186480941914,
+        "note": "Equal-notional maintenance: only the basis drift is traded, w*|spot_return - perp_return| while the pair is held. The adjustment is executed on the spot leg (the perp leg keeps its drifted notional), which is the conservative choice under a per-leg fee schedule.",
+        "sharpe_canonical": 2.453554179903174
       }
     }
   }

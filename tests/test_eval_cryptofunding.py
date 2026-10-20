@@ -308,6 +308,236 @@ def test_promotion_gate_is_not_passed_on_honest_trade_counts(paths) -> None:
 
 
 # ======================================================================
+# Cost models (Cycle 892)
+# ======================================================================
+def test_venue_fee_schedule_is_the_published_vip0_schedule() -> None:
+    """The venue schedule must be the published VIP 0 numbers, not a guess."""
+    assert ev.VENUE_SPOT_TAKER_BPS == 10.0
+    assert ev.VENUE_SPOT_MAKER_BPS == 10.0
+    assert ev.VENUE_PERP_TAKER_BPS == 5.0
+    assert ev.VENUE_PERP_MAKER_BPS == 2.0
+    assert ev.REPO_SLIPPAGE_BPS == 2.0
+    # The headline model is the conservative end of both cost axes.
+    headline = ev.COST_MODEL_BY_KEY[ev.HEADLINE_COST_MODEL]
+    assert headline.kind == "venue"
+    assert headline.spot_bps == ev.VENUE_SPOT_TAKER_BPS + ev.REPO_SLIPPAGE_BPS
+    assert headline.perp_bps == ev.VENUE_PERP_TAKER_BPS + ev.REPO_SLIPPAGE_BPS
+    assert headline.capital_rate_annual == ev.RF_ANNUAL
+
+
+@pytest.mark.parametrize("convention", list(ev.TURNOVER_CONVENTIONS))
+def test_leg_turnovers_sum_to_the_total_turnover(paths, convention: str) -> None:
+    """The per-leg split must be a decomposition, not a second series."""
+    for base in ev.BASE_SYMBOLS:
+        book = ev.build_book(paths[base], ev.RULES[0], weight=1.0, turnover_convention=convention)
+        assert book.turnover.to_numpy() == pytest.approx(
+            (book.turnover_spot + book.turnover_perp).to_numpy()
+        )
+        assert (book.turnover_spot >= 0).all()
+        assert (book.turnover_perp >= 0).all()
+
+
+def test_drift_convention_trades_each_leg_its_own_drift(paths) -> None:
+    """Under `drift` each leg trades the drift of its own price."""
+    book = ev.build_book(paths["BTCUSDT"], ev.RULES[0], weight=1.0, turnover_convention="drift")
+    path = ev.load_carry_path("BTCUSDT")
+    assert book.turnover_spot.to_numpy()[1:] == pytest.approx(
+        path["spot_return"].abs().to_numpy()[1:]
+    )
+    assert book.turnover_perp.to_numpy()[1:] == pytest.approx(
+        path["perp_return"].abs().to_numpy()[1:]
+    )
+
+
+def test_transitions_are_charged_on_both_legs(paths) -> None:
+    """An entry (long spot + short perp) trades both legs."""
+    book = ev.build_book(paths["BTCUSDT"], ev.RULES[2], weight=1.0, turnover_convention="fixed_quantity")
+    changes = ev.position_changes(book.positions).abs().sum(axis=1)
+    assert book.turnover_spot.to_numpy() == pytest.approx(changes.to_numpy())
+    assert book.turnover_perp.to_numpy() == pytest.approx(changes.to_numpy())
+
+
+def test_flat_model_is_unchanged_by_the_per_leg_split(always_on_books) -> None:
+    """The Cycle 891 flat-model numbers must not move."""
+    for base, book in always_on_books.items():
+        net = ev.net_series(book, ev.DECISION_BPS)
+        assert net.to_numpy() == pytest.approx(
+            (book.gross - book.turnover * (ev.DECISION_BPS / 10000.0)).to_numpy()
+        )
+        metrics = ev.book_metrics(book, net, "full")
+        assert metrics["annualized_turnover_units"] == pytest.approx(
+            float(book.turnover.mean() * 365)
+        )
+        assert metrics["annualized_cost_drag"] == pytest.approx(
+            metrics["annualized_turnover_units"] * (ev.DECISION_BPS / 10000.0)
+        )
+
+
+def test_capital_charge_is_charged_on_the_spot_notional(paths) -> None:
+    """The charge is the spot leg's notional times the annual rate, daily."""
+    book = ev.build_book(paths["BTCUSDT"], ev.RULES[0], weight=1.0)
+    rate = 0.05
+    charge = ev.capital_charge_series(book, rate)
+    expected = book.spot_notional * (rate / 365.0)
+    assert charge.to_numpy() == pytest.approx(expected.to_numpy())
+    # A zero rate is free capital, a negative rate is a rebate (the break-even
+    # solver needs it to bracket the crossing).
+    assert ev.capital_charge_series(book, 0.0).abs().sum() == 0.0
+    assert (ev.capital_charge_series(book, -0.05) < 0).all()
+
+
+def test_spot_notional_is_the_spot_leg_only(paths) -> None:
+    """The perp leg is self-financing: it is not charged a capital cost."""
+    book = ev.build_book(paths["BTCUSDT"], ev.RULES[0], weight=1.0)
+    assert book.spot_notional.to_numpy() == pytest.approx(
+        book.weights["BTCUSDT_spot"].to_numpy()
+    )
+
+
+def test_venue_model_charges_each_leg_at_its_own_rate(always_on_books) -> None:
+    """The venue model's fee series is the per-leg fee, not a flat number."""
+    book = always_on_books["BTCUSDT"]
+    model = ev.COST_MODEL_BY_KEY["venue_taker"]
+    fees = ev.fee_series(book, model)
+    expected = (
+        book.turnover_spot * (model.spot_bps / 10000.0)
+        + book.turnover_perp * (model.perp_bps / 10000.0)
+    )
+    assert fees.to_numpy() == pytest.approx(expected.to_numpy())
+    # The venue schedule is more expensive per unit than the flat model.
+    flat = ev.fee_series(book, ev.COST_MODEL_BY_KEY["flat_3bp"])
+    assert fees.mean() > flat.mean()
+
+
+def test_capital_charge_rows_use_a_zero_risk_free_rate_in_the_engine_scale(
+    always_on_books,
+) -> None:
+    """A charged capital cost must not be charged twice in the ratio."""
+    book = always_on_books["BTCUSDT"]
+    model = ev.COST_MODEL_BY_KEY["realistic_rf"]
+    net = ev.net_series_model(book, model)
+    metrics = ev.book_metrics(book, net, "full", cost_model=model)
+    assert metrics["engine_risk_free_rate_annual"] == 0.0
+    assert metrics["risk_free_rate_annual"] == ev.RF_ANNUAL
+    # The canonical convention is a zero-risk-free-rate convention either way.
+    assert metrics["sharpe_canonical"] == pytest.approx(
+        float(net.mean() / net.std(ddof=1) * np.sqrt(365))
+    )
+    # A model without a capital charge keeps the engine's risk-free rate.
+    no_capital = ev.COST_MODEL_BY_KEY["venue_taker_slippage"]
+    metrics_no_capital = ev.book_metrics(
+        book, ev.net_series_model(book, no_capital), "full", cost_model=no_capital
+    )
+    assert metrics_no_capital["engine_risk_free_rate_annual"] == ev.RF_ANNUAL
+
+
+def test_cost_models_only_lower_the_return(always_on_books) -> None:
+    """Every cost model must be at least as expensive as the flat model."""
+    book = always_on_books["BTCUSDT"]
+    base = ev.book_metrics(book, ev.net_series(book, ev.DECISION_BPS), "full")
+    for model in ev.COST_MODELS:
+        net = ev.net_series_model(book, model)
+        metrics = ev.book_metrics(book, net, "full", cost_model=model)
+        assert metrics["ann_return_arithmetic"] <= base["ann_return_arithmetic"] + 1e-12
+        assert metrics["annualized_cost_drag"] >= base["annualized_cost_drag"] - 1e-12
+
+
+def test_break_even_cost_per_unit_is_where_the_net_return_is_zero(paths) -> None:
+    """The break-even flat cost must zero the net annualized return."""
+    book = ev.portfolio_book(paths, ev.RULES[0])
+    result = ev.break_even_flat_bps(book, "full")
+    assert result["bracketed"] is True
+    cost = result["solution_bps"]
+    net = ev.net_series(book, cost)
+    value = ev.annualized_return(net.loc[ev.sample_index(net.index, "full")], 365)
+    assert value == pytest.approx(0.0, abs=1e-6)
+    # A cheaper book is profitable, a more expensive one is not.
+    assert ev.annualized_return(
+        ev.net_series(book, cost - 5.0).loc[ev.sample_index(net.index, "full")], 365
+    ) > 0.0
+    assert ev.annualized_return(
+        ev.net_series(book, cost + 5.0).loc[ev.sample_index(net.index, "full")], 365
+    ) < 0.0
+
+
+def test_break_even_capital_charge_is_where_the_net_return_is_zero(paths) -> None:
+    """The break-even capital charge must zero the net annualized return."""
+    from dataclasses import replace
+
+    book = ev.portfolio_book(paths, ev.RULES[0])
+    fee_model = ev.COST_MODEL_BY_KEY["venue_taker_slippage"]
+    result = ev.break_even_capital_rate(book, fee_model, "full")
+    assert result["bracketed"] is True
+    rate = result["solution_annual_rate"]
+    model = replace(fee_model, capital_rate_annual=rate)
+    net = ev.net_series_model(book, model)
+    value = ev.annualized_return(net.loc[ev.sample_index(net.index, "full")], 365)
+    assert value == pytest.approx(0.0, abs=1e-6)
+    # The always-on book holds the spot leg all the time, so the break-even
+    # charge is the rate at which the capital cost eats the whole return.
+    assert rate == pytest.approx(ev.RF_ANNUAL, abs=0.2)
+
+
+def test_break_even_venue_multiple_is_where_the_net_return_is_zero(paths) -> None:
+    """The break-even fee multiple must zero the net annualized return."""
+    from dataclasses import replace
+
+    book = ev.portfolio_book(paths, ev.RULES[0])
+    model = ev.COST_MODEL_BY_KEY["realistic_rf"]
+    result = ev.break_even_venue_multiplier(book, model, "full")
+    assert result["bracketed"] is True
+    multiplier = result["solution_multiplier"]
+    scaled = replace(
+        model, spot_bps=model.spot_bps * multiplier, perp_bps=model.perp_bps * multiplier
+    )
+    net = ev.net_series_model(book, scaled)
+    value = ev.annualized_return(net.loc[ev.sample_index(net.index, "full")], 365)
+    assert value == pytest.approx(0.0, abs=1e-6)
+    assert multiplier > 1.0
+
+
+def test_promotion_gate_is_not_passed_under_any_cost_model(paths) -> None:
+    """The gate must fail under every cost model, and it is never relaxed."""
+    for rule in ev.RULES:
+        for model in ev.COST_MODELS:
+            books = {
+                base: ev.evaluate_book(
+                    ev.build_book(paths[base], rule, weight=1.0),
+                    bootstrap_samples=(),
+                    cost_model=model,
+                )
+                for base in ev.BASE_SYMBOLS
+            }
+            gate = ev.promotion_gate(books)
+            assert gate["promotion_gate_pass"] is False, (rule.rule_id, model.key)
+            assert gate["pooled_oos_position_round_trips"] < ev.PROMOTION_MIN_POOLED_OOS_TRADES
+            assert gate["sharpe_criterion_pass"] == (
+                gate["net_oos_sharpe_canonical_365"] >= ev.PROMOTION_SHARPE_MIN
+            )
+
+
+def test_headline_convention_is_the_one_consistent_with_the_gross_path(paths) -> None:
+    """The headline convention is documented and the others are cost-only bounds."""
+    assert ev.HEADLINE_CONVENTION == "drift"
+    bounds = ev.turnover_convention_bounds(paths)
+    for rule_id, rows in bounds.items():
+        for convention, row in rows.items():
+            assert row["consistent_with_pre_registered_gross_path"] == (
+                convention == ev.HEADLINE_CONVENTION
+            )
+        # The trading-frequency question is bounded: the cost-only corners are
+        # cheaper than the headline, never more expensive.
+        assert (
+            rows["parity"]["annualized_fee_drag"]
+            <= rows["drift"]["annualized_fee_drag"] + 1e-12
+        )
+        assert (
+            rows["fixed_quantity"]["annualized_fee_drag"]
+            <= rows["drift"]["annualized_fee_drag"] + 1e-12
+        )
+
+
+# ======================================================================
 # The committed record
 # ======================================================================
 def test_committed_artifact_is_consistent_with_the_code() -> None:
@@ -324,3 +554,27 @@ def test_committed_artifact_is_consistent_with_the_code() -> None:
         assert gate["promotion_gate_pass"] is False, rule_id
     assert payload["reconciliation_with_cost_screen"]["same_gross_series"] is True
     assert payload["reconciliation_with_cost_screen"]["same_turnover_series"] is True
+
+
+def test_committed_artifact_states_the_realistic_cost_model() -> None:
+    """The record must state the headline model, its sources and the screen's premise."""
+    text = ARTIFACT.read_text()
+    assert "## Cost models (Cycle 892)" in text
+    assert "### Break-evens" in text
+    assert "Binance VIP 0" in text
+    assert "2026-10-20" in text  # the fee schedule's access date
+    assert "flat 3 bp/unit cost model" in text  # the screen's premise
+    payload = json.loads(
+        text[text.index("```json") + len("```json") : text.index("```", text.index("```json") + len("```json"))]
+    )
+    cost_meta = payload["meta"]["cost_models"]
+    assert cost_meta["headline"] == "realistic_rf"
+    assert cost_meta["headline_turnover_convention"] == "drift"
+    assert cost_meta["venue_fee_schedule"]["spot_taker_bps"] == 10.0
+    assert cost_meta["venue_fee_schedule"]["perp_taker_bps"] == 5.0
+    # The gate is re-evaluated under every cost model and never passes.
+    gates = payload["cost_model_evaluation"]["gates"]
+    assert gates
+    for rule_id, rows in gates.items():
+        for model_key, gate in rows.items():
+            assert gate["promotion_gate_pass"] is False, (rule_id, model_key)

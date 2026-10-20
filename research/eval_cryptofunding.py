@@ -1,4 +1,4 @@
-"""Cycle 891: hardened net-of-cost evaluation of the crypto funding carry candidate.
+"""Cycle 892: realistic execution and capital-cost model for the crypto funding carry.
 
 What this script does
 ---------------------
@@ -7,7 +7,8 @@ It evaluates the spot-long / perp-short perpetual-funding carry of
 committed, checksum-verified carry paths, under the repository's own metric
 machinery and under the **365-day** annualization that a 24/7 market requires.
 
-The three defects it fixes (all raised by the Cycle 890 supervisor review):
+The Cycle 891 defects it keeps fixed (all raised by the Cycle 890 supervisor
+review):
 
 1. **Annualization.** The Cycle 890 draft annualized the daily crypto series
    at 252 periods/year. Crypto trades every calendar day: the annual return,
@@ -29,6 +30,29 @@ The three defects it fixes (all raised by the Cycle 890 supervisor review):
    funding. Both are reported; the look-ahead variant is labelled as
    contaminated and is kept only to reconcile with the Cycle 890 numbers.
 
+What Cycle 892 adds
+-------------------
+The Cycle 891 evaluation measured the net capture of the carry with the
+repository's flat 3 bp/unit turnover cost alone: no charge for the capital the
+book ties up and no venue-specific fee schedule. Cycle 892 measures the same
+three pre-registered rules under a realistic execution and capital-cost model
+and re-evaluates the promotion gate under it:
+
+* a **per-leg venue fee schedule** (Binance VIP 0 published fees) applied to
+  the leg weights that are actually traded, plus the repository's own
+  slippage assumption, with a maker alternative;
+* a **capital charge** on the spot leg's notional (0% / the repository's
+  risk-free rate / a 5% USDT-equivalent yield);
+* a **headline turnover convention** with the other conventions as
+  cost-only bounds;
+* the **break-even** flat cost per unit, break-even capital charge and
+  break-even multiple of the venue schedule, per rule;
+* the **promotion gate re-evaluated** under every cost model, with the
+  repository's own thresholds, unchanged.
+
+The cost models are sensitivity analyses of the same six configurations
+(3 rules x 2 symbols), not new trials.
+
 Conventions
 -----------
 * ``PERIODS_PER_YEAR = 365`` (24/7 crypto); the cost screen's 252 is used
@@ -41,9 +65,16 @@ Conventions
   crypto carry book trades its *legs* (spot and perp) while the engine's
   weight frame would net them away -- the same override the cost screen
   applies in ``fold_metrics``.
-* Cost model: the repository's flat model, ``3 bp per unit of weight change``
-  (``get_cost_params()``: 1 bp commission + 2 bp slippage). Sensitivity rows
-  at 1.5 bp and 4.5 bp are reported alongside.
+* Cost models: the repository's flat model (``3 bp per unit of weight
+  change``, ``get_cost_params()``: 1 bp commission + 2 bp slippage) and the
+  venue model of this cycle. The capital charge is paid in the *return
+  series*, so the engine's backtest-scale metrics of a capital-charge row use
+  a zero risk-free rate (the repository's backtest-baseline Sharpe already
+  subtracts the risk-free rate from the ratio's numerator).
+* The **headline turnover convention** is ``drift`` (the daily
+  constant-notional rebalance), because it is the only convention that is
+  internally consistent with the pre-registered constant-notional gross path;
+  ``parity`` and ``fixed_quantity`` are reported as cost-only bounds.
 * A *book* is one unit of equity running a delta-neutral carry pair:
   ``+w`` spot and ``-w`` perp (200% gross notional, zero net). A single-symbol
   book uses ``w = 1.0``; the BTC/ETH portfolio uses ``w = 0.5`` per symbol,
@@ -55,6 +86,7 @@ Reproduction
 
     python research/eval_cryptofunding.py
     python -m pytest -q tests/test_eval_cryptofunding.py
+    python research/cost_admissibility_screen.py   # ends with OVERALL: PASS
     python -m pytest -q
 """
 
@@ -62,7 +94,7 @@ from __future__ import annotations
 
 import json
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -173,17 +205,199 @@ TURNOVER_CONVENTIONS: tuple[str, ...] = ("drift", "parity", "fixed_quantity")
 TURNOVER_NOTES: dict[str, str] = {
     "drift": (
         "Constant-notional rebalance of both legs every day (the cost screen's "
-        "convention): w*(|spot_return| + |perp_return|) while the pair is held."
+        "convention): w*(|spot_return| + |perp_return|) while the pair is held, "
+        "of which the spot leg trades w*|spot_return| and the perp leg "
+        "w*|perp_return|."
     ),
     "parity": (
         "Equal-notional maintenance: only the basis drift is traded, "
-        "w*|spot_return - perp_return| while the pair is held."
+        "w*|spot_return - perp_return| while the pair is held. The adjustment "
+        "is executed on the spot leg (the perp leg keeps its drifted notional), "
+        "which is the conservative choice under a per-leg fee schedule."
     ),
     "fixed_quantity": (
         "Fixed coin quantity on both legs (no daily rebalancing at all): the "
         "pair is entered and exited only."
     ),
 }
+
+#: Which turnover convention is the **headline** of this evaluation, and why.
+#:
+#: The pre-registered gross path (the committed carry path) is the
+#: *constant-notional* construction: the book resets the spot and the perp
+#: notionals to ``w * equity`` every day. The only turnover convention that
+#: is internally consistent with that gross path is therefore the daily
+#: constant-notional rebalance (``drift``): the other two conventions
+#: describe a *different* book, not the same book traded less often. See
+#: ``HEADLINE_CONVENTION`` in the rendered record.
+HEADLINE_CONVENTION = "drift"
+
+
+# ======================================================================
+# Cost models (Cycle 892)
+# ======================================================================
+@dataclass(frozen=True)
+class CostModel:
+    """One cost model of the carry book.
+
+    Two kinds:
+
+    * ``flat`` -- the repository's flat model: ``flat_bps`` per unit of weight
+      change, applied to the total turnover (both legs).
+    * ``venue`` -- a per-leg venue fee schedule: ``spot_bps`` per unit of
+      *spot-leg* turnover and ``perp_bps`` per unit of *perp-leg* turnover.
+
+    ``capital_rate_annual`` is the annual rate charged on the capital the
+    spot leg ties up (the spot leg's notional as a fraction of the book's
+    equity), i.e. the opportunity cost of the cash that a delta-neutral
+    carry book cannot deploy elsewhere.
+    """
+
+    key: str
+    label: str
+    kind: str
+    flat_bps: float = 0.0
+    spot_bps: float = 0.0
+    perp_bps: float = 0.0
+    capital_rate_annual: float = 0.0
+    source: str = ""
+    note: str = ""
+
+
+#: Binance **VIP 0** published fees, in basis points of the traded notional.
+#:
+#: Sources (accessed 2026-10-20):
+#:
+#: * Spot: Binance, "VIP Program: Updates to Spot and Margin Trading Fees for
+#:   VIP 3 - VIP 9 Users" (2024-10-07) - "Normal User" maker 0.1000% and
+#:   taker 0.1000% (the 25% BNB discount to 0.0750% is not claimed here).
+#: * USDⓈ-M futures: Binance futures fee explainer (support FAQ
+#:   360033544231) - "a Regular User's maker fee is 0.02% and a Regular
+#:   User's taker fee is 0.05%".
+#:
+#: No live fees are implied: the account-specific fee table is only visible
+#: after login, so the published standard VIP 0 schedule is used as a
+#: documented assumption.
+VENUE_SPOT_MAKER_BPS = 10.0
+VENUE_SPOT_TAKER_BPS = 10.0
+VENUE_PERP_MAKER_BPS = 2.0
+VENUE_PERP_TAKER_BPS = 5.0
+
+#: The repository's own slippage assumption (``config/settings.yaml``
+#: ``default_slippage_bps``), kept on top of the venue fees because a
+#: published fee schedule does not model execution slippage.
+REPO_SLIPPAGE_BPS = SLIPPAGE_BPS * 10000.0
+
+#: The capital-charge sensitivity grid: no charge, the repository's
+#: risk-free rate, and a stablecoin-equivalent yield.
+CAPITAL_CHARGE_RATES: dict[str, float] = {
+    "none": 0.0,
+    "repo_rf": RF_ANNUAL,
+    "usdt_5pct": 0.05,
+}
+
+_VENUE_TAKER_SLIPPAGE_SOURCE = (
+    "Binance VIP 0 published spot taker 10 bp and USDⓈ-M perp taker 5 bp "
+    "(accessed 2026-10-20) + the repository's 2 bp/unit slippage assumption"
+)
+
+COST_MODELS: tuple[CostModel, ...] = (
+    CostModel(
+        key="flat_3bp",
+        label="Repository flat model (3 bp per unit of weight change)",
+        kind="flat",
+        flat_bps=DECISION_BPS,
+        source="src/backtest/engine.py:get_cost_params (config/settings.yaml)",
+        note=(
+            "The repository-wide convention (1 bp commission + 2 bp slippage per "
+            "unit of weight change) and the convention the cost screen uses. "
+            "No capital charge."
+        ),
+    ),
+    CostModel(
+        key="flat_3bp_capital_rf",
+        label="Flat model + capital charge at the repository risk-free rate",
+        kind="flat",
+        flat_bps=DECISION_BPS,
+        capital_rate_annual=RF_ANNUAL,
+        source="src/backtest/engine.py:get_cost_params + get_risk_free_rate",
+        note="Isolates the capital charge: the same flat trading cost, plus the "
+        "cost of the capital the spot leg ties up.",
+    ),
+    CostModel(
+        key="venue_taker",
+        label="Binance VIP 0 venue fees, taker (spot 10 bp, perp 5 bp)",
+        kind="venue",
+        spot_bps=VENUE_SPOT_TAKER_BPS,
+        perp_bps=VENUE_PERP_TAKER_BPS,
+        source="Binance published VIP 0 fee schedule (accessed 2026-10-20)",
+        note="The published fee schedule alone: no slippage, no capital charge.",
+    ),
+    CostModel(
+        key="venue_taker_slippage",
+        label="Binance VIP 0 venue fees, taker + repository slippage (spot 12 bp, perp 7 bp)",
+        kind="venue",
+        spot_bps=VENUE_SPOT_TAKER_BPS + REPO_SLIPPAGE_BPS,
+        perp_bps=VENUE_PERP_TAKER_BPS + REPO_SLIPPAGE_BPS,
+        source=_VENUE_TAKER_SLIPPAGE_SOURCE,
+        note="The published fee schedule plus the repository's slippage "
+        "assumption, which a fee schedule does not model.",
+    ),
+    CostModel(
+        key="venue_maker_slippage",
+        label="Binance VIP 0 venue fees, maker + repository slippage (spot 12 bp, perp 4 bp)",
+        kind="venue",
+        spot_bps=VENUE_SPOT_MAKER_BPS + REPO_SLIPPAGE_BPS,
+        perp_bps=VENUE_PERP_MAKER_BPS + REPO_SLIPPAGE_BPS,
+        source=(
+            "Binance published VIP 0 fee schedule, maker (spot 10 bp, perp 2 bp, "
+            "accessed 2026-10-20) + the repository's 2 bp/unit slippage assumption"
+        ),
+        note="The maker alternative: at VIP 0 the spot fee is the same for maker "
+        "and taker, so only the perp leg gets cheaper.",
+    ),
+    CostModel(
+        key="realistic_rf",
+        label="HEADLINE: venue taker + slippage + capital charge at the repository rf",
+        kind="venue",
+        spot_bps=VENUE_SPOT_TAKER_BPS + REPO_SLIPPAGE_BPS,
+        perp_bps=VENUE_PERP_TAKER_BPS + REPO_SLIPPAGE_BPS,
+        capital_rate_annual=RF_ANNUAL,
+        source=_VENUE_TAKER_SLIPPAGE_SOURCE + " + get_risk_free_rate()",
+        note="The realistic model of this evaluation: the conservative end of "
+        "both the fee schedule (taker) and the capital charge (the "
+        "repository's risk-free rate).",
+    ),
+    CostModel(
+        key="realistic_no_capital_charge",
+        label="Venue taker + slippage, no capital charge",
+        kind="venue",
+        spot_bps=VENUE_SPOT_TAKER_BPS + REPO_SLIPPAGE_BPS,
+        perp_bps=VENUE_PERP_TAKER_BPS + REPO_SLIPPAGE_BPS,
+        capital_rate_annual=0.0,
+        source=_VENUE_TAKER_SLIPPAGE_SOURCE,
+        note="The capital-charge sensitivity row 'none' (0%): the book is "
+        "charged only what it trades.",
+    ),
+    CostModel(
+        key="realistic_usdt_5pct",
+        label="Venue taker + slippage + capital charge at a 5% USDT-equivalent yield",
+        kind="venue",
+        spot_bps=VENUE_SPOT_TAKER_BPS + REPO_SLIPPAGE_BPS,
+        perp_bps=VENUE_PERP_TAKER_BPS + REPO_SLIPPAGE_BPS,
+        capital_rate_annual=CAPITAL_CHARGE_RATES["usdt_5pct"],
+        source=_VENUE_TAKER_SLIPPAGE_SOURCE + " + 5% USDT-equivalent yield assumption",
+        note="The capital-charge sensitivity row 'usdt_5pct': the cash the spot "
+        "leg ties up could have earned a stablecoin lending yield instead.",
+    ),
+)
+
+#: The headline cost model of the evaluation.
+HEADLINE_COST_MODEL = "realistic_rf"
+
+#: The cost models by key.
+COST_MODEL_BY_KEY: dict[str, CostModel] = {model.key: model for model in COST_MODELS}
+
 
 
 # ======================================================================
@@ -235,6 +449,8 @@ class Book:
     turnover_convention: str
     gross: pd.Series
     turnover: pd.Series
+    turnover_spot: pd.Series
+    turnover_perp: pd.Series
     positions: pd.DataFrame
     weights: pd.DataFrame
     entries: int
@@ -245,6 +461,21 @@ class Book:
     def position(self) -> pd.Series:
         """The book's average position across its symbols (0 when flat)."""
         return self.positions.mean(axis=1)
+
+    @property
+    def spot_notional(self) -> pd.Series:
+        """The spot leg's notional as a fraction of the book's equity.
+
+        This is the capital the book ties up: the long spot leg is funded with
+        cash, while the short perp leg is self-financing (the short's proceeds
+        are posted as its margin), so the net capital at risk is the spot leg's
+        notional. It is the base of the capital charge of the realistic cost
+        model.
+        """
+        spot_columns = [c for c in self.weights.columns if c.endswith("_spot")]
+        if not spot_columns:
+            return pd.Series(0.0, index=self.weights.index)
+        return self.weights[spot_columns].sum(axis=1)
 
 
 def position_changes(positions: pd.DataFrame) -> pd.DataFrame:
@@ -309,20 +540,33 @@ def build_book(
     gross = (weight * path["gross_carry"].astype(float) * position).astype(float)
 
     if turnover_convention == "drift":
-        rebalance = weight * (spot.abs() + perp.abs()) * position
+        # Each leg is reset to its own constant notional every day, so each
+        # leg trades the drift of its own price.
+        rebalance_spot = weight * spot.abs() * position
+        rebalance_perp = weight * perp.abs() * position
     elif turnover_convention == "parity":
-        rebalance = weight * (spot - perp).abs() * position
+        # The two legs are kept at equal dollar notional: only the divergence
+        # between them is traded. The adjustment is executed on the spot leg
+        # (the perp leg is left at its drifted notional), which is the
+        # conservative choice under a per-leg fee schedule.
+        rebalance_spot = weight * (spot - perp).abs() * position
+        rebalance_perp = pd.Series(0.0, index=path.index)
     else:  # fixed_quantity
-        rebalance = pd.Series(0.0, index=path.index)
+        rebalance_spot = pd.Series(0.0, index=path.index)
+        rebalance_perp = pd.Series(0.0, index=path.index)
 
     if charge_entry:
         change = position.diff()
         change.iloc[0] = position.iloc[0]
-        transitions = change.abs() * 2.0 * weight
+        # Each leg changes by ``weight * |position change|``: an entry (long
+        # spot + short perp) and an exit are each charged on both legs.
+        transition_leg = change.abs() * weight
     else:
-        transitions = pd.Series(0.0, index=path.index)
+        transition_leg = pd.Series(0.0, index=path.index)
 
-    turnover = (rebalance + transitions).astype(float)
+    turnover_spot = (rebalance_spot + transition_leg).astype(float)
+    turnover_perp = (rebalance_perp + transition_leg).astype(float)
+    turnover = (rebalance_spot + rebalance_perp + 2.0 * transition_leg).astype(float)
 
     weights = pd.DataFrame(
         {
@@ -345,6 +589,8 @@ def build_book(
         turnover_convention=turnover_convention,
         gross=gross,
         turnover=turnover,
+        turnover_spot=turnover_spot,
+        turnover_perp=turnover_perp,
         positions=positions,
         weights=weights,
         entries=entries,
@@ -376,6 +622,8 @@ def portfolio_book(
     ]
     gross = sum(book.gross for book in books)
     turnover = sum(book.turnover for book in books)
+    turnover_spot = sum(book.turnover_spot for book in books)
+    turnover_perp = sum(book.turnover_perp for book in books)
     positions = pd.concat([book.positions for book in books], axis=1)
     weights = pd.concat([book.weights for book in books], axis=1)
     return Book(
@@ -386,6 +634,8 @@ def portfolio_book(
         turnover_convention=turnover_convention,
         gross=gross,
         turnover=turnover,
+        turnover_spot=turnover_spot,
+        turnover_perp=turnover_perp,
         positions=positions,
         weights=weights,
         entries=int(sum(book.entries for book in books)),
@@ -399,6 +649,61 @@ def portfolio_book(
 def net_series(book: Book, cost_bps: float) -> pd.Series:
     """Net-of-cost return series of *book* at *cost_bps* per unit of weight change."""
     return book.gross - book.turnover * (float(cost_bps) / 10000.0)
+
+
+def fee_series(book: Book, model: CostModel) -> pd.Series:
+    """The trading-fee series of *book* under *model*, as a fraction of equity per day.
+
+    The flat model charges ``flat_bps`` on the *total* turnover; the venue
+    model charges ``spot_bps`` on the spot leg's turnover and ``perp_bps`` on
+    the perp leg's turnover, i.e. on the leg weights that are actually traded.
+    """
+    if model.kind == "flat":
+        return book.turnover * (float(model.flat_bps) / 10000.0)
+    if model.kind == "venue":
+        return (
+            book.turnover_spot * (float(model.spot_bps) / 10000.0)
+            + book.turnover_perp * (float(model.perp_bps) / 10000.0)
+        )
+    raise ValueError(f"unknown cost model kind {model.kind!r}")
+
+
+def capital_charge_series(book: Book, annual_rate: float) -> pd.Series:
+    """The daily charge for the capital the spot leg ties up.
+
+    The charge is ``spot_notional * annual_rate / 365`` per day, where
+    ``spot_notional`` is the spot leg's notional as a fraction of the book's
+    equity. The spot leg is funded with cash, while the short perp leg is
+    self-financing (the short's own proceeds are posted as its margin), so
+    the net capital the strategy locks up is the spot leg's notional.
+
+    A **negative** rate is a rebate on the locked capital; it is applied like
+    any other rate, because the break-even solver needs it to bracket the
+    crossing when the book is already unprofitable before the capital is
+    charged.
+
+    **Convention.** The repository's *backtest-baseline* Sharpe/Sortino
+    already subtract the 2% risk-free rate from the ratio's numerator, but the
+    *return* series does not pay it. When a capital charge is applied here,
+    the return series does pay it, so the backtest-scale metrics of that row
+    are computed with a zero risk-free rate to avoid charging it twice; the
+    *canonical* gate convention (``arithmetic_annualized_rf0``) is a
+    zero-risk-free-rate convention in both the numerator and the denominator
+    and is therefore unaffected.
+    """
+    if annual_rate == 0.0:
+        return pd.Series(0.0, index=book.gross.index)
+    return book.spot_notional * (float(annual_rate) / PERIODS_PER_YEAR)
+
+
+def net_series_model(book: Book, model: CostModel) -> pd.Series:
+    """The net-of-cost return series of *book* under *model*."""
+    return (
+        book.gross
+        - fee_series(book, model)
+        - capital_charge_series(book, model.capital_rate_annual)
+    )
+
 
 
 def max_drawdown(returns: pd.Series) -> float:
@@ -462,12 +767,20 @@ def book_metrics(
     sample: str,
     cost_bps: float = DECISION_BPS,
     periods_per_year: int = PERIODS_PER_YEAR,
+    cost_model: CostModel | None = None,
 ) -> dict[str, Any]:
     """The metrics of *book* on the pre-registered *sample*.
 
     The return series is the **full path** sliced to the sample (so the cost of
     the first session of the sample is not lost), and the turnover and the
     position path are sliced with it.
+
+    ``cost_model`` selects the cost model whose drag is reported. When it is
+    ``None`` the repository's flat model is used and the behaviour is exactly
+    the Cycle 891 one (every committed number is unchanged). When a model that
+    charges a capital cost is given, the engine's backtest-scale metrics use a
+    zero risk-free rate, because the charge is already paid in the return
+    series (see :func:`capital_charge_series`).
     """
     idx = sample_index(net.index, sample)
     r = net.loc[idx]
@@ -477,12 +790,17 @@ def book_metrics(
     if len(r) < 2:
         return {"sessions": int(len(r)), "sample": sample}
 
+    if cost_model is not None and cost_model.capital_rate_annual > 0.0:
+        engine_rf = 0.0
+    else:
+        engine_rf = RF_ANNUAL
+
     engine = compute_metrics(
         r,
         w,
         COMMISSION_BPS,
         SLIPPAGE_BPS,
-        RF_ANNUAL,
+        engine_rf,
         periods_per_year=periods_per_year,
     )
     # The position changes are computed on the full path and then sliced, so a
@@ -490,6 +808,33 @@ def book_metrics(
     # spurious entry.
     change = position_changes(book.positions).loc[idx]
     ann_turnover = float(t.mean() * periods_per_year)
+
+    if cost_model is None:
+        fee_drag = ann_turnover * (float(cost_bps) / 10000.0)
+        capital_drag = 0.0
+    elif cost_model.kind == "flat":
+        fee_drag = ann_turnover * (float(cost_model.flat_bps) / 10000.0)
+        capital_drag = float(
+            book.spot_notional.loc[idx].mean()
+            * (float(cost_model.capital_rate_annual) / PERIODS_PER_YEAR)
+            * periods_per_year
+        )
+    else:
+        spot_t = book.turnover_spot.loc[idx]
+        perp_t = book.turnover_perp.loc[idx]
+        fee_drag = float(
+            (
+                spot_t * (float(cost_model.spot_bps) / 10000.0)
+                + perp_t * (float(cost_model.perp_bps) / 10000.0)
+            ).mean()
+            * periods_per_year
+        )
+        capital_drag = float(
+            book.spot_notional.loc[idx].mean()
+            * (float(cost_model.capital_rate_annual) / PERIODS_PER_YEAR)
+            * periods_per_year
+        )
+
     return {
         "sample": sample,
         "sessions": int(len(r)),
@@ -506,13 +851,19 @@ def book_metrics(
             r[r < 0].std(ddof=1) * np.sqrt(periods_per_year)
         ),
         "risk_free_rate_annual": RF_ANNUAL,
+        "engine_risk_free_rate_annual": float(engine_rf),
         "max_drawdown": float(engine["max_drawdown"]),
         "max_drawdown_recomputed": max_drawdown(r),
         "profit_factor": float(engine["profit_factor"]),
         "total_return": float(engine["total_return"]),
         "avg_gross_exposure": float(engine["avg_exposure"]),
         "annualized_turnover_units": ann_turnover,
-        "annualized_cost_drag": ann_turnover * (float(cost_bps) / 10000.0),
+        "annualized_turnover_spot_units": float(book.turnover_spot.loc[idx].mean() * periods_per_year),
+        "annualized_turnover_perp_units": float(book.turnover_perp.loc[idx].mean() * periods_per_year),
+        "annualized_cost_drag": fee_drag + capital_drag,
+        "annualized_fee_drag": fee_drag,
+        "annualized_capital_charge_drag": capital_drag,
+        "avg_spot_notional_fraction": float(book.spot_notional.loc[idx].mean()),
         "rebalance_days": int((t > 1e-12).sum()),
         "position_entries": int((change > 0).to_numpy().sum()),
         "position_exits": int((change < 0).to_numpy().sum()),
@@ -810,9 +1161,9 @@ def convergence_sensitivity(paths: dict[str, pd.DataFrame]) -> dict[str, Any]:
     return out
 
 
-def yearly_stability(book: Book, cost_bps: float = DECISION_BPS) -> dict[str, Any]:
+def yearly_stability(book: Book, cost_bps: float = DECISION_BPS, cost_model: CostModel | None = None) -> dict[str, Any]:
     """Net annualized return, canonical Sharpe and max drawdown per calendar year."""
-    net = net_series(book, cost_bps)
+    net = net_series(book, cost_bps) if cost_model is None else net_series_model(book, cost_model)
     rows: dict[str, Any] = {}
     for year in sorted({stamp.year for stamp in net.index}):
         idx = net.index[net.index.year == year]
@@ -924,18 +1275,22 @@ def evaluate_book(
     book: Book,
     cost_bps: float = DECISION_BPS,
     bootstrap_samples: tuple[str, ...] = ("full", "post2022", "test_oos"),
+    cost_model: CostModel | None = None,
 ) -> dict[str, Any]:
     """The full metric set of one book."""
-    net = net_series(book, cost_bps)
+    if cost_model is None:
+        net = net_series(book, cost_bps)
+    else:
+        net = net_series_model(book, cost_model)
     samples = {
-        sample: book_metrics(book, net, sample, cost_bps=cost_bps)
+        sample: book_metrics(book, net, sample, cost_bps=cost_bps, cost_model=cost_model)
         for sample in SPLITS
     }
     intervals = {
         sample: bootstrap_ci(net.loc[sample_index(net.index, sample)])
         for sample in bootstrap_samples
     }
-    return {
+    result = {
         "book": book.name,
         "symbol": book.symbol,
         "rule": book.rule.rule_id,
@@ -944,13 +1299,277 @@ def evaluate_book(
         "turnover_convention": book.turnover_convention,
         "leg_weight": book.weight,
         "cost_bps_per_unit": cost_bps,
+        "cost_model": cost_model.key if cost_model is not None else "flat_3bp",
         "samples": samples,
         "bootstrap": intervals,
         "entries_full_sample": book.entries,
         "exits_full_sample": book.exits,
-        "yearly": yearly_stability(book, cost_bps),
-        "cost_sensitivity": cost_sensitivity(book),
+        "yearly": yearly_stability(book, cost_bps, cost_model=cost_model),
     }
+    if cost_model is None:
+        # The flat-cost sensitivity grid belongs to the repository's flat
+        # model only; the cost models below replace it.
+        result["cost_sensitivity"] = cost_sensitivity(book)
+    return result
+
+
+# ======================================================================
+# Break-evens (Cycle 892)
+# ======================================================================
+def _geometric_net(book: Book, model: CostModel, sample: str) -> float:
+    """The geometric annualized net return of *book* under *model* on *sample*.
+
+    A non-finite value (a compounding book that goes to zero under an
+    extreme cost) is reported as -100%, so the bisection sees a monotone
+    objective instead of a hole.
+    """
+    net = net_series_model(book, model)
+    value = annualized_return(net.loc[sample_index(net.index, sample)], PERIODS_PER_YEAR)
+    return float(value) if np.isfinite(value) else -1.0
+
+
+def break_even_flat_bps(book: Book, sample: str = "full") -> dict[str, Any]:
+    """The flat cost per unit at which the net annualized return is zero.
+
+    This is the cost screen's break-even, computed on the same series and
+    with the same bisection (``research.cost_admissibility_screen.py:
+    solve_break_even_cost_bps``), but on the crypto conventions (365-day
+    annualization, the position transitions charged).
+    """
+    from research.cost_admissibility_screen import solve_break_even_cost_bps  # noqa: PLC0415
+
+    def objective(cost_bps: float) -> float:
+        net = net_series(book, cost_bps)
+        value = annualized_return(
+            net.loc[sample_index(net.index, sample)], PERIODS_PER_YEAR
+        )
+        return float(value) if np.isfinite(value) else -1.0
+
+    solution = solve_break_even_cost_bps(objective, lo=-100.0, hi=500.0)
+    return {
+        "sample": sample,
+        "solution_bps": solution["solution"],
+        "bracketed": solution["bracketed"],
+        "reason": solution["reason"],
+        "note": (
+            "The flat cost per unit (both legs, one number) at which the net "
+            "annualized return is exactly zero."
+        ),
+    }
+
+
+def break_even_capital_rate(
+    book: Book, fee_model: CostModel, sample: str = "full"
+) -> dict[str, Any]:
+    """The annual capital charge on the spot leg at which the net return is zero.
+
+    The trading fees are held at *fee_model* (the published venue schedule);
+    only the capital charge is solved for. A negative solution means the book
+    is already unprofitable before the capital is charged.
+    """
+    from research.cost_admissibility_screen import solve_break_even_cost_bps  # noqa: PLC0415
+
+    def objective(rate: float) -> float:
+        model = replace(fee_model, capital_rate_annual=float(rate))
+        return _geometric_net(book, model, sample)
+
+    solution = solve_break_even_cost_bps(objective, lo=-0.5, hi=0.5)
+    return {
+        "sample": sample,
+        "solution_annual_rate": solution["solution"],
+        "bracketed": solution["bracketed"],
+        "reason": solution["reason"],
+        "fee_model": fee_model.key,
+        "note": (
+            "The annual rate charged on the spot leg's notional at which the "
+            "net annualized return is exactly zero, with the trading fees "
+            "held at the stated model."
+        ),
+    }
+
+
+def break_even_venue_multiplier(
+    book: Book, model: CostModel, sample: str = "full"
+) -> dict[str, Any]:
+    """The multiple of the venue fee schedule at which the net return is zero.
+
+    The capital charge is held at *model*'s rate; only the published fee
+    schedule is scaled. A multiplier below 1 means the edge survives a fee
+    schedule that is cheaper than the published one.
+    """
+    from research.cost_admissibility_screen import solve_break_even_cost_bps  # noqa: PLC0415
+
+    def objective(multiplier: float) -> float:
+        scaled = replace(
+            model,
+            spot_bps=model.spot_bps * float(multiplier),
+            perp_bps=model.perp_bps * float(multiplier),
+        )
+        return _geometric_net(book, scaled, sample)
+
+    solution = solve_break_even_cost_bps(objective, lo=0.0, hi=200.0)
+    return {
+        "sample": sample,
+        "solution_multiplier": solution["solution"],
+        "bracketed": solution["bracketed"],
+        "reason": solution["reason"],
+        "cost_model": model.key,
+        "note": (
+            "The multiple of the published fee schedule at which the net "
+            "annualized return is exactly zero."
+        ),
+    }
+
+
+def break_even_table(book: Book, sample: str = "full") -> dict[str, Any]:
+    """The three break-evens of one book: flat cost, capital charge, fee multiple."""
+    fee_model = COST_MODEL_BY_KEY["venue_taker_slippage"]
+    headline = COST_MODEL_BY_KEY[HEADLINE_COST_MODEL]
+    return {
+        "break_even_flat_cost_bps": break_even_flat_bps(book, sample),
+        "break_even_capital_charge_annual": break_even_capital_rate(
+            book, fee_model, sample
+        ),
+        "break_even_venue_fee_multiplier": break_even_venue_multiplier(
+            book, headline, sample
+        ),
+    }
+
+
+# ======================================================================
+# Cost-model evaluation (Cycle 892)
+# ======================================================================
+#: The metric fields kept in the machine-readable summary of a cost model.
+_SLIM_METRIC_FIELDS: tuple[str, ...] = (
+    "sessions",
+    "ann_return_geometric",
+    "ann_return_arithmetic",
+    "ann_volatility",
+    "sharpe_canonical",
+    "sharpe_backtest_scale",
+    "max_drawdown",
+    "annualized_turnover_units",
+    "annualized_turnover_spot_units",
+    "annualized_turnover_perp_units",
+    "annualized_fee_drag",
+    "annualized_capital_charge_drag",
+    "annualized_cost_drag",
+    "avg_spot_notional_fraction",
+    "position_entries",
+    "position_exits",
+    "rebalance_days",
+    "invested_fraction",
+)
+
+#: The metric fields kept for the non-headline cost models (the record's
+#: tables carry the full set; the machine-readable summary stays compact).
+_KEY_METRIC_FIELDS: tuple[str, ...] = (
+    "ann_return_geometric",
+    "sharpe_canonical",
+    "max_drawdown",
+    "annualized_fee_drag",
+    "annualized_capital_charge_drag",
+)
+
+
+def _slim_samples(samples: dict[str, Any], fields: tuple[str, ...] = _SLIM_METRIC_FIELDS) -> dict[str, Any]:
+    """The reduced metric set kept in the machine-readable summary."""
+    out: dict[str, Any] = {}
+    for sample, metrics in samples.items():
+        out[sample] = {key: metrics[key] for key in fields if key in metrics}
+    return out
+
+
+def evaluate_cost_models(paths: dict[str, pd.DataFrame]) -> dict[str, Any]:
+    """Every rule under every cost model: metrics, break-evens and gates.
+
+    The rules (three pre-registered) and the symbols (two) are exactly the
+    ones of the flat-model evaluation: the cost models are **sensitivity
+    analyses of the same configurations**, not new trials.
+    """
+    portfolio: dict[str, dict[str, Any]] = {}
+    per_symbol: dict[str, dict[str, Any]] = {}
+    gates: dict[str, dict[str, Any]] = {}
+    break_evens: dict[str, dict[str, Any]] = {}
+
+    for rule in RULES:
+        portfolio[rule.rule_id] = {}
+        per_symbol[rule.rule_id] = {}
+        gates[rule.rule_id] = {}
+        break_evens[rule.rule_id] = {}
+        for model in COST_MODELS:
+            book = portfolio_book(
+                paths, rule, turnover_convention=HEADLINE_CONVENTION
+            )
+            result = evaluate_book(book, bootstrap_samples=(), cost_model=model)
+            headline = model.key == HEADLINE_COST_MODEL
+            portfolio[rule.rule_id][model.key] = {
+                "samples": _slim_samples(result["samples"]),
+            }
+            symbol_results: dict[str, Any] = {}
+            for base in BASE_SYMBOLS:
+                symbol_book = build_book(
+                    paths[base],
+                    rule,
+                    weight=1.0,
+                    turnover_convention=HEADLINE_CONVENTION,
+                )
+                symbol_results[base] = evaluate_book(
+                    symbol_book, bootstrap_samples=(), cost_model=model
+                )
+            if headline:
+                per_symbol[rule.rule_id][model.key] = {
+                    base: _slim_samples(result["samples"])
+                    for base, result in symbol_results.items()
+                }
+            gates[rule.rule_id][model.key] = promotion_gate(symbol_results)
+        for sample in ("full", "test_oos"):
+            book = portfolio_book(paths, rule, turnover_convention=HEADLINE_CONVENTION)
+            break_evens[rule.rule_id][sample] = break_even_table(book, sample)
+
+    return {
+        "headline_cost_model": HEADLINE_COST_MODEL,
+        "headline_turnover_convention": HEADLINE_CONVENTION,
+        "portfolio": portfolio,
+        "per_symbol": per_symbol,
+        "gates": gates,
+        "break_evens": break_evens,
+    }
+
+
+def turnover_convention_bounds(paths: dict[str, pd.DataFrame]) -> dict[str, Any]:
+    """The headline cost model under each turnover convention (the trading-cost bound).
+
+    The pre-registered gross path is the constant-notional construction, so
+    the conventions differ in the trading they imply, not in the series they
+    are computed on. The row therefore states how much of the answer the
+    trading-frequency question can move.
+    """
+    headline = COST_MODEL_BY_KEY[HEADLINE_COST_MODEL]
+    out: dict[str, Any] = {}
+    for rule in RULES:
+        rows: dict[str, Any] = {}
+        for convention in TURNOVER_CONVENTIONS:
+            book = portfolio_book(paths, rule, turnover_convention=convention)
+            net = net_series_model(book, headline)
+            metrics = book_metrics(
+                book, net, "full", cost_model=headline
+            )
+            rows[convention] = {
+                "note": TURNOVER_NOTES[convention],
+                "consistent_with_pre_registered_gross_path": convention
+                == HEADLINE_CONVENTION,
+                "ann_return_geometric": metrics["ann_return_geometric"],
+                "sharpe_canonical": metrics["sharpe_canonical"],
+                "max_drawdown": metrics["max_drawdown"],
+                "annualized_turnover_units": metrics["annualized_turnover_units"],
+                "annualized_fee_drag": metrics["annualized_fee_drag"],
+                "annualized_capital_charge_drag": metrics[
+                    "annualized_capital_charge_drag"
+                ],
+            }
+        out[rule.rule_id] = rows
+    return out
 
 
 def promotion_gate(
@@ -1077,6 +1696,9 @@ def main() -> int:
         "capacity": capacity_analysis(paths),
     }
 
+    cost_models = evaluate_cost_models(paths)
+    convention_bounds = turnover_convention_bounds(paths)
+
     meta = {
         "generated_at": datetime.now(UTC).isoformat(),
         "periods_per_year": PERIODS_PER_YEAR,
@@ -1108,12 +1730,71 @@ def main() -> int:
         "trial_count": (
             "6 candidate configurations (3 rules x 2 symbols); the BTC/ETH "
             "portfolio is an equal-weight combination of the two symbol books, "
-            "not an additional configuration. The robustness rows are "
-            "sensitivity analyses of the same configurations, not new trials."
+            "not an additional configuration. The robustness rows and the "
+            "cost-model rows (capital charge, venue fee schedule, turnover "
+            "convention) are sensitivity analyses of the same configurations, "
+            "not new trials."
         ),
         "promotion_gates": {
             "net_oos_sharpe_min": PROMOTION_SHARPE_MIN,
             "min_pooled_oos_trades": PROMOTION_MIN_POOLED_OOS_TRADES,
+        },
+        "cost_models": {
+            "headline": HEADLINE_COST_MODEL,
+            "headline_turnover_convention": HEADLINE_CONVENTION,
+            "models": {
+                model.key: {
+                    "label": model.label,
+                    "kind": model.kind,
+                    "flat_bps_per_unit": model.flat_bps,
+                    "spot_bps_per_unit": model.spot_bps,
+                    "perp_bps_per_unit": model.perp_bps,
+                    "capital_rate_annual": model.capital_rate_annual,
+                    "source": model.source,
+                    "note": model.note,
+                }
+                for model in COST_MODELS
+            },
+            "venue_fee_schedule": {
+                "venue": "Binance",
+                "tier": "VIP 0 (standard, published schedule)",
+                "spot_maker_bps": VENUE_SPOT_MAKER_BPS,
+                "spot_taker_bps": VENUE_SPOT_TAKER_BPS,
+                "perp_maker_bps": VENUE_PERP_MAKER_BPS,
+                "perp_taker_bps": VENUE_PERP_TAKER_BPS,
+                "repository_slippage_bps_per_unit": REPO_SLIPPAGE_BPS,
+                "sources": [
+                    "Binance, 'VIP Program: Updates to Spot and Margin Trading "
+                    "Fees for VIP 3 - VIP 9 Users' (2024-10-07): Normal User "
+                    "maker 0.1000% / taker 0.1000% on spot.",
+                    "Binance futures fee explainer (support FAQ 360033544231): "
+                    "a Regular User's maker fee is 0.02% and taker fee 0.05% "
+                    "on USDⓈ-M futures.",
+                    "config/settings.yaml: default_slippage_bps (the "
+                    "repository's own slippage assumption).",
+                ],
+                "accessed": "2026-10-20",
+                "note": (
+                    "Published schedule used as a documented assumption; no "
+                    "live fees are implied (the account-specific table is only "
+                    "visible after login). The BNB fee discount is not claimed."
+                ),
+            },
+            "capital_charge_grid": {
+                name: rate for name, rate in CAPITAL_CHARGE_RATES.items()
+            },
+            "capital_charge_convention": (
+                "The charge is applied to the spot leg's notional (the cash the "
+                "delta-neutral book ties up; the short perp leg is "
+                "self-financing because its own proceeds are posted as its "
+                "margin). The repository's backtest-baseline Sharpe/Sortino "
+                "already subtract the 2% risk-free rate from the ratio's "
+                "numerator while the return series does not pay it, so the "
+                "backtest-scale metrics of a capital-charge row are computed "
+                "with a zero risk-free rate (no double counting). The "
+                "canonical gate convention (arithmetic_annualized_rf0) is "
+                "unaffected either way."
+            ),
         },
     }
 
@@ -1125,6 +1806,8 @@ def main() -> int:
         "benchmark_spot_buy_and_hold": benchmark,
         "robustness": robustness,
         "promotion_gates": per_symbol_gate_results,
+        "cost_model_evaluation": cost_models,
+        "turnover_convention_bounds": convention_bounds,
     }
 
     artifact = render_artifact(summary)
@@ -1142,6 +1825,21 @@ def main() -> int:
             f"turn/yr={full['annualized_turnover_units']:.2f} "
             f"gate_pass={gate['promotion_gate_pass']}"
         )
+    print("--- cost models (headline turnover convention: "
+          f"{HEADLINE_CONVENTION}) ---")
+    for rule in RULES:
+        row = cost_models["portfolio"][rule.rule_id]
+        for model in COST_MODELS:
+            full = row[model.key]["samples"]["full"]
+            oos = row[model.key]["samples"]["test_oos"]
+            gate = cost_models["gates"][rule.rule_id][model.key]
+            print(
+                f"{rule.rule_id:28s} {model.key:28s} "
+                f"ann_net={full['ann_return_geometric']:+.4%} "
+                f"sharpe={full['sharpe_canonical']:.3f} "
+                f"oos_sharpe={oos['sharpe_canonical']:.3f} "
+                f"gate_pass={gate['promotion_gate_pass']}"
+            )
     return 0
 
 
@@ -1156,6 +1854,45 @@ def _fmt_bp(value: float) -> str:
     return f"{value:.4f} bp"
 
 
+def _compact_summary(summary: dict[str, Any]) -> dict[str, Any]:
+    """The machine-readable summary, with the cost-model grid compacted.
+
+    The cost-model grid is a sensitivity analysis of the same six
+    configurations, so the machine-readable payload keeps the headline model
+    in full and only the key metrics of the other models. The tables in the
+    record above carry every number.
+    """
+    compact = dict(summary)
+    cost_eval = summary["cost_model_evaluation"]
+    headline = cost_eval["headline_cost_model"]
+    compact["cost_model_evaluation"] = {
+        "headline_cost_model": headline,
+        "headline_turnover_convention": cost_eval["headline_turnover_convention"],
+        "portfolio": {
+            rule_id: {
+                model_key: {
+                    "samples": {
+                        sample: {
+                            key: metrics[key]
+                            for key in _KEY_METRIC_FIELDS
+                            if key in metrics
+                        }
+                        for sample, metrics in result["samples"].items()
+                    }
+                    if model_key != headline
+                    else result
+                }
+                for model_key, result in rows.items()
+            }
+            for rule_id, rows in cost_eval["portfolio"].items()
+        },
+        "per_symbol": cost_eval["per_symbol"],
+        "gates": cost_eval["gates"],
+        "break_evens": cost_eval["break_evens"],
+    }
+    return compact
+
+
 def render_artifact(summary: dict[str, Any]) -> str:
     """Render the experiment record of this evaluation."""
     meta = summary["meta"]
@@ -1168,15 +1905,22 @@ def render_artifact(summary: dict[str, Any]) -> str:
     lines: list[str] = []
     add = lines.append
 
-    add("# Experiment: cryptofunding_002_evaluation — hardened net-of-cost evaluation (Cycle 891)")
+    add("# Experiment: cryptofunding_002_evaluation — realistic execution and capital-cost model (Cycle 892)")
     add("")
     add("Hypothesis: `research/hypotheses/cryptofunding_001.md`")
     add("")
     add(
-        "This record supersedes the Cycle 890 evaluation "
+        "This record supersedes the Cycle 891 evaluation "
         "(`research/experiments/cryptofunding_002_evaluation.md`, previous "
-        "revision), which annualized a 24/7 crypto series at 252 periods/year "
-        "and never charged the entry or the exit of the funding-positive rule."
+        "revision), which measured the net capture of the carry with the "
+        "repository's flat 3 bp/unit turnover cost alone: no charge for the "
+        "capital the book ties up in the spot leg and no venue-specific fee "
+        "schedule. Cycle 892 measures the same three pre-registered rules "
+        "under a realistic execution and capital-cost model and re-evaluates "
+        "the promotion gates under it. The Cycle 891 numbers (flat model, "
+        "365-day annualization, charged entry/exit transitions, previous-day "
+        "funding signal) are unchanged and are reported below as the flat-model "
+        "rows."
     )
     add("")
 
@@ -1257,6 +2001,93 @@ def render_artifact(summary: dict[str, Any]) -> str:
     for name, bounds in meta["splits"].items():
         add(f"  * `{name}`: {bounds['start']} .. {bounds['end']}")
     add(f"* **Trial count:** {meta['trial_count']}")
+    add("")
+
+    # ---- cost models --------------------------------------------------
+    cost_meta = meta["cost_models"]
+    fee_meta = cost_meta["venue_fee_schedule"]
+    add("## Cost models (Cycle 892)")
+    add("")
+    add(
+        "The repository's flat model charges one number per unit of weight "
+        "change and nothing for the capital the book ties up. Cycle 892 "
+        "measures the same three pre-registered rules under a realistic "
+        "execution and capital-cost model:"
+    )
+    add("")
+    add("| Model | Trading cost | Capital charge | Source |")
+    add("|---|---|---|---|")
+    for key, model in cost_meta["models"].items():
+        if model["kind"] == "flat":
+            trading = f"{model['flat_bps_per_unit']:.1f} bp per unit of weight change (both legs)"
+        else:
+            trading = (
+                f"spot {model['spot_bps_per_unit']:.1f} bp / perp "
+                f"{model['perp_bps_per_unit']:.1f} bp per unit of leg turnover"
+            )
+        charge = f"{model['capital_rate_annual'] * 100:.2f}%/yr on the spot leg's notional"
+        marker = " **(headline)**" if key == cost_meta["headline"] else ""
+        add(f"| `{key}`{marker} | {trading} | {charge} | {model['source']} |")
+    add("")
+    add("### The venue fee schedule")
+    add("")
+    add(
+        f"**{fee_meta['venue']} {fee_meta['tier']}** (published schedule, accessed "
+        f"{fee_meta['accessed']}):"
+    )
+    add("")
+    add("| Leg | Maker | Taker |")
+    add("|---|---|---|")
+    add(
+        f"| Spot | {fee_meta['spot_maker_bps']:.1f} bp | "
+        f"{fee_meta['spot_taker_bps']:.1f} bp |"
+    )
+    add(
+        f"| USDⓈ-M perp | {fee_meta['perp_maker_bps']:.1f} bp | "
+        f"{fee_meta['perp_taker_bps']:.1f} bp |"
+    )
+    add("")
+    for source in fee_meta["sources"]:
+        add(f"* {source}")
+    add("")
+    add(
+        f"The published fees are applied to the **leg weights that are actually "
+        f"traded**, and the repository's own slippage assumption "
+        f"({fee_meta['repository_slippage_bps_per_unit']:.1f} bp per unit of weight "
+        "change) is added on top, because a fee schedule does not model "
+        "execution slippage. " + fee_meta["note"]
+    )
+    add("")
+    add("### The capital charge")
+    add("")
+    add(cost_meta["capital_charge_convention"])
+    add("")
+    add("| Sensitivity | Annual rate on the spot leg's notional |")
+    add("|---|---|")
+    for name, rate in cost_meta["capital_charge_grid"].items():
+        add(f"| `{name}` | {rate * 100:.2f}% |")
+    add("")
+    add(
+        "The 0% row is the row in which the capital is free; the `repo_rf` row "
+        "is the repository's own risk-free rate and is the **headline**; the "
+        "`usdt_5pct` row is the opportunity cost of the locked cash at a "
+        "stablecoin-equivalent lending yield (a documented assumption, not a "
+        "quoted rate)."
+    )
+    add("")
+    add("### Which model is the headline, and why")
+    add("")
+    add(
+        f"**Headline: `{cost_meta['headline']}` under the "
+        f"`{cost_meta['headline_turnover_convention']}` turnover convention.** "
+        "It is the conservative end of both cost axes at once: the *taker* "
+        "fee schedule (the more expensive of the two published rates on the "
+        "perp leg), the repository's slippage assumption on top of it, and the "
+        "repository's risk-free rate as the charge for the capital the spot "
+        "leg ties up. The cheaper corners - the maker schedule, no capital "
+        "charge, a 5% yield - are reported as rows, and the flat model is "
+        "reported unchanged so that the cost-model effect is isolated."
+    )
     add("")
 
     # ---- rules ------------------------------------------------------
@@ -1356,6 +2187,146 @@ def render_artifact(summary: dict[str, Any]) -> str:
         )
     add("")
 
+    # ---- cost-model results -------------------------------------------
+    cost_eval = summary["cost_model_evaluation"]
+    add("## Results under the cost models (portfolio, equal weight BTC/ETH)")
+    add("")
+    add(
+        "Every pre-registered rule under every cost model, on every "
+        "pre-registered sample. The rules and the symbols are the same as in "
+        "the flat-model table above; only the cost model changes."
+    )
+    add("")
+    add(
+        "| Rule | Cost model | Sample | Ann. net (geo) | Sharpe (canonical) | "
+        "Max DD | Turnover/yr | Fee drag/yr | Capital drag/yr |"
+    )
+    add("|---|---|---|---|---|---|---|---|---|")
+    for rule_id, rows in cost_eval["portfolio"].items():
+        for model_key, result in rows.items():
+            for sample in ("full", "train", "val", "test_oos", "post2022"):
+                m = result["samples"][sample]
+                add(
+                    f"| `{rule_id}` | `{model_key}` | {sample} | "
+                    f"{_fmt_pct(m['ann_return_geometric'])} | "
+                    f"{m['sharpe_canonical']:.3f} | {_fmt_pct(m['max_drawdown'])} | "
+                    f"{m['annualized_turnover_units']:.2f} | "
+                    f"{_fmt_pct(m['annualized_fee_drag'])} | "
+                    f"{_fmt_pct(m['annualized_capital_charge_drag'])} |"
+                )
+    add("")
+    add(
+        "The venue model charges the spot leg and the perp leg separately, so "
+        "the two legs' turnovers are reported as well (the fee drag is the "
+        "weighted average of the two published rates over the turnover that "
+        "is actually traded):"
+    )
+    add("")
+    add(
+        "| Rule | Cost model | Spot turnover/yr | Perp turnover/yr | "
+        "Spot notional (mean share of equity) | Fee drag/yr |"
+    )
+    add("|---|---|---|---|---|---|")
+    for rule_id, rows in cost_eval["portfolio"].items():
+        for model_key, result in rows.items():
+            m = result["samples"]["full"]
+            add(
+                f"| `{rule_id}` | `{model_key}` | "
+                f"{m['annualized_turnover_spot_units']:.2f} | "
+                f"{m['annualized_turnover_perp_units']:.2f} | "
+                f"{m['avg_spot_notional_fraction']:.3f} | "
+                f"{_fmt_pct(m['annualized_fee_drag'])} |"
+            )
+    add("")
+
+    # ---- break-evens ---------------------------------------------------
+    add("### Break-evens")
+    add("")
+    add(
+        "The three break-evens of every rule (portfolio), on the full sample "
+        "and on the out-of-sample window:"
+    )
+    add("")
+    add(
+        "| Rule | Sample | Break-even flat cost/unit | Break-even capital charge "
+        "(annual, on the spot leg) | Break-even multiple of the venue schedule |"
+    )
+    add("|---|---|---|---|---|")
+    for rule_id, samples in cost_eval["break_evens"].items():
+        for sample, row in samples.items():
+            flat = row["break_even_flat_cost_bps"]["solution_bps"]
+            cap = row["break_even_capital_charge_annual"]["solution_annual_rate"]
+            mult = row["break_even_venue_fee_multiplier"]["solution_multiplier"]
+            flat_txt = _fmt_bp(flat) if flat is not None else "none"
+            cap_txt = _fmt_pct(cap, 2) if cap is not None else "none"
+            mult_txt = f"{mult:.2f}x" if mult is not None else "none"
+            add(
+                f"| `{rule_id}` | {sample} | {flat_txt} | {cap_txt} | {mult_txt} |"
+            )
+    add("")
+    add(
+        "* The **break-even flat cost per unit** is the cost screen's own "
+        "measure, computed on the same series: the flat cost at which the net "
+        "annualized return is exactly zero."
+    )
+    add(
+        "* The **break-even capital charge** holds the venue fees (taker + "
+        "repository slippage) fixed and solves for the annual rate on the spot "
+        "leg's notional at which the net annualized return is zero. A negative "
+        "value means the book is already unprofitable before the capital is "
+        "charged."
+    )
+    add(
+        "* The **break-even multiple of the venue schedule** holds the capital "
+        "charge (at the repository's risk-free rate) fixed and solves for the "
+        "multiple of the published fee schedule at which the net annualized "
+        "return is zero."
+    )
+    add("")
+
+    # ---- turnover convention ------------------------------------------
+    add("### The turnover convention: the headline and the bound")
+    add("")
+    add(
+        "The pre-registered gross path is the **constant-notional** "
+        "construction: the book resets the spot and the perp notionals to "
+        "`w * equity` every day. The only turnover convention that is "
+        "internally consistent with that gross path is therefore the daily "
+        "constant-notional rebalance (`drift`), and that is the headline: the "
+        "other two conventions do not describe the same book traded less "
+        "often, they describe a *different* book (a fixed-coin book is paid "
+        "its funding on a notional that scales with the coin's price, so its "
+        "return on equity is a different quantity), and adopting them would "
+        "require a self-consistent gross path that is outside this cycle's "
+        "scope."
+    )
+    add("")
+    add(
+        "What an implementer would actually trade is a constant-notional "
+        "target rebalanced on a *threshold* rather than every day, so the "
+        "headline's daily cadence **over**-states the trading cost. The two "
+        "other conventions bound the other end. The rows below are the "
+        "headline cost model under each convention, and they bound how much "
+        "the trading-frequency question can move the answer:"
+    )
+    add("")
+    add(
+        "| Rule | Convention | Consistent with the pre-registered gross path | "
+        "Ann. net | Sharpe | Turnover/yr | Fee drag/yr |"
+    )
+    add("|---|---|---|---|---|---|---|")
+    for rule_id, rows in summary["turnover_convention_bounds"].items():
+        for convention, row in rows.items():
+            add(
+                f"| `{rule_id}` | `{convention}` | "
+                f"{'yes' if row['consistent_with_pre_registered_gross_path'] else 'no (cost-only bound)'} | "
+                f"{_fmt_pct(row['ann_return_geometric'])} | "
+                f"{row['sharpe_canonical']:.3f} | "
+                f"{row['annualized_turnover_units']:.2f} | "
+                f"{_fmt_pct(row['annualized_fee_drag'])} |"
+            )
+    add("")
+
     # ---- bootstrap ---------------------------------------------------
     add("## Block-bootstrap intervals (moving block, 126-day blocks, 2000 draws)")
     add("")
@@ -1387,6 +2358,30 @@ def render_artifact(summary: dict[str, Any]) -> str:
         f"(gross identical: {recon['same_gross_series']}, turnover identical: "
         f"{recon['same_turnover_series']}), so the two rows describe the same "
         "candidate under two annualization conventions."
+    )
+    add("")
+    add(
+        "**The screen uses the repository's flat 3 bp/unit cost model.** It "
+        "does not use the venue fee schedule and it does not charge the "
+        "capital the spot leg ties up, so the screen's crypto row is the "
+        "flat-model row of this record and not its headline. The screen is "
+        "left untouched (the shared machinery and the other candidates' rows "
+        "are unchanged) and it still ends with `OVERALL: PASS`."
+    )
+    add("")
+    add(
+        "**The screen's ADMISSIBLE verdict is therefore a statement about the "
+        "flat 3 bp/unit model only.** It does not describe the headline model "
+        "of this record, in which the traded cost per unit is several times "
+        "the flat cost and the capital charge is not in the screen at all. "
+        "The question the screen answers for the headline is answered here "
+        "instead, by the break-evens: under the headline model the always-on "
+        "book still nets a positive return, its break-even multiple of the "
+        "published fee schedule is "
+        f"{cost_eval['break_evens']['always_on']['full']['break_even_venue_fee_multiplier']['solution_multiplier']:.2f}x "
+        "on the full sample, and its break-even capital charge is "
+        f"{_fmt_pct(cost_eval['break_evens']['always_on']['full']['break_even_capital_charge_annual']['solution_annual_rate'], 2)} "
+        "per year on the spot leg's notional."
     )
     add("")
     add("| Quantity | Screen (252) | This evaluation (365) |")
@@ -1619,6 +2614,8 @@ def render_artifact(summary: dict[str, Any]) -> str:
     # ---- gates -------------------------------------------------------
     add("## Promotion gates")
     add("")
+    add("### Under the repository's flat model (Cycle 891, unchanged)")
+    add("")
     add("| Rule | Net OOS Sharpe (canonical, 365) | Sharpe criterion | Pooled OOS round trips | Repo rebalance-day count | Settlement observations | Trade-count criterion | Gate |")
     add("|---|---|---|---|---|---|---|---|")
     for rule_id, gate in gates.items():
@@ -1634,41 +2631,131 @@ def render_artifact(summary: dict[str, Any]) -> str:
     add("")
     add(gates["always_on"]["gate_pass_note"])
     add("")
-
-    # ---- verdict -----------------------------------------------------
-    add("## Verdict")
+    add("### Under every cost model (the gate is re-evaluated, never relaxed)")
     add("")
     add(
-        "**Exploratory signal — not promoted.** The carry is real and large "
-        "net of the repository's cost model on every rule, symbol and sample, "
-        "and it survives the post-2022 falsification condition, but the "
-        "candidate is **not** promoted, for three measured reasons:"
+        "The gates are the repository's own thresholds, unchanged: a net "
+        "out-of-sample Sharpe (canonical, 365) of at least "
+        f"{PROMOTION_SHARPE_MIN} and more than "
+        f"{PROMOTION_MIN_POOLED_OOS_TRADES} pooled out-of-sample independent "
+        "trades. Only the cost model changes between the rows. The trade count "
+        "is a property of the position path, not of the cost model, so it does "
+        "not move between the rows."
     )
     add("")
     add(
-        "1. The pre-registered funding-positive rule is contaminated by a "
+        "| Rule | Cost model | Net OOS Sharpe (canonical, 365) | Sharpe criterion | "
+        "Pooled OOS round trips | Trade-count criterion | Gate |"
+    )
+    add("|---|---|---|---|---|---|---|")
+    sharpe_pass = 0
+    sharpe_fail = 0
+    trade_fail = 0
+    total_rows = 0
+    for rule_id, rows in cost_eval["gates"].items():
+        for model_key, gate in rows.items():
+            total_rows += 1
+            sharpe_pass += int(bool(gate["sharpe_criterion_pass"]))
+            sharpe_fail += int(not bool(gate["sharpe_criterion_pass"]))
+            trade_fail += int(not bool(gate["trade_count_criterion_pass"]))
+            add(
+                f"| `{rule_id}` | `{model_key}` | "
+                f"{gate['net_oos_sharpe_canonical_365']:.3f} | "
+                f"{'PASS' if gate['sharpe_criterion_pass'] else 'FAIL'} | "
+                f"{gate['pooled_oos_position_round_trips']} | "
+                f"{'PASS' if gate['trade_count_criterion_pass'] else 'FAIL'} | "
+                f"**{'PASS' if gate['promotion_gate_pass'] else 'FAIL'}** |"
+            )
+    add("")
+    add(
+        f"**Which criterion fails:** the trade-count criterion fails in all "
+        f"{trade_fail} of the {total_rows} rows (the pooled out-of-sample "
+        f"round trips are a property of the position path, not of the cost "
+        f"model); the Sharpe criterion passes in {sharpe_pass} and fails in "
+        f"{sharpe_fail} of them. The gate is therefore **FAIL** under every "
+        "cost model, and the gate is never relaxed: the thresholds are the "
+        "repository's own and are applied unchanged."
+    )
+    add("")
+
+    # ---- verdict -----------------------------------------------------
+    headline_rows = cost_eval["portfolio"]
+    always = headline_rows["always_on"][HEADLINE_COST_MODEL]["samples"]
+    always_flat = headline_rows["always_on"]["flat_3bp"]["samples"]
+    lagged = headline_rows["funding_positive_lagged"][HEADLINE_COST_MODEL]["samples"]
+    add("## Verdict")
+    add("")
+    add(
+        "**Exploratory signal — not promoted.** Under the **realistic** cost "
+        "model of this cycle (the published Binance VIP0 taker schedule plus "
+        "the repository's slippage assumption, plus the repository's "
+        "risk-free rate as the charge for the capital the spot leg ties up) "
+        "the always-on BTC/ETH carry still nets "
+        f"{_fmt_pct(always['full']['ann_return_geometric'])}/yr with a "
+        f"canonical Sharpe of {always['full']['sharpe_canonical']:.3f} on the "
+        "full sample, and the implementable funding-positive rule nets "
+        f"{_fmt_pct(lagged['full']['ann_return_geometric'])}/yr with a "
+        f"canonical Sharpe of {lagged['full']['sharpe_canonical']:.3f}. The "
+        "carry survives the realistic cost model, but the candidate is **not** "
+        "promoted, for four measured reasons:"
+    )
+    add("")
+    add(
+        "1. **The trade-count criterion of the promotion gate is not met** "
+        "under any cost model: the pooled out-of-sample independent round "
+        "trips are 95 (funding-positive) and 0 (always-on, which opens its "
+        "position before the out-of-sample window), against the repository's "
+        "100."
+    )
+    add(
+        "2. **The realistic cost model removes most of the out-of-sample "
+        "edge.** The always-on book's out-of-sample net return falls from "
+        f"{_fmt_pct(always_flat['test_oos']['ann_return_geometric'])}/yr "
+        f"(flat model) to "
+        f"{_fmt_pct(always['test_oos']['ann_return_geometric'])}/yr and its "
+        f"out-of-sample canonical Sharpe from "
+        f"{always_flat['test_oos']['sharpe_canonical']:.3f} to "
+        f"{always['test_oos']['sharpe_canonical']:.3f}; the implementable "
+        "funding-positive rule's out-of-sample Sharpe is **negative** under "
+        "the headline model. The carry is a low-volatility, low-return stream "
+        "whose out-of-sample margin does not survive a realistic fee schedule "
+        "and a realistic charge for the capital."
+    )
+    add(
+        "3. The pre-registered funding-positive rule is contaminated by a "
         "look-ahead (the same day's aggregate funding). The implementable "
         "variant, which also pays for its entries and exits, is materially "
         "weaker than the Cycle 890 record reported."
     )
     add(
-        "2. The Cycle 890 record reported "
-        "`promotion_gate_pass: true` on a trade count that counted daily "
-        "rebalances of a single position rather than independent round trips. "
-        "On the honest count the trade criterion is not met."
-    )
-    add(
-        "3. The edge is venue-specific (Binance only), regime-dependent "
+        "4. The edge is venue-specific (Binance only), regime-dependent "
         "(2021 is the best year by a wide margin) and structurally exposed to "
         "the funding-positive regime that produced it: a long period of "
         "negative funding removes the return *and* adds trading costs."
     )
     add("")
     add(
-        "The Sharpe criterion is met with a very large margin, so the "
-        "candidate deserves one more validation cycle (independent venue, "
-        "live-fee schedule, borrow/financing costs on the spot leg) before it "
-        "is either promoted or rejected."
+        "**What the realistic model changed.** The venue fee schedule is "
+        f"{VENUE_SPOT_TAKER_BPS / DECISION_BPS:.0f}x (spot) and "
+        f"{VENUE_PERP_TAKER_BPS / DECISION_BPS:.0f}x (perp) the repository's "
+        f"flat {DECISION_BPS:.0f} bp per unit, and the capital charge adds "
+        f"{RF_ANNUAL * 100:.0f}%/yr on the spot leg's notional; together they "
+        "take the always-on book from "
+        f"{_fmt_pct(always_flat['full']['ann_return_geometric'])}/yr to "
+        f"{_fmt_pct(always['full']['ann_return_geometric'])}/yr. The break-even "
+        "columns show how much room is left: the always-on book's break-even "
+        "multiple of the published fee schedule is "
+        f"{cost_eval['break_evens']['always_on']['full']['break_even_venue_fee_multiplier']['solution_multiplier']:.2f}x "
+        "and its break-even capital charge is "
+        f"{_fmt_pct(cost_eval['break_evens']['always_on']['full']['break_even_capital_charge_annual']['solution_annual_rate'], 2)}/yr."
+    )
+    add("")
+    add(
+        "The Sharpe criterion is met on the full sample, so the candidate "
+        "deserves one more validation cycle (an independent venue's price and "
+        "funding history, a self-consistent fixed-quantity or "
+        "threshold-rebalanced construction, and the borrow/financing side of "
+        "the spot leg) before it is either promoted or rejected."
     )
     add("")
 
@@ -1685,7 +2772,7 @@ def render_artifact(summary: dict[str, Any]) -> str:
     add("## Machine-readable summary")
     add("")
     add("```json")
-    add(json.dumps(summary, indent=2, sort_keys=True, default=str))
+    add(json.dumps(_compact_summary(summary), indent=2, sort_keys=True, default=str))
     add("```")
     add("")
     return "\n".join(lines)

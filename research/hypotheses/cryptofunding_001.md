@@ -48,7 +48,13 @@ gross carry concentrated in a single regime (2020-2021) with no carry in the pos
 
 ## Cost model assumptions
 Fees, borrow, margin, slippage per exchange schedule; capacity limited by Binance spot/perp
-liquidity. Not yet applied: the candidate has no cost model in the repository (next cycle).
+liquidity. **Applied in Cycle 891** (repository flat model: 3 bp per unit of weight change) and
+**extended in Cycle 892** (venue fee schedule + capital charge): Binance VIP 0 published fees
+(spot maker/taker 0.1000%, USDⓈ-M perp maker 0.02% / taker 0.05%, accessed 2026-10-20) applied
+to the leg weights actually traded, plus the repository's 2 bp/unit slippage assumption, plus a
+capital charge on the spot leg's notional (0% / the repository's 2% risk-free rate / a 5%
+USDT-equivalent yield). The headline model is the conservative corner: taker fees + the
+repository's slippage + the repository's risk-free rate as the capital charge.
 
 ## Status
 Pre-registered (Cycle 886). **Data blocker resolved (Cycle 889):** 2,464.7 days of 8h funding
@@ -59,9 +65,14 @@ candidate is an **exploratory signal** — net positive after the repository's c
 rule, symbol and sample, with a large Sharpe margin, but **not promoted**: the promotion gate's
 trade-count criterion is not met on independent position round trips, the pre-registered
 funding-positive rule is contaminated by a look-ahead, and the capacity of the trade is small.
-Evidence: `research/experiments/cryptofunding_002_data.md` (data),
-`research/experiments/cryptofunding_002_evaluation.md` (net-of-cost evaluation),
-`research/reports/cost_admissibility_screen_001.md` (cost screen),
+**Realistic cost model measured (Cycle 892):** the same three rules under the published Binance
+VIP0 fee schedule (plus the repository's slippage) and a capital charge on the spot leg. The
+always-on book still nets +9.22%/yr (canonical Sharpe 5.96) on the full sample, but its
+out-of-sample Sharpe falls from 11.14 to 1.52 and the implementable funding-positive rule's
+out-of-sample Sharpe turns **negative**; the gate is FAIL under every cost model. Verdict
+unchanged: **exploratory signal, not promoted**. Evidence: `research/experiments/cryptofunding_002_data.md`
+(data), `research/experiments/cryptofunding_002_evaluation.md` (net-of-cost evaluation and the
+realistic cost model), `research/reports/cost_admissibility_screen_001.md` (cost screen),
 `research/reports/opportunity_shortlist.md` (rank 8); Cycle 888 data note:
 `research/experiments/cryptofunding_001_data.md`.
 
@@ -170,3 +181,59 @@ No durable positive net carry after fees over multi-year history; < 100 independ
   `research/reports/cost_admissibility_screen_001.md`,
   `research/reports/opportunity_shortlist.md`,
   `tests/test_eval_cryptofunding.py` (21 invariants over the committed carry paths).
+
+## Cycle 892 amendment (cost model, not new trials)
+
+The rule set, the symbols, the splits and the annualization of the Cycle 890/891 pre-registration
+are **unchanged**. Cycle 892 replaces the *cost model* of the evaluation with a realistic
+execution and capital-cost model and re-evaluates the promotion gate under it. The cost models
+are **sensitivity analyses of the same six configurations** (3 rules x 2 symbols), not new
+trials; the BTC/ETH portfolio remains an equal-weight combination of the two symbol books.
+
+1. **Venue fee schedule.** The repository's flat 3 bp/unit is replaced by a per-leg schedule:
+   Binance VIP 0 published fees (spot maker/taker 0.1000%, USDⓈ-M perp maker 0.02% / taker
+   0.05%, sources and access date 2026-10-20 in the record), applied to the leg weights that are
+   actually traded, plus the repository's own 2 bp/unit slippage assumption (a published fee
+   schedule does not model execution slippage). A maker alternative is reported.
+2. **Capital charge.** The capital the spot leg ties up is charged at an annual rate: 0%, the
+   repository's 2% risk-free rate, or a 5% USDT-equivalent yield. The charge is applied to the
+   *return series*; the repository's backtest-baseline Sharpe/Sortino (which subtract the risk-free
+   rate from the ratio's numerator while the return series does not pay it) are therefore computed
+   with a zero risk-free rate on those rows, to avoid charging it twice. The canonical gate
+   convention is a zero-risk-free-rate convention and is unaffected.
+3. **Turnover convention.** The headline is the daily constant-notional rebalance (`drift`),
+   because it is the only convention that is internally consistent with the pre-registered
+   constant-notional gross path; `parity` and `fixed_quantity` are reported as cost-only bounds
+   and are explicitly **not** a valid headline, because a fixed-coin book is paid its funding on a
+   notional that scales with the coin's price, so its return on equity is a different quantity.
+4. **Break-evens.** Per rule: the break-even flat cost per unit, the break-even capital charge on
+   the spot leg, and the break-even multiple of the published fee schedule.
+5. **Gate.** Re-evaluated under every cost model with the repository's own thresholds, unchanged.
+
+## Cycle 892 Verdict (realistic execution and capital-cost model)
+
+- **Headline (venue taker + repository slippage + the repository's risk-free rate as the capital
+  charge, equal-weight BTC/ETH portfolio, 365-day annualization).** Always-on: **+9.22%/yr**,
+  canonical Sharpe **5.96**, max drawdown -2.12%, turnover 18.5 units/yr, fee drag +1.75%/yr,
+  capital charge +2.00%/yr (the flat-model row was +12.77%/yr, Sharpe 8.14). Implementable
+  funding-positive rule (previous-day signal): **+1.97%/yr**, canonical Sharpe **1.09** (flat
+  model: +10.53%/yr, Sharpe 6.60).
+- **Out-of-sample (2025-01-01..2026-09-30).** The always-on book's canonical Sharpe falls from
+  11.14 (flat model) to **1.52** and its net return from +3.51%/yr to **+0.48%/yr**; the
+  implementable funding-positive rule's out-of-sample Sharpe is **negative** (-6.46 on the pooled
+  per-symbol books). The out-of-sample margin of the edge does not survive a realistic fee
+  schedule and a realistic charge for the capital.
+- **Break-evens.** Always-on: the capital charge could rise to **+10.82%/yr** on the spot leg
+  (full sample) and the published fee schedule could be **6.03x** higher before the edge vanishes;
+  out of sample the headroom falls to +2.48%/yr and 1.34x. The implementable funding-positive
+  rule: +4.22%/yr and 1.21x on the full sample, and **negative** headroom out of sample (it needs
+  a rebate to break even).
+- **Gate.** FAIL under **every** cost model: the trade-count criterion (95 and 0 pooled
+  out-of-sample round trips against the repository's 100) fails in all 24 rows, and the Sharpe
+  criterion fails in 15 of them. The gate is not relaxed.
+- **Verdict: exploratory signal (not promoted), unchanged.** The carry is large enough to survive
+  a realistic cost model on the full sample, but not out of sample, and it is small-capacity,
+  venue-specific and regime-dependent. Evidence:
+  `research/experiments/cryptofunding_002_evaluation.md` (sections "Cost models (Cycle 892)",
+  "Results under the cost models", "Break-evens", "Promotion gates"),
+  `tests/test_eval_cryptofunding.py` (39 invariants over the committed carry paths).
