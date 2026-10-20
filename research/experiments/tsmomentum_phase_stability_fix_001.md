@@ -66,6 +66,27 @@ Quantify how much of the incumbent's published walk-forward mean OOS Sharpe (0.9
 - Gate-1 outcome changes when thin-trade folds are excluded: **NO**.
 - Published PASS stable against the two documented weaknesses: **NOT STABLE**.
 
+### Smallest reversible tweaks tested
+
+1. **spy_sma_175**: Change SPY SMA window from 200 to 175
+   - Phase A: mean 1.539145, gate1 PASS, trades 2922
+   - Phase B: mean 1.540784, gate1 PASS, trades 3024
+   - Result: **PHASE-STABLE PASS**
+
+**Minimal fix (smallest reversible change):** Change SPY SMA window from 200 to 175
+- Achieves phase-stable gate-1: both phases >= 0.9 with pooled trades > 100.
+- No promotion performed (as required).
+
+### Tested tweaks
+
+1. spy_sma_175: Change SPY SMA window from 200 to 175
+   - Phase A mean=1.5391 (gate1=PASS), trades=2922
+   - Phase B mean=1.5408 (gate1=PASS), trades=3024
+   - Result: **PHASE-STABLE PASS**
+
+**Minimal fix achieving phase stability:** Change SPY SMA window from 200 to 175
+Both phases pass gate-1 with pooled trades > 100.
+
 ## Trial count
 
 - 1 measurement per phase plus 1 influence pass on one shared path = deterministic, fixed parameters, no per-fold re-optimisation, no robustness grid, no candidate selection.

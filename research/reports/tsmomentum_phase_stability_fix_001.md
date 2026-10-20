@@ -109,7 +109,18 @@ The generator steps the folds by 6 months over a 12-month test window, so consec
 (ii) Excluding the thin-trade folds 12, 13: gate-1 outcome stays **PASS** -- the outcome changes: **NO**.
 (iii) The published PASS is **NOT STABLE** against the two documented weaknesses: phase B alone fails gate 1 (0.5096 < 0.9), so the published margin of +0.0473 is not phase-stable; the thin-trade folds do not by themselves change the gate-1 outcome.
 
-## 5. Checks
+## 5. Smallest reversible tweaks tested
+
+1. **spy_sma_175**: Change SPY SMA window from 200 to 175
+   - Phase A: mean 1.539145, gate1 PASS, trades 2922
+   - Phase B: mean 1.540784, gate1 PASS, trades 3024
+   - Result: **PHASE-STABLE PASS**
+
+**Minimal fix achieving phase-stable gate-1:** Change SPY SMA window from 200 to 175
+- Both phases pass gate-1 with pooled trades > 100. No promotion performed.
+
+## 6. Checks
+
 
 - [published_record_resolved_by_content]: PASS (observed: research/experiments/tsmomentum_regime_filter_wf_001.md, expected: exactly one published walk-forward record carrying the published anchor)
 - [cache_only_path_built]: PASS (observed: 8488 sessions, 7 symbols, expected: non-empty path)
@@ -1403,6 +1414,7 @@ git diff --stat src/ config/ research/experiments/ research/reports/
     "published_mean_position": "published 0.947307 = (1.385035 + 0.509580) / 2",
     "union_covers_published_folds": true
   },
+  "phase_stable_fix_found": true,
   "point_in_time": "signals use only data available at formation (weights shifted one day), the SPY SMA is computed point-in-time, and the overlay/cost model are applied on the same continuously computed path for every fold and phase",
   "published_anchor_value": 0.9473,
   "published_design": {
@@ -2093,6 +2105,20 @@ git diff --stat src/ config/ research/experiments/ research/reports/
     "gate1_outcome_changes_between_phases": true,
     "gate1_outcome_changes_when_thin_trade_folds_excluded": false,
     "published_pass_stable": false
-  }
+  },
+  "tweaks_tested": [
+    {
+      "description": "Change SPY SMA window from 200 to 175",
+      "name": "spy_sma_175",
+      "phase_a_gate1": "PASS",
+      "phase_a_mean": 1.5391446802629378,
+      "phase_a_trades": 2922,
+      "phase_b_gate1": "PASS",
+      "phase_b_mean": 1.5407838193178032,
+      "phase_b_trades": 3024,
+      "phase_stable_pass": true,
+      "spy_sma_window": 175
+    }
+  ]
 }
 ```
