@@ -1,0 +1,36 @@
+# Sample policy for long-sample diagnostics (Cycle 904)
+# Decision made explicitly and machine-readably. Consumed by research/common_inception_sample_audit.py.
+# The policy does not change the committed artifact; it only enforces the sample on which
+# the long-sample diagnostic's promotion gate table is evaluated going forward.
+
+schema_version: 1
+decision:
+  date: "2026-10-20"
+  decision_maker: "cycle-904"
+  evidence_artifact: "research/reports/common_inception_sample_audit_001.md"
+  summary: "The long-sample diagnostic's promotion gate table is evaluated on the common-inception sample (fully populated cross-section). Union-sample numbers remain published for continuity."
+  rule_id: "common_inception_fully_populated"
+  conditions_for_revisit:
+    - "change of universe"
+    - "change of the engine's window semantics"
+    - "a new asset in the universe"
+
+derivation:
+  rule: "common_inception = max of per-symbol first dates in the raw cache (re-derived from data/raw at measurement time; never a frozen date)"
+  method: "scan_raw_cache per universe asset; take max of stats['first_date']"
+  notes: "The rule is re-derived from the raw cache by the consuming tool; the policy must not be used to trust a hard-coded date."
+
+long_sample_diagnostic:
+  evaluation_sample: "common_inception_slice"
+  evaluation_rule: "Truncate the aligned price frame to the common inception before the signal, cost model, universe, lookback/skip/top_fraction and rebalance semantics are applied (common_inception_slice)."
+  publish_alongside:
+    - "common_inception_window"  # warm-up preserved
+    - "union_sample"              # continuity with committed artifact
+  warm_up_convention:
+    description: "The price frame is truncated at the common inception before the signal is formed (common_inception_slice). The warm-up-preserving variant (common_inception_window) is published beside it."
+    slice: "common_inception_slice"
+    window_preserving: "common_inception_window"
+  committed_artifact_policy: "Do not modify research/reports/promotion_feasibility_backtest_001.md; it keeps publishing the union-sample numbers it publishes today."
+
+universe_context:
+  note: "Applies to the incumbent long-sample diagnostic universe as measured; csmomentum_001 long-sample sample-definition control is out of scope for this cycle."
