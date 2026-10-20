@@ -185,6 +185,26 @@ $ git status --porcelain data/ config/               -> empty
   Live deployment remains unsupported. No gate, threshold, decision mapping,
   universe, cost model, candidate configuration or Sharpe convention was
   changed, and no file under `data/` or `config/` was written.
+* **No candidate work was started.** This cycle changed no candidate and
+  opened no new candidate family. For the avoidance of doubt: the
+  shortlist's rank-2 candidate (`csmomentum_001`, long-only cross-sectional
+  momentum over the 18-ETF cache) is **not** new work — it was pre-registered
+  in `research/hypotheses/csmomentum_001.md` (v001, Cycle 12) and evaluated
+  on the config-faithful month-end path in Cycle 871
+  (`research/month_end_candidate_reaudit.py`), where it failed its
+  pre-registered gate (walk-forward mean OOS Sharpe 0.847243 < 0.9); the
+  cost screen then measured it as needing to be *paid* 30.0967 bp/unit to
+  reach the gate. The file read in this cycle was that pre-existing
+  hypothesis, not a new pre-registration.
+* **Consumer audit of the changed key semantics.** The promotion artifact's
+  `sample` block is written by `research/promotion_feasibility_backtest.py`
+  and read by exactly two Python modules: `tests/test_rebalance_schedule.py`
+  (which asserts byte-identity and the `paper_sharpe` / `paper_max_dd` /
+  `psr_normal` strings — none of them in the `sample` block) and the new
+  `tests/test_promotion_feasibility_sample_window.py`. No reader anywhere
+  still treats `start_date` as the common inception; the one prose reference
+  to the old semantics (`research/long_sample_overlay_attribution.py`) was
+  corrected in this cycle.
 * **Handoff:** `NEXT_AGENT_TASK.md` is replaced with **Cycle 903** — measure
   the incumbent's promotion-gate table on the **common-inception sample**
   (2004-11-18..2026-10-19, seven assets throughout) next to the union-sample
