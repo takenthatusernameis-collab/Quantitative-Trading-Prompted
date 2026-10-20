@@ -34,3 +34,42 @@ long_sample_diagnostic:
 
 universe_context:
   note: "Applies to the incumbent long-sample diagnostic universe as measured; csmomentum_001 long-sample sample-definition control is out of scope for this cycle."
+
+candidates:
+  csmomentum_001:
+    universe:
+      - "SPY"
+      - "QQQ"
+      - "IWM"
+      - "TLT"
+      - "GLD"
+      - "DBC"
+      - "VNQ"
+      - "EFA"
+      - "EEM"
+      - "XLB"
+      - "XLE"
+      - "XLF"
+      - "XLI"
+      - "XLK"
+      - "XLP"
+      - "XLU"
+      - "XLV"
+      - "XLY"
+    rule_id: "common_inception_fully_populated"
+    derivation:
+      rule: "common_inception = max of per-symbol first dates in the raw cache (re-derived from data/raw at measurement time; never a frozen date)"
+    long_sample_diagnostic:
+      evaluation_sample: "common_inception_slice"
+      publish_alongside:
+        - "common_inception_window"
+        - "union_sample"
+    warm_up_convention:
+      description: "The price frame is truncated at the common inception before the signal is formed (common_inception_slice). The warm-up-preserving variant (common_inception_window) is published beside it."
+      slice: "common_inception_slice"
+      window_preserving: "common_inception_window"
+    evidence_note: "The csmomentum_001 long sample is ragged (common inception 2006-02-06); sample-definition control must be pre-registered before execution."
+    conditions_for_revisit:
+      - "change of universe"
+      - "change of the engine's window semantics"
+      - "a new asset in the universe"
