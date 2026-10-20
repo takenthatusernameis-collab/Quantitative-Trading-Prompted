@@ -2780,3 +2780,101 @@ def render_artifact(summary: dict[str, Any]) -> str:
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+def fixed_coin_book(
+    path: pd.DataFrame,
+    rule: RuleSpec,
+    weight: float,
+    symbol: str = "BTCUSDT",
+) -> Book:
+    """Fixed coin quantity construction: hold q coins from entry to exit.
+
+    q is set at each entry from then-current equity: q = weight * equity / spot.
+    Equity is marked to market. Price P&L is the change of the basis level
+    q*(S_t - P_t); funding is paid on the coin's perp notional
+    q*funding_cashflow_t*P_{t-1} (daily close as notional proxy).
+    """
+    position = position_series(path, rule)
+    spot_close = path["spot_close"].astype(float) if "spot_close" in path.columns else None
+    perp_close = path["perp_close"].astype(float) if "perp_close" in path.columns else None
+    # fallback column names
+    if spot_close is None:
+        spot_close = path.get("spot_price", path.get("spot_close"))
+    if perp_close is None:
+        perp_close = path.get("perp_price", path.get("perp_close"))
+    funding = path["funding_cashflow"].astype(float)
+
+    index = path.index
+    gross = pd.Series(0.0, index=index)
+    equity = 1.0
+    q = 0.0
+    prev_basis = 0.0
+    prev_perp = None
+    held = False
+    entries = 0
+    exits = 0
+    for i, ts in enumerate(index):
+        pos = float(position.iloc[i])
+        S = float(spot_close.iloc[i])
+        P = float(perp_close.iloc[i])
+        # entry transition
+        if pos == 1.0 and not held:
+            q = weight * equity / S if S != 0 else 0.0
+            held = True
+            entries += 1
+            prev_basis = q * (S - P)
+            prev_perp = P
+            # no same-day PnL on entry? We'll handle via basis change next day
+            gross.iloc[i] = 0.0
+            continue
+        if pos == 0.0 and held:
+            # exit: realize remaining basis change to exit prices already captured previous day?
+            held = False
+            exits += 1
+            q = 0.0
+            gross.iloc[i] = 0.0
+            continue
+        if held:
+            basis = q * (S - P)
+            price_pnl = basis - prev_basis
+            perp_notional = q * (prev_perp if prev_perp is not None else P)
+            fund_pnl = funding.iloc[i] * perp_notional
+            pnl = price_pnl + fund_pnl
+            ret = pnl / equity if equity != 0 else 0.0
+            gross.iloc[i] = ret
+            equity = equity + pnl
+            prev_basis = basis
+            prev_perp = P
+        else:
+            gross.iloc[i] = 0.0
+    # turnover: entries+exits only
+    change = position.diff()
+    if len(change) > 0:
+        change.iloc[0] = position.iloc[0]
+    transition_leg = change.abs() * weight
+    turnover_spot = (2.0 * transition_leg).astype(float)  # approximate
+    turnover_perp = (2.0 * transition_leg).astype(float)
+    turnover = (4.0 * transition_leg).astype(float)
+    weights = pd.DataFrame(
+        {f"{symbol}_spot": (weight * position).astype(float),
+         f"{symbol}_perp": (-weight * position).astype(float)},
+        index=index,
+    )
+    positions = pd.DataFrame({f"{symbol}_position": position}, index=index)
+    return Book(
+        name=f"{symbol}_{rule.rule_id}_fixedcoin",
+        symbol=symbol,
+        rule=rule,
+        weight=weight,
+        turnover_convention="fixed_quantity",
+        gross=gross,
+        turnover=turnover,
+        turnover_spot=turnover_spot,
+        turnover_perp=turnover_perp,
+        positions=positions,
+        weights=weights,
+        entries=entries,
+        exits=exits,
+        notes=["fixed coin quantity construction (approx)"],
+    )
