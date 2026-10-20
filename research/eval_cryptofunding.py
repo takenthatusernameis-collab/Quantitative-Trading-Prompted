@@ -3319,7 +3319,191 @@ def render_artifact(summary: dict[str, Any]) -> str:
         add(
             f"| `{rule_id}` | {_fmt_pct(committed)}/yr (gross) | "
             f"{_fmt_pct(consistent)}/yr (gross) | "
-            f"{row['ratio_committed_over_capital_consistent']:.2f}x |"
+        f"{row['ratio_committed_over_capital_consistent']:.2f}x |"
+    )
+    add("")
+
+    # ---- capital-consistent fixed coin portfolio (Cycle 895 reconciliation) ----
+    add("## The capital-consistent fixed-coin portfolio (Cycle 895 reconciliation)")
+    add("")
+    add(
+        "The committed Cycle 893 fixed-coin portfolio adds the two symbols' "
+        "**separately compounded** returns: each symbol's return is measured "
+        "against its own equity and the two are added, so each symbol's "
+        "capital is counted twice. This section reconciles that portfolio "
+        "under a single stated convention: the capital is split **once** "
+        "(half per symbol at the entry, never rebalanced), the two symbols' "
+        "P&L is added against their **combined** equity, and the turnover "
+        "and the capital-charge base are expressed as fractions of that "
+        "combined equity. It is one book with a shared equity, not two "
+        "sub-books added up. The three pre-registered rules are re-measured "
+        "under the Cycle 892 headline cost model; no new trials, no change "
+        "to the gate, the cost screen or the flat model."
+    )
+    add("")
+    add("* **Convention:** capital split once (0.5 of combined equity per symbol at entry, never rebalanced); the marked-to-market spot notionals of the two legs sum to the combined equity, so the capital base is never double-counted; turnover is entry/exit only, charged on both legs with the target notional per leg; the capital charge is the marked-to-market spot notional (fraction of combined equity) times the annual rate, divided across 365 days.")
+    add("")
+    add("### Results (net of the Cycle 892 headline cost model, 365-day annualization)")
+    add("")
+    add(
+        "| Rule | Sample | Sessions | Ann. net (geo) | Sharpe (canonical) | "
+        "Max DD | Turnover/yr | Entries | Exits |"
+    )
+    add("|---|---|---|---|---|---|---|---|---|")
+    headline_key = cost_eval["headline_cost_model"]
+    reconciled = cost_eval["fixed_coin_reconciled"]
+    for rule_id in sorted(reconciled):
+        models = reconciled[rule_id]
+        for model_key, result in models.items():
+            for sample in ("full", "train", "val", "test_oos", "post2022"):
+                m = result["samples"][sample]
+                add(
+                    f"| `{rule_id}` | {sample} | {m['sessions']} | "
+                    f"{_fmt_pct(m['ann_return_geometric'])} | "
+                    f"{m['sharpe_canonical']:.3f} | {_fmt_pct(m['max_drawdown'])} | "
+                    f"{m['annualized_turnover_units']:.2f} | "
+                    f"{m['position_entries']} | {m['position_exits']} |"
+                )
+    add("")
+
+    add("### Break-evens (portfolio, headline cost model)")
+    add("")
+    add(
+        "| Rule | Sample | Break-even flat cost/unit | Break-even capital charge "
+        "(annual, on combined spot notionals) | Break-even venue fee multiple |"
+    )
+    add("|---|---|---|---|---|")
+    reconciled_be = cost_eval["fixed_coin_reconciled_break_evens"]
+    for rule_id in sorted(reconciled_be):
+        for sample in ("full", "test_oos"):
+            row = reconciled_be[rule_id][sample]
+            flat = row["break_even_flat_cost_bps"]["solution_bps"]
+            cap = row["break_even_capital_charge_annual"]["solution_annual_rate"]
+            mult = row["break_even_venue_fee_multiplier"]["solution_multiplier"]
+            flat_txt = _fmt_bp(flat) if flat is not None else "none"
+            cap_txt = _fmt_pct(cap, 2) if cap is not None else "none"
+            mult_txt = f"{mult:.2f}x" if mult is not None else "none"
+            add(
+                f"| `{rule_id}` | {sample} | {flat_txt} | {cap_txt} | {mult_txt} |"
+            )
+    add("")
+
+    add("### Promotion gate (capital-consistent fixed coin, re-evaluated, never relaxed)")
+    add("")
+    add(
+        "| Rule | Net OOS Sharpe (canonical, 365) | Sharpe criterion | "
+        "Pooled OOS round trips | Trade-count criterion | Gate |"
+    )
+    add("|---|---|---|---|---|---|")
+    for rule_id in sorted(reconciled):
+        gate = cost_eval["fixed_coin_gates"][rule_id][headline_key]
+        add(
+            f"| `{rule_id}` | "
+            f"{gate['net_oos_sharpe_canonical_365']:.3f} | "
+            f"{'PASS' if gate['sharpe_criterion_pass'] else 'FAIL'} | "
+            f"{gate['pooled_oos_position_round_trips']} | "
+            f"{'PASS' if gate['trade_count_criterion_pass'] else 'FAIL'} | "
+            f"**{'PASS' if gate['promotion_gate_pass'] else 'FAIL'}** |"
+        )
+    add("")
+    add(
+        "The gate is evaluated on the per-symbol fixed-coin books (the "
+        "positions and trades are identical to the committed Cycle 893 "
+        "portfolio - only the capital aggregation changes), so the trade "
+        "counts are unchanged: 0 pooled out-of-sample round trips for "
+        "always-on and 95 for the funding-positive rules, against the "
+        "repository's 100. The promotion gate **fails** for every rule and "
+        "is never relaxed."
+    )
+    add("")
+
+    # ---- whether the Cycle 893 headline survives ---------------------------
+    committed_fixed = cost_eval["fixed_coin"]
+    cn_portfolio = cost_eval["portfolio"]
+    threshold_portfolio = cost_eval["threshold"]
+    add("### Whether the Cycle 893 headline survives the reconciliation")
+    add("")
+    add(
+        "The committed Cycle 893 headline states that the constant-notional "
+        "headline was **conservative by +44.89 pp/yr (always-on) and +14.05 "
+        "pp/yr (funding-positive)** because the fixed-coin book nets more on "
+        "the same committed path. Those figures are computed on the committed "
+        "portfolio rows, whose accounting counts each symbol's capital twice. "
+        "On the capital-consistent account the comparison changes:"
+    )
+    add("")
+    for rule_id in sorted(reconciled):
+        committed = committed_fixed[rule_id][headline_key]["samples"]["full"]
+        cn = cn_portfolio[rule_id][HEADLINE_COST_MODEL]["samples"]["full"]
+        thresh = threshold_portfolio[rule_id][headline_key]["samples"]["full"]
+        rec = reconciled[rule_id][headline_key]["samples"]["full"]
+        committed_gap = committed["ann_return_geometric"] - cn["ann_return_geometric"]
+        reconciled_gap = rec["ann_return_geometric"] - cn["ann_return_geometric"]
+        add(
+            f"* `{rule_id}`: committed fixed-coin portfolio "
+            f"{_fmt_pct(committed['ann_return_geometric'])}/yr versus "
+            f"constant-notional {_fmt_pct(cn['ann_return_geometric'])}/yr - the "
+            f"Cycle 893 headline claims a +{_fmt_pct(committed_gap)[1:]}/yr "
+            f"advantage. The reconciled capital-consistent fixed-coin portfolio "
+            f"nets {_fmt_pct(rec['ann_return_geometric'])}/yr, a "
+            f"+{_fmt_pct(reconciled_gap)[1:]}/yr advantage over "
+            f"constant-notional and {_fmt_pct(rec['ann_return_geometric'] - thresh['ann_return_geometric'])[1:]}/yr "
+            f"over the threshold-rebalanced book "
+            f"({_fmt_pct(thresh['ann_return_geometric'])}/yr)."
+        )
+    add("")
+    add(
+        "**The Cycle 893 headline does not survive the reconciliation.** The "
+        "always-on fixed-coin book still nets more than the constant-notional "
+        "book, but the margin shrinks from the committed +44.89 pp/yr to "
+        "+16.20 pp/yr on the capital-consistent account, and the "
+        "funding-positive margin shrinks from +14.05 pp/yr to +1.81 pp/yr. "
+        "The constant-notional headline remains conservative versus the "
+        "implementable fixed-coin construction, but by a much smaller margin "
+        "than the committed double-counted capital suggested. The per-symbol "
+        "rows are unaffected by the reconciliation (each symbol's book is "
+        "standalone), and on that basis the fixed-coin construction still nets "
+        "more than both the daily-drift and the threshold-rebalanced books."
+    )
+    add("")
+
+    # ---- three constructions (reconciled portfolio basis) ------------------
+    add("### The three constructions on the committed path (portfolio basis)")
+    add("")
+    add(
+        "| Rule | Construction | Portfolio ann. net | Sharpe | Turnover/yr | Accounting |"
+    )
+    add("|---|---|---|---|---|---|")
+    for rule_id in sorted(reconciled):
+        drift = cn_portfolio[rule_id][HEADLINE_COST_MODEL]["samples"]["full"]
+        thresh = threshold_portfolio[rule_id][headline_key]["samples"]["full"]
+        fixed_committed = committed_fixed[rule_id][headline_key]["samples"]["full"]
+        fixed_reconciled = reconciled[rule_id][headline_key]["samples"]["full"]
+        add(
+            f"| `{rule_id}` | daily drift (pre-registered) | "
+            f"{_fmt_pct(drift['ann_return_geometric'])} | "
+            f"{drift['sharpe_canonical']:.3f} | "
+            f"{drift['annualized_turnover_units']:.2f} | one shared equity |"
+        )
+        add(
+            f"| `{rule_id}` | threshold {THRESHOLD_REBALANCE:.0%} | "
+            f"{_fmt_pct(thresh['ann_return_geometric'])} | "
+            f"{thresh['sharpe_canonical']:.3f} | "
+            f"{thresh['annualized_turnover_units']:.2f} | one shared equity |"
+        )
+        add(
+            f"| `{rule_id}` | fixed coin (Cycle 893, committed) | "
+            f"{_fmt_pct(fixed_committed['ann_return_geometric'])} | "
+            f"{fixed_committed['sharpe_canonical']:.3f} | "
+            f"{fixed_committed['annualized_turnover_units']:.2f} | "
+            "sum of separately compounded sub-book returns (capital counted twice) |"
+        )
+        add(
+            f"| `{rule_id}` | fixed coin (Cycle 895, reconciled) | "
+            f"{_fmt_pct(fixed_reconciled['ann_return_geometric'])} | "
+            f"{fixed_reconciled['sharpe_canonical']:.3f} | "
+            f"{fixed_reconciled['annualized_turnover_units']:.2f} | "
+            "capital split once, P&L added against combined equity |"
         )
     add("")
 
@@ -3619,58 +3803,7 @@ def build_fixed_coin_portfolio_book(
     for base in symbols:
         state[base] = {"held": False, "q": 0.0, "prev_spot": 0.0, "prev_perp": 0.0}
 
-    for i in range(n):
-        turn_spot_d = 0.0
-        turn_perp_d = 0.0
-        # entries/exits
-        for base in symbols:
-            st = state[base]
-            pos = float(data[base]["position"][i])
-            if pos > 0.5 and not st["held"]:
-                s = float(data[base]["spot_close"][i])
-                # size from the combined equity pool - half per symbol
-                alloc_equity = 0.5 * equity
-                st["q"] = weight * alloc_equity / s if s != 0 else 0.0
-                st["held"] = True
-                st["prev_spot"] = s
-                st["prev_perp"] = float(data[base]["perp_close"][i])
-                entries_total += 1
-                turn_spot_d += weight  # charged on combined equity base
-                turn_perp_d += weight
-            elif pos < 0.5 and st["held"]:
-                st["held"] = False
-                st["q"] = 0.0
-                exits_total += 1
-                turn_spot_d += weight
-                turn_perp_d += weight
-        turnover_spot_arr[i] = turn_spot_d
-        turnover_perp_arr[i] = turn_perp_d
 
-        # P&L against combined equity
-        pnl_total = 0.0
-        for base in symbols:
-            st = state[base]
-            if not st["held"]:
-                continue
-            s = float(data[base]["spot_close"][i])
-            p = float(data[base]["perp_close"][i])
-            f = float(data[base]["funding"][i])
-            # if just entered this bar? check - entry means we set up now, but entry day carries no same-day P&L in our construction
-            # look up: in build_fixed_coin_book, when entering, we continue without computing P&L that bar
-            # easier to track entry state
-            pass  # handle below more carefully
-
-        # redo with entry-day handling
-        pnl_total = 0.0
-        for base in symbols:
-            st = state[base]
-            if not st["held"]:
-                continue
-            # check if we just entered - detect by comparing? easier to recompute logic
-            # simpler: track just_entered
-        equity_path_arr[i] = equity  # placeholder
-
-    # Simpler implementation matching the logic
     equity = 1.0
     state = {base: {"held": False, "q": 0.0, "prev_spot": 0.0, "prev_perp": 0.0, "just_entered": False} for base in symbols}
     gross = np.zeros(n, dtype=float)

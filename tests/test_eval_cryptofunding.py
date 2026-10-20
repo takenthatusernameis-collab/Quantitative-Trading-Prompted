@@ -689,6 +689,168 @@ def test_fixed_coin_promotion_gate_never_passes(paths) -> None:
 
 
 # ======================================================================
+# Capital-consistent fixed coin portfolio (Cycle 895 reconciliation)
+# ======================================================================
+def _reconciled_portfolio_gross(paths, rule) -> tuple[np.ndarray, np.ndarray]:
+    """Independent reconstruction of the capital-consistent fixed-coin portfolio.
+
+    Splits the combined equity once (half per symbol at entry, never
+    rebalanced), sizes each symbol's coin quantity from 0.25 of the combined
+    equity (weight 0.5 x half of combined equity), adds the two symbols'
+    P&L against the combined equity, and compounds that equity. Entry days
+    carry no same-day P&L; entry and exit are charged as turnover. This is
+    re-implemented from the per-symbol primitives (position, closes, funding)
+    rather than reusing ``build_fixed_coin_portfolio_book``, so it is an
+    independent reconstruction of the reconciled gross series.
+    """
+    symbols = list(ev.BASE_SYMBOLS)
+    index = paths[symbols[0]].index
+    n = len(index)
+    data = {
+        base: {
+            "position": ev.position_series(paths[base], rule).to_numpy(dtype=float),
+            "spot_close": paths[base]["spot_close"].astype(float).to_numpy(dtype=float),
+            "perp_close": paths[base]["perp_close"].astype(float).to_numpy(dtype=float),
+            "funding": paths[base]["funding_cashflow"].astype(float).to_numpy(dtype=float),
+        }
+        for base in symbols
+    }
+    weight = 0.5
+    equity = 1.0
+    state = {
+        base: {"held": False, "q": 0.0, "prev_spot": 0.0, "prev_perp": 0.0}
+        for base in symbols
+    }
+    gross = np.zeros(n, dtype=float)
+    equity_path = np.ones(n, dtype=float)
+    for i in range(n):
+        just_entered: set[str] = set()
+        pnl_total = 0.0
+        for base in symbols:
+            st = state[base]
+            pos = float(data[base]["position"][i])
+            if pos > 0.5 and not st["held"]:
+                s = float(data[base]["spot_close"][i])
+                st["q"] = weight * (0.5 * equity) / s if s != 0 else 0.0
+                st["held"] = True
+                st["prev_spot"] = s
+                st["prev_perp"] = float(data[base]["perp_close"][i])
+                just_entered.add(base)
+            elif pos < 0.5 and st["held"]:
+                st["held"] = False
+                st["q"] = 0.0
+        for base in symbols:
+            st = state[base]
+            if not st["held"] or base in just_entered:
+                continue
+            s = float(data[base]["spot_close"][i])
+            p = float(data[base]["perp_close"][i])
+            f = float(data[base]["funding"][i])
+            pnl_total += (
+                st["q"] * ((s - p) - (st["prev_spot"] - st["prev_perp"]))
+                + f * st["q"] * st["prev_perp"]
+            )
+            st["prev_spot"] = s
+            st["prev_perp"] = p
+        gross[i] = pnl_total / equity if equity != 0.0 else 0.0
+        equity += pnl_total
+        equity_path[i] = equity
+    return gross, equity_path
+
+
+def test_reconciled_portfolio_gross_matches_independent_reconstruction(paths):
+    """The reconciled portfolio's gross equals the per-symbol reconstruction."""
+    for rule in ev.RULES:
+        reconciled = ev.build_fixed_coin_portfolio_book(
+            paths, rule, capital_consistent=True
+        )
+        gross, _ = _reconciled_portfolio_gross(paths, rule)
+        np.testing.assert_allclose(
+            reconciled.gross.to_numpy(),
+            gross,
+            rtol=1e-9,
+            atol=1e-12,
+            err_msg=rule.rule_id,
+        )
+
+
+def test_reconciled_portfolio_no_double_counting_of_capital(paths):
+    """The reconciled portfolio turns over fractions of combined equity and
+    its full-sample gross is below the committed sum-of-sub-books figure."""
+    for rule in ev.RULES:
+        reconciled = ev.build_fixed_coin_portfolio_book(
+            paths, rule, capital_consistent=True
+        )
+        committed_gross = sum(
+            ev.build_fixed_coin_book(paths[base], rule, weight=1.0).gross
+            for base in ev.BASE_SYMBOLS
+        )
+        rec_gross_ann = ev.annualized_return(
+            reconciled.gross, ev.PERIODS_PER_YEAR
+        )
+        committed_gross_ann = ev.annualized_return(
+            committed_gross, ev.PERIODS_PER_YEAR
+        )
+        # No double counting: the reconciled full-sample gross is below the
+        # committed sum-of-sub-books figure (capital counted twice).
+        assert rec_gross_ann < committed_gross_ann, (
+            rule.rule_id,
+            rec_gross_ann,
+            committed_gross_ann,
+        )
+        # Turnover is entry/exit only: non-negative, a fraction of combined
+        # equity (each entry/exit trades the target notional on both legs).
+        assert (reconciled.turnover >= 0.0).all()
+        assert (reconciled.turnover_spot >= 0.0).all()
+        assert (reconciled.turnover_perp >= 0.0).all()
+
+
+def test_reconciled_portfolio_promotion_gate_never_passes(paths):
+    """The gate is re-evaluated for the reconciled portfolio and never passes."""
+    model = ev.COST_MODEL_BY_KEY[ev.HEADLINE_COST_MODEL]
+    for rule in ev.RULES:
+        books = {
+            base: ev.evaluate_book(
+                ev.build_fixed_coin_book(paths[base], rule, weight=1.0),
+                bootstrap_samples=(),
+                cost_model=model,
+            )
+            for base in ev.BASE_SYMBOLS
+        }
+        gate = ev.promotion_gate(books)
+        assert gate["promotion_gate_pass"] is False, (rule.rule_id,)
+        assert gate["pooled_oos_position_round_trips"] < ev.PROMOTION_MIN_POOLED_OOS_TRADES
+
+
+def test_committed_artifact_carries_reconciled_fixed_coin():
+    """The artifact payload keeps the reconciled figures and all gate rows
+    failing; the reconciliation-with-cost-screen fields are unchanged."""
+    text = ARTIFACT.read_text()
+    start = text.index("```json") + len("```json")
+    end = text.index("```", start)
+    payload = json.loads(text[start:end])
+    cost_eval = payload["cost_model_evaluation"]
+    assert "fixed_coin_reconciled" in cost_eval
+    assert "fixed_coin_reconciled_break_evens" in cost_eval
+    headline_key = cost_eval["headline_cost_model"]
+    for rule_id in ("always_on", "funding_positive_sameday", "funding_positive_lagged"):
+        assert rule_id in cost_eval["fixed_coin_reconciled"]
+        samples = cost_eval["fixed_coin_reconciled"][rule_id][headline_key][
+            "samples"
+        ]
+        for sample in ("full", "train", "val", "test_oos", "post2022"):
+            assert sample in samples, (rule_id, sample)
+        assert rule_id in cost_eval["fixed_coin_reconciled_break_evens"]
+    # Every gate row (cost-model evaluation, the rule/model rows) still fails.
+    for rule_id, models in cost_eval["gates"].items():
+        for model_key, gate in models.items():
+            assert gate["promotion_gate_pass"] is False, (rule_id, model_key)
+    recon = payload["reconciliation_with_cost_screen"]
+    assert recon["same_gross_series"] is True
+    assert recon["same_turnover_series"] is True
+
+
+# ======================================================================
 # The committed record
 # ======================================================================
 def test_committed_artifact_is_consistent_with_the_code() -> None:

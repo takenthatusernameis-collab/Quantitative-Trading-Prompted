@@ -333,12 +333,30 @@ construction holds one coin quantity on both legs, so its perp notional scales w
 price while its equity compounds only on the carry. They are different books with different return
 quantities, and the threshold construction does not converge to the fixed-coin one.
 
-**A portfolio-accounting caveat on the committed Cycle 893 fixed-coin portfolio.** The committed
+**Cycle 895 reconciliation of the fixed-coin portfolio accounting.** The committed Cycle 893
 fixed-coin portfolio adds the two symbols' separately compounded returns, so each symbol's capital
-is counted twice; the capital-consistent account of the same construction (the capital split once
-at the entry, never rebalanced) is 2.19x-2.28x lower in gross annualized return (always-on:
-+94.88%/yr committed vs +41.60%/yr capital-consistent). This cycle reports the diagnostic and
-**does not change** the committed Cycle 893 number; reconciling it is a separate, bounded task.
+is counted twice; the capital-consistent account of the same construction splits the capital once
+(half per symbol at the entry, never rebalanced) and adds the two symbols' P&L against their
+combined equity. Re-measured under the Cycle 892 headline cost model (365-day, equal-weight
+BTC/ETH portfolio):
+
+| Rule | Committed portfolio (capital counted twice) | Reconciled portfolio (capital split once) | Constant-notional (one shared equity) |
+| always_on | +54.11%/yr net | +25.42%/yr net | +9.22%/yr net |
+| funding_positive_lagged | +16.02%/yr net | +3.78%/yr net | +1.97%/yr net |
+
+The committed Cycle 893 headline ("the constant-notional headline was conservative by +44.89
+pp/yr always-on and +14.05 pp/yr funding-positive") **does not survive the reconciliation**: on
+the capital-consistent account the margin shrinks to +16.20 pp/yr (always-on) and +1.81 pp/yr
+(funding-positive). The constant-notional headline remains conservative versus the implementable
+fixed-coin construction, but by a much smaller margin than the committed double-counted capital
+suggested. The per-symbol rows are unaffected (each symbol's book is standalone, weight = 1), and
+on that basis the fixed-coin construction still nets more than both the daily-drift and the
+threshold-rebalanced books. The gross diagnostic (committed +94.88%/yr vs capital-consistent
++41.60%/yr always-on, ratio 2.28x) and the committed Cycle 893 number are reported next to the
+reconciled figures and are not rewritten. The promotion gate is re-evaluated under the headline
+model and still **FAIL** (0 and 95 pooled out-of-sample round trips against the repository's 100;
+the gate is never relaxed).
+
 
 **Gate.** FAIL under the headline model: the trade-count criterion (0 and 95 pooled out-of-sample
 independent round trips against the repository's 100) fails, and the gate is never relaxed.

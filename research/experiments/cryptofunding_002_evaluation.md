@@ -707,6 +707,80 @@ The three constructions are compared below on the **per-symbol** basis (one symb
 | `funding_positive_sameday` | +59.2260%/yr (gross) | +26.9350%/yr (gross) | 2.20x |
 | `funding_positive_lagged` | +56.7270%/yr (gross) | +25.8991%/yr (gross) | 2.19x |
 
+## The capital-consistent fixed-coin portfolio (Cycle 895 reconciliation)
+
+The committed Cycle 893 fixed-coin portfolio adds the two symbols' **separately compounded** returns: each symbol's return is measured against its own equity and the two are added, so each symbol's capital is counted twice. This section reconciles that portfolio under a single stated convention: the capital is split **once** (half per symbol at the entry, never rebalanced), the two symbols' P&L is added against their **combined** equity, and the turnover and the capital-charge base are expressed as fractions of that combined equity. It is one book with a shared equity, not two sub-books added up. The three pre-registered rules are re-measured under the Cycle 892 headline cost model; no new trials, no change to the gate, the cost screen or the flat model.
+
+* **Convention:** capital split once (0.5 of combined equity per symbol at entry, never rebalanced); the marked-to-market spot notionals of the two legs sum to the combined equity, so the capital base is never double-counted; turnover is entry/exit only, charged on both legs with the target notional per leg; the capital charge is the marked-to-market spot notional (fraction of combined equity) times the annual rate, divided across 365 days.
+
+### Results (net of the Cycle 892 headline cost model, 365-day annualization)
+
+| Rule | Sample | Sessions | Ann. net (geo) | Sharpe (canonical) | Max DD | Turnover/yr | Entries | Exits |
+|---|---|---|---|---|---|---|---|---|
+| `always_on` | full | 2464 | +25.4188% | 6.626 | -1.8769% | 0.30 | 2 | 0 |
+| `always_on` | train | 1095 | +47.8401% | 8.060 | -1.8769% | 0.67 | 2 | 0 |
+| `always_on` | val | 731 | +15.7663% | 11.305 | -0.1922% | 0.00 | 0 | 0 |
+| `always_on` | test_oos | 638 | +3.6618% | 6.296 | -1.3004% | 0.00 | 0 | 0 |
+| `always_on` | post2022 | 1369 | +9.9587% | 8.930 | -1.3004% | 0.00 | 0 | 0 |
+| `funding_positive_lagged` | full | 2464 | +3.7769% | 1.738 | -23.8607% | 81.18 | 275 | 273 |
+| `funding_positive_lagged` | train | 1095 | +12.8458% | 4.127 | -14.7899% | 89.33 | 135 | 133 |
+| `funding_positive_lagged` | val | 731 | +2.1833% | 2.209 | -4.2567% | 44.94 | 45 | 45 |
+| `funding_positive_lagged` | test_oos | 638 | -8.5139% | -8.480 | -14.8740% | 108.70 | 95 | 95 |
+| `funding_positive_lagged` | post2022 | 1369 | -2.9493% | -2.839 | -15.2196% | 74.65 | 140 | 140 |
+| `funding_positive_sameday` | full | 2464 | +4.2217% | 1.951 | -23.0761% | 81.18 | 275 | 273 |
+| `funding_positive_sameday` | train | 1095 | +13.7758% | 4.449 | -14.2696% | 89.33 | 135 | 133 |
+| `funding_positive_sameday` | val | 731 | +2.2281% | 2.275 | -4.1301% | 44.94 | 45 | 45 |
+| `funding_positive_sameday` | test_oos | 638 | -8.3376% | -8.269 | -14.6037% | 108.70 | 95 | 95 |
+| `funding_positive_sameday` | post2022 | 1369 | -2.8394% | -2.742 | -14.8431% | 74.65 | 140 | 140 |
+
+### Break-evens (portfolio, headline cost model)
+
+| Rule | Sample | Break-even flat cost/unit | Break-even capital charge (annual, on combined spot notionals) | Break-even venue fee multiple |
+|---|---|---|---|---|
+| `always_on` | full | none | +16.20% | none |
+| `always_on` | test_oos | none | +4.30% | none |
+| `funding_positive_lagged` | full | 15.5152 bp | +8.26% | 1.48x |
+| `funding_positive_lagged` | test_oos | 2.1559 bp | -17.57% | 0.14x |
+| `funding_positive_sameday` | full | 16.0505 bp | +8.94% | 1.54x |
+| `funding_positive_sameday` | test_oos | 2.3458 bp | -16.86% | 0.16x |
+
+### Promotion gate (capital-consistent fixed coin, re-evaluated, never relaxed)
+
+| Rule | Net OOS Sharpe (canonical, 365) | Sharpe criterion | Pooled OOS round trips | Trade-count criterion | Gate |
+|---|---|---|---|---|---|
+| `always_on` | 5.645 | PASS | 0 | FAIL | **FAIL** |
+| `funding_positive_lagged` | -5.224 | FAIL | 95 | FAIL | **FAIL** |
+| `funding_positive_sameday` | -4.943 | FAIL | 95 | FAIL | **FAIL** |
+
+The gate is evaluated on the per-symbol fixed-coin books (the positions and trades are identical to the committed Cycle 893 portfolio - only the capital aggregation changes), so the trade counts are unchanged: 0 pooled out-of-sample round trips for always-on and 95 for the funding-positive rules, against the repository's 100. The promotion gate **fails** for every rule and is never relaxed.
+
+### Whether the Cycle 893 headline survives the reconciliation
+
+The committed Cycle 893 headline states that the constant-notional headline was **conservative by +44.89 pp/yr (always-on) and +14.05 pp/yr (funding-positive)** because the fixed-coin book nets more on the same committed path. Those figures are computed on the committed portfolio rows, whose accounting counts each symbol's capital twice. On the capital-consistent account the comparison changes:
+
+* `always_on`: committed fixed-coin portfolio +54.1139%/yr versus constant-notional +9.2190%/yr - the Cycle 893 headline claims a +44.8949%/yr advantage. The reconciled capital-consistent fixed-coin portfolio nets +25.4188%/yr, a +16.1998%/yr advantage over constant-notional and 15.9107%/yr over the threshold-rebalanced book (+9.5081%/yr).
+* `funding_positive_lagged`: committed fixed-coin portfolio +16.0201%/yr versus constant-notional +1.9706%/yr - the Cycle 893 headline claims a +14.0495%/yr advantage. The reconciled capital-consistent fixed-coin portfolio nets +3.7769%/yr, a +1.8064%/yr advantage over constant-notional and 1.5657%/yr over the threshold-rebalanced book (+2.2113%/yr).
+* `funding_positive_sameday`: committed fixed-coin portfolio +16.9965%/yr versus constant-notional +2.7733%/yr - the Cycle 893 headline claims a +14.2232%/yr advantage. The reconciled capital-consistent fixed-coin portfolio nets +4.2217%/yr, a +1.4484%/yr advantage over constant-notional and 1.2067%/yr over the threshold-rebalanced book (+3.0150%/yr).
+
+**The Cycle 893 headline does not survive the reconciliation.** The always-on fixed-coin book still nets more than the constant-notional book, but the margin shrinks from the committed +44.89 pp/yr to +16.20 pp/yr on the capital-consistent account, and the funding-positive margin shrinks from +14.05 pp/yr to +1.81 pp/yr. The constant-notional headline remains conservative versus the implementable fixed-coin construction, but by a much smaller margin than the committed double-counted capital suggested. The per-symbol rows are unaffected by the reconciliation (each symbol's book is standalone), and on that basis the fixed-coin construction still nets more than both the daily-drift and the threshold-rebalanced books.
+
+### The three constructions on the committed path (portfolio basis)
+
+| Rule | Construction | Portfolio ann. net | Sharpe | Turnover/yr | Accounting |
+|---|---|---|---|---|---|
+| `always_on` | daily drift (pre-registered) | +9.2190% | 5.964 | 18.47 | one shared equity |
+| `always_on` | threshold 2% | +9.5081% | 6.144 | 15.64 | one shared equity |
+| `always_on` | fixed coin (Cycle 893, committed) | +54.1139% | 6.740 | 0.30 | sum of separately compounded sub-book returns (capital counted twice) |
+| `always_on` | fixed coin (Cycle 895, reconciled) | +25.4188% | 6.626 | 0.30 | capital split once, P&L added against combined equity |
+| `funding_positive_lagged` | daily drift (pre-registered) | +1.9706% | 1.088 | 96.96 | one shared equity |
+| `funding_positive_lagged` | threshold 2% | +2.2113% | 1.218 | 94.42 | one shared equity |
+| `funding_positive_lagged` | fixed coin (Cycle 893, committed) | +16.0201% | 3.913 | 81.18 | sum of separately compounded sub-book returns (capital counted twice) |
+| `funding_positive_lagged` | fixed coin (Cycle 895, reconciled) | +3.7769% | 1.738 | 81.18 | capital split once, P&L added against combined equity |
+| `funding_positive_sameday` | daily drift (pre-registered) | +2.7733% | 1.615 | 96.79 | one shared equity |
+| `funding_positive_sameday` | threshold 2% | +3.0150% | 1.753 | 94.25 | one shared equity |
+| `funding_positive_sameday` | fixed coin (Cycle 893, committed) | +16.9965% | 4.164 | 81.18 | sum of separately compounded sub-book returns (capital counted twice) |
+| `funding_positive_sameday` | fixed coin (Cycle 895, reconciled) | +4.2217% | 1.951 | 81.18 | capital split once, P&L added against combined equity |
+
 ## Verdict
 
 **Exploratory signal — not promoted.** Under the **realistic** cost model of this cycle (the published Binance VIP0 taker schedule plus the repository's slippage assumption, plus the repository's risk-free rate as the charge for the capital the spot leg ties up) the always-on BTC/ETH carry still nets +9.2190%/yr with a canonical Sharpe of 5.964 on the full sample, and the implementable funding-positive rule nets +1.9706%/yr with a canonical Sharpe of 1.088. The carry survives the realistic cost model, but the candidate is **not** promoted, for four measured reasons:
@@ -969,6 +1043,664 @@ python -m pytest -q
           "ETHUSDT": 0.31461352863332315
         },
         "ratio_committed_over_capital_consistent": 2.198853395787929
+      }
+    },
+    "fixed_coin_reconciled": {
+      "always_on": {
+        "realistic_rf": {
+          "samples": {
+            "full": {
+              "ann_return_arithmetic": 0.22714231164388024,
+              "ann_return_geometric": 0.2541880503489118,
+              "ann_volatility": 0.034281071064699783,
+              "annualized_capital_charge_drag": 0.03191186647421866,
+              "annualized_cost_drag": 0.032193319396296584,
+              "annualized_fee_drag": 0.000281452922077922,
+              "annualized_turnover_perp_units": 0.1481331168831169,
+              "annualized_turnover_spot_units": 0.1481331168831169,
+              "annualized_turnover_units": 0.2962662337662338,
+              "avg_gross_exposure": 3.1911200000297946,
+              "avg_spot_notional_fraction": 1.5955933237109332,
+              "downside_deviation_annualized": 0.010683031999529082,
+              "end": "2026-09-30",
+              "engine_risk_free_rate_annual": 0.0,
+              "invested_fraction": 1.0,
+              "max_drawdown": -0.018768510503488045,
+              "max_drawdown_recomputed": -0.018768510503488045,
+              "position_entries": 2,
+              "position_exits": 0,
+              "profit_factor": 8.375090340021645,
+              "rebalance_days": 1,
+              "risk_free_rate_annual": 0.02,
+              "sample": "full",
+              "sessions": 2464,
+              "sharpe_backtest_scale": 7.414822304389918,
+              "sharpe_canonical": 6.625881414708052,
+              "sortino_backtest_scale": 23.793624353097194,
+              "sortino_canonical": 21.26197053925261,
+              "start": "2020-01-02",
+              "total_return": 3.6133384508409723
+            },
+            "post2022": {
+              "ann_return_arithmetic": 0.09500325858613701,
+              "ann_return_geometric": 0.09958676623533469,
+              "ann_volatility": 0.010638670307837222,
+              "annualized_capital_charge_drag": 0.030773962342276744,
+              "annualized_cost_drag": 0.030773962342276744,
+              "annualized_fee_drag": 0.0,
+              "annualized_turnover_perp_units": 0.0,
+              "annualized_turnover_spot_units": 0.0,
+              "annualized_turnover_units": 0.0,
+              "avg_gross_exposure": 3.0770034483004953,
+              "avg_spot_notional_fraction": 1.538698117113837,
+              "downside_deviation_annualized": 0.004269478194492408,
+              "end": "2026-09-30",
+              "engine_risk_free_rate_annual": 0.0,
+              "invested_fraction": 1.0,
+              "max_drawdown": -0.013003848396829665,
+              "max_drawdown_recomputed": -0.013003848396829665,
+              "position_entries": 0,
+              "position_exits": 0,
+              "profit_factor": 6.662177321720742,
+              "rebalance_days": 0,
+              "risk_free_rate_annual": 0.02,
+              "sample": "post2022",
+              "sessions": 1369,
+              "sharpe_backtest_scale": 9.360828313475585,
+              "sharpe_canonical": 8.929993677513501,
+              "sortino_backtest_scale": 23.32527810161926,
+              "sortino_canonical": 22.251725915520648,
+              "start": "2023-01-01",
+              "total_return": 0.42770631601058273
+            },
+            "test_oos": {
+              "ann_return_arithmetic": 0.03598151863025642,
+              "ann_return_geometric": 0.03661794900980575,
+              "ann_volatility": 0.0057152141330611824,
+              "annualized_capital_charge_drag": 0.031214431505747656,
+              "annualized_cost_drag": 0.031214431505747656,
+              "annualized_fee_drag": 0.0,
+              "annualized_turnover_perp_units": 0.0,
+              "annualized_turnover_spot_units": 0.0,
+              "annualized_turnover_units": 0.0,
+              "avg_gross_exposure": 3.1207349985444357,
+              "avg_spot_notional_fraction": 1.5607215752873826,
+              "downside_deviation_annualized": 0.004254254037135083,
+              "end": "2026-09-30",
+              "engine_risk_free_rate_annual": 0.0,
+              "invested_fraction": 1.0,
+              "max_drawdown": -0.013003848396828555,
+              "max_drawdown_recomputed": -0.013003848396828555,
+              "position_entries": 0,
+              "position_exits": 0,
+              "profit_factor": 2.7621350648825036,
+              "rebalance_days": 0,
+              "risk_free_rate_annual": 0.02,
+              "sample": "test_oos",
+              "sessions": 638,
+              "sharpe_backtest_scale": 6.407100094111863,
+              "sharpe_canonical": 6.2957428702647755,
+              "sortino_backtest_scale": 8.60737245358887,
+              "sortino_canonical": 8.457773869678746,
+              "start": "2025-01-01",
+              "total_return": 0.06488000966412777
+            },
+            "train": {
+              "ann_return_arithmetic": 0.3923462966996341,
+              "ann_return_geometric": 0.4784006521628157,
+              "ann_volatility": 0.048678127016810305,
+              "annualized_capital_charge_drag": 0.03333450643460998,
+              "annualized_cost_drag": 0.03396783976794331,
+              "annualized_fee_drag": 0.0006333333333333333,
+              "annualized_turnover_perp_units": 0.3333333333333333,
+              "annualized_turnover_spot_units": 0.3333333333333333,
+              "annualized_turnover_units": 0.6666666666666666,
+              "avg_gross_exposure": 3.333791743698663,
+              "avg_spot_notional_fraction": 1.6667253217304991,
+              "downside_deviation_annualized": 0.014447470421426786,
+              "end": "2022-12-31",
+              "engine_risk_free_rate_annual": 0.0,
+              "invested_fraction": 1.0,
+              "max_drawdown": -0.018768510503488045,
+              "max_drawdown_recomputed": -0.018768510503488045,
+              "position_entries": 2,
+              "position_exits": 0,
+              "profit_factor": 9.118608755910936,
+              "rebalance_days": 1,
+              "risk_free_rate_annual": 0.02,
+              "sample": "train",
+              "sessions": 1095,
+              "sharpe_backtest_scale": 9.827836062747583,
+              "sharpe_canonical": 8.060012180915319,
+              "sortino_backtest_scale": 33.11310826103566,
+              "sortino_canonical": 27.156746839069648,
+              "start": "2020-01-02",
+              "total_return": 2.23129371853726
+            },
+            "val": {
+              "ann_return_arithmetic": 0.14651607676924483,
+              "ann_return_geometric": 0.15766260421657474,
+              "ann_volatility": 0.012960518234016788,
+              "annualized_capital_charge_drag": 0.030389530979356847,
+              "annualized_cost_drag": 0.030389530979356847,
+              "annualized_fee_drag": 0.0,
+              "annualized_turnover_perp_units": 0.0,
+              "annualized_turnover_spot_units": 0.0,
+              "annualized_turnover_units": 0.0,
+              "avg_gross_exposure": 3.038835556295524,
+              "avg_spot_notional_fraction": 1.5194765489678423,
+              "downside_deviation_annualized": 0.004300216409327743,
+              "end": "2024-12-31",
+              "engine_risk_free_rate_annual": 0.0,
+              "invested_fraction": 1.0,
+              "max_drawdown": -0.0019223493664495273,
+              "max_drawdown_recomputed": -0.0019223493664495273,
+              "position_entries": 0,
+              "position_exits": 0,
+              "profit_factor": 11.772406163916248,
+              "rebalance_days": 0,
+              "risk_free_rate_annual": 0.02,
+              "sample": "val",
+              "sessions": 731,
+              "sharpe_backtest_scale": 12.164837961707892,
+              "sharpe_canonical": 11.304800789885995,
+              "sortino_backtest_scale": 36.66387670038734,
+              "sortino_canonical": 34.07179146878095,
+              "start": "2023-01-01",
+              "total_return": 0.34072036572542785
+            }
+          }
+        }
+      },
+      "funding_positive_lagged": {
+        "realistic_rf": {
+          "samples": {
+            "full": {
+              "ann_return_arithmetic": 0.03730527152483237,
+              "ann_return_geometric": 0.03776948202648511,
+              "ann_volatility": 0.02146489983474084,
+              "annualized_capital_charge_drag": 0.011841442662196448,
+              "annualized_cost_drag": 0.0889595433115471,
+              "annualized_fee_drag": 0.07711810064935065,
+              "annualized_turnover_perp_units": 40.58847402597403,
+              "annualized_turnover_spot_units": 40.58847402597403,
+              "annualized_turnover_units": 81.17694805194806,
+              "avg_gross_exposure": 1.1841883909579503,
+              "avg_spot_notional_fraction": 0.5920721331098223,
+              "downside_deviation_annualized": 0.011988987479538513,
+              "end": "2026-09-30",
+              "engine_risk_free_rate_annual": 0.0,
+              "invested_fraction": 0.9460227272727273,
+              "max_drawdown": -0.2386074667032918,
+              "max_drawdown_recomputed": -0.2386074667032918,
+              "position_entries": 275,
+              "position_exits": 273,
+              "profit_factor": 1.4464191442497074,
+              "rebalance_days": 463,
+              "risk_free_rate_annual": 0.02,
+              "sample": "full",
+              "sessions": 2464,
+              "sharpe_backtest_scale": 1.7595927452386888,
+              "sharpe_canonical": 1.7379662524422295,
+              "sortino_backtest_scale": 3.150347941470947,
+              "sortino_canonical": 3.111628199503996,
+              "start": "2020-01-02",
+              "total_return": 0.2843756700695095
+            },
+            "post2022": {
+              "ann_return_arithmetic": -0.029880156349475377,
+              "ann_return_geometric": -0.029493091307487673,
+              "ann_volatility": 0.010524863235882476,
+              "annualized_capital_charge_drag": 0.011042296957815832,
+              "annualized_cost_drag": 0.08196267679711457,
+              "annualized_fee_drag": 0.07092037983929873,
+              "annualized_turnover_perp_units": 37.326515704894085,
+              "annualized_turnover_spot_units": 37.326515704894085,
+              "annualized_turnover_units": 74.65303140978817,
+              "avg_gross_exposure": 1.1041160795116711,
+              "avg_spot_notional_fraction": 0.5521148478907916,
+              "downside_deviation_annualized": 0.011427241084331675,
+              "end": "2026-09-30",
+              "engine_risk_free_rate_annual": 0.0,
+              "invested_fraction": 0.9503287070854638,
+              "max_drawdown": -0.15219629919066802,
+              "max_drawdown_recomputed": -0.15219629919066802,
+              "position_entries": 140,
+              "position_exits": 140,
+              "profit_factor": 0.597461953101643,
+              "rebalance_days": 238,
+              "risk_free_rate_annual": 0.02,
+              "sample": "post2022",
+              "sessions": 1369,
+              "sharpe_backtest_scale": -2.8022303612399173,
+              "sharpe_canonical": -2.8390066150793096,
+              "sortino_backtest_scale": -2.580945924727778,
+              "sortino_canonical": -2.614818058791566,
+              "start": "2023-01-01",
+              "total_return": -0.10620903049608366
+            },
+            "test_oos": {
+              "ann_return_arithmetic": -0.0889175815027289,
+              "ann_return_geometric": -0.08513920085303983,
+              "ann_volatility": 0.010485339624129026,
+              "annualized_capital_charge_drag": 0.009092374104834492,
+              "annualized_cost_drag": 0.11235648068790657,
+              "annualized_fee_drag": 0.10326410658307209,
+              "annualized_turnover_perp_units": 54.34952978056426,
+              "annualized_turnover_spot_units": 54.34952978056426,
+              "annualized_turnover_units": 108.69905956112852,
+              "avg_gross_exposure": 0.9090353800745775,
+              "avg_spot_notional_fraction": 0.4546187052417246,
+              "downside_deviation_annualized": 0.011553691936432051,
+              "end": "2026-09-30",
+              "engine_risk_free_rate_annual": 0.0,
+              "invested_fraction": 0.9122257053291536,
+              "max_drawdown": -0.14873996698333813,
+              "max_drawdown_recomputed": -0.14873996698333813,
+              "position_entries": 95,
+              "position_exits": 95,
+              "profit_factor": 0.15850802842853956,
+              "rebalance_days": 161,
+              "risk_free_rate_annual": 0.02,
+              "sample": "test_oos",
+              "sessions": 638,
+              "sharpe_backtest_scale": -8.119832442729484,
+              "sharpe_canonical": -8.480181347498785,
+              "sortino_backtest_scale": -7.369003892562853,
+              "sortino_canonical": -7.69603188244501,
+              "start": "2025-01-01",
+              "total_return": -0.14404547809236978
+            },
+            "train": {
+              "ann_return_arithmetic": 0.12130239550650114,
+              "ann_return_geometric": 0.1284579207516916,
+              "ann_volatility": 0.029393216794172373,
+              "annualized_capital_charge_drag": 0.012840557246029382,
+              "annualized_cost_drag": 0.09770722391269603,
+              "annualized_fee_drag": 0.08486666666666665,
+              "annualized_turnover_perp_units": 44.666666666666664,
+              "annualized_turnover_spot_units": 44.666666666666664,
+              "annualized_turnover_units": 89.33333333333333,
+              "avg_gross_exposure": 1.284297061615444,
+              "avg_spot_notional_fraction": 0.642027862301469,
+              "downside_deviation_annualized": 0.012540882325345924,
+              "end": "2022-12-31",
+              "engine_risk_free_rate_annual": 0.0,
+              "invested_fraction": 0.9406392694063926,
+              "max_drawdown": -0.14789926773120066,
+              "max_drawdown_recomputed": -0.14789926773120066,
+              "position_entries": 135,
+              "position_exits": 133,
+              "profit_factor": 2.273677433920928,
+              "rebalance_days": 225,
+              "risk_free_rate_annual": 0.02,
+              "sample": "train",
+              "sessions": 1095,
+              "sharpe_backtest_scale": 4.370325359460494,
+              "sharpe_canonical": 4.1268839799307395,
+              "sortino_backtest_scale": 10.243132613729255,
+              "sortino_canonical": 9.672556711686964,
+              "start": "2020-01-02",
+              "total_return": 0.4369978148049307
+            },
+            "val": {
+              "ann_return_arithmetic": 0.021646351513418958,
+              "ann_return_geometric": 0.021832677214858043,
+              "ann_volatility": 0.009798957644950645,
+              "annualized_capital_charge_drag": 0.01274414481034948,
+              "annualized_cost_drag": 0.055435663278201736,
+              "annualized_fee_drag": 0.042691518467852255,
+              "annualized_turnover_perp_units": 22.46922024623803,
+              "annualized_turnover_spot_units": 22.46922024623803,
+              "annualized_turnover_units": 44.93844049247606,
+              "avg_gross_exposure": 1.2743780305935664,
+              "avg_spot_notional_fraction": 0.637207240517474,
+              "downside_deviation_annualized": 0.010991176287392235,
+              "end": "2024-12-31",
+              "engine_risk_free_rate_annual": 0.0,
+              "invested_fraction": 0.9835841313269493,
+              "max_drawdown": -0.042567256341840554,
+              "max_drawdown_recomputed": -0.042567256341840554,
+              "position_entries": 45,
+              "position_exits": 45,
+              "profit_factor": 1.4626105011342705,
+              "rebalance_days": 77,
+              "risk_free_rate_annual": 0.02,
+              "sample": "val",
+              "sessions": 731,
+              "sharpe_backtest_scale": 2.2280611883355075,
+              "sharpe_canonical": 2.209046339186211,
+              "sortino_backtest_scale": 1.9863822255222932,
+              "sortino_canonical": 1.9694299270087285,
+              "start": "2023-01-01",
+              "total_return": 0.0442038059591785
+            }
+          }
+        }
+      },
+      "funding_positive_sameday": {
+        "realistic_rf": {
+          "samples": {
+            "full": {
+              "ann_return_arithmetic": 0.0415786591005969,
+              "ann_return_geometric": 0.042216607880321444,
+              "ann_volatility": 0.02131647514397219,
+              "annualized_capital_charge_drag": 0.011919725050155242,
+              "annualized_cost_drag": 0.0890378256995059,
+              "annualized_fee_drag": 0.07711810064935065,
+              "annualized_turnover_perp_units": 40.58847402597403,
+              "annualized_turnover_spot_units": 40.58847402597403,
+              "annualized_turnover_units": 81.17694805194806,
+              "avg_gross_exposure": 1.192016507329034,
+              "avg_spot_notional_fraction": 0.5959862525077622,
+              "downside_deviation_annualized": 0.011314172568223705,
+              "end": "2026-09-30",
+              "engine_risk_free_rate_annual": 0.0,
+              "invested_fraction": 0.9464285714285714,
+              "max_drawdown": -0.23076121846186326,
+              "max_drawdown_recomputed": -0.23076121846186326,
+              "position_entries": 275,
+              "position_exits": 273,
+              "profit_factor": 1.5148262742388996,
+              "rebalance_days": 463,
+              "risk_free_rate_annual": 0.02,
+              "sample": "full",
+              "sessions": 2464,
+              "sharpe_backtest_scale": 1.9804685153239012,
+              "sharpe_canonical": 1.9505410167381447,
+              "sortino_backtest_scale": 3.7313031620967525,
+              "sortino_canonical": 3.674918236387183,
+              "start": "2020-01-02",
+              "total_return": 0.3219917005930377
+            },
+            "post2022": {
+              "ann_return_arithmetic": -0.028749308520724177,
+              "ann_return_geometric": -0.02839447508917159,
+              "ann_volatility": 0.01048449813105832,
+              "annualized_capital_charge_drag": 0.011079807681507028,
+              "annualized_cost_drag": 0.08200018752080576,
+              "annualized_fee_drag": 0.07092037983929873,
+              "annualized_turnover_perp_units": 37.326515704894085,
+              "annualized_turnover_spot_units": 37.326515704894085,
+              "annualized_turnover_units": 74.65303140978817,
+              "avg_gross_exposure": 1.1078655172802891,
+              "avg_spot_notional_fraction": 0.5539903840753514,
+              "downside_deviation_annualized": 0.011420890175134854,
+              "end": "2026-09-30",
+              "engine_risk_free_rate_annual": 0.0,
+              "invested_fraction": 0.9503287070854638,
+              "max_drawdown": -0.14843132160660655,
+              "max_drawdown_recomputed": -0.14843132160660655,
+              "position_entries": 140,
+              "position_exits": 140,
+              "profit_factor": 0.6088100002168069,
+              "rebalance_days": 238,
+              "risk_free_rate_annual": 0.02,
+              "sample": "post2022",
+              "sessions": 1369,
+              "sharpe_backtest_scale": -2.7082340741764632,
+              "sharpe_canonical": -2.7420776999864063,
+              "sortino_backtest_scale": -2.48618756101788,
+              "sortino_canonical": -2.5172563679244657,
+              "start": "2023-01-01",
+              "total_return": -0.10240827449202405
+            },
+            "test_oos": {
+              "ann_return_arithmetic": -0.08699260349383724,
+              "ann_return_geometric": -0.08337633040944503,
+              "ann_volatility": 0.010520495319822682,
+              "annualized_capital_charge_drag": 0.009233208298161594,
+              "annualized_cost_drag": 0.11249731488123367,
+              "annualized_fee_drag": 0.10326410658307207,
+              "annualized_turnover_perp_units": 54.34952978056426,
+              "annualized_turnover_spot_units": 54.34952978056426,
+              "annualized_turnover_units": 108.69905956112852,
+              "avg_gross_exposure": 0.9231169429292186,
+              "avg_spot_notional_fraction": 0.4616604149080797,
+              "downside_deviation_annualized": 0.011406847641730092,
+              "end": "2026-09-30",
+              "engine_risk_free_rate_annual": 0.0,
+              "invested_fraction": 0.9122257053291536,
+              "max_drawdown": -0.14603687858586556,
+              "max_drawdown_recomputed": -0.14603687858586556,
+              "position_entries": 95,
+              "position_exits": 95,
+              "profit_factor": 0.1700295387099687,
+              "rebalance_days": 161,
+              "risk_free_rate_annual": 0.02,
+              "sample": "test_oos",
+              "sessions": 638,
+              "sharpe_backtest_scale": -7.925133548830884,
+              "sharpe_canonical": -8.268869558824484,
+              "sortino_backtest_scale": -7.3093227005528085,
+              "sortino_canonical": -7.626349209363416,
+              "start": "2025-01-01",
+              "total_return": -0.14116040593546897
+            },
+            "train": {
+              "ann_return_arithmetic": 0.12950467524086046,
+              "ann_return_geometric": 0.1377581700100241,
+              "ann_volatility": 0.029109998395456943,
+              "annualized_capital_charge_drag": 0.01296981352292183,
+              "annualized_cost_drag": 0.09783648018958849,
+              "annualized_fee_drag": 0.08486666666666666,
+              "annualized_turnover_perp_units": 44.666666666666664,
+              "annualized_turnover_spot_units": 44.666666666666664,
+              "annualized_turnover_units": 89.33333333333333,
+              "avg_gross_exposure": 1.2972244574447709,
+              "avg_spot_notional_fraction": 0.6484906761460913,
+              "downside_deviation_annualized": 0.011195643881126234,
+              "end": "2022-12-31",
+              "engine_risk_free_rate_annual": 0.0,
+              "invested_fraction": 0.9415525114155251,
+              "max_drawdown": -0.14269592319148927,
+              "max_drawdown_recomputed": -0.14269592319148927,
+              "position_entries": 135,
+              "position_exits": 133,
+              "profit_factor": 2.441304890878061,
+              "rebalance_days": 225,
+              "risk_free_rate_annual": 0.02,
+              "sample": "train",
+              "sessions": 1095,
+              "sharpe_backtest_scale": 4.732331762392792,
+              "sharpe_canonical": 4.448803929205012,
+              "sortino_backtest_scale": 12.304622357831395,
+              "sortino_canonical": 11.567416453749583,
+              "start": "2020-01-02",
+              "total_return": 0.47282073020991633
+            },
+            "val": {
+              "ann_return_arithmetic": 0.022084100771815003,
+              "ann_return_geometric": 0.022280981387545085,
+              "ann_volatility": 0.00970585439803809,
+              "annualized_capital_charge_drag": 0.012691477184344765,
+              "annualized_cost_drag": 0.05538299565219702,
+              "annualized_fee_drag": 0.042691518467852255,
+              "annualized_turnover_perp_units": 22.46922024623803,
+              "annualized_turnover_spot_units": 22.46922024623803,
+              "annualized_turnover_units": 44.93844049247606,
+              "avg_gross_exposure": 1.2691098270422354,
+              "avg_spot_notional_fraction": 0.6345738592172382,
+              "downside_deviation_annualized": 0.010988045080681755,
+              "end": "2024-12-31",
+              "engine_risk_free_rate_annual": 0.0,
+              "invested_fraction": 0.9835841313269493,
+              "max_drawdown": -0.04130057678265109,
+              "max_drawdown_recomputed": -0.04130057678265109,
+              "position_entries": 45,
+              "position_exits": 45,
+              "profit_factor": 1.4784803548689038,
+              "rebalance_days": 77,
+              "risk_free_rate_annual": 0.02,
+              "sample": "val",
+              "sessions": 731,
+              "sharpe_backtest_scale": 2.295622876029223,
+              "sharpe_canonical": 2.2753381481056434,
+              "sortino_backtest_scale": 2.0277475405263496,
+              "sortino_canonical": 2.009829829570083,
+              "start": "2023-01-01",
+              "total_return": 0.04512150081489219
+            }
+          }
+        }
+      }
+    },
+    "fixed_coin_reconciled_break_evens": {
+      "always_on": {
+        "full": {
+          "break_even_capital_charge_annual": {
+            "bracketed": true,
+            "fee_model": "venue_taker_slippage",
+            "note": "The annual rate charged on the spot leg's notional at which the net annualized return is exactly zero, with the trading fees held at the stated model.",
+            "reason": "",
+            "sample": "full",
+            "solution_annual_rate": 0.16202792571857572
+          },
+          "break_even_flat_cost_bps": {
+            "bracketed": false,
+            "note": "The flat cost per unit (both legs, one number) at which the net annualized return is exactly zero.",
+            "reason": "objective does not change sign inside the bracket",
+            "sample": "full",
+            "solution_bps": null
+          },
+          "break_even_venue_fee_multiplier": {
+            "bracketed": false,
+            "cost_model": "realistic_rf",
+            "note": "The multiple of the published fee schedule at which the net annualized return is exactly zero.",
+            "reason": "objective does not change sign inside the bracket",
+            "sample": "full",
+            "solution_multiplier": null
+          }
+        },
+        "test_oos": {
+          "break_even_capital_charge_annual": {
+            "bracketed": true,
+            "fee_model": "venue_taker_slippage",
+            "note": "The annual rate charged on the spot leg's notional at which the net annualized return is exactly zero, with the trading fees held at the stated model.",
+            "reason": "",
+            "sample": "test_oos",
+            "solution_annual_rate": 0.04304452193900943
+          },
+          "break_even_flat_cost_bps": {
+            "bracketed": false,
+            "note": "The flat cost per unit (both legs, one number) at which the net annualized return is exactly zero.",
+            "reason": "objective does not change sign inside the bracket",
+            "sample": "test_oos",
+            "solution_bps": null
+          },
+          "break_even_venue_fee_multiplier": {
+            "bracketed": false,
+            "cost_model": "realistic_rf",
+            "note": "The multiple of the published fee schedule at which the net annualized return is exactly zero.",
+            "reason": "objective does not change sign inside the bracket",
+            "sample": "test_oos",
+            "solution_multiplier": null
+          }
+        }
+      },
+      "funding_positive_lagged": {
+        "full": {
+          "break_even_capital_charge_annual": {
+            "bracketed": true,
+            "fee_model": "venue_taker_slippage",
+            "note": "The annual rate charged on the spot leg's notional at which the net annualized return is exactly zero, with the trading fees held at the stated model.",
+            "reason": "",
+            "sample": "full",
+            "solution_annual_rate": 0.08264607796445489
+          },
+          "break_even_flat_cost_bps": {
+            "bracketed": true,
+            "note": "The flat cost per unit (both legs, one number) at which the net annualized return is exactly zero.",
+            "reason": "",
+            "sample": "full",
+            "solution_bps": 15.515155004595726
+          },
+          "break_even_venue_fee_multiplier": {
+            "bracketed": true,
+            "cost_model": "realistic_rf",
+            "note": "The multiple of the published fee schedule at which the net annualized return is exactly zero.",
+            "reason": "",
+            "sample": "full",
+            "solution_multiplier": 1.479997054047999
+          }
+        },
+        "test_oos": {
+          "break_even_capital_charge_annual": {
+            "bracketed": true,
+            "fee_model": "venue_taker_slippage",
+            "note": "The annual rate charged on the spot leg's notional at which the net annualized return is exactly zero, with the trading fees held at the stated model.",
+            "reason": "",
+            "sample": "test_oos",
+            "solution_annual_rate": -0.1757345604710281
+          },
+          "break_even_flat_cost_bps": {
+            "bracketed": true,
+            "note": "The flat cost per unit (both legs, one number) at which the net annualized return is exactly zero.",
+            "reason": "",
+            "sample": "test_oos",
+            "solution_bps": 2.155852836676786
+          },
+          "break_even_venue_fee_multiplier": {
+            "bracketed": true,
+            "cost_model": "realistic_rf",
+            "note": "The multiple of the published fee schedule at which the net annualized return is exactly zero.",
+            "reason": "",
+            "sample": "test_oos",
+            "solution_multiplier": 0.1389047047268832
+          }
+        }
+      },
+      "funding_positive_sameday": {
+        "full": {
+          "break_even_capital_charge_annual": {
+            "bracketed": true,
+            "fee_model": "venue_taker_slippage",
+            "note": "The annual rate charged on the spot leg's notional at which the net annualized return is exactly zero, with the trading fees held at the stated model.",
+            "reason": "",
+            "sample": "full",
+            "solution_annual_rate": 0.0894132605753839
+          },
+          "break_even_flat_cost_bps": {
+            "bracketed": true,
+            "note": "The flat cost per unit (both legs, one number) at which the net annualized return is exactly zero.",
+            "reason": "",
+            "sample": "full",
+            "solution_bps": 16.050490968791564
+          },
+          "break_even_venue_fee_multiplier": {
+            "bracketed": true,
+            "cost_model": "realistic_rf",
+            "note": "The multiple of the published fee schedule at which the net annualized return is exactly zero.",
+            "reason": "",
+            "sample": "full",
+            "solution_multiplier": 1.5353462640632642
+          }
+        },
+        "test_oos": {
+          "break_even_capital_charge_annual": {
+            "bracketed": true,
+            "fee_model": "venue_taker_slippage",
+            "note": "The annual rate charged on the spot leg's notional at which the net annualized return is exactly zero, with the trading fees held at the stated model.",
+            "reason": "",
+            "sample": "test_oos",
+            "solution_annual_rate": -0.16858028015121818
+          },
+          "break_even_flat_cost_bps": {
+            "bracketed": true,
+            "note": "The flat cost per unit (both legs, one number) at which the net annualized return is exactly zero.",
+            "reason": "",
+            "sample": "test_oos",
+            "solution_bps": 2.345842036174872
+          },
+          "break_even_venue_fee_multiplier": {
+            "bracketed": true,
+            "cost_model": "realistic_rf",
+            "note": "The multiple of the published fee schedule at which the net annualized return is exactly zero.",
+            "reason": "",
+            "sample": "test_oos",
+            "solution_multiplier": 0.1575424768816447
+          }
+        }
       }
     },
     "gates": {
@@ -4866,7 +5598,7 @@ python -m pytest -q
         "ETHUSDT perp"
       ]
     },
-    "generated_at": "2026-10-20T06:52:29.869635+00:00",
+    "generated_at": "2026-10-20T07:22:32.620606+00:00",
     "periods_per_year": 365,
     "promotion_gates": {
       "min_pooled_oos_trades": 100,
