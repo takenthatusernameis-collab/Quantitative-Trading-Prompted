@@ -56,23 +56,34 @@ any computed metric, gate, threshold, decision or committed number**.
 1. The `sample` block of `research/promotion_feasibility_backtest.py` publishes
    both the label and the realized window: the label dates (common inception),
    the realized first/last session of the run and the realized session count,
-   and the realized values equal the price-frame index of that run
-   (re-derived independently, not copied).
+   and the realized values equal the price-frame index of that run. The
+   realized window must be derived **independently** from the `data/raw/*.parquet`
+   union index (not from the engine's loader), and the block should also carry
+   the per-symbol first/last date and row count, so that the ragged edge of the
+   union calendar is visible in the artifact.
 2. No metric moves: the canonical metrics, gate table, decision, failed gates
-   and the reference-sample invariants stay bit-identical to the currently
-   committed values
-   (candidate backtest Sharpe 0.5657179297830458 / max DD -0.6224126346564325 /
-   PSR 1.6549061233035153e-08 on 8,488 sessions; reference sample
-   0.5646255767978904 / -0.6224126346564325 / 2.2219753177036448e-08 on the
-   8,487 sessions through 2026-10-16; paper record canonical Sharpe 1.771084).
+   and the reference-sample invariants stay bit-identical. The current-sample
+   expectations are expressed as **reference-sample anchors plus a cache
+   fingerprint**, not as values that the next session append invalidates:
+   * reference-sample anchors (exact): the 8,487 sessions through 2026-10-16
+     reproduce Sharpe 0.5646255767978904 / max DD -0.6224126346564325 /
+     PSR 2.2219753177036448e-08, and the first 449 sessions of the paper record
+     reproduce the canonical Sharpe 1.748401;
+   * cache fingerprint: the per-symbol row count, last date and SHA-256 of the
+     raw cache that the numbers were computed on (SPY 8488 rows through
+     2026-10-19, sha256 971d02284b9790df...) are published with them, so a
+     later append is visible as a fingerprint change instead of an unexplained
+     number change;
+   * decision and failed gates stay **NO-GO** and
+     `['full_period_sharpe', 'rolling_63d_sharpe', 'max_drawdown', 'psr']`.
 3. The two frozen literals are replaced by the live computed value, and the
    reports those scripts write
    (`research/reports/psr_continuation_horizon_001.md`,
    `research/reports/rolling_63d_rolloff_projection_001.md` if it exists) are
    regenerated and committed.
-4. A test asserts that the published realized window equals the price-frame
-   index of the backtest run (no new stale literal; the test must survive the
-   next data append).
+4. A test asserts that the published realized window equals the independently
+   computed union index of the raw cache (no new stale literal; the test must
+   survive the next data append).
 5. The reference-sample invariants of Cycle 901 still hold: the 449-session
    reference sample of the paper record still reproduces 1.748401, the
    8,487-session reference sample of the incumbent still reproduces
