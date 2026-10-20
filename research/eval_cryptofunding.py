@@ -1539,6 +1539,8 @@ def evaluate_cost_models(paths: dict[str, pd.DataFrame]) -> dict[str, Any]:
     threshold_break_evens: dict[str, dict[str, Any]] = {}
     threshold_sensitivity: dict[str, dict[str, Any]] = {}
     fixed_coin_accounting: dict[str, dict[str, Any]] = {}
+    fixed_coin_reconciled: dict[str, dict[str, Any]] = {}
+    fixed_coin_reconciled_break_evens: dict[str, dict[str, Any]] = {}
     gross_paths: dict[str, dict[str, Any]] = {}
     headline_model = COST_MODEL_BY_KEY[HEADLINE_COST_MODEL]
 
@@ -1586,7 +1588,7 @@ def evaluate_cost_models(paths: dict[str, pd.DataFrame]) -> dict[str, Any]:
             base: evaluate_book(sb, bootstrap_samples=(), cost_model=headline_model)
             for base, sb in symbol_books.items()
         }
-        portfolio_fixed = build_fixed_coin_portfolio_book(paths, rule)
+        portfolio_fixed = build_fixed_coin_portfolio_book(paths, rule)  # committed accounting
         portfolio_result = evaluate_book(
             portfolio_fixed, bootstrap_samples=(), cost_model=headline_model
         )
@@ -1604,6 +1606,18 @@ def evaluate_cost_models(paths: dict[str, pd.DataFrame]) -> dict[str, Any]:
         }
         fixed_coin_break_evens[rule.rule_id] = {
             sample: break_even_table(portfolio_fixed, sample)
+            for sample in ("full", "test_oos")
+        }
+        # Capital-consistent fixed coin portfolio (Cycle 895 reconciliation)
+        portfolio_fixed_consistent = build_fixed_coin_portfolio_book(paths, rule, capital_consistent=True)
+        portfolio_result_consistent = evaluate_book(
+            portfolio_fixed_consistent, bootstrap_samples=(), cost_model=headline_model
+        )
+        fixed_coin_reconciled[rule.rule_id] = {
+            headline_model.key: {"samples": portfolio_result_consistent["samples"]}
+        }
+        fixed_coin_reconciled_break_evens[rule.rule_id] = {
+            sample: break_even_table(portfolio_fixed_consistent, sample)
             for sample in ("full", "test_oos")
         }
         for sample in ("full", "test_oos"):
@@ -1704,6 +1718,9 @@ def evaluate_cost_models(paths: dict[str, pd.DataFrame]) -> dict[str, Any]:
         "fixed_coin_per_symbol": fixed_coin_per_symbol,
         "fixed_coin_gates": fixed_coin_gates,
         "fixed_coin_break_evens": fixed_coin_break_evens,
+        "fixed_coin_portfolio_accounting": fixed_coin_accounting,
+        "fixed_coin_reconciled": fixed_coin_reconciled,
+        "fixed_coin_reconciled_break_evens": fixed_coin_reconciled_break_evens,
         "threshold_rebalance": {
             "pre_registered_threshold": THRESHOLD_REBALANCE,
             "convention": THRESHOLD_CONVENTION,
@@ -2089,6 +2106,8 @@ def _compact_summary(summary: dict[str, Any]) -> dict[str, Any]:
             for grid, rows in cost_eval["threshold_sensitivity"].items()
         },
         "fixed_coin_portfolio_accounting": cost_eval["fixed_coin_portfolio_accounting"],
+        "fixed_coin_reconciled": cost_eval.get("fixed_coin_reconciled", {}),
+        "fixed_coin_reconciled_break_evens": cost_eval.get("fixed_coin_reconciled_break_evens", {}),
     }
     return compact
 
@@ -3523,38 +3542,223 @@ def build_fixed_coin_book(
 def build_fixed_coin_portfolio_book(
     paths: dict[str, pd.DataFrame],
     rule: RuleSpec,
+    capital_consistent: bool = False,
 ) -> Book:
-    """Equal-weight BTC/ETH fixed coin quantity portfolio (weight 0.5 per symbol)."""
+    """Equal-weight BTC/ETH fixed coin quantity portfolio (weight 0.5 per symbol).
 
-    books = [
-        build_fixed_coin_book(paths[base], rule, weight=0.5, symbol=base)
-        for base in BASE_SYMBOLS
-    ]
-    gross = sum(book.gross for book in books)
-    turnover = sum(book.turnover for book in books)
-    turnover_spot = sum(book.turnover_spot for book in books)
-    turnover_perp = sum(book.turnover_perp for book in books)
-    positions = pd.concat([book.positions for book in books], axis=1)
-    weights = pd.concat([book.weights for book in books], axis=1)
-    spot_notional = sum(book.spot_notional for book in books)
+    By default this uses the *committed* Cycle 893 accounting (the two
+    symbols' separately compounded returns are added, so each symbol's
+    capital is counted twice). Pass ``capital_consistent=True`` to use the
+    capital-consistent construction (capital split once, half per symbol at
+    entry, never rebalanced; P&L added against the combined equity).
+    """
+    if not capital_consistent:
+        books = [
+            build_fixed_coin_book(paths[base], rule, weight=0.5, symbol=base)
+            for base in BASE_SYMBOLS
+        ]
+        gross = sum(book.gross for book in books)
+        turnover = sum(book.turnover for book in books)
+        turnover_spot = sum(book.turnover_spot for book in books)
+        turnover_perp = sum(book.turnover_perp for book in books)
+        positions = pd.concat([book.positions for book in books], axis=1)
+        weights = pd.concat([book.weights for book in books], axis=1)
+        spot_notional = sum(book.spot_notional for book in books)
+        return Book(
+            name=f"PORTFOLIO_{rule.rule_id}_fixedcoin",
+            symbol="BTC+ETH",
+            rule=rule,
+            weight=0.5,
+            turnover_convention="fixed_quantity",
+            gross=gross,
+            turnover=turnover,
+            turnover_spot=turnover_spot,
+            turnover_perp=turnover_perp,
+            positions=positions,
+            weights=weights,
+            entries=int(sum(book.entries for book in books)),
+            exits=int(sum(book.exits for book in books)),
+            spot_notional_series=spot_notional,
+            notes=[
+                "fixed coin quantity portfolio: equal weight BTC/ETH, no daily "
+                "rebalancing; entry and exit only"
+            ],
+        )
+
+    # Capital-consistent construction: split capital once (half per symbol
+    # at entry), never rebalance the split; add P&L against combined equity.
+    symbols = list(BASE_SYMBOLS)
+    index = paths[symbols[0]].index
+    n = len(index)
+
+    data: dict[str, dict[str, np.ndarray]] = {}
+    for base in symbols:
+        path = paths[base]
+        data[base] = {
+            "position": position_series(path, rule).to_numpy(dtype=float),
+            "spot_close": path["spot_close"].astype(float).to_numpy(dtype=float),
+            "perp_close": path["perp_close"].astype(float).to_numpy(dtype=float),
+            "funding": path["funding_cashflow"].astype(float).to_numpy(dtype=float),
+        }
+
+    gross = np.zeros(n, dtype=float)
+    turnover_spot_arr = np.zeros(n, dtype=float)
+    turnover_perp_arr = np.zeros(n, dtype=float)
+    spot_notional_arr = np.zeros(n, dtype=float)
+    equity_path_arr = np.ones(n, dtype=float)
+    leg_weights: dict[str, np.ndarray] = {}
+    position_rows: dict[str, np.ndarray] = {}
+    entries_total = 0
+    exits_total = 0
+
+    # Each symbol gets half the combined equity on entry (weight 0.5)
+    weight = 0.5
+    equity = 1.0
+    # state per symbol
+    state: dict[str, dict[str, Any]] = {}
+    for base in symbols:
+        state[base] = {"held": False, "q": 0.0, "prev_spot": 0.0, "prev_perp": 0.0}
+
+    for i in range(n):
+        turn_spot_d = 0.0
+        turn_perp_d = 0.0
+        # entries/exits
+        for base in symbols:
+            st = state[base]
+            pos = float(data[base]["position"][i])
+            if pos > 0.5 and not st["held"]:
+                s = float(data[base]["spot_close"][i])
+                # size from the combined equity pool - half per symbol
+                alloc_equity = 0.5 * equity
+                st["q"] = weight * alloc_equity / s if s != 0 else 0.0
+                st["held"] = True
+                st["prev_spot"] = s
+                st["prev_perp"] = float(data[base]["perp_close"][i])
+                entries_total += 1
+                turn_spot_d += weight  # charged on combined equity base
+                turn_perp_d += weight
+            elif pos < 0.5 and st["held"]:
+                st["held"] = False
+                st["q"] = 0.0
+                exits_total += 1
+                turn_spot_d += weight
+                turn_perp_d += weight
+        turnover_spot_arr[i] = turn_spot_d
+        turnover_perp_arr[i] = turn_perp_d
+
+        # P&L against combined equity
+        pnl_total = 0.0
+        for base in symbols:
+            st = state[base]
+            if not st["held"]:
+                continue
+            s = float(data[base]["spot_close"][i])
+            p = float(data[base]["perp_close"][i])
+            f = float(data[base]["funding"][i])
+            # if just entered this bar? check - entry means we set up now, but entry day carries no same-day P&L in our construction
+            # look up: in build_fixed_coin_book, when entering, we continue without computing P&L that bar
+            # easier to track entry state
+            pass  # handle below more carefully
+
+        # redo with entry-day handling
+        pnl_total = 0.0
+        for base in symbols:
+            st = state[base]
+            if not st["held"]:
+                continue
+            # check if we just entered - detect by comparing? easier to recompute logic
+            # simpler: track just_entered
+        equity_path_arr[i] = equity  # placeholder
+
+    # Simpler implementation matching the logic
+    equity = 1.0
+    state = {base: {"held": False, "q": 0.0, "prev_spot": 0.0, "prev_perp": 0.0, "just_entered": False} for base in symbols}
+    gross = np.zeros(n, dtype=float)
+    turnover_spot_arr = np.zeros(n, dtype=float)
+    turnover_perp_arr = np.zeros(n, dtype=float)
+    spot_notional_arr = np.zeros(n, dtype=float)
+    equity_path_arr = np.ones(n, dtype=float)
+    leg_weights = {}
+    position_rows = {}
+    entries_total = 0
+    exits_total = 0
+    for i in range(n):
+        turn_spot_d = 0.0
+        turn_perp_d = 0.0
+        # handle transitions
+        for base in symbols:
+            st = state[base]
+            pos = float(data[base]["position"][i])
+            if pos > 0.5 and not st["held"]:
+                s = float(data[base]["spot_close"][i])
+                alloc_equity = 0.5 * equity  # split once
+                st["q"] = weight * alloc_equity / s if s != 0 else 0.0
+                st["held"] = True
+                st["just_entered"] = True
+                st["prev_spot"] = s
+                st["prev_perp"] = float(data[base]["perp_close"][i])
+                entries_total += 1
+                turn_spot_d += weight
+                turn_perp_d += weight
+            elif pos < 0.5 and st["held"]:
+                st["held"] = False
+                st["q"] = 0.0
+                st["just_entered"] = False
+                exits_total += 1
+                turn_spot_d += weight
+                turn_perp_d += weight
+            else:
+                if st["held"]:
+                    st["just_entered"] = False
+        turnover_spot_arr[i] = turn_spot_d
+        turnover_perp_arr[i] = turn_perp_d
+        # P&L
+        pnl_total = 0.0
+        for base in symbols:
+            st = state[base]
+            if not st["held"] or st.get("just_entered"):
+                continue
+            s = float(data[base]["spot_close"][i])
+            p = float(data[base]["perp_close"][i])
+            f = float(data[base]["funding"][i])
+            basis_today = st["q"] * (s - p)
+            basis_yesterday = st["q"] * (st["prev_spot"] - st["prev_perp"])
+            price_pnl = basis_today - basis_yesterday
+            fund_pnl = f * st["q"] * st["prev_perp"]
+            pnl_total += (price_pnl + fund_pnl)
+            st["prev_spot"] = s
+            st["prev_perp"] = p
+        gross[i] = pnl_total / equity if equity != 0 else 0.0
+        equity += pnl_total
+        equity_path_arr[i] = equity
+        # spot notional as fraction of combined equity
+        spot_notional_arr[i] = sum((st["q"] * float(data[base]["spot_close"][i]) / equity) if st["held"] and equity != 0 else 0.0 for base, st in state.items())
+        for base in symbols:
+            st = state[base]
+            leg_weights.setdefault(f"{base}_spot", np.zeros(n))[i] = (st["q"] * float(data[base]["spot_close"][i]) / equity if st["held"] and equity != 0 else 0.0)
+            leg_weights.setdefault(f"{base}_perp", np.zeros(n))[i] = (-(st["q"] * float(data[base]["perp_close"][i]) / equity) if st["held"] and equity != 0 else 0.0)
+            position_rows.setdefault(f"{base}_position", np.zeros(n))[i] = float(data[base]["position"][i])
+
+    weights_frame = pd.DataFrame(leg_weights, index=index)
+    positions = pd.DataFrame(position_rows, index=index)
     return Book(
-        name=f"PORTFOLIO_{rule.rule_id}_fixedcoin",
+        name=f"PORTFOLIO_{rule.rule_id}_fixedcoin_consistent",
         symbol="BTC+ETH",
         rule=rule,
-        weight=0.5,
+        weight=weight,
         turnover_convention="fixed_quantity",
-        gross=gross,
-        turnover=turnover,
-        turnover_spot=turnover_spot,
-        turnover_perp=turnover_perp,
+        gross=pd.Series(gross, index=index, dtype=float),
+        turnover=pd.Series(turnover_spot_arr + turnover_perp_arr, index=index, dtype=float),
+        turnover_spot=pd.Series(turnover_spot_arr, index=index, dtype=float),
+        turnover_perp=pd.Series(turnover_perp_arr, index=index, dtype=float),
         positions=positions,
-        weights=weights,
-        entries=int(sum(book.entries for book in books)),
-        exits=int(sum(book.exits for book in books)),
-        spot_notional_series=spot_notional,
+        weights=weights_frame,
+        entries=entries_total,
+        exits=exits_total,
+        spot_notional_series=pd.Series(spot_notional_arr, index=index, dtype=float),
+        equity_path=pd.Series(equity_path_arr, index=index, dtype=float),
         notes=[
-            "fixed coin quantity portfolio: equal weight BTC/ETH, no daily "
-            "rebalancing; entry and exit only"
+            "fixed coin quantity portfolio (capital-consistent): capital split once (half per symbol at entry, never rebalanced); P&L added against combined equity; no daily rebalancing; entry and exit only"
         ],
     )
 
