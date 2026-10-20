@@ -263,7 +263,7 @@ def sector_gate_metrics_at_cost_full(cost_frac: float) -> dict[str, Any]:
             select_top_decile,
             month_end_dates,
         )
-        from src.data.yfinance_fetcher import fetch_universe
+        from research.tsmomentum_walkforward_embargo_audit import load_close_from_cache
         from src.evaluation.walkforward import generate_walkforward_splits
 
         cand = load_yaml(CONFIG_CAND)
@@ -276,8 +276,9 @@ def sector_gate_metrics_at_cost_full(cost_frac: float) -> dict[str, Any]:
         test_end = cand["evaluation"]["splits"]["test_end"]
         wf_cfg = cand["evaluation"]["walk_forward"]
 
-        data = fetch_universe(universe, start.date().isoformat(), test_end, force=False)
-        close = data.xs("Close", level=0, axis=1).ffill().dropna(how="all")
+        close = load_close_from_cache(universe, RAW_DIR)
+        close = close.ffill().dropna(how="all")
+        close = close.loc[(close.index >= pd.Timestamp(start, tz="UTC")) & (close.index <= pd.Timestamp(test_end, tz="UTC"))]
         momentum = compute_momentum(close, lookback=lookback, skip=skip)
         mask = select_top_decile(momentum, top_fraction=top_fraction)
         month_ends = month_end_dates(close.index)
@@ -324,35 +325,39 @@ def sector_gate_metrics_at_cost_full(cost_frac: float) -> dict[str, Any]:
     return res_out
 
 
+def _gate_ok(gates, idx):
+    if not gates or idx >= len(gates):
+        return None
+    g = gates[idx]
+    obs = g["observed"]
+    if idx == 0:
+        return bool(obs >= GATE_WF_MEAN_MIN)
+    if idx == 1:
+        return bool(obs >= GATE_POSITIVE_FOLD_RATE_MIN)
+    if idx == 2:
+        return bool(obs > GATE_POOLED_TRADES_MIN)
+    return g.get("status") == "PASS"
+
+
 def find_gate_flip(gate_func, target_gate_idx: int):
-    costs_bps = np.array([0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 15.0, 20.0, 30.0])
-    prev_ok = None
-    prev_cost = None
+    """Bisection for the cost (bp/unit) at which the gate flips PASS->FAIL."""
     try:
-        for c_bps in costs_bps:
-            try:
-                res = gate_func(c_bps / 10000.0)
-                gates = res["gates"]
-                if not gates or target_gate_idx >= len(gates):
-                    continue
-                obs = gates[target_gate_idx]["observed"]
-                if target_gate_idx == 0:
-                    ok = obs >= GATE_WF_MEAN_MIN
-                elif target_gate_idx == 1:
-                    ok = obs >= GATE_POSITIVE_FOLD_RATE_MIN
-                elif target_gate_idx == 2:
-                    ok = obs > GATE_POOLED_TRADES_MIN
-                else:
-                    ok = gates[target_gate_idx]["status"] == "PASS"
-                if prev_ok is not None and prev_ok != ok and prev_ok is True:
-                    return float((prev_cost + c_bps) / 2.0)
-                prev_ok = ok
-                prev_cost = c_bps
-            except Exception:
-                continue
-        if prev_ok is True:
-            return float("inf")
-        return prev_cost
+        r0 = gate_func(0.0 / 10000.0)
+        if _gate_ok(r0["gates"], target_gate_idx) is not True:
+            return None  # never passes even at zero cost
+        hi = 30.0
+        rhi = gate_func(hi / 10000.0)
+        if _gate_ok(rhi["gates"], target_gate_idx) is True:
+            return float("inf")  # still passing at grid ceiling
+        lo = 0.0
+        for _ in range(60):
+            mid = (lo + hi) / 2.0
+            rmid = gate_func(mid / 10000.0)
+            if _gate_ok(rmid["gates"], target_gate_idx) is True:
+                lo = mid
+            else:
+                hi = mid
+        return float((lo + hi) / 2.0)
     except Exception:
         return None
 

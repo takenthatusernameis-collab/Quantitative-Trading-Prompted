@@ -28,19 +28,19 @@
 
 - Published WF mean OOS Sharpe @ 3.0 bp/unit: 0.9473; recomputed: 0.947307 (diff <= 1e-9)
 - Gates @ 3.0 bp/unit: wf_mean=0.947307 [PASS], pos_fold_rate=0.9167 [PASS], pooled_trades=6013 [PASS]
-- Gate flip costs (bps/unit): gate1=25.0, gate2=inf, gate3=inf
+- Gate flip costs (bps/unit): gate1=None, gate2=inf, gate3=inf
 
 ### csmomentum_001
 
 - Published WF mean OOS Sharpe @ 3.0 bp/unit: backtest 0.697524, canonical 0.840389; recomputed backtest 0.697524, canonical 0.840389 (diff <= 1e-9)
 - Gates @ 3.0 bp/unit: wf_mean=0.697524 [FAIL], pos_fold_rate=0.7917 [PASS], pooled_trades=400 [PASS]
-- Gate flip costs (bps/unit): gate1=30.0, gate2=inf, gate3=inf
+- Gate flip costs (bps/unit): gate1=None, gate2=inf, gate3=inf
 
 ### sectorrotation_001
 
 - Published WF mean OOS Sharpe @ 3.0 bp/unit: 0.847243; recomputed 0.847243 (diff <= 1e-9)
 - Gates @ 3.0 bp/unit: wf_mean=0.847243 [FAIL], pos_fold_rate=0.9167 [PASS], pooled_trades=215 [PASS]
-- Gate flip costs (bps/unit): gate1=30.0, gate2=inf, gate3=inf
+- Gate flip costs (bps/unit): gate1=None, gate2=inf, gate3=inf
 
 ## Verdict
 
