@@ -388,11 +388,11 @@ def test_committed_record_is_not_promoted():
 # research/reports/paper_trading_validation_002.md and reproduced in the
 # monitoring artifacts for the last five sessions of the committed record.
 ARTIFACT_ROLLING_SERIES_TAIL = {
-    "2026-10-12": 0.4892,
     "2026-10-13": 0.3669,
     "2026-10-14": 0.1133,
     "2026-10-15": 0.3249,
     "2026-10-16": -0.2119,
+    "2026-10-19": -0.4489,
 }
 
 
@@ -432,7 +432,7 @@ def test_gate_rolling_sharpe_equals_the_stored_drift_flag_value():
     gate = next(g for g in result.gates if g.name == "rolling_63d_sharpe")
     stored = float(state.drift_flags["low_rolling_sharpe"]["value"])
     assert gate.value == pytest.approx(stored, abs=1e-12)
-    assert gate.value == pytest.approx(-0.21188351222842883, abs=1e-12)
+    assert gate.value == pytest.approx(-0.4489181511478863, abs=1e-12)
     # the gate value is on the canonical scale, not on the backtest scale
     assert gate.value != pytest.approx(
         backtest_sharpe_ratio(list(state.cumulative_returns)[-63:]), abs=1e-6
