@@ -5598,7 +5598,7 @@ python -m pytest -q
         "ETHUSDT perp"
       ]
     },
-    "generated_at": "2026-10-20T07:32:08.128311+00:00",
+    "generated_at": "2026-10-20T08:24:44.098133+00:00",
     "periods_per_year": 365,
     "promotion_gates": {
       "min_pooled_oos_trades": 100,
