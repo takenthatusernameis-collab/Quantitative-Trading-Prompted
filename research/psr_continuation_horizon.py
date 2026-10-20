@@ -90,7 +90,7 @@ def main():
     for rf in (RECORD_MEAN, REQUIRED_MEAN):
         lines.append(f"- r_future={rf:.8f}: min N in grid with PSR>=0.95: {results[rf][1]}")
     lines.append("")
-    lines.append("SE decline alone cannot reach PSR>=0.95 at current observed Sharpe 1.748401 < target-scale 1.4178? Note: observed sharpe on canonical scale vs sr_target 1.4178; max PSR at SE floor is 0 if observed sharpe < sr_target, else 1. Here observed 1.748401 > 1.4178, so as SE->0 PSR->1; but SE floor not reachable at plausible N (see grid).")
+    lines.append(f"SE decline alone cannot reach PSR>=0.95 at current observed Sharpe {sharpe0:.6f} < target-scale 1.4178? Note: observed sharpe on canonical scale vs sr_target 1.4178; max PSR at SE floor is 0 if observed sharpe < sr_target, else 1. Here observed {sharpe0:.6f} > 1.4178, so as SE->0 PSR->1; but SE floor not reachable at plausible N (see grid).")
     lines.append("")
     lines.append("Gate interactions: rolling 63d sharpe and max DD remain separate promotion gates; continuation at record mean does not address trailing-63-session underperformance documented in Cycle 862.")
     report_path.write_text("\n".join(lines) + "\n")

@@ -176,7 +176,7 @@ def main():
     # PSR note
     print("--- PSR note (from Cycle 862 numbers) ---")
     print("  At current SE 0.690150, observed Sharpe needed for PSR>=0.95: 2.552996")
-    print("  Current observed Sharpe (full period): 1.748401; gap is numerator-driven")
+    print(f"  Current observed Sharpe (full period): {sharpe_ratio(rets):.6f}; gap is numerator-driven")
     print("  Trailing window change was not the cause of PSR shortfall (see attribution)")
     print()
     print("=== End of projection ===")
