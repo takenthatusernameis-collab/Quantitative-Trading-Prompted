@@ -1,3 +1,3 @@
-# Experiment: paper_trading_record_status_001
+# Paper trading record status experiment
 
-See report.
+sessions: 450

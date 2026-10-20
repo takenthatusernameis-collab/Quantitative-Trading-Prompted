@@ -1,53 +1,33 @@
 #!/usr/bin/env python3
-"""Paper-trading record status audit (Cycle 915). Read-only, cache-only."""
+"""Read-only audit of paper-trading record status."""
 
 from __future__ import annotations
 
-import argparse
 import sys
 from pathlib import Path
 
+import yaml
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
-
-REPORTS_DIR = REPO_ROOT / "research" / "reports"
-EXPERIMENTS_DIR = REPO_ROOT / "research" / "experiments"
-OUT_REPORT = REPORTS_DIR / "paper_trading_record_status_001.md"
-OUT_EXP = EXPERIMENTS_DIR / "paper_trading_record_status_001.md"
-
-STATE = REPO_ROOT / "data" / "processed" / "paper_trading_state.yaml"
-PAPER_DIR = REPO_ROOT / "data" / "processed" / "paper_trading"
+STATE_PATH = REPO_ROOT / "data" / "processed" / "paper_trading_state.yaml"
+REPORT_PATH = REPO_ROOT / "research" / "reports" / "paper_trading_record_status_001.md"
+EXPERIMENT_PATH = REPO_ROOT / "research" / "experiments" / "paper_trading_record_status_001.md"
 
 
-def main() -> int:
-    import yaml
-
-    with open(STATE) as fh:
-        state = yaml.safe_load(fh) or {}
-    days = sorted(PAPER_DIR.glob("daily_pnl_*.parquet"))
-    positions = sorted(PAPER_DIR.glob("positions_*.parquet"))
-    regimes = sorted(PAPER_DIR.glob("regime_*.parquet"))
-    risks = sorted(PAPER_DIR.glob("risk_state_*.parquet"))
-    lines = [
-        "# Paper-trading record status evidence (Cycle 915)",
-        "",
-        f"- state file: `{STATE.relative_to(REPO_ROOT)}`",
-        f"- daily_pnl files: {len(days)}",
-        f"- positions files: {len(positions)}",
-        f"- regime files: {len(regimes)}",
-        f"- risk_state files: {len(risks)}",
-        f"- state keys: {', '.join(sorted(state.keys()))}",
-        "",
-        "OVERALL: PASS",
-    ]
-    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    EXPERIMENTS_DIR.mkdir(parents=True, exist_ok=True)
-    OUT_REPORT.write_text("\n".join(lines) + "\n")
-    OUT_EXP.write_text("# Experiment: paper_trading_record_status_001\n\nSee report.\n")
+def main():
+    state = yaml.safe_load(STATE_PATH.read_text())
+    n = len(state.get("cumulative_returns", []))
+    assert n > 0
+    assert state.get("last_run_date")
+    REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    EXPERIMENT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    REPORT_PATH.write_text(f"# Paper trading record status\n\nsessions: {n}\nlast_run_date: {state['last_run_date']}\n")
+    EXPERIMENT_PATH.write_text(f"# Paper trading record status experiment\n\nsessions: {n}\n")
     print("OVERALL: PASS")
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())
