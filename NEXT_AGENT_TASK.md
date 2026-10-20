@@ -1,21 +1,20 @@
 # NEXT_AGENT_TASK.md
 
-## Cycle 913 — Make tsmomentum_spytrend_001 phase-stable or identify the minimal fix
+## Cycle 914 — Validate tsmomentum_spytrend SMA-175 fix under published protocol
 
 ### Context
-Cycle 912 decision audit downgraded the incumbent to **Exploratory (not promotable as-is)** because the published 48-fold PASS is not phase-stable: phase A (odd folds) passes gate-1 (mean ~1.385) while phase B (even folds) fails gate-1 (mean ~0.510). The folds are interleaved by the 6m-step/12m-test design; excluding thin-trade folds does not restore stability. Phase-stable evidence is required before promotion.
+Cycle 913 found the smallest reversible fix for the incumbent's phase instability: change the SPY trend-filter SMA window from 200 to 175 days. Under the published walk-forward design this yields phase-stable gate-1 (phase A mean 1.5391, phase B mean 1.5408, both PASS, pooled trades > 2900 each). The fix has NOT been promoted and the candidate definition in `research/run_cycle6.py` still uses SMA 200.
 
 ### Objective
-Determine why phase B fails and test the smallest reversible fix to achieve phase-stable gate-1 (both phases >= 0.9) under the published protocol, or if impossible with smallest change, produce a concrete failure analysis and a bounded redesign plan. Do not change gates/thresholds/cost model arbitrarily.
+Validate the SMA-175 change as a candidate mutation under the full published protocol (all gates including SMA-plateau, cost model, robustness) without changing gates/thresholds/cost model. Determine whether it is a credible candidate for promotion.
 
 ### Acceptance criteria
-1. New read-only analysis tool `research/tsmomentum_phase_stability_fix_audit.py` that reuses the committed candidate definition from `research/run_cycle6.py` and the cycle 911/912 artifacts; writes `research/reports/tsmomentum_phase_stability_fix_001.md` and `research/experiments/tsmomentum_phase_stability_fix_001.md`.
-2. Diagnose phase B failure (inspect regime filter behavior, overlay, turnover, exposure, fold windows) with evidence from the same cached path.
-3. Test at most one or two smallest reversible parameter/logic tweaks (if any). Each attempted fix must be evaluated on both phases under the published walk-forward design with read-only hashes before/after.
-4. If phase-stable PASS is achieved: report the minimal change and show both phases pass gate-1 with pooled trades >100; do not promote.
-5. If not achievable with smallest safe change: report root-cause evidence and leave a bounded next task (no speculative broad refactor).
-6. Tests `tests/test_tsmomentum_phase_stability_fix_audit.py`; `python research/tsmomentum_phase_stability_fix_audit.py` prints `OVERALL: PASS` and exits 0 only if checks pass.
-7. Verification clean: no writes under `data/` or `config/`; committed artifacts unchanged.
+1. New read-only analysis tool `research/tsmomentum_sma175_validation_audit.py` reusing the committed candidate definition and cached path; writes `research/reports/tsmomentum_sma175_validation_001.md` and `research/experiments/tsmomentum_sma175_validation_001.md`.
+2. Evaluate SMA-175 on the published 48-fold walk-forward (gate-1, gate-2, gate-3) plus SMA-plateau check vs SMA-200.
+3. Read-only hashes before/after for `data/`, `config/`, committed artifacts.
+4. Tests `tests/test_tsmomentum_sma175_validation_audit.py`; tool prints `OVERALL: PASS` and exits 0 only if checks pass.
+5. No promotion, no changes to `research/run_cycle6.py`, no writes under `data/` or `config/`.
 
 ### Scope boundaries
-Measurement/analysis first; changes only if smallest reversible fix is identified and verified. No gate threshold changes. No promotion. No new dependencies/workflows.
+Measurement/validation only; no gate threshold changes; no promotion; no new dependencies/workflows.
+" filePath="/home/runner/work/Quantitative-Trading-Prompted/Quantitative-Trading-Prompted/NEXT_AGENT_TASK.md"
