@@ -1,6 +1,6 @@
 # Roll-Date Visibility in the Cached Front-Month Futures Series (Cycle 884)
 
-**Generated:** 2026-10-20 00:02:16Z
+**Generated:** 2026-10-20 00:07:41Z
 **Candidate:** shortlist rank 7 — commodity/rate futures basis and roll yield (`futuresbasis_001`)
 **Status:** roll **dates** are observable in the committed cache; roll **prices** are not — the candidate remains **Blocked by data/infrastructure**, with a narrower block than Cycle 883 recorded.
 
