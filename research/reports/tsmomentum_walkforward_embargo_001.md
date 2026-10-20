@@ -2008,8 +2008,7 @@ git status --porcelain data/
   "read_only": {
     "committed_artifacts_unchanged": true,
     "config_unchanged": true,
-    "data_unchanged": true,
-    "files_hashed": 687
+    "data_unchanged": true
   },
   "rf_annual": 0.02,
   "slippage_bps": 2.0

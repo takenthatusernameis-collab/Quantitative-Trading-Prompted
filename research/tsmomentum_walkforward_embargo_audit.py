@@ -1278,7 +1278,6 @@ def run_audit(
             "data_unchanged": data_before == data_after,
             "config_unchanged": config_before == config_after,
             "committed_artifacts_unchanged": artifacts_before == artifacts_after,
-            "files_hashed": len(artifacts_before),
         },
         "commission_bps": commission_bps * 10000.0,
         "slippage_bps": slippage_bps * 10000.0,
