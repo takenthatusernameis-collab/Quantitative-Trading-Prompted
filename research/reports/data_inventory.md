@@ -72,7 +72,7 @@ cross-check collected in Cycle 888.
 Processed: `data/processed/crypto/{BTCUSDT,ETHUSDT}_carry_path.parquet` — 2,464 daily rows per
 symbol (2020-01-02..2026-09-30), the daily spot-long/perp-short path (funding cashflow, spot/perp
 returns, basis convergence, basis level). Machine-readable provenance:
-`research/reports/binance_crypto_manifest.json`; record: `research/experiments/cryptofunding_002_data.md`.
+`research/reports/binance_crypto_manifest.json`; record: `research/experiments/cryptofunding_002_data.md`; net-of-cost evaluation `research/experiments/cryptofunding_002_evaluation.md` (Cycle 890), cost screen extended.
 
 ## Simulation & Paper-Trading Artifacts (data/processed/)
 

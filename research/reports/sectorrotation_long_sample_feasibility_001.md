@@ -2,7 +2,7 @@
 
 Candidate `sectorrotation_001` (frozen config `config/sectorrotation_candidate_001.yaml`) evaluated on its own long sample, in the pattern of `research/promotion_feasibility_backtest.py`.
 
-- code revision: `df4a21e`
+- code revision: `41d8b15`
 - report generator: `research/sectorrotation_long_sample_feasibility.py`
 - raw cache SHA-256 identical before/after: True
 
@@ -872,4 +872,3 @@ The benchmark is evaluated in the engine's exogenous-weight convention (constant
 | benchmark_exposure_is_unit | True | 1/N benchmark gross exposure is 1.000000 on the invested sample. |
 | walkforward_fold_count | True | generated 36 walk-forward folds (pre-registered 36). |
 | raw_cache_unchanged | True | all 9 sector parquet files are SHA-256 byte-identical before and after the run. |
-

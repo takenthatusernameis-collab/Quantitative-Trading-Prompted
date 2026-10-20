@@ -2133,6 +2133,9 @@ def _git_revision() -> str:
 # ======================================================================
 # Main
 # ======================================================================
+
+
+
 def main() -> int:
     checks: list[dict[str, Any]] = []
 
@@ -2172,6 +2175,7 @@ def main() -> int:
         build_csmomentum_candidate(),
         build_sectorrotation_candidate(),
         build_macroregime_candidate(),
+        build_cryptofunding_candidate(),
     ]
     for cand in candidates:
         print(f"{cand.candidate_id:<26} {cand.window_start} -> {cand.window_end} "
@@ -2534,6 +2538,64 @@ def main() -> int:
         print(f"FAILED CHECKS: {failed}", file=sys.stderr)
         return 1
     return 0
+
+def build_cryptofunding_candidate() -> Candidate:
+    """cryptofunding_001: spot-long + perp-short carry (Binance)."""
+    REPO = Path(__file__).resolve().parent.parent
+    PROC = REPO / "data" / "processed" / "crypto"
+    dfs = []
+    for s in ["BTC", "ETH"]:
+        df = pd.read_parquet(PROC / f"{s}USDT_carry_path.parquet")
+        df = df[["gross_carry", "spot_return", "perp_return", "funding_cashflow"]].copy()
+        dfs.append(df)
+    common = dfs[0].index
+    for d in dfs[1:]:
+        common = common.intersection(d.index)
+    btc = dfs[0].loc[common].rename(columns=lambda x: f"BTC_{x}")
+    eth = dfs[1].loc[common].rename(columns=lambda x: f"ETH_{x}")
+    df = pd.concat([btc, eth], axis=1)
+    cal = df.index
+    weights = pd.DataFrame(0.5, index=cal, columns=["BTC", "ETH"])
+    gross_btc = df["BTC_gross_carry"].astype(float)
+    gross_eth = df["ETH_gross_carry"].astype(float)
+    gross = (weights["BTC"] * gross_btc + weights["ETH"] * gross_eth).astype(float)
+    turnover = (weights["BTC"] * (df["BTC_spot_return"].abs() + df["BTC_perp_return"].abs()) +
+                weights["ETH"] * (df["ETH_spot_return"].abs() + df["ETH_perp_return"].abs())).astype(float)
+    bench_gross = (0.5 * df["BTC_spot_return"].astype(float) + 0.5 * df["ETH_spot_return"].astype(float))
+    bench_turnover = pd.Series(0.0, index=cal)
+    bench_turnover.iloc[0] = 1.0
+    bench_weights = weights.copy()
+    # use simple splits
+    splits = generate_walkforward_splits(
+        str(cal.min().date()),
+        str(cal.max().date()),
+        2.0, 6.0, 3.0, 0, 0,
+    )
+    return Candidate(
+        candidate_id="cryptofunding_001",
+        label="Crypto perpetual funding-rate carry (spot long + perp short, equal weight BTC/ETH)",
+        role="candidate",
+        universe=["BTC", "ETH"],
+        window_start=str(cal.min().date()),
+        window_end=str(cal.max().date()),
+        gross=gross,
+        turnover=turnover,
+        weights=weights,
+        benchmark_gross=bench_gross,
+        benchmark_turnover=bench_turnover,
+        benchmark_weights=bench_weights,
+        benchmark_label="close-to-close equal weight spot (BTC/ETH)",
+        splits=splits,
+        explicit_turnover=True,
+        provenance={
+            "data": "data/processed/crypto/*_carry_path.parquet (checksum-verified, 2020-01-02..2026-09-30)",
+            "hypothesis": "research/hypotheses/cryptofunding_001.md",
+            "evaluation_script": "research/eval_cryptofunding.py",
+        },
+        published={},
+        notes=["Crypto carry strategy using funding rates; net-of-cost evaluated in Cycle 890."],
+        verification=[],
+    )
 
 
 if __name__ == "__main__":

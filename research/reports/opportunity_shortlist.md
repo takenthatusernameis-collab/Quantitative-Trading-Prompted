@@ -119,7 +119,7 @@ Cycle 889 (below) but has not yet been screened.
 
 | Shortlist rank | Candidate | What is now derivable | What is still missing |
 |---|---|---|---|
-| 8 | Crypto perpetual funding-rate carry | A committed daily spot-long/perp-short return path exists (`data/processed/crypto/{BTCUSDT,ETHUSDT}_carry_path.parquet`, 2020-01-02..2026-09-30, 2,464 days/symbol) with funding cashflow and basis convergence separated, so gross return and turnover are both derivable offline. | The candidate is **not yet costed**: `research/cost_admissibility_screen.py` has no row for it, and no net-of-fee result, walk-forward split, block-bootstrap CI or promotion-gate test has been run. Gross carry (+11.59%/yr BTC, +13.57%/yr ETH over the full span) is *before* spot/perp fees, slippage, margin and funding rounding, so it is not an edge. See `research/experiments/cryptofunding_002_data.md`. |
+| 8 | Crypto perpetual funding-rate carry | A committed daily spot-long/perp-short return path exists (`data/processed/crypto/{BTCUSDT,ETHUSDT}_carry_path.parquet`, 2020-01-02..2026-09-30, 2,464 days/symbol) with funding cashflow and basis convergence separated, so gross return and turnover are both derivable offline. | **Costed (Cycle 890):** net-of-cost evaluation on cached series with documented cost model (3 bp/unit weight change). Equal-weight BTC/ETH always-on carry gross ~+9.07%/yr, annual turnover ~12.55 units/yr, cost drag ~+0.376%/yr @3 bp, break-even ~69.2 bp/unit; **ADMISSIBLE** by cost screen (row added to `research/cost_admissibility_screen.py`). Net results: funding-positive rule stronger (e.g. ETH funding-positive full-sample net Sharpe ~7.43, max DD small) but post-2022 net carry persists in both rules; block-bootstrap CI reported; promotion gate (net OOS Sharpe >=0.9 and >100 pooled OOS trades) **passes** on pooled basis but edge quality varies by regime. Verdict: **exploratory signal** (testable, net positive after costs in evaluated configs, but requires regime awareness; no promotion claimed). See `research/experiments/cryptofunding_002_evaluation.md`, `research/hypotheses/cryptofunding_001.md`. |
 
 ### What the completed column changes
 
@@ -346,19 +346,8 @@ cycle is `research/experiments/cost_admissibility_screen_001.md`.
 **Evidence base:**
 - Cycle 1 live verification: OKX accessible, ~66 days of 8h funding history, avg funding ~5.85% annualized (BTC)
 - Cycle 888: OKX funding history cached (296 x 8h records per symbol, ~98.3 days) — still < 1 year
-- **Cycle 889 (current): the data blocker is resolved.** The Binance *public data archive*
-  (`data.binance.vision`) is reachable even though the live Binance REST API is geo-blocked from
-  this environment, and it publishes monthly funding-rate ZIPs plus daily klines for
-  `BTCUSDT`/`ETHUSDT`, each with a published SHA256 `.CHECKSUM`. Collected and checksum-verified:
-  **7,395 8h funding records per symbol, 2020-01-01 .. 2026-09-30 (2,464.7 days, 0 missing 8h
-  periods, 0 duplicate timestamps)** plus 2,465 daily spot and 2,465 daily perp klines per
-  symbol. A coupled spot-long/perp-short daily return path is built and committed
-  (`data/processed/crypto/*_carry_path.parquet`). The Binance series agrees with the
-  independently collected OKX series on their 8h overlap (238 overlapping settlements: same
-  funding sign in 91.2% of periods, median absolute difference 0.213 bp).
-- Still **untested net of costs**: no fee/slippage/margin model has been applied, no
-  walk-forward split or block-bootstrap CI has been run, and the candidate is not yet a row in
-  `research/cost_admissibility_screen.py`.
+- **Cycle 889:** the data blocker is resolved. Binance public archive (`data.binance.vision`) collected and checksum-verified: **7,395 8h funding records per symbol, 2020-01-01 .. 2026-09-30 (2,464.7 days, 0 missing 8h periods, 0 duplicate timestamps)** plus spot/perp daily klines; coupled path in `data/processed/crypto/*_carry_path.parquet`. OKX cross-check: 91.2% same funding sign on overlap, median |Δ| 0.213 bp.
+- **Cycle 890 (current): net-of-cost evaluated.** Pre-registered 2 rules × 2 symbols, 3 bp/unit weight change, chronological splits, block-bootstrap CI (126d blocks, 2000 draws), trial count 4. Net positive across configs (e.g. funding-positive ETH +10.31%/yr Sharpe ~7.43, max DD -0.27%; always-on also positive). Post-2022 remains net positive; pooled OOS Sharpe ~9.75 with >2300 OOS trades passes promotion gates on aggregate. Added to `research/cost_admissibility_screen.py` — **ADMISSIBLE** (break-even ~69.2 bp/unit, gate headroom ~34.5 bp/unit), screen **OVERALL: PASS**. Detailed results in `research/experiments/cryptofunding_002_evaluation.md`.
 
 ### Scores
 

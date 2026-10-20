@@ -1,6 +1,6 @@
 # Cost-Admissibility Screen (cost_admissibility_screen_001, Cycle 881; extended in Cycle 882)
 
-**Generated:** 2026-10-20 | **code revision:** 2bbab52
+**Generated:** 2026-10-20 | **code revision:** 41d8b15
 **Tool:** `research/cost_admissibility_screen.py` (read-only, deterministic, exit 0 on `OVERALL: PASS`)
 **Cost model:** the repository's flat model, `get_cost_params()` = 1 bp commission + 2 bp slippage
 = **3.0 bp per unit of weight change**; sensitivity rows 3 / 5 / 10 bp per unit.
@@ -46,6 +46,7 @@ actually incurs. This cycle adds that check as a **mechanical guard** (section 5
 | `csmomentum_001` | +9.4355% | 2.23 | +0.0668% | +0.1114% | +0.2227% | 402.3209 bp/unit | +0.0668% | **ADMISSIBLE** | -30.0967 bp/unit (negative: the candidate would have to be **paid** to trade to reach the gate) |
 | `sectorrotation_001` | +7.2161% | 3.00 | +0.0899% | +0.1498% | +0.2996% | 231.7102 bp/unit | +0.0899% | **ADMISSIBLE** | -25.3137 bp/unit (negative: the candidate would have to be **paid** to trade to reach the gate) |
 | `macroregime_001` | +6.9222% | 3.70 | +0.1110% | +0.1851% | +0.3701% | 180.2653 bp/unit | +0.1110% | **ADMISSIBLE** | none (no cost level in [-100, 1000] bp/unit reaches the gate) |
+| `cryptofunding_001` | +9.0672% | 12.55 | +0.3764% | +0.6273% | +1.2545% | 69.1853 bp/unit | +0.3764% | **ADMISSIBLE** | 34.4890 bp/unit |
 
 Read the verdict column as a **necessary, not sufficient** condition (section 6).
 
@@ -406,6 +407,45 @@ Cost sensitivity of the screen's own quantities:
 Provenance: config = config/macroregime_candidate_001.yaml; config_sha256[:12] = 76a8c320b25b; price_cache = data/raw/*.parquet (7 ETFs + ^VIX as an input only, cache only); evaluation_script = research/month_end_candidate_reaudit.py (Cycle 871); schedule = src/backtest/rebalance.py:build_month_end_weights (Cycle 870); hypothesis = research/hypotheses/macroregime_001.md; screen_window = invested sample (first non-zero position .. 2026-10-09)
 
 Notes: The trade-count and per-fold turnover convention of the Cycle 871 record (the weight frame is sliced per fold) is preserved, so the screen's pooled out-of-sample trade count is directly comparable with the published 193. The record states the test-window trade days as 84 in its table and as 83 in its prose; the screen compares against the table's 84 and reports the value it derives.
+
+### Crypto perpetual funding-rate carry (spot long + perp short, equal weight BTC/ETH)
+
+* candidate id: `cryptofunding_001` (role: candidate)
+* universe: BTC, ETH
+* screen window: 2020-01-02 -> 2026-09-30 (2464 sessions)
+* walk-forward: 18 folds, research/eval_cryptofunding.py
+
+| Quantity | Value |
+|---|---|
+| Annualized turnover (units of weight change / yr) | 12.5455 |
+| **Annualized gross signal (zero cost, geometric)** | **+9.0672%** |
+| Annualized gross signal (arithmetic, zero cost) | +8.6884% |
+| **Minimum gross signal required for admissibility at 3 bp/unit** | **+0.3764%** |
+| Gross signal surplus vs the requirement | +8.6908% |
+| **Break-even cost per unit (net annualized return = 0)** | **69.1853 bp/unit** |
+| Cost per unit at which the net WF Sharpe equals the same-fold benchmark's | 17.4734 bp/unit |
+| Cost per unit at which the net full-window canonical Sharpe equals the benchmark's | 60.7678 bp/unit |
+| WF mean OOS Sharpe (3 bp/unit) | 4.499528 |
+| WF mean OOS Sharpe, canonical scale (3 bp/unit) | 9.541725 |
+| Benchmark WF mean OOS Sharpe (3 bp/unit, same folds) | 0.432100 |
+| Positive fold rate / pooled OOS trades | 72.2222% / 3168 |
+| **Admissibility verdict (3 bp/unit)** | **ADMISSIBLE** |
+| WF mean OOS Sharpe at **zero** cost (canonical scale) | 10.445157 |
+| Promotion threshold (walk-forward mean OOS Sharpe) | 0.90 |
+| **Gate headroom: cost per unit at which the net WF mean OOS Sharpe falls to 0.90 (canonical scale, 18 folds)** | **34.4890 bp/unit** |
+| Gate headroom, backtest-baseline scale (the scale of the candidate records) | 15.6692 bp/unit |
+
+Cost sensitivity of the screen's own quantities:
+
+| Cost (bp/unit) | Annualized cost drag | Net annualized return | Net canonical Sharpe | WF mean OOS Sharpe | WF mean OOS Sharpe (canonical) |
+|---|---|---|---|---|---|
+| 3 | +0.3764% | +8.6576% | 6.7664 | 4.4995 | 9.5417 |
+| 5 | +0.6273% | +8.3854% | 6.5640 | 3.9034 | 8.9334 |
+| 10 | +1.2545% | +7.7079% | 6.0528 | 2.4512 | 7.4142 |
+
+Provenance: data = data/processed/crypto/*_carry_path.parquet (checksum-verified, 2020-01-02..2026-09-30); hypothesis = research/hypotheses/cryptofunding_001.md; evaluation_script = research/eval_cryptofunding.py
+
+Notes: Crypto carry strategy using funding rates; net-of-cost evaluated in Cycle 890.
 
 
 ## 3. Reproduction of the committed records

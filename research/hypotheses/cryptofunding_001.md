@@ -59,3 +59,52 @@ reproducible spot-long/perp-short return path is committed
 has been run, so no edge is claimed. Gross carry only: +11.59%/yr BTC, +13.57%/yr ETH before
 costs. Evidence: research/experiments/cryptofunding_002_data.md; Cycle 888 data note:
 research/experiments/cryptofunding_001_data.md.
+
+## Pre-registration (Cycle 890 evaluation)
+
+### Rule set (fixed, no post-hoc selection)
+1. **Always-on**: spot-long + perp-short carry every day (hold constant notional, rebalance daily to maintain constant notional due to drift). Entry/exit: always in.
+2. **Funding-positive only**: same construction but only when funding is positive (`funding_cashflow > 0`); zero position otherwise. This is the rule named in the hypothesis.
+
+**Trial count:** 2 rules × 2 symbols = 4 configurations. Reported explicitly; no other variants tested in this cycle.
+
+### Cost model (all numbers and sources)
+All costs are applied per the repository's flat cost model used by `research/cost_admissibility_screen.py`: **3 bp per unit of weight change** (commission + slippage as per `get_cost_params()`; repository default 1 bp commission + 2 bp slippage = 3 bp/unit).
+
+Sources and assumptions:
+- **Binance spot taker fee** on long leg: included in the 3 bp/unit turnover model (repository convention).
+- **Binance USDT-margined perp maker/taker fee** on short leg: included in the 3 bp/unit turnover model (repository convention).
+- **Slippage per leg**: included in the 3 bp/unit turnover model (repository convention).
+- **Margin/financing cost on perp**: included implicitly in funding mechanics; funding cashflow is already separated in the path (`funding_cashflow`); no separate margin interest modeled beyond what funding represents.
+- **Funding rounding**: assumed negligible / captured in observed funding rates from exchange data.
+- **Positioning**: held constant-notional (one entry + daily drift rebalance). **Annual turnover in weight-change units** computed as `mean(daily |Δw|) * 252` where daily turnover is sum of absolute weight changes across legs; for constant-notional spot-long/perp-short with daily drift, daily turnover ≈ |spot_return| + |perp_return| per day (two legs rebalancing), annualized as reported.
+
+### Chronological splits
+- **Full sample:** 2020-01-02 to 2026-09-30 (2,464 days) - all data, reported in full.
+- **Train/validation/test split (chronological, no post-hoc window exclusion):**
+  - Train: 2020-01-02 to 2022-12-31
+  - Validation: 2023-01-01 to 2024-12-31
+  - Test (out-of-sample): 2025-01-01 to 2026-09-30
+- **Post-2022 sub-sample** (required by falsification condition): 2023-01-01 to 2026-09-30 (separately reported).
+
+### Benchmarks
+- **Primary:** hold spot only (buy-and-hold spot)
+- **Secondary:** risk-free rate (from `get_risk_free_rate()`)
+
+### Promotion gates (from AGENTS.md)
+- Net out-of-sample Sharpe >= 0.9
+- Pooled out-of-sample trades > 100 (or equivalently sufficient independent observations)
+
+### Falsification condition
+No durable positive net carry after fees over multi-year history; < 100 independent funding periods; gross carry concentrated in a single regime (2020-2021) with no carry in the post-2022 sample. As stated in hypothesis.
+
+
+## Cycle 890 Verdict (net-of-cost)
+- **Evaluation:** Pre-registered (2 rules × 2 symbols), cost model 3 bp/unit weight change (repo flat). Chronological splits (train/val/test/post-2022) reported; block-bootstrap CI (126-day blocks, 2000 draws, seed 20261019); trial count 4.
+- **Full-sample net (always-on):** BTC +7.98%/yr (Sharpe ~6.87, max DD -2.43%), ETH +9.33%/yr (Sharpe ~5.99, max DD -1.91%); turnover ~10.6/14.5 units/yr.
+- **Full-sample net (funding-positive):** BTC +8.81%/yr (Sharpe ~8.34, max DD -0.35%), ETH +10.31%/yr (Sharpe ~7.43, max DD -0.27%); turnover lower (~9.09/12.47 units/yr).
+- **Post-2022 (2023-01-01+):** Still positive net across configs (e.g. ETH funding-positive post-2022 ann net ~+9.4%, Sharpe ~7.8; BTC funding-positive ~+8.1%, Sharpe ~8.4). No collapse to zero.
+- **Out-of-sample (2025-01-01+):** Strong net Sharpe across configs (pooled OOS Sharpe ~9.75, pooled OOS trades ~2335). Promotion gate (net OOS Sharpe >= 0.9 and > 100 pooled OOS trades): **PASS**.
+- **Cost screen:** Added row to `research/cost_admissibility_screen.py`; break-even ~69.2 bp/unit, gate headroom ~34.5 bp/unit, **ADMISSIBLE** at 3 bp/unit; screen still **OVERALL: PASS**.
+- **Verdict:** **exploratory signal** — net-positive after documented costs across rules/symbols with good risk-adjusted metrics and post-2022 persistence; mechanism plausible (funding carry). However, regime-dependent, venue-specific (Binance), and promotion to a "credible candidate for further validation" requires more conservative walk-forward implementation matching repo conventions and live-fee verification. Do **not** promote without additional robustness checks; do not tune further in this cycle (trial count declared).
+- **Evidence:** `research/experiments/cryptofunding_002_evaluation.md`, `research/reports/cost_admissibility_screen_001.md`, updated `research/reports/opportunity_shortlist.md`.

@@ -292,9 +292,10 @@ def test_report_publishes_the_gate_headroom_for_every_candidate() -> None:
         "csmomentum_001",
         "sectorrotation_001",
         "macroregime_001",
+        "cryptofunding_001",
     ):
         assert cid in text, cid
-    assert text.count("Gate headroom: cost per unit at which the net WF mean OOS Sharpe") == 6
+    assert text.count("Gate headroom: cost per unit at which the net WF mean OOS Sharpe") == 7
     assert "Promotion threshold (walk-forward mean OOS Sharpe) | 0.90" in text
 
 
