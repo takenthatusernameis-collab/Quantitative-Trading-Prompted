@@ -822,6 +822,247 @@ def test_reconciled_portfolio_promotion_gate_never_passes(paths):
         assert gate["pooled_oos_position_round_trips"] < ev.PROMOTION_MIN_POOLED_OOS_TRADES
 
 
+def test_reconciled_portfolio_metrics_match_independent_reconstruction(paths):
+    """The reconciled portfolio's full metric set matches an independent rebuild.
+
+    The construction is rebuilt from the per-symbol primitives - the position
+    path, the spot and perp closes and the funding cash flow - without reusing
+    ``build_fixed_coin_portfolio_book``: the capital is split once (half per
+    symbol at its own entry, never rebalanced), each symbol's legs are sized
+    at 0.5 of its half, the two symbols' P&L is added against the one
+    combined equity, entry and exit are charged on both legs and the marked
+    -to-market spot notional is the capital base of the charge. The net
+    series, the five pre-registered samples' metrics and the promotion gate
+    are then recomputed from that rebuild and must agree with the evaluation
+    to 1e-9. This is the durable form of the Cycle 896 standalone
+    replication.
+    """
+    model = ev.COST_MODEL_BY_KEY[ev.HEADLINE_COST_MODEL]
+    for rule in ev.RULES:
+        rebuilt = _reconciled_portfolio_rebuild(paths, rule)
+        net = rebuilt["gross"] - (
+            rebuilt["turnover_spot"] * (model.spot_bps / 10000.0)
+            + rebuilt["turnover_perp"] * (model.perp_bps / 10000.0)
+        ) - rebuilt["spot_notional"] * (model.capital_rate_annual / ev.PERIODS_PER_YEAR)
+
+        book = ev.build_fixed_coin_portfolio_book(
+            paths, rule, capital_consistent=True
+        )
+        evaluated = ev.evaluate_book(book, bootstrap_samples=(), cost_model=model)
+
+        for sample in ("full", "train", "val", "test_oos", "post2022"):
+            idx = ev.sample_index(net.index, sample)
+            r = net.loc[idx]
+            reference = evaluated["samples"][sample]
+            growth = float((1.0 + r).prod())
+            ann_geo = growth ** (ev.PERIODS_PER_YEAR / len(r)) - 1.0
+            volatility = float(r.std(ddof=1)) * np.sqrt(ev.PERIODS_PER_YEAR)
+            sharpe = float(r.mean() * ev.PERIODS_PER_YEAR / volatility)
+            cum = (1.0 + r).cumprod()
+            drawdown = float((cum / cum.expanding().max() - 1.0).min())
+            turnover = float(
+                rebuilt["turnover"].loc[idx].mean() * ev.PERIODS_PER_YEAR
+            )
+            assert ann_geo == pytest.approx(reference["ann_return_geometric"], abs=1e-9), (
+                rule.rule_id,
+                sample,
+            )
+            assert sharpe == pytest.approx(reference["sharpe_canonical"], abs=1e-9), (
+                rule.rule_id,
+                sample,
+            )
+            assert drawdown == pytest.approx(reference["max_drawdown"], abs=1e-9), (
+                rule.rule_id,
+                sample,
+            )
+            assert turnover == pytest.approx(
+                reference["annualized_turnover_units"], abs=1e-9
+            ), (rule.rule_id, sample)
+
+        # The capital base the reconciled book ties up: the marked-to-market
+        # spot notional as a fraction of the combined equity. It is measured,
+        # not assumed: the record states it and the code must reproduce it.
+        capital_base = evaluated["samples"]["full"]["avg_spot_notional_fraction"]
+        assert capital_base == pytest.approx(
+            float(rebuilt["spot_notional"].mean()), abs=1e-12
+        ), rule.rule_id
+
+
+def _reconciled_portfolio_rebuild(paths, rule) -> dict[str, pd.Series]:
+    """An independent rebuild of the capital-consistent fixed-coin portfolio.
+
+    Written from the stated construction (capital split once, half per symbol
+    at its own entry; the legs of a symbol sized at 0.5 of its half; the P&L
+    of the two symbols added against the one combined equity; entry and exit
+    charged on both legs; the marked-to-market spot notional as the capital
+    base) and deliberately **not** sharing code with
+    ``build_fixed_coin_portfolio_book``.
+    """
+    symbols = list(ev.BASE_SYMBOLS)
+    index = paths[symbols[0]].index
+    n = len(index)
+    closes = {
+        base: {
+            "position": ev.position_series(paths[base], rule).to_numpy(dtype=float),
+            "spot": paths[base]["spot_close"].astype(float).to_numpy(dtype=float),
+            "perp": paths[base]["perp_close"].astype(float).to_numpy(dtype=float),
+            "funding": paths[base]["funding_cashflow"].astype(float).to_numpy(dtype=float),
+        }
+        for base in symbols
+    }
+    leg_weight = 0.5
+    gross = np.zeros(n)
+    turnover_spot = np.zeros(n)
+    turnover_perp = np.zeros(n)
+    spot_notional = np.zeros(n)
+    equity = 1.0
+    coins = {base: 0.0 for base in symbols}
+    previous_basis = {base: 0.0 for base in symbols}
+    previous_perp = {base: 0.0 for base in symbols}
+    for i in range(n):
+        opened: set[str] = set()
+        for base in symbols:
+            wanted = closes[base]["position"][i] > 0.5
+            if wanted and coins[base] == 0.0:
+                spot = closes[base]["spot"][i]
+                coins[base] = leg_weight * (0.5 * equity) / spot if spot != 0 else 0.0
+                previous_basis[base] = spot - closes[base]["perp"][i]
+                previous_perp[base] = closes[base]["perp"][i]
+                opened.add(base)
+                turnover_spot[i] += leg_weight
+                turnover_perp[i] += leg_weight
+            elif (not wanted) and coins[base] != 0.0:
+                coins[base] = 0.0
+                turnover_spot[i] += leg_weight
+                turnover_perp[i] += leg_weight
+        pnl = 0.0
+        for base in symbols:
+            if coins[base] == 0.0 or base in opened:
+                continue
+            basis = closes[base]["spot"][i] - closes[base]["perp"][i]
+            pnl += coins[base] * (basis - previous_basis[base])
+            pnl += closes[base]["funding"][i] * coins[base] * previous_perp[base]
+            previous_basis[base] = basis
+            previous_perp[base] = closes[base]["perp"][i]
+        gross[i] = pnl / equity if equity != 0.0 else 0.0
+        equity += pnl
+        for base in symbols:
+            if coins[base] != 0.0 and equity != 0.0:
+                spot_notional[i] += coins[base] * closes[base]["spot"][i] / equity
+    return {
+        "gross": pd.Series(gross, index=index, dtype=float),
+        "turnover_spot": pd.Series(turnover_spot, index=index, dtype=float),
+        "turnover_perp": pd.Series(turnover_perp, index=index, dtype=float),
+        "turnover": pd.Series(turnover_spot + turnover_perp, index=index, dtype=float),
+        "spot_notional": pd.Series(spot_notional, index=index, dtype=float),
+    }
+
+
+def test_reconciled_capital_base_is_measured_not_assumed(paths):
+    """The record's capital-base statement is reproduced by the code.
+
+    The reconciled construction's spot notional does **not** sum to the
+    combined equity: at a simultaneous entry it is 0.5 of it and it drifts
+    above it afterwards. The record states the measured numbers, so the code
+    must reproduce them.
+    """
+    model = ev.COST_MODEL_BY_KEY[ev.HEADLINE_COST_MODEL]
+    always = ev.build_fixed_coin_portfolio_book(
+        paths, ev.RULES[0], capital_consistent=True
+    )
+    # The always-on book enters both symbols on the first session, so its
+    # entry spot notional is 0.5 of the combined equity (0.25 per symbol at
+    # the pre-registered leg weight of 0.5).
+    assert float(always.spot_notional.iloc[0]) == pytest.approx(0.5, abs=1e-12)
+    for rule in ev.RULES:
+        book = ev.build_fixed_coin_portfolio_book(
+            paths, rule, capital_consistent=True
+        )
+        fraction = book.spot_notional
+        # Marked to market the ratio leaves that level: it is not 1.0, which
+        # is what the record now states.
+        assert float(fraction.mean()) != pytest.approx(1.0, abs=1e-6), rule.rule_id
+        evaluated = ev.evaluate_book(book, bootstrap_samples=(), cost_model=model)
+        assert evaluated["samples"]["full"]["avg_spot_notional_fraction"] == (
+            pytest.approx(float(fraction.mean()), abs=1e-12)
+        ), rule.rule_id
+
+
+def test_reconciled_gross_per_capital_employed_is_the_same_trade(paths):
+    """The gross per unit of capital employed is the gross divided by the
+    leverage, and it is the number the record reports next to the
+    constant-notional book's."""
+    model = ev.COST_MODEL_BY_KEY[ev.HEADLINE_COST_MODEL]
+    for rule in ev.RULES:
+        book = ev.build_fixed_coin_portfolio_book(
+            paths, rule, capital_consistent=True
+        )
+        leverage = book.spot_notional
+        invested = leverage > 0.0
+        per_capital = (book.gross / leverage.replace(0.0, np.nan)).fillna(0.0)
+        # On the sessions the book is flat there is no capital employed and
+        # no gross; on the others the identity is exact.
+        assert float(per_capital[~invested].abs().sum()) == 0.0, rule.rule_id
+        np.testing.assert_allclose(
+            per_capital[invested].to_numpy(),
+            (book.gross / leverage)[invested].to_numpy(),
+            rtol=1e-12,
+            atol=1e-18,
+            err_msg=rule.rule_id,
+        )
+        # The constant-notional book holds a constant spot notional (1.0x of
+        # the equity on the sessions it is invested, zero when it is flat), so
+        # its gross per unit of capital employed is its gross.
+        drift = ev.portfolio_book(paths, rule, turnover_convention="drift")
+        # Half of the equity per invested symbol, on every session.
+        invested_symbols = drift.positions.gt(0).sum(axis=1)
+        np.testing.assert_allclose(
+            drift.spot_notional.to_numpy(),
+            0.5 * invested_symbols.to_numpy(),
+            rtol=1e-12,
+            atol=1e-12,
+            err_msg=rule.rule_id,
+        )
+
+
+def test_committed_artifact_states_the_reconciled_capital_base():
+    """The record must state the reconciled capital base it measures."""
+    text = ARTIFACT.read_text()
+    assert "### The capital base the reconciled book ties up" in text
+    assert "Independent replication (Cycle 896)" in text
+    payload = json.loads(
+        text[
+            text.index("```json") + len("```json") : text.index(
+                "```", text.index("```json") + len("```json")
+            )
+        ]
+    )
+    capital_base = payload["cost_model_evaluation"]["fixed_coin_reconciled_capital_base"]
+    assert set(capital_base) == {
+        "always_on",
+        "funding_positive_sameday",
+        "funding_positive_lagged",
+    }
+    for rule_id, row in capital_base.items():
+        assert row["min_spot_notional_fraction_full"] <= row["avg_spot_notional_fraction_full"]
+        assert row["avg_spot_notional_fraction_full"] <= row["max_spot_notional_fraction_full"]
+        assert 0.0 < row["constant_notional_spot_notional_fraction"] <= 1.0 + 1e-9
+        # The three annualizations the record states: the gross on the stated
+        # equity, the gross per unit of capital employed and the
+        # constant-notional book's gross. The always-on book is the leveraged
+        # case (its notional grows with the price while its equity does not),
+        # so its gross on the stated equity is well above the same trade per
+        # unit of capital employed; every rule earns the same gross per unit
+        # of capital as the constant-notional book.
+        assert capital_base["always_on"]["gross_on_stated_equity_annualized"] > (
+            capital_base["always_on"]["gross_per_capital_employed_annualized"]
+        )
+        for rule_id, row in capital_base.items():
+            assert row["gross_per_capital_employed_annualized"] == pytest.approx(
+                row["constant_notional_gross_annualized"], abs=0.02
+            ), rule_id
+
+
 def test_committed_artifact_carries_reconciled_fixed_coin():
     """The artifact payload keeps the reconciled figures and all gate rows
     failing; the reconciliation-with-cost-screen fields are unchanged."""

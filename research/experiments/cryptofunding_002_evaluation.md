@@ -711,7 +711,7 @@ The three constructions are compared below on the **per-symbol** basis (one symb
 
 The committed Cycle 893 fixed-coin portfolio adds the two symbols' **separately compounded** returns: each symbol's return is measured against its own equity and the two are added, so each symbol's capital is counted twice. This section reconciles that portfolio under a single stated convention: the capital is split **once** (half per symbol at the entry, never rebalanced), the two symbols' P&L is added against their **combined** equity, and the turnover and the capital-charge base are expressed as fractions of that combined equity. It is one book with a shared equity, not two sub-books added up. The three pre-registered rules are re-measured under the Cycle 892 headline cost model; no new trials, no change to the gate, the cost screen or the flat model.
 
-* **Convention:** capital split once (0.5 of combined equity per symbol at entry, never rebalanced); the marked-to-market spot notionals of the two legs sum to the combined equity, so the capital base is never double-counted; turnover is entry/exit only, charged on both legs with the target notional per leg; the capital charge is the marked-to-market spot notional (fraction of combined equity) times the annual rate, divided across 365 days.
+* **Convention:** the capital is split **once** - each symbol receives 0.5 of the combined equity at its own entry and that split is never rebalanced - and inside a symbol's half the legs are sized at the pre-registered leg weight of 0.5, so a symbol's spot notional at its entry is 0.25 of the combined equity and the two symbols' spot notionals sum to 0.5 of it. The capital base is never double-counted: the two symbols' P&L is added against the **one** combined equity, and the turnover and the capital-charge base are fractions of that combined equity. Turnover is entry/exit only, charged on both legs with the target notional per leg (0.5 per leg). The capital charge is the marked-to-market spot notional (a fraction of the combined equity) times the annual rate, divided across 365 days.
 
 ### Results (net of the Cycle 892 headline cost model, 365-day annualization)
 
@@ -732,6 +732,22 @@ The committed Cycle 893 fixed-coin portfolio adds the two symbols' **separately 
 | `funding_positive_sameday` | val | 731 | +2.2281% | 2.275 | -4.1301% | 44.94 | 45 | 45 |
 | `funding_positive_sameday` | test_oos | 638 | -8.3376% | -8.269 | -14.6037% | 108.70 | 95 | 95 |
 | `funding_positive_sameday` | post2022 | 1369 | -2.8394% | -2.742 | -14.8431% | 74.65 | 140 | 140 |
+
+### The capital base the reconciled book ties up
+
+The combined equity is the book *accounting* base; the capital the spot leg actually ties up is the **marked-to-market spot notional**, and the two are not the same thing in this construction. The fixed coin quantity drifts with the coin's price while the equity compounds only on the carry, so the ratio leaves its entry level. It is measured here rather than assumed:
+
+| Rule | Spot notional / combined equity: min | average (full sample) | max | last session | constant-notional book, same equity (average) |
+|---|---|---|---|---|---|
+| `always_on` | 0.36x | 1.60x | 3.90x | 1.44x | 1.00x |
+| `funding_positive_lagged` | 0.00x | 0.59x | 2.47x | 0.60x | 0.88x |
+| `funding_positive_sameday` | 0.00x | 0.60x | 2.47x | 0.62x | 0.88x |
+
+**The advantage is the leverage, not a better carry.** The same trade measured on the capital it actually employs - the gross P&L per unit of the marked-to-market spot notional - is **+13.89%/yr** for `always_on`, against the constant-notional book's **+13.40%/yr** on its constant 1.0x spot notional, while the fixed-coin book's gross on the **stated** equity is **+29.52%/yr** (the same three numbers for every rule are in the machine-readable payload). The two constructions therefore earn the **same gross return per unit of capital**; what the fixed-coin book reports on the stated equity is the return of a notional that grows with the price while the equity does not. That is an implicit leverage of up to 3.90x, and it needs margin that the stated equity does not provide.
+
+**The reconciled headline is a return on the stated combined equity, not on the capital the spot leg ties up.** The always-on book enters both symbols on the first session, so it ties up 0.5 of the combined equity in spot at the entry; marked to market that notional drifts above the equity - it averages 1.60x over the full sample, peaks at 3.90x and ends the sample at 1.44x - so the stated equity alone does not fund the spot leg and the construction is implicitly levered by the drift. The funding-positive rules are flat on the days they are out of the market, so their average is lower, but while a position is held their notional drifts the same way (peak 2.47x). Two consequences are already priced in the numbers above and are stated here so that the comparison is not misread: the capital charge is levied on the marked-to-market notional, so the drift raises the charge (at the headline's 2%/yr the always-on book pays about 3.2%/yr of capital drag against the constant-notional book's 2.0%/yr), and the constant-notional book holds a constant spot notional by construction, so the two books are compared on the same *equity* but not on the same *capital*. This is a property of the fixed-coin construction, not of the accounting convention: the committed Cycle 893 book drifts the same way, with the capital counted twice.
+
+The **cost** of that leverage is not priced in the numbers above: the capital charge is levied on the spot notional, which is the cost of the capital employed, but the *return* is still measured on the stated equity. Pricing the margin and the funding of the gap, and stating what the fixed-coin construction is worth on a self-funded basis, is the next cycle's pre-registered question; this cycle measures the capital base, reports it and stops there.
 
 ### Break-evens (portfolio, headline cost model)
 
@@ -762,7 +778,7 @@ The committed Cycle 893 headline states that the constant-notional headline was 
 * `funding_positive_lagged`: committed fixed-coin portfolio +16.0201%/yr versus constant-notional +1.9706%/yr - the Cycle 893 headline claims a +14.0495%/yr advantage. The reconciled capital-consistent fixed-coin portfolio nets +3.7769%/yr, a +1.8064%/yr advantage over constant-notional and 1.5657%/yr over the threshold-rebalanced book (+2.2113%/yr).
 * `funding_positive_sameday`: committed fixed-coin portfolio +16.9965%/yr versus constant-notional +2.7733%/yr - the Cycle 893 headline claims a +14.2232%/yr advantage. The reconciled capital-consistent fixed-coin portfolio nets +4.2217%/yr, a +1.4484%/yr advantage over constant-notional and 1.2067%/yr over the threshold-rebalanced book (+3.0150%/yr).
 
-**The Cycle 893 headline does not survive the reconciliation.** The always-on fixed-coin book still nets more than the constant-notional book, but the margin shrinks from the committed +44.89 pp/yr to +16.20 pp/yr on the capital-consistent account, and the funding-positive margin shrinks from +14.05 pp/yr to +1.81 pp/yr. The constant-notional headline remains conservative versus the implementable fixed-coin construction, but by a much smaller margin than the committed double-counted capital suggested. The per-symbol rows are unaffected by the reconciliation (each symbol's book is standalone), and on that basis the fixed-coin construction still nets more than both the daily-drift and the threshold-rebalanced books.
+**The Cycle 893 headline does not survive the reconciliation.** The always-on fixed-coin book still nets more than the constant-notional book, but the margin shrinks from the committed +44.89 pp/yr to +16.20 pp/yr on the capital-consistent account, and the funding-positive margin shrinks from +14.05 pp/yr to +1.81 pp/yr. The constant-notional headline remains conservative versus the implementable fixed-coin construction, but by a much smaller margin than the committed double-counted capital suggested. The two books are compared on the same *equity* but not on the same *capital*: the fixed-coin book ties up a spot notional that drifts above the equity, which the capital-base section above measures and the capital charge already prices. The per-symbol rows are unaffected by the reconciliation (each symbol's book is standalone), and on that basis the fixed-coin construction still nets more than both the daily-drift and the threshold-rebalanced books.
 
 ### The three constructions on the committed path (portfolio basis)
 
@@ -780,6 +796,8 @@ The committed Cycle 893 headline states that the constant-notional headline was 
 | `funding_positive_sameday` | threshold 2% | +3.0150% | 1.753 | 94.25 | one shared equity |
 | `funding_positive_sameday` | fixed coin (Cycle 893, committed) | +16.9965% | 4.164 | 81.18 | sum of separately compounded sub-book returns (capital counted twice) |
 | `funding_positive_sameday` | fixed coin (Cycle 895, reconciled) | +4.2217% | 1.951 | 81.18 | capital split once, P&L added against combined equity |
+
+**Independent replication (Cycle 896).** Every reconciled figure in this section was re-derived from the committed carry paths by a standalone script that does **not** reuse `build_fixed_coin_portfolio_book`: the capital-consistent portfolio was rebuilt from the per-symbol primitives (position path, spot and perp closes, funding cash flow), the net series and the five pre-registered samples' metrics were recomputed under the headline cost model, the three break-evens were re-solved with an independent bisection and the promotion gate was re-evaluated on independently built per-symbol books. All of them agree with this evaluation to within **1e-9**; the largest deviation observed was 1.3e-15 (floating-point noise). The replication is kept as an executable regression guard in `tests/test_eval_cryptofunding.py` (`test_reconciled_portfolio_metrics_match_independent_reconstruction`), which enforces the 1e-9 tolerance on the same quantities.
 
 ## Verdict
 
@@ -1701,6 +1719,38 @@ python -m pytest -q
             "solution_multiplier": 0.1575424768816447
           }
         }
+      }
+    },
+    "fixed_coin_reconciled_capital_base": {
+      "always_on": {
+        "avg_spot_notional_fraction_full": 1.5955933237109332,
+        "constant_notional_gross_annualized": 0.13395684247803485,
+        "constant_notional_spot_notional_fraction": 1.0,
+        "gross_on_stated_equity_annualized": 0.29518089562289185,
+        "gross_per_capital_employed_annualized": 0.13891516340907395,
+        "last_spot_notional_fraction": 1.4446545193986722,
+        "max_spot_notional_fraction_full": 3.896931604203751,
+        "min_spot_notional_fraction_full": 0.3601527851032979
+      },
+      "funding_positive_lagged": {
+        "avg_spot_notional_fraction_full": 0.5920721331098223,
+        "constant_notional_gross_annualized": 0.1379663195439036,
+        "constant_notional_spot_notional_fraction": 0.8792613636363636,
+        "gross_on_stated_equity_annualized": 0.13436541861816464,
+        "gross_per_capital_employed_annualized": 0.1435459878337919,
+        "last_spot_notional_fraction": 0.6020881931319317,
+        "max_spot_notional_fraction_full": 2.465211191542833,
+        "min_spot_notional_fraction_full": 0.0
+      },
+      "funding_positive_sameday": {
+        "avg_spot_notional_fraction_full": 0.5959862525077622,
+        "constant_notional_gross_annualized": 0.14674174146729246,
+        "constant_notional_spot_notional_fraction": 0.8796672077922078,
+        "gross_on_stated_equity_annualized": 0.13931473300718022,
+        "gross_per_capital_employed_annualized": 0.15058723618470982,
+        "last_spot_notional_fraction": 0.6188433820747361,
+        "max_spot_notional_fraction_full": 2.468797031946862,
+        "min_spot_notional_fraction_full": 0.0
       }
     },
     "gates": {
@@ -5598,7 +5648,7 @@ python -m pytest -q
         "ETHUSDT perp"
       ]
     },
-    "generated_at": "2026-10-20T08:24:44.098133+00:00",
+    "generated_at": "2026-10-20T09:08:03.875857+00:00",
     "periods_per_year": 365,
     "promotion_gates": {
       "min_pooled_oos_trades": 100,

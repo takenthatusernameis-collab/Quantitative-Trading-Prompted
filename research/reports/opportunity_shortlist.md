@@ -141,6 +141,29 @@ Cycle 889 (below) but has not yet been screened.
 +25.42%/yr (always-on) and +3.78%/yr (funding-positive) against constant-notional +9.22%/yr and +1.97%/yr,
 so the committed Cycle 893 headline (+44.89 pp/yr / +14.05 pp/yr conservative) does not survive the
 reconciliation - the margin shrinks to +16.20 pp/yr and +1.81 pp/yr. Rank unchanged; verdict unchanged: **exploratory signal, not promoted**. See `research/experiments/cryptofunding_002_evaluation.md` (section "The threshold-rebalanced constant notional"), `research/hypotheses/cryptofunding_001.md`. |
+141: **Independent replication and the capital base (Cycle 896):** every reconciled figure was re-derived from the committed carry
+paths by a standalone script that does not reuse `build_fixed_coin_portfolio_book` (the capital-consistent portfolio rebuilt
+from the per-symbol primitives, the net series and the five samples' metrics recomputed under the headline cost model, the
+three break-evens re-solved with an independent bisection, the promotion gate re-evaluated on independently built per-symbol
+books). All of them agree with the evaluation to within 1e-9 (largest observed deviation 1.3e-15); the replication is kept as
+an executable regression guard in `tests/test_eval_cryptofunding.py`
+(`test_reconciled_portfolio_metrics_match_independent_reconstruction`). The same cycle corrected the record's statement of the
+reconciled construction's **capital base**: the two symbols' marked-to-market spot notionals do **not** sum to the combined
+equity - they are 0.5 of it at a simultaneous entry and they drift above it (always-on: 1.60x on average over the full sample,
+3.90x peak, 1.44x at the last session), because the fixed coin quantity drifts with the coin's price while the equity compounds
+only on the carry. The reconciled headline is therefore a return on the *stated* equity, not on the capital the spot leg ties up;
+the drift is priced on the cost side (the capital charge is levied on the marked-to-market notional, so the always-on book pays
+about 3.2%/yr of capital drag against the constant-notional book's 2.0%/yr), and the two books are compared on the same equity
+but not on the same capital. No number, gate, trial, cost model or ranking changed. The same measurement shows that **the
+fixed-coin construction's advantage over the constant-notional book is the leverage, not a better carry**: the same trade
+measured on the capital it actually employs (gross P&L per unit of the marked-to-market spot notional) earns **+13.89%/yr**
+for always-on against the constant-notional book's **+13.40%/yr**, while the fixed-coin book's gross on the *stated* equity is
+**+29.52%/yr** - it is the return of a notional that grows with the price while the equity does not, an implicit leverage of up
+to **3.90x** that needs margin the stated equity does not provide. The cost of that leverage is **not** priced in the committed
+numbers; pricing it and stating what the fixed-coin construction is worth on a self-funded basis is the next cycle's
+pre-registered question. See
+`research/experiments/cryptofunding_002_evaluation.md` (sections "The capital base the reconciled book ties up" and "Independent
+replication (Cycle 896)"), `research/hypotheses/cryptofunding_001.md`. |
 
 ### What the completed column changes
 

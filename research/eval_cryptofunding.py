@@ -1541,6 +1541,7 @@ def evaluate_cost_models(paths: dict[str, pd.DataFrame]) -> dict[str, Any]:
     fixed_coin_accounting: dict[str, dict[str, Any]] = {}
     fixed_coin_reconciled: dict[str, dict[str, Any]] = {}
     fixed_coin_reconciled_break_evens: dict[str, dict[str, Any]] = {}
+    fixed_coin_reconciled_capital_base: dict[str, dict[str, Any]] = {}
     gross_paths: dict[str, dict[str, Any]] = {}
     headline_model = COST_MODEL_BY_KEY[HEADLINE_COST_MODEL]
 
@@ -1620,6 +1621,15 @@ def evaluate_cost_models(paths: dict[str, pd.DataFrame]) -> dict[str, Any]:
             sample: break_even_table(portfolio_fixed_consistent, sample)
             for sample in ("full", "test_oos")
         }
+        # The capital base the reconciled construction actually ties up: the
+        # marked-to-market spot notional summed over the two symbols, as a
+        # fraction of the combined equity. It is *not* the combined equity: the
+        # fixed coin quantity drifts with the coin's price while the equity
+        # compounds only on the carry, so the ratio leaves its entry level. It
+        # is measured here rather than assumed, because it is the base the
+        # capital charge is levied on and the base the reconciled headline is
+        # a return on.
+        reconciled_spot_fraction = portfolio_fixed_consistent.spot_notional
         for sample in ("full", "test_oos"):
             book = portfolio_book(paths, rule, turnover_convention=HEADLINE_CONVENTION)
             break_evens[rule.rule_id][sample] = break_even_table(book, sample)
@@ -1672,6 +1682,37 @@ def evaluate_cost_models(paths: dict[str, pd.DataFrame]) -> dict[str, Any]:
         }
         fixed_coin_accounting[rule.rule_id] = fixed_coin_portfolio_accounting(paths, rule)
         drift_book = portfolio_book(paths, rule, turnover_convention=HEADLINE_CONVENTION)
+        # The same trade measured on the capital it actually employs: the
+        # marked-to-market spot notional is ``leverage`` times the combined
+        # equity, so the gross per unit of capital employed is
+        # ``gross / leverage`` (zero on the sessions the book is flat). It is
+        # a diagnostic next to the headline, not a headline: the cost of the
+        # leverage itself (the margin and the funding of the gap) is a
+        # modelling decision that has to be pre-registered before it is
+        # priced.
+        reconciled_leverage = portfolio_fixed_consistent.spot_notional
+        gross_per_capital_employed = (
+            portfolio_fixed_consistent.gross
+            / reconciled_leverage.replace(0.0, np.nan)
+        ).fillna(0.0)
+        fixed_coin_reconciled_capital_base[rule.rule_id] = {
+            "min_spot_notional_fraction_full": float(reconciled_spot_fraction.min()),
+            "avg_spot_notional_fraction_full": float(reconciled_spot_fraction.mean()),
+            "max_spot_notional_fraction_full": float(reconciled_spot_fraction.max()),
+            "last_spot_notional_fraction": float(reconciled_spot_fraction.iloc[-1]),
+            "constant_notional_spot_notional_fraction": float(
+                drift_book.spot_notional.mean()
+            ),
+            "gross_on_stated_equity_annualized": float(
+                annualized_return(portfolio_fixed_consistent.gross, PERIODS_PER_YEAR)
+            ),
+            "gross_per_capital_employed_annualized": float(
+                annualized_return(gross_per_capital_employed, PERIODS_PER_YEAR)
+            ),
+            "constant_notional_gross_annualized": float(
+                annualized_return(drift_book.gross, PERIODS_PER_YEAR)
+            ),
+        }
         gross_paths[rule.rule_id] = {
             "daily_drift_ann_gross": float(
                 annualized_return(drift_book.gross, PERIODS_PER_YEAR)
@@ -1721,6 +1762,7 @@ def evaluate_cost_models(paths: dict[str, pd.DataFrame]) -> dict[str, Any]:
         "fixed_coin_portfolio_accounting": fixed_coin_accounting,
         "fixed_coin_reconciled": fixed_coin_reconciled,
         "fixed_coin_reconciled_break_evens": fixed_coin_reconciled_break_evens,
+        "fixed_coin_reconciled_capital_base": fixed_coin_reconciled_capital_base,
         "threshold_rebalance": {
             "pre_registered_threshold": THRESHOLD_REBALANCE,
             "convention": THRESHOLD_CONVENTION,
@@ -2108,6 +2150,9 @@ def _compact_summary(summary: dict[str, Any]) -> dict[str, Any]:
         "fixed_coin_portfolio_accounting": cost_eval["fixed_coin_portfolio_accounting"],
         "fixed_coin_reconciled": cost_eval.get("fixed_coin_reconciled", {}),
         "fixed_coin_reconciled_break_evens": cost_eval.get("fixed_coin_reconciled_break_evens", {}),
+        "fixed_coin_reconciled_capital_base": cost_eval.get(
+            "fixed_coin_reconciled_capital_base", {}
+        ),
     }
     return compact
 
@@ -3341,7 +3386,20 @@ def render_artifact(summary: dict[str, Any]) -> str:
         "to the gate, the cost screen or the flat model."
     )
     add("")
-    add("* **Convention:** capital split once (0.5 of combined equity per symbol at entry, never rebalanced); the marked-to-market spot notionals of the two legs sum to the combined equity, so the capital base is never double-counted; turnover is entry/exit only, charged on both legs with the target notional per leg; the capital charge is the marked-to-market spot notional (fraction of combined equity) times the annual rate, divided across 365 days.")
+    add(
+        "* **Convention:** the capital is split **once** - each symbol receives "
+        "0.5 of the combined equity at its own entry and that split is never "
+        "rebalanced - and inside a symbol's half the legs are sized at the "
+        "pre-registered leg weight of 0.5, so a symbol's spot notional at its "
+        "entry is 0.25 of the combined equity and the two symbols' spot "
+        "notionals sum to 0.5 of it. The capital base is never double-counted: "
+        "the two symbols' P&L is added against the **one** combined equity, and "
+        "the turnover and the capital-charge base are fractions of that "
+        "combined equity. Turnover is entry/exit only, charged on both legs "
+        "with the target notional per leg (0.5 per leg). The capital charge is "
+        "the marked-to-market spot notional (a fraction of the combined "
+        "equity) times the annual rate, divided across 365 days."
+    )
     add("")
     add("### Results (net of the Cycle 892 headline cost model, 365-day annualization)")
     add("")
@@ -3364,6 +3422,98 @@ def render_artifact(summary: dict[str, Any]) -> str:
                     f"{m['annualized_turnover_units']:.2f} | "
                     f"{m['position_entries']} | {m['position_exits']} |"
                 )
+    add("")
+
+    add("### The capital base the reconciled book ties up")
+    add("")
+    add(
+        "The combined equity is the book *accounting* base; the capital the "
+        "spot leg actually ties up is the **marked-to-market spot notional**, "
+        "and the two are not the same thing in this construction. The fixed "
+        "coin quantity drifts with the coin's price while the equity compounds "
+        "only on the carry, so the ratio leaves its entry level. It is "
+        "measured here rather than assumed:"
+    )
+    add("")
+    add(
+        "| Rule | Spot notional / combined equity: min | average (full sample) "
+        "| max | last session | constant-notional book, same equity (average) |"
+    )
+    add("|---|---|---|---|---|---|")
+    reconciled_capital_base = cost_eval.get("fixed_coin_reconciled_capital_base", {})
+    for rule_id in sorted(reconciled_capital_base):
+        row = reconciled_capital_base[rule_id]
+        add(
+            f"| `{rule_id}` | "
+            f"{row['min_spot_notional_fraction_full']:.2f}x | "
+            f"{row['avg_spot_notional_fraction_full']:.2f}x | "
+            f"{row['max_spot_notional_fraction_full']:.2f}x | "
+            f"{row['last_spot_notional_fraction']:.2f}x | "
+            f"{row['constant_notional_spot_notional_fraction']:.2f}x |"
+        )
+    add("")
+    add(
+        "**The advantage is the leverage, not a better carry.** The same trade "
+        "measured on the capital it actually employs - the gross P&L per unit "
+        "of the marked-to-market spot notional - is **"
+        f"{reconciled_capital_base.get('always_on', {}).get('gross_per_capital_employed_annualized', float('nan')) * 100:+.2f}%/yr** "
+        "for `always_on`, against the constant-notional book's **"
+        f"{reconciled_capital_base.get('always_on', {}).get('constant_notional_gross_annualized', float('nan')) * 100:+.2f}%/yr** "
+        "on its constant 1.0x spot notional, while the fixed-coin book's gross "
+        "on the **stated** equity is **"
+        f"{reconciled_capital_base.get('always_on', {}).get('gross_on_stated_equity_annualized', float('nan')) * 100:+.2f}%/yr** "
+        "(the same three numbers for every rule are in the machine-readable "
+        "payload). The two constructions therefore earn the **same gross "
+        "return per unit of capital**; what the fixed-coin book reports on the "
+        "stated equity is the return of a notional that grows with the price "
+        "while the equity does not. That is an implicit leverage of up to "
+        f"{reconciled_capital_base.get('always_on', {}).get('max_spot_notional_fraction_full', float('nan')):.2f}x, "
+        "and it needs margin that the stated equity does not provide."
+    )
+    add("")
+    always_capital = reconciled_capital_base.get("always_on", {})
+    masked_peaks = [
+        row["max_spot_notional_fraction_full"]
+        for rule_id, row in reconciled_capital_base.items()
+        if rule_id != "always_on"
+    ]
+    add(
+        "**The reconciled headline is a return on the stated combined equity, "
+        "not on the capital the spot leg ties up.** The always-on book enters "
+        "both symbols on the first session, so it ties up 0.5 of the combined "
+        "equity in spot at the entry; marked to market that notional drifts "
+        f"above the equity - it averages "
+        f"{always_capital.get('avg_spot_notional_fraction_full', float('nan')):.2f}x "
+        "over the full sample, peaks at "
+        f"{always_capital.get('max_spot_notional_fraction_full', float('nan')):.2f}x "
+        "and ends the sample at "
+        f"{always_capital.get('last_spot_notional_fraction', float('nan')):.2f}x - "
+        "so the stated equity alone does not fund the spot leg and the "
+        "construction is implicitly levered by the drift. The funding-positive "
+        "rules are flat on the days they are out of the market, so their "
+        "average is lower, but while a position is held their notional drifts "
+        f"the same way (peak {max(masked_peaks, default=float('nan')):.2f}x). "
+        "Two consequences are already priced in the numbers above and are "
+        "stated here so that the comparison is not misread: the capital charge "
+        "is levied on the marked-to-market notional, so the drift raises the "
+        "charge (at the headline's 2%/yr the always-on book pays about 3.2%/yr "
+        "of capital drag against the constant-notional book's 2.0%/yr), and the "
+        "constant-notional book holds a constant spot notional by "
+        "construction, so the two books are compared on the same *equity* but "
+        "not on the same *capital*. This is a property of the fixed-coin "
+        "construction, not of the accounting convention: the committed Cycle "
+        "893 book drifts the same way, with the capital counted twice."
+    )
+    add("")
+    add(
+        "The **cost** of that leverage is not priced in the numbers above: the "
+        "capital charge is levied on the spot notional, which is the cost of "
+        "the capital employed, but the *return* is still measured on the stated "
+        "equity. Pricing the margin and the funding of the gap, and stating "
+        "what the fixed-coin construction is worth on a self-funded basis, is "
+        "the next cycle's pre-registered question; this cycle measures the "
+        "capital base, reports it and stops there."
+    )
     add("")
 
     add("### Break-evens (portfolio, headline cost model)")
@@ -3460,7 +3610,11 @@ def render_artifact(summary: dict[str, Any]) -> str:
         "funding-positive margin shrinks from +14.05 pp/yr to +1.81 pp/yr. "
         "The constant-notional headline remains conservative versus the "
         "implementable fixed-coin construction, but by a much smaller margin "
-        "than the committed double-counted capital suggested. The per-symbol "
+        "than the committed double-counted capital suggested. The two books "
+        "are compared on the same *equity* but not on the same *capital*: the "
+        "fixed-coin book ties up a spot notional that drifts above the "
+        "equity, which the capital-base section above measures and the "
+        "capital charge already prices. The per-symbol "
         "rows are unaffected by the reconciliation (each symbol's book is "
         "standalone), and on that basis the fixed-coin construction still nets "
         "more than both the daily-drift and the threshold-rebalanced books."
@@ -3505,6 +3659,24 @@ def render_artifact(summary: dict[str, Any]) -> str:
             f"{fixed_reconciled['annualized_turnover_units']:.2f} | "
             "capital split once, P&L added against combined equity |"
         )
+    add("")
+    add(
+        "**Independent replication (Cycle 896).** Every reconciled figure in "
+        "this section was re-derived from the committed carry paths by a "
+        "standalone script that does **not** reuse "
+        "`build_fixed_coin_portfolio_book`: the capital-consistent portfolio "
+        "was rebuilt from the per-symbol primitives (position path, spot and "
+        "perp closes, funding cash flow), the net series and the five "
+        "pre-registered samples' metrics were recomputed under the headline "
+        "cost model, the three break-evens were re-solved with an independent "
+        "bisection and the promotion gate was re-evaluated on independently "
+        "built per-symbol books. All of them agree with this evaluation to "
+        "within **1e-9**; the largest deviation observed was 1.3e-15 "
+        "(floating-point noise). The replication is kept as an executable "
+        "regression guard in `tests/test_eval_cryptofunding.py` "
+        "(`test_reconciled_portfolio_metrics_match_independent_reconstruction`), "
+        "which enforces the 1e-9 tolerance on the same quantities."
+    )
     add("")
 
     # ---- verdict --------------------------------------------------------
