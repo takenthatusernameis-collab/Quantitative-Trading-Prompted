@@ -1,0 +1,295 @@
+{
+  "checksum_verified": true,
+  "datasets": {
+    "carry_path_BTCUSDT": {
+      "basis_annualized": -0.0013609160991511049,
+      "end": "2026-09-30",
+      "funding_annualized": 0.11730968457792205,
+      "gross_carry_annualized": 0.11594876847877095,
+      "gross_carry_total": 0.7827336041964155,
+      "note": "gross of all costs; descriptive statistics only",
+      "path": "data/processed/crypto/BTCUSDT_carry_path.parquet",
+      "per_year": {
+        "2020": {
+          "basis_annualized": -0.007945038983409036,
+          "basis_sum": -0.007945038983409036,
+          "days": 365.0,
+          "funding_annualized": 0.17274125,
+          "funding_sum": 0.17274125,
+          "gross_carry_annualized": 0.16479621101659098,
+          "gross_carry_sum": 0.16479621101659098,
+          "positive_days": 0.7589041095890411
+        },
+        "2021": {
+          "basis_annualized": 0.00023482670643870662,
+          "basis_sum": 0.00023482670643870662,
+          "days": 365.0,
+          "funding_annualized": 0.30608423,
+          "funding_sum": 0.30608423,
+          "gross_carry_annualized": 0.3063190567064387,
+          "gross_carry_sum": 0.3063190567064387,
+          "positive_days": 0.8164383561643835
+        },
+        "2022": {
+          "basis_annualized": -0.0006400739444470949,
+          "basis_sum": -0.0006400739444470949,
+          "days": 365.0,
+          "funding_annualized": 0.041649250000000006,
+          "funding_sum": 0.041649250000000006,
+          "gross_carry_annualized": 0.041009176055552904,
+          "gross_carry_sum": 0.041009176055552904,
+          "positive_days": 0.6821917808219178
+        },
+        "2023": {
+          "basis_annualized": -0.0014602266747931747,
+          "basis_sum": -0.0014602266747931747,
+          "days": 365.0,
+          "funding_annualized": 0.07865712,
+          "funding_sum": 0.07865712,
+          "gross_carry_annualized": 0.07719689332520682,
+          "gross_carry_sum": 0.07719689332520682,
+          "positive_days": 0.821917808219178
+        },
+        "2024": {
+          "basis_annualized": 0.0005726200914982958,
+          "basis_sum": 0.0005741889136667844,
+          "days": 366.0,
+          "funding_annualized": 0.11924213920765028,
+          "funding_sum": 0.11956883,
+          "gross_carry_annualized": 0.11981475929914857,
+          "gross_carry_sum": 0.12014301891366679,
+          "positive_days": 0.8306010928961749
+        },
+        "2025": {
+          "basis_annualized": -9.36274946172766e-06,
+          "basis_sum": -9.36274946172766e-06,
+          "days": 365.0,
+          "funding_annualized": 0.05126428,
+          "funding_sum": 0.05126428,
+          "gross_carry_annualized": 0.05125491725053827,
+          "gross_carry_sum": 0.051254917250538275,
+          "positive_days": 0.8
+        },
+        "2026": {
+          "basis_annualized": 7.83091167534824e-05,
+          "basis_sum": 5.857092842109779e-05,
+          "days": 273.0,
+          "funding_annualized": 0.0293547706959707,
+          "funding_sum": 0.02195576,
+          "gross_carry_annualized": 0.02943307981272418,
+          "gross_carry_sum": 0.0220143309284211,
+          "positive_days": 0.6959706959706959
+        }
+      },
+      "positive_day_fraction": 0.7751623376623377,
+      "rows": 2464,
+      "sha256": "54f6bf38f20f02ba143d862175e80f43b86b3bba5743eeadf96614d91469bb94",
+      "start": "2020-01-02"
+    },
+    "carry_path_ETHUSDT": {
+      "basis_annualized": -0.0026819534600393815,
+      "end": "2026-09-30",
+      "funding_annualized": 0.13842146974431818,
+      "gross_carry_annualized": 0.1357395162842788,
+      "gross_carry_total": 0.9163347071903094,
+      "note": "gross of all costs; descriptive statistics only",
+      "path": "data/processed/crypto/ETHUSDT_carry_path.parquet",
+      "per_year": {
+        "2020": {
+          "basis_annualized": -0.012931874294897063,
+          "basis_sum": -0.012931874294897061,
+          "days": 365.0,
+          "funding_annualized": 0.27488728,
+          "funding_sum": 0.27488728,
+          "gross_carry_annualized": 0.26195540570510295,
+          "gross_carry_sum": 0.26195540570510295,
+          "positive_days": 0.8027397260273973
+        },
+        "2021": {
+          "basis_annualized": -0.002485319873881453,
+          "basis_sum": -0.002485319873881453,
+          "days": 365.0,
+          "funding_annualized": 0.37537255,
+          "funding_sum": 0.37537255,
+          "gross_carry_annualized": 0.3728872301261186,
+          "gross_carry_sum": 0.3728872301261186,
+          "positive_days": 0.8054794520547945
+        },
+        "2022": {
+          "basis_annualized": -0.0008487340259353271,
+          "basis_sum": -0.0008487340259353271,
+          "days": 365.0,
+          "funding_annualized": 0.007872560000000002,
+          "funding_sum": 0.007872560000000002,
+          "gross_carry_annualized": 0.007023825974064674,
+          "gross_carry_sum": 0.007023825974064674,
+          "positive_days": 0.5863013698630137
+        },
+        "2023": {
+          "basis_annualized": -0.0015623042691619293,
+          "basis_sum": -0.0015623042691619293,
+          "days": 365.0,
+          "funding_annualized": 0.08259507,
+          "funding_sum": 0.08259507,
+          "gross_carry_annualized": 0.08103276573083808,
+          "gross_carry_sum": 0.08103276573083808,
+          "positive_days": 0.7972602739726027
+        },
+        "2024": {
+          "basis_annualized": 0.00040647385850445917,
+          "basis_sum": 0.00040758748551406043,
+          "days": 366.0,
+          "funding_annualized": 0.12961408292349727,
+          "funding_sum": 0.12996919,
+          "gross_carry_annualized": 0.13002055678200172,
+          "gross_carry_sum": 0.13037677748551407,
+          "positive_days": 0.8989071038251366
+        },
+        "2025": {
+          "basis_annualized": -0.000488738524335619,
+          "basis_sum": -0.000488738524335619,
+          "days": 365.0,
+          "funding_annualized": 0.049287189999999995,
+          "funding_sum": 0.04928719,
+          "gross_carry_annualized": 0.04879845147566438,
+          "gross_carry_sum": 0.04879845147566438,
+          "positive_days": 0.8
+        },
+        "2026": {
+          "basis_annualized": -0.00026156903682238126,
+          "basis_sum": -0.00019563930699317833,
+          "days": 273.0,
+          "funding_annualized": 0.01932747197802198,
+          "funding_sum": 0.01445589,
+          "gross_carry_annualized": 0.0190659029411996,
+          "gross_carry_sum": 0.014260250693006822,
+          "positive_days": 0.6410256410256411
+        }
+      },
+      "positive_day_fraction": 0.7662337662337663,
+      "rows": 2464,
+      "sha256": "8d180ff0f86dc1686bb962d58128086a0f0b44c465ba9e9fd2ccabf016422a70",
+      "start": "2020-01-02"
+    },
+    "funding_BTCUSDT": {
+      "archive_checksums_verified": 81,
+      "archive_objects": 81,
+      "distinct_funding_intervals_hours": [
+        8
+      ],
+      "duplicate_timestamps": 0,
+      "end_utc": "2026-09-30T16:00:00Z",
+      "expected_periods_at_8h": 7395,
+      "funding_rate_max": 0.003,
+      "funding_rate_mean": 0.0001070421446923597,
+      "funding_rate_min": -0.003,
+      "gap_count": 0,
+      "interval_hours_counts": {
+        "8.0": 7394
+      },
+      "largest_gaps": [],
+      "mean_annualized_simple": 0.11721114843813388,
+      "missing_periods_at_8h": 0,
+      "monotonic_after_sort": true,
+      "path": "data/raw/crypto/BTC_USDT_USDT_funding_binance.parquet",
+      "positive_fraction": 0.8599053414469235,
+      "rows": 7395,
+      "sha256": "4d3b4d653eaf2b09b5fd2f1323b4e2d924f0088194ef70952fc2fedec2005cd0",
+      "span_days": 2464.667,
+      "start_utc": "2020-01-01T00:00:00Z",
+      "sum_annualized_over_span": 0.11730729310073759
+    },
+    "funding_ETHUSDT": {
+      "archive_checksums_verified": 81,
+      "archive_objects": 81,
+      "distinct_funding_intervals_hours": [
+        8
+      ],
+      "duplicate_timestamps": 0,
+      "end_utc": "2026-09-30T16:00:00Z",
+      "expected_periods_at_8h": 7395,
+      "funding_rate_max": 0.00375,
+      "funding_rate_mean": 0.00012636268018931712,
+      "funding_rate_min": -0.00356332,
+      "gap_count": 0,
+      "interval_hours_counts": {
+        "8.0": 7394
+      },
+      "largest_gaps": [],
+      "mean_annualized_simple": 0.13836713480730226,
+      "missing_periods_at_8h": 0,
+      "monotonic_after_sort": true,
+      "path": "data/raw/crypto/ETH_USDT_USDT_funding_binance.parquet",
+      "positive_fraction": 0.8622041920216362,
+      "rows": 7395,
+      "sha256": "50c57313802809e3ee6c233c684d387191fdbdf9364242339cb1e51099765a1b",
+      "span_days": 2464.667,
+      "start_utc": "2020-01-01T00:00:00Z",
+      "sum_annualized_over_span": 0.13848063306807998
+    },
+    "perp_BTCUSDT": {
+      "archive_checksums_verified": 81,
+      "archive_objects": 81,
+      "distinct_calendar_days": 2465,
+      "duplicate_timestamps": 0,
+      "end_utc": "2026-09-30T00:00:00Z",
+      "monotonic_after_sort": true,
+      "non_positive_close_rows": 0,
+      "path": "data/raw/crypto/BTCUSDT_perp_1d_binance.parquet",
+      "rows": 2465,
+      "sha256": "b512246ba875b0d6ac2d109cc024ec475904a8f78fd213e68e1feb17347613c1",
+      "span_days": 2464.0,
+      "start_utc": "2020-01-01T00:00:00Z"
+    },
+    "perp_ETHUSDT": {
+      "archive_checksums_verified": 81,
+      "archive_objects": 81,
+      "distinct_calendar_days": 2465,
+      "duplicate_timestamps": 0,
+      "end_utc": "2026-09-30T00:00:00Z",
+      "monotonic_after_sort": true,
+      "non_positive_close_rows": 0,
+      "path": "data/raw/crypto/ETHUSDT_perp_1d_binance.parquet",
+      "rows": 2465,
+      "sha256": "5f3ea46cac53e52c857505d458a671c186244a8ba5ef0f3a42f67374db9f4e59",
+      "span_days": 2464.0,
+      "start_utc": "2020-01-01T00:00:00Z"
+    },
+    "spot_BTCUSDT": {
+      "archive_checksums_verified": 81,
+      "archive_objects": 81,
+      "distinct_calendar_days": 2465,
+      "duplicate_timestamps": 0,
+      "end_utc": "2026-09-30T00:00:00Z",
+      "monotonic_after_sort": true,
+      "non_positive_close_rows": 0,
+      "path": "data/raw/crypto/BTCUSDT_spot_1d_binance.parquet",
+      "rows": 2465,
+      "sha256": "0fd946222a284885e9538af960f0917059c898678d7f53d49e705e9cbc6f3c82",
+      "span_days": 2464.0,
+      "start_utc": "2020-01-01T00:00:00Z"
+    },
+    "spot_ETHUSDT": {
+      "archive_checksums_verified": 81,
+      "archive_objects": 81,
+      "distinct_calendar_days": 2465,
+      "duplicate_timestamps": 0,
+      "end_utc": "2026-09-30T00:00:00Z",
+      "monotonic_after_sort": true,
+      "non_positive_close_rows": 0,
+      "path": "data/raw/crypto/ETHUSDT_spot_1d_binance.parquet",
+      "rows": 2465,
+      "sha256": "fee74e1349095aca495825e439ed60434676ba85afd069ed44f8112aa3c2a0bc",
+      "span_days": 2464.0,
+      "start_utc": "2020-01-01T00:00:00Z"
+    }
+  },
+  "download_endpoint": "https://data.binance.vision",
+  "generated_at": "2026-10-20T01:21:19.692751+00:00",
+  "listing_endpoint": "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision",
+  "source": "Binance public data archive (data.binance.vision)",
+  "window": {
+    "end_month": "2026-09",
+    "start_month": "2020-01"
+  }
+}

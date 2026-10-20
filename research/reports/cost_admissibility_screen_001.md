@@ -1,6 +1,6 @@
 # Cost-Admissibility Screen (cost_admissibility_screen_001, Cycle 881; extended in Cycle 882)
 
-**Generated:** 2026-10-20 | **code revision:** db90ac0
+**Generated:** 2026-10-20 | **code revision:** df4a21e
 **Tool:** `research/cost_admissibility_screen.py` (read-only, deterministic, exit 0 on `OVERALL: PASS`)
 **Cost model:** the repository's flat model, `get_cost_params()` = 1 bp commission + 2 bp slippage
 = **3.0 bp per unit of weight change**; sensitivity rows 3 / 5 / 10 bp per unit.
@@ -600,6 +600,6 @@ has an edge.
 | `tsmomentum_spytrend_001_reproduces_test_period_Sharpe_2018-2026` | PASS | published +1.417800 vs re-derived +1.407770 (abs diff 1.003e-02 <= 2e-02). |
 | `benchmark_walk_forward_sharpe_is_cost_invariant` | PASS | the close-to-close benchmark's walk-forward Sharpe is the same at 3 bp/unit and at 10 bp/unit for every candidate (its only turnover is the initial purchase, which sits before the first test window), so the benchmark-parity cost compares the candidate and the benchmark at the same cost level on the same folds. |
 | `screen_is_deterministic` | PASS | re-running the screen on the same inputs reproduces the annual turnover, the gross annualized signal, the minimum required gross signal and the WF mean OOS Sharpe bit-for-bit. |
-| `no_file_under_data_or_config_changed` | PASS | the SHA-256 fingerprint of all 1854 files under data/ and config/ is identical before and after the run. |
+| `no_file_under_data_or_config_changed` | PASS | the SHA-256 fingerprint of all 2348 files under data/ and config/ is identical before and after the run. |
 
 **OVERALL: PASS** (50/50 checks passed)

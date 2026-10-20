@@ -4,10 +4,16 @@
 **Code revision:** a5d5971
 **Method:** Programmatic scan of `data/raw/` and `data/processed/` by `research/run_cycle11.py` (Cycle 11). No backtests run; all statistics are descriptive properties of cached artifacts.
 **Revision (Cycle 873):** `^VIX` row corrected to real cache (5,514 rows, 2004-11-18 .. 2026-10-16); overview total recomputed (128,042 → 125,054).
+**Revision (Cycle 889):** crypto spot/perp/funding rows updated — Binance public archive (SHA256-verified per file) added to data/raw/crypto/ and data/processed/crypto/; the OKX-only 'PARTIAL' verdicts above are superseded.
 
 ## Overview
 
 The repository currently caches **19 raw price files** (125,054 total rows, 4.53 MB) covering **19 symbols** at daily frequency, plus **6 processed artifacts** from Cycles 2-10 (simulation, trades, weights, go/no-go history, paper-trading state).
+
+Since Cycle 889 it also caches **8 crypto files** (25,242 rows, 1.05 MB) under `data/raw/crypto/`
+and **2 processed carry-path files** (4,928 rows, 0.39 MB) under `data/processed/crypto/`: the
+Binance public archive's funding rates and daily spot/perp klines, plus the OKX funding
+cross-check. Total under `data/raw/`: 35 parquet files, 174,044 rows, 6.36 MB.
 
 All raw data was sourced from Yahoo Finance via `yfinance` (see `src/data/yfinance_fetcher.py`) and cached as parquet in `data/raw/`. Point-in-time safety: the fetcher only downloads data up to the requested end date; signals in the simulation engine are shifted by one day.
 
@@ -45,6 +51,29 @@ All raw data was sourced from Yahoo Finance via `yfinance` (see `src/data/yfinan
 - Core 7-asset candidate universe has 5,507 common trading days across all members (intersection of calendars).
 - ^VIX is an **index**, not a directly tradeable instrument; no VIX futures, VIX ETNs (VXX/UVXY), or options history is cached.
 
+## Crypto Data (data/raw/crypto/ cache)
+
+Source: Binance **public data archive** (`data.binance.vision`), monthly ZIPs, every object
+SHA256-verified against the published `.CHECKSUM` before parsing; the live Binance/Bybit APIs are
+geo-blocked from this environment (HTTP 451 / 403). The OKX funding files are the independent
+cross-check collected in Cycle 888.
+
+| File | Market | Rows | Fields | Start | End | Frequency | Integrity |
+|---|---|---|---|---|---|---|---|
+| `BTC_USDT_USDT_funding_binance.parquet` | Binance BTCUSDT perp (funding) | 7,395 | timestamp, datetime, fundingRate, symbol, funding_interval_hours | 2020-01-01 00:00Z | 2026-09-30 16:00Z | 8h | 81/81 objects verified; 0 missing 8h periods; 0 duplicate timestamps |
+| `ETH_USDT_USDT_funding_binance.parquet` | Binance ETHUSDT perp (funding) | 7,395 | timestamp, datetime, fundingRate, symbol, funding_interval_hours | 2020-01-01 00:00Z | 2026-09-30 16:00Z | 8h | 81/81 objects verified; 0 missing 8h periods; 0 duplicate timestamps |
+| `BTCUSDT_spot_1d_binance.parquet` | Binance spot BTCUSDT | 2,465 | timestamp, datetime, OHLC, volume, quote_volume, trades, symbol, market | 2020-01-01 | 2026-09-30 | daily | 81/81 objects verified |
+| `BTCUSDT_perp_1d_binance.parquet` | Binance BTCUSDT perp (price) | 2,465 | as above | 2020-01-01 | 2026-09-30 | daily | 81/81 objects verified |
+| `ETHUSDT_spot_1d_binance.parquet` | Binance spot ETHUSDT | 2,465 | as above | 2020-01-01 | 2026-09-30 | daily | 81/81 objects verified |
+| `ETHUSDT_perp_1d_binance.parquet` | Binance ETHUSDT perp (price) | 2,465 | as above | 2020-01-01 | 2026-09-30 | daily | 81/81 objects verified |
+| `BTC_USDT_USDT_funding.parquet` | OKX BTC/USDT:USDT swap (funding) | 296 | timestamp, datetime, fundingRate, symbol | 2026-07-13 16:00Z | 2026-10-20 00:00Z | 8h | Cycle 888 collection |
+| `ETH_USDT_USDT_funding.parquet` | OKX ETH/USDT:USDT swap (funding) | 296 | timestamp, datetime, fundingRate, symbol | 2026-07-13 16:00Z | 2026-10-20 00:00Z | 8h | Cycle 888 collection |
+
+Processed: `data/processed/crypto/{BTCUSDT,ETHUSDT}_carry_path.parquet` — 2,464 daily rows per
+symbol (2020-01-02..2026-09-30), the daily spot-long/perp-short path (funding cashflow, spot/perp
+returns, basis convergence, basis level). Machine-readable provenance:
+`research/reports/binance_crypto_manifest.json`; record: `research/experiments/cryptofunding_002_data.md`.
+
 ## Simulation & Paper-Trading Artifacts (data/processed/)
 
 ### simulation_candidate_001.parquet — daily simulation series
@@ -81,7 +110,7 @@ All raw data was sourced from Yahoo Finance via `yfinance` (see `src/data/yfinan
 | Risk-free rate | 2.0% (flat) | config/settings.yaml:evaluation.risk_free_rate_annual |
 | Minimum trade size | $10.00 | config/settings.yaml:backtest.min_trade_size_usd |
 
-**Cost model gaps:** no bid-ask spread model, no borrow/short-sale cost model, no futures roll cost model, no market-impact model (flat slippage assumption), no latency model, flat (not historical) risk-free rate. OKX spot/swap fee tiers (0.02-0.10%) are documented in the Cycle 1 inventory but no crypto data is cached, so they are not usable for backtesting from this repository state.
+**Cost model gaps:** no bid-ask spread model, no borrow/short-sale cost model, no futures roll cost model, no market-impact model (flat slippage assumption), no latency model, flat (not historical) risk-free rate. OKX spot/swap fee tiers (0.02-0.10%) are documented in the Cycle 1 inventory; since Cycle 889 the crypto spot/perp price and funding series are cached (data/raw/crypto/, data/processed/crypto/), so a crypto cost model can be applied, but no fee/slippage/margin schedule has been applied to the carry path yet.
 
 ## Execution Assumptions
 
@@ -111,14 +140,14 @@ Close-to-close execution with a 1-day signal lag is the validated convention (Cy
 
 | Data Class | Cached? | Limitation |
 |------------|---------|------------|
-| Crypto spot/perpetual data (BTC-USD, ETH-USD, OKX funding rates) | PARTIAL | OKX accessible; collected funding history saved to data/raw/crypto/*_funding.parquet (BTC/ETH USDT-SWAP, 296 8h records each, 2026-07-13 to 2026-10-20, ~98.3 days). Still <1 year and single-exchange; not sufficient for multi-year test. |
+| Crypto spot/perpetual data (BTC-USD, ETH-USD, funding rates) | YES | Cycle 889: Binance public archive cached to data/raw/crypto/ — {BTC,ETH}_USDT_USDT_funding_binance.parquet (7,395 8h records per symbol, 2020-01-01..2026-09-30, 0 missing 8h periods, 0 duplicate timestamps, every archive file SHA256-verified) plus {BTC,ETH}USDT_{spot,perp}_1d_binance.parquet (2,465 daily rows each). OKX series (296x8h per symbol, 2026-07-13..2026-10-20) retained as an independent cross-check. Single venue for the price legs; archive publishes no October-2026 file yet. |
 | Commodity/rate futures (CL=F, GC=F, ZB=F, ...) | NO | yfinance continuous futures have undocumented roll logic; no separate spot series for basis |
 | Forex spot (EURUSD=X, ...) | NO | No interest-rate differentials or forward curves available |
 | Intraday history (1m/5m) | NO | Only recent 1-day/7-day windows verified live; no multi-year intraday history |
 | VIX futures / VIX ETNs (VX=F, VXX, UVXY) | NO | ^VIX index cached but is not tradeable; no tradeable volatility instrument |
 | Historical options data (prices, IV series) | NO | Only near-term live chains verified; no historical options data |
-| Funding rate history | PARTIAL | Cached in data/raw/crypto/ (OKX BTC/ETH USDT-SWAP, 296×8h each, ~98.3 days). Max available from public API in environment; still <1 year required. |
-| Spot-perp basis series | NO | Not cached; requires simultaneous spot + swap data |
+| Funding rate history | YES | Cached in data/raw/crypto/ (Binance BTC/ETH USDT-margined perps, 7,395x8h each, 2,464.7 days; OKX 296x8h each as cross-check). Blocker resolved in Cycle 889; a daily spot-long/perp-short carry path is committed to data/processed/crypto/*_carry_path.parquet. |
+| Spot-perp basis series | YES (Cycle 889) | Cached: data/raw/crypto/{BTC,ETH}USDT_{spot,perp}_1d_binance.parquet (daily closes, 2020-01-01..2026-09-30); basis and its daily convergence are computed in data/processed/crypto/*_carry_path.parquet |
 | Securities lending / borrow rates | NO | No source configured; blocks credible short-side cost modeling |
 
 **Other limitations:**

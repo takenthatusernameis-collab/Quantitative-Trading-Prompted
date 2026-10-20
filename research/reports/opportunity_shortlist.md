@@ -2,6 +2,10 @@
 
 **Generated:** 2026-10-12 07:52:57 UTC
 **Code revision:** a5d5971
+**Cycle 889 addendum (2026-10-20):** rank 8 (crypto perpetual funding-rate carry) was re-scored and
+re-verdicted after the data blocker was resolved — the Binance public archive yielded 6.75 years of
+8h funding history plus coupled daily spot/perp legs, every archive file SHA256-verified. No other
+row changed and the ranking order is unchanged (23/35 keeps rank 8 above rank 9 at 18/35).
 **Method:** Phase 1 of the AGENTS.md Market Opportunity Search. Each Candidate is scored 1-5 against the seven criteria ((a)-(g)) using only evidence available in this repository (cached data, config files, prior experiment records). Scores are pre-test structural assessments — NOT backtest results. No new backtests were run to produce this shortlist.
 
 **Scoring legend:** 1 = poor/infeasible, 2 = weak, 3 = adequate, 4 = strong, 5 = excellent/feasible. Overall = sum of (a)-(g), max 35.
@@ -19,7 +23,7 @@
 | 5 | TSMOM parameter variants | 5 | 4 | 2 | 2 | 5 | 5 | 2 | **25/35** | Rejected |
 | 6 | Macro regime overlay extension | 4 | 4 | 3 | 3 | 3 | 4 | 3 | **24/35** | Exploratory signal |
 | 7 | Commodity/rate futures basis and roll yield | 2 | 4 | 3 | 2 | 3 | 2 | 5 | **21/35** | Rejected (both contract-leg and ETF routes) |
-| 8 | Crypto perpetual funding-rate carry | 2 | 4 | 3 | 2 | 5 | 3 | 1 | **20/35** | Blocked by data |
+| 8 | Crypto perpetual funding-rate carry | 4 | 4 | 3 | 3 | 5 | 3 | 1 | **23/35** | Exploratory signal |
 | 9 | Volatility risk premium | 2 | 4 | 2 | 2 | 2 | 2 | 4 | **18/35** | Blocked by data |
 | 10 | Intraday session / time-of-day effects | 1 | 3 | 2 | 1 | 4 | 2 | 4 | **17/35** | Rejected |
 
@@ -28,7 +32,7 @@
 | Data Class | Cached | Consequence |
 |------------|--------|-------------|
 | Daily ETF OHLCV (18 ETFs + ^VIX) | YES | TSMOM, cross-sectional, sector, calendar, and regime strategies are all testable offline |
-| Crypto spot/perp + funding | NO | Funding-carry candidates blocked from offline testing |
+| Crypto spot/perp + funding | YES (Cycle 889: Binance public archive, 2020-01-01..2026-09-30, SHA256-verified per file; BTC/ETH USDT-margined perps, 8h funding + daily spot/perp klines; OKX funding kept as an independent cross-check) | Funding carry is now testable offline; a coupled spot-long/perp-short return path is built and committed |
 | Futures (commodity/rate) | YES (front-month CL/NG/GC/ZB cached) | Basis/roll-yield candidates blocked by unobservable roll **prices**, not by missing prices or missing roll **dates** (`data/raw/{CL-F,NG-F,GC-F,ZB-F}.parquet` cached; roll dates observable from the cached volume signature, Cycle 884; the leg closes at a roll are not) |
 | Forex spot | NO | Forex carry blocked (no rate differentials regardless) |
 | Intraday history | NO | Session-effect candidates rejected |
@@ -99,17 +103,23 @@ and no number of the Cycle 881 cost column changes.
 | 6 | Macro regime overlay extension (`macroregime_001`) | 3.70 | +0.1110%/yr | +6.9222%/yr | +0.1110%/yr | 180.27 bp/unit | **ADMISSIBLE** | none (no cost level reaches the gate) |
 | 10 | Intraday session / time-of-day effects (overnight variant, `overnight_capture_001`) | 504.00 | +15.1200%/yr | +9.1558%/yr | +15.1200%/yr | 1.74 bp/unit | **INADMISSIBLE** | +0.47 bp/unit (below the 3 bp/unit the model charges) |
 
-### Rows with no derivable cost basis (four of the ten rows)
+### Rows with no derivable cost basis (three of the ten rows)
 
 | Shortlist rank | Candidate | Why there is no cost basis | What stands in its place |
 |---|---|---|---|
 | 5 | TSMOM parameter variants | No separate candidate configuration exists to cost: the family is the incumbent's own parameter set, and the repository's own 100-configuration grid already rejected it on evidence (0/100 beat the baseline test Sharpe). | The incumbent's row (rank 1) is the family's cost basis; the variants are not re-costed because they were never evaluated as candidates. |
 | 7 | Commodity/rate futures basis and roll yield | Front-month series now cached (`data/raw/{CL-F,NG-F,GC-F,ZB-F}.parquet`, 2015-01-02 .. 2026-10-15, 2,964-2,965 sessions, 0 missing closes, 0 duplicate dates) and the roll **dates** are now observable from the cached volume signature (Cycle 884), but the roll **price** is not: no source in scope serves the individual contract leg closes (nine source classes probed; expired legs 404, currently listed legs are chain aliases), so the roll spread and the roll cost actually paid remain unobservable. Hence no honest gross-return + turnover pair exists and no derivable turnover. | Blocked by data (unchanged verdict; see `research/reports/futures_basis_data_integrity_001.md`, `research/reports/futures_roll_visibility_001.md` and `research/experiments/futuresbasis_001.md`). |
-| 8 | Crypto perpetual funding-rate carry | Crypto funding history now cached (data/raw/crypto/*_funding.parquet, BTC/ETH USDT-SWAP, ~98.3 days, 8h). However, multi-year history (>365 days) and spot-perp coupled series required to form a reproducible spot+perp return path are still unavailable from accessible sources; no executable return series/weight path exists for offline backtesting. | Blocked by data (insufficient history < 1 year). |
 | 9 | Volatility risk premium | No **tradeable** volatility instrument is cached (^VIX is an index, not an executable return series), so no return series and no weight path exist to cost. | Blocked by data (unchanged verdict). |
 
 Every row of the shortlist now carries a cost basis: six rows are costed from the committed
-cache, and four are listed above with the reason they cannot be.
+cache, three are listed above with the reason they cannot be, and rank 8 became costable in
+Cycle 889 (below) but has not yet been screened.
+
+### Row that became costable in Cycle 889
+
+| Shortlist rank | Candidate | What is now derivable | What is still missing |
+|---|---|---|---|
+| 8 | Crypto perpetual funding-rate carry | A committed daily spot-long/perp-short return path exists (`data/processed/crypto/{BTCUSDT,ETHUSDT}_carry_path.parquet`, 2020-01-02..2026-09-30, 2,464 days/symbol) with funding cashflow and basis convergence separated, so gross return and turnover are both derivable offline. | The candidate is **not yet costed**: `research/cost_admissibility_screen.py` has no row for it, and no net-of-fee result, walk-forward split, block-bootstrap CI or promotion-gate test has been run. Gross carry (+11.59%/yr BTC, +13.57%/yr ETH over the full span) is *before* spot/perp fees, slippage, margin and funding rounding, so it is not an edge. See `research/experiments/cryptofunding_002_data.md`. |
 
 ### What the completed column changes
 
@@ -330,28 +340,44 @@ cycle is `research/experiments/cost_admissibility_screen_001.md`.
 ## Candidate C8: Crypto perpetual funding-rate carry (spot long + perp short)
 
 **Category:** Carry/funding strategies
-**Universe:** BTC/USDT, ETH/USDT perpetuals on OKX (not cached)
+**Universe:** BTC/USDT, ETH/USDT USDT-margined perpetuals (Binance primary, OKX cross-check)
 **Mechanism:** Perpetual swaps pay funding to anchor price to spot; persistently positive funding can be harvested via spot-long/perp-short.
 
 **Evidence base:**
 - Cycle 1 live verification: OKX accessible, ~66 days of 8h funding history, avg funding ~5.85% annualized (BTC)
-- No crypto data cached in the repository
-- Binance/Bybit geo-blocked (HTTP 451/403)
+- Cycle 888: OKX funding history cached (296 x 8h records per symbol, ~98.3 days) — still < 1 year
+- **Cycle 889 (current): the data blocker is resolved.** The Binance *public data archive*
+  (`data.binance.vision`) is reachable even though the live Binance REST API is geo-blocked from
+  this environment, and it publishes monthly funding-rate ZIPs plus daily klines for
+  `BTCUSDT`/`ETHUSDT`, each with a published SHA256 `.CHECKSUM`. Collected and checksum-verified:
+  **7,395 8h funding records per symbol, 2020-01-01 .. 2026-09-30 (2,464.7 days, 0 missing 8h
+  periods, 0 duplicate timestamps)** plus 2,465 daily spot and 2,465 daily perp klines per
+  symbol. A coupled spot-long/perp-short daily return path is built and committed
+  (`data/processed/crypto/*_carry_path.parquet`). The Binance series agrees with the
+  independently collected OKX series on their 8h overlap (238 overlapping settlements: same
+  funding sign in 91.2% of periods, median absolute difference 0.213 bp).
+- Still **untested net of costs**: no fee/slippage/margin model has been applied, no
+  walk-forward split or block-bootstrap CI has been run, and the candidate is not yet a row in
+  `research/cost_admissibility_screen.py`.
 
 ### Scores
 
 | Criterion | Score | Rationale |
 |-----------|-------|-----------|
-| (a) Data quality/access | 2 (weak) | Nothing cached; single accessible exchange (OKX); only ~66 days of verified funding history — insufficient for statistical power |
+| (a) Data quality/access | 4 (strong) | 6.75 years of 8h funding history per symbol, every archive file SHA256-verified, 0 missing 8h periods, 0 duplicate timestamps, cross-validated against a second venue (OKX); coupled daily spot/perp legs cached. Deducted from 5: single venue for the price legs, archive stops at 2026-09 (no October file published yet) |
 | (b) Structural mechanism | 4 (strong) | Funding is a mechanical perpetual-swap feature driven by leveraged long demand — structural, not data-mined |
-| (c) Expected net return | 3 (adequate) | Verified ~5.85% annualized funding for BTC over 66 days, but rates are volatile and can turn negative; net of fees unproven |
-| (d) Robustness/statistical power | 2 (weak) | 66 days is far below the 100-trade / multi-regime evidence bar; deep pagination would be required |
+| (c) Expected net return | 3 (adequate) | Gross carry +11.59%/yr (BTC) / +13.57%/yr (ETH) over 2020-01..2026-09, but strongly regime-dependent (+30.6%/yr in 2021, +2.9%/yr in 2026 YTD) and entirely **before** spot/perp fees, slippage, margin and funding rounding; net of costs unproven |
+| (d) Robustness/statistical power | 3 (adequate) | 7,395 funding periods and 2,464 daily observations per symbol across bull, bear and range regimes (2020-2026); still untested, so no independent confirmation |
 | (e) Liquidity/capacity | 5 (excellent / feasible) | BTC/ETH perp liquidity is deep (sub-1bps verified spreads) |
 | (f) Automation/operating burden | 3 (adequate) | Requires real-time API, margin management across spot and swap accounts — heavier operational burden |
 | (g) Diversification from existing research | 1 (poor / infeasible) | Existing research exposure is already large-cap crypto — zero diversification value |
-| **Overall** | **20/35** | |
+| **Overall** | **23/35** | |
 
-**Verdict: Blocked by data** — Insufficient verified funding-rate history (~66 days vs. multi-year requirement), single exchange, and zero diversification from existing crypto exposure.
+**Verdict: Exploratory signal** — the data blocker is resolved (multi-year funding history plus a
+coupled spot/perp return path are cached and checksum-verified), so a valid test is now possible;
+it has not been run. Gross carry is not an edge: the next cycle must apply a fee/slippage/margin
+cost model, a chronological split with block-bootstrap CI, and the repository's 0.9-Sharpe
+promotion gate before any promotion claim. See `research/experiments/cryptofunding_002_data.md`.
 
 ---
 
@@ -411,7 +437,7 @@ cycle is `research/experiments/cost_admissibility_screen_001.md`.
 
 ## Price Predictability vs Executable Net Edge
 
-The scoring explicitly separates *price predictability* (does a signal forecast returns in cached data?) from *executable net edge* (does the forecast survive costs, borrow, and operational friction?). Candidates C7-C10 fail on executability or data readiness regardless of any predictive content: no tradeable instrument (C7), insufficient history (C8), unobservable roll prices/legs (C9 — its roll *dates* are observable in the cached volume signature since Cycle 884, its leg closes are not), or no intraday data (C10). C2 fails on evidence: its own parameter grid shows the incumbent's parameters are a local peak, so variants are not independently supported. C1 is the only candidate with passed promotion gates; C3-C6 are untested but formable with cached data.
+The scoring explicitly separates *price predictability* (does a signal forecast returns in cached data?) from *executable net edge* (does the forecast survive costs, borrow, and operational friction?). Candidates C7-C10 fail on executability or data readiness regardless of any predictive content: no tradeable instrument (C7), unobservable roll prices/legs (C9 — its roll *dates* are observable in the cached volume signature since Cycle 884, its leg closes are not), or no intraday data (C10). C8 no longer fails on data readiness — since Cycle 889 its multi-year funding history and coupled spot/perp return path are cached and checksum-verified — but it is untested net of costs, so it remains an exploratory signal rather than an edge. C2 fails on evidence: its own parameter grid shows the incumbent's parameters are a local peak, so variants are not independently supported. C1 is the only candidate with passed promotion gates; C3-C6 are untested but formable with cached data.
 
 ## Ranking & Recommendation
 
@@ -424,11 +450,11 @@ The scoring explicitly separates *price predictability* (does a signal forecast 
 | 5 | TSMOM parameter variants | 25/35 | Rejected | Tested worse than incumbent on identical data |
 | 6 | Macro regime overlay extension | 24/35 | Exploratory signal | Overlay only; ^VIX not tradeable; regime overfitting risk |
 | 7 | Commodity/rate futures basis and roll yield | 21/35 | Rejected | Contract-leg route unbuildable (roll prices unobservable); ETF route rejected on cost (USO/BNO/UNG/GSG all negative carry vs GLD, CIs include zero) |
-| 8 | Crypto perpetual funding-rate carry | 20/35 | Blocked by data | ~66 days funding history; single exchange; no diversification |
+| 8 | Crypto perpetual funding-rate carry | 23/35 | Exploratory signal | Data unblocked (Cycle 889: 6.75y of 8h funding + coupled spot/perp legs, SHA256-verified); untested net of costs, no diversification from existing crypto exposure |
 | 9 | Volatility risk premium | 18/35 | Blocked by data | No tradeable volatility instrument |
 | 10 | Intraday session / time-of-day effects | 17/35 | Rejected | No intraday history |
 
-**Counts:** 1 credible candidate, 4 exploratory signals, 2 blocked by data, 3 rejected (10 total).
+**Counts:** 1 credible candidate, 5 exploratory signals, 1 blocked by data, 3 rejected (10 total).
 
 **Recommendation for Cycle 12:** Continue prospective paper-trading validation of C1 (incumbent; gate is 63 days of track record). The highest-ranked untested candidate is **C3 (long-only cross-sectional momentum on the broad 18-ETF cache)** at 29/35: data quality is maximal (fully cached, point-in-time safe), the structural mechanism is first-order, and it diversifies the incumbent's signal formation. Per AGENTS.md 'hypothesis first', Cycle 12 should document the C3 hypothesis and pre-register its evaluation plan (splits, benchmarks, promotion gates, multiple-testing controls) BEFORE any backtest execution.
 
