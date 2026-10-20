@@ -18,7 +18,7 @@
 | 4 | Calendar / rebalancing effects | 5 | 3 | 2 | 3 | 5 | 4 | 4 | **26/35** | Exploratory signal |
 | 5 | TSMOM parameter variants | 5 | 4 | 2 | 2 | 5 | 5 | 2 | **25/35** | Rejected |
 | 6 | Macro regime overlay extension | 4 | 4 | 3 | 3 | 3 | 4 | 3 | **24/35** | Exploratory signal |
-| 7 | Commodity/rate futures basis and roll yield | 2 | 4 | 3 | 2 | 3 | 2 | 5 | **21/35** | Blocked by data |
+| 7 | Commodity/rate futures basis and roll yield | 2 | 4 | 3 | 2 | 3 | 2 | 5 | **21/35** | Rejected (both contract-leg and ETF routes) |
 | 8 | Crypto perpetual funding-rate carry | 2 | 4 | 3 | 2 | 5 | 3 | 1 | **20/35** | Blocked by data |
 | 9 | Volatility risk premium | 2 | 4 | 2 | 2 | 2 | 2 | 4 | **18/35** | Blocked by data |
 | 10 | Intraday session / time-of-day effects | 1 | 3 | 2 | 1 | 4 | 2 | 4 | **17/35** | Rejected |
@@ -323,7 +323,7 @@ cycle is `research/experiments/cost_admissibility_screen_001.md`.
 | (g) Diversification from existing research | 5 (excellent / feasible) | Commodity/rate exposure would be strongly diversifying vs. existing crypto/equity research |
 | **Overall** | **21/35** | |
 
-**Verdict: Blocked by data** — Front-month series cached and the **roll dates are now observable** in the cached volume signature, but the roll **prices/legs** remain unobservable (nine source classes probed in Cycle 884), so the roll cost actually paid — and therefore any honest roll-yield return series — still cannot be built; no basis computable. Would need a source of individual contract leg closes first.
+**Verdict: Rejected** — Both routes rejected: contract-leg route unbuildable (roll prices/legs unobservable across nine source classes), ETF route rejected on cost (USO/BNO/UNG/GSG all show negative annualized carry vs GLD over 2015-2026, block-bootstrap CIs include zero). No trading edge. See `research/experiments/futuresbasis_002.md`.
 
 ---
 
@@ -423,12 +423,12 @@ The scoring explicitly separates *price predictability* (does a signal forecast 
 | 4 | Calendar / rebalancing effects | 26/35 | Exploratory signal | Expected effect below cost hurdle |
 | 5 | TSMOM parameter variants | 25/35 | Rejected | Tested worse than incumbent on identical data |
 | 6 | Macro regime overlay extension | 24/35 | Exploratory signal | Overlay only; ^VIX not tradeable; regime overfitting risk |
-| 7 | Commodity/rate futures basis and roll yield | 21/35 | Blocked by data | Front-month cached; roll dates observable (volume signature, Cycle 884); roll prices/legs still unobservable |
+| 7 | Commodity/rate futures basis and roll yield | 21/35 | Rejected | Contract-leg route unbuildable (roll prices unobservable); ETF route rejected on cost (USO/BNO/UNG/GSG all negative carry vs GLD, CIs include zero) |
 | 8 | Crypto perpetual funding-rate carry | 20/35 | Blocked by data | ~66 days funding history; single exchange; no diversification |
 | 9 | Volatility risk premium | 18/35 | Blocked by data | No tradeable volatility instrument |
 | 10 | Intraday session / time-of-day effects | 17/35 | Rejected | No intraday history |
 
-**Counts:** 1 credible candidate, 4 exploratory signals, 3 blocked by data, 2 rejected (10 total).
+**Counts:** 1 credible candidate, 4 exploratory signals, 2 blocked by data, 3 rejected (10 total).
 
 **Recommendation for Cycle 12:** Continue prospective paper-trading validation of C1 (incumbent; gate is 63 days of track record). The highest-ranked untested candidate is **C3 (long-only cross-sectional momentum on the broad 18-ETF cache)** at 29/35: data quality is maximal (fully cached, point-in-time safe), the structural mechanism is first-order, and it diversifies the incumbent's signal formation. Per AGENTS.md 'hypothesis first', Cycle 12 should document the C3 hypothesis and pre-register its evaluation plan (splits, benchmarks, promotion gates, multiple-testing controls) BEFORE any backtest execution.
 
