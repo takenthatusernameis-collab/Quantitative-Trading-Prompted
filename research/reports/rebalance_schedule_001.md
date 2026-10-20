@@ -100,10 +100,25 @@ selected. Adopting the shared implementation there is a separate, explicitly sco
 ## The incumbent path is untouched
 
 `run_backtest` was called with its default arguments on the incumbent's universe
-(2004-11-18 .. 2026-10-16, 8487 sessions): canonical Sharpe
-0.5646255767978904 (committed 0.5646255767978904), max drawdown -0.6224126346564325 (committed
--0.6224126346564325), PSR 2.2219753177036448e-08 (committed 2.2219753177036448e-08). The code-level decision
-stays **NO-GO** with failed gates `['full_period_sharpe', 'rolling_63d_sharpe', 'max_drawdown', 'psr']`.
+(2004-11-18 .. 2026-10-19, 8488 sessions). The incumbent's published
+numbers are the numbers of the **reference sample** -- the committed raw cache truncated at
+`2026-10-16`, 8487 sessions -- because the engine's path is
+point-in-time (the weights at t use data up to t only), so truncating the return series
+reproduces the published path exactly:
+
+| Reference-sample metric | Recomputed | Committed |
+|---|---|---|
+| canonical Sharpe | 0.5646255767978904 | 0.5646255767978904 |
+| max drawdown | -0.6224126346564325 | -0.6224126346564325 |
+| PSR | 2.2219753177036448e-08 | 2.2219753177036448e-08 |
+
+The full sample (8488 sessions, through 2026-10-19) gives canonical Sharpe
+0.5657179297830458, max drawdown -0.6224126346564325 and PSR 1.6549061233035153e-08: the difference is the
+appended session(s) only, and it is why the reference sample -- not the full sample -- is the
+invariant that is asserted. The raw-cache fingerprint of the incumbent's universe at the time of
+this audit: SPY: rows=8488, last=2026-10-19, sha256=971d02284b9790df; QQQ: rows=6946, last=2026-10-19, sha256=71215972c77f917d; IWM: rows=6638, last=2026-10-19, sha256=5bd3985f67dd47ad; TLT: rows=6095, last=2026-10-19, sha256=f745d0921006c792; GLD: rows=5513, last=2026-10-19, sha256=5ca9683ee5f6af6e; EFA: rows=6323, last=2026-10-19, sha256=a77623de41bdf6d5; EEM: rows=5917, last=2026-10-19, sha256=922f0181be3ed98c.
+
+The code-level decision stays **NO-GO** with failed gates `['full_period_sharpe', 'rolling_63d_sharpe', 'max_drawdown', 'psr']`.
 
 ## Falsification conditions
 
@@ -111,8 +126,8 @@ This cycle's conclusions are wrong if any of the following holds:
 
 1. the opt-in engine path does not reproduce the config-faithful research path to 1e-12
    (it does: 0.000e+00);
-2. the default path of `run_backtest` changes any incumbent number (it does not: the three values
-   above are bit-identical to the committed ones);
+2. the default path of `run_backtest` changes any incumbent number (it does not: the three
+   reference-sample values above are bit-identical to the committed ones);
 3. a month-end session is not a session of the aligned price calendar, or a signal is not effective
    from the session after its month-end session;
 4. a position exists before the first valid signal;
@@ -133,7 +148,7 @@ This cycle's conclusions are wrong if any of the following holds:
 | `no_position_before_the_first_valid_signal` | PASS | the first valid momentum cross-section is 2000-01-24; no position exists before 2000-02-01. |
 | `simulation_m_branch_is_calendar_based` | PASS | the simulation 'M' branch fires on 235 of 6991 sessions and has no rebalance at all in 100 of 335 months. |
 | `simulation_m_never_rebalances_on_the_same_session_as_the_shared_schedule` | PASS | the two schedules change the portfolio on 0 common sessions (137 'M' branch sessions vs 175 shared-schedule sessions): the 'M' branch rebalances one session earlier, on the month's last session itself. |
-| `incumbent_default_path_unchanged` | PASS | incumbent default path: canonical Sharpe 0.5646255767978904 (committed 0.5646255767978904), max DD -0.6224126346564325 (committed -0.6224126346564325), PSR 2.2219753177036448e-08 (committed 2.2219753177036448e-08). |
+| `incumbent_default_path_unchanged` | PASS | incumbent default path on the 8487-session reference sample (through 2026-10-16): canonical Sharpe 0.5646255767978904 (committed 0.5646255767978904), max DD -0.6224126346564325 (committed -0.6224126346564325), PSR 2.2219753177036448e-08 (committed 2.2219753177036448e-08); full sample (8488 sessions, through 2026-10-19): Sharpe 0.5657179297830458, max DD -0.6224126346564325, PSR 1.6549061233035153e-08. |
 | `raw_cache_unchanged` | PASS | the raw cache is byte-identical. |
 
 ## Reproduction
@@ -152,5 +167,5 @@ git status --porcelain data/                    # empty
   after the run).
 - Source files that define the schedule (SHA-256):
   - `src/backtest/rebalance.py`: `445b7b1aaf2c0e427174f94d859a342d5cf12a5eeffcb1121516dc75717a3820`
-  - `src/backtest/engine.py`: `66d66a0364decfd4c0c64d8cf38388747dc0bc15926c27b008b4379462630c99`
+  - `src/backtest/engine.py`: `34bca554ae4dda5bf3fd92c95092b5f407b8692b6611c209e191362288af107a`
 - Gate thresholds, candidate configurations, cost model and Sharpe convention: unchanged.

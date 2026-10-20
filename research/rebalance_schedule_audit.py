@@ -60,7 +60,16 @@ REPORTS_DIR = REPO_ROOT / "research" / "reports"
 REPORT_MD = REPORTS_DIR / "rebalance_schedule_001.md"
 
 # The incumbent's committed code-level numbers (research/reports/
-# promotion_feasibility_backtest_001.md). They must not move.
+# promotion_feasibility_backtest_001.md) *on the reference sample*: the
+# committed raw cache truncated at INCUMBENT_REFERENCE_END, i.e. the
+# 8487-session sample the incumbent was first published against.  They are
+# asserted on that reference sample, so that an append-only extension of the
+# raw cache (which necessarily moves the full-sample Sharpe) cannot
+# invalidate the check, while a rewrite of the cache's history still fails it.
+# The full-sample numbers are reported alongside, with the raw-cache
+# fingerprint, so that a data change is visible in the evidence.
+INCUMBENT_REFERENCE_END = "2026-10-16"
+INCUMBENT_REFERENCE_SESSIONS = 8487
 INCUMBENT_SHARPE = 0.5646255767978904
 INCUMBENT_MAX_DD = -0.6224126346564325
 INCUMBENT_PSR = 2.2219753177036448e-08
@@ -294,15 +303,39 @@ def main() -> int:
     inc_sharpe = float(sharpe_ratio(inc_net))
     inc_dd = float(max_drawdown(inc_net))
     inc_psr = float(compute_psr(inc_net, sr_target=1.4178, seed=20240101)["psr_normal"])
+    # The reference sample: the committed cache truncated at the incumbent's
+    # published end date.  The engine's path is point-in-time (the weights at
+    # t use data up to t only), so truncating the return series reproduces the
+    # path the incumbent was published against, exactly.
+    inc_ref = inc_net.loc[: INCUMBENT_REFERENCE_END]
+    inc_ref_sessions = len(inc_ref)
+    inc_ref_sharpe = float(sharpe_ratio(inc_ref))
+    inc_ref_dd = float(max_drawdown(inc_ref))
+    inc_ref_psr = float(compute_psr(inc_ref, sr_target=1.4178, seed=20240101)["psr_normal"])
     check(
         "incumbent_default_path_unchanged",
-        abs(inc_sharpe - INCUMBENT_SHARPE) <= 1e-12
-        and abs(inc_dd - INCUMBENT_MAX_DD) <= 1e-12
-        and abs(inc_psr - INCUMBENT_PSR) <= 1e-15,
-        f"incumbent default path: canonical Sharpe {inc_sharpe!r} (committed {INCUMBENT_SHARPE!r}), "
-        f"max DD {inc_dd!r} (committed {INCUMBENT_MAX_DD!r}), PSR {inc_psr!r} "
-        f"(committed {INCUMBENT_PSR!r}).",
+        inc_ref_sessions == INCUMBENT_REFERENCE_SESSIONS
+        and abs(inc_ref_sharpe - INCUMBENT_SHARPE) <= 1e-12
+        and abs(inc_ref_dd - INCUMBENT_MAX_DD) <= 1e-12
+        and abs(inc_ref_psr - INCUMBENT_PSR) <= 1e-15,
+        f"incumbent default path on the {INCUMBENT_REFERENCE_SESSIONS}-session reference sample "
+        f"(through {INCUMBENT_REFERENCE_END}): canonical Sharpe {inc_ref_sharpe!r} "
+        f"(committed {INCUMBENT_SHARPE!r}), max DD {inc_ref_dd!r} (committed {INCUMBENT_MAX_DD!r}), "
+        f"PSR {inc_ref_psr!r} (committed {INCUMBENT_PSR!r}); "
+        f"full sample ({len(inc_net)} sessions, through {inc_end}): Sharpe {inc_sharpe!r}, "
+        f"max DD {inc_dd!r}, PSR {inc_psr!r}.",
     )
+    # raw-cache fingerprint of the incumbent's universe: a data change is then
+    # visible in the evidence even when the reference-sample numbers hold.
+    inc_fingerprint = []
+    for s in inc_universe:
+        path = RAW_DIR / f"{s}.parquet"
+        df = pd.read_parquet(path)
+        inc_fingerprint.append(
+            f"{s}: rows={len(df)}, last={df.index.max().date().isoformat()}, "
+            f"sha256={sha256_file(path)[:16]}"
+        )
+    inc_fingerprint_s = "; ".join(inc_fingerprint)
 
     # --- read-only proof ---
     hashes_after = {s: sha256_file(RAW_DIR / f"{s}.parquet") for s in universe}
@@ -344,6 +377,11 @@ def main() -> int:
         inc_sharpe=inc_sharpe,
         inc_dd=inc_dd,
         inc_psr=inc_psr,
+        inc_ref_sessions=inc_ref_sessions,
+        inc_ref_sharpe=inc_ref_sharpe,
+        inc_ref_dd=inc_ref_dd,
+        inc_ref_psr=inc_ref_psr,
+        inc_fingerprint=inc_fingerprint_s,
         inc_start=inc_start,
         inc_end=inc_end,
         inc_sessions=len(inc_net),
@@ -370,9 +408,17 @@ def main() -> int:
         f"{len(months_without_rebalance)}/{len(month_keys)} months never rebalance"
     )
     print(
-        f"incumbent default path: sharpe={inc_sharpe!r} max_dd={inc_dd!r} psr={inc_psr!r} "
+        f"incumbent default path on the {inc_ref_sessions}-session reference sample "
+        f"(through {INCUMBENT_REFERENCE_END}): sharpe={inc_ref_sharpe!r} "
+        f"max_dd={inc_ref_dd!r} psr={inc_ref_psr!r} "
+        f"(committed {INCUMBENT_SHARPE!r} / {INCUMBENT_MAX_DD!r} / {INCUMBENT_PSR!r})"
+    )
+    print(
+        f"incumbent default path on the full sample ({len(inc_net)} sessions, through {inc_end}): "
+        f"sharpe={inc_sharpe!r} max_dd={inc_dd!r} psr={inc_psr!r} "
         f"decision=NO-GO failed={INCUMBENT_FAILED_GATES}"
     )
+    print(f"incumbent raw-cache fingerprint: {inc_fingerprint_s}")
     if failed:
         print(f"FAILED CHECKS: {failed}", file=sys.stderr)
         return 1
@@ -495,10 +541,25 @@ selected. Adopting the shared implementation there is a separate, explicitly sco
 ## The incumbent path is untouched
 
 `run_backtest` was called with its default arguments on the incumbent's universe
-({kw["inc_start"]} .. {kw["inc_end"]}, {kw["inc_sessions"]} sessions): canonical Sharpe
-{kw["inc_sharpe"]!r} (committed {INCUMBENT_SHARPE!r}), max drawdown {kw["inc_dd"]!r} (committed
-{INCUMBENT_MAX_DD!r}), PSR {kw["inc_psr"]!r} (committed {INCUMBENT_PSR!r}). The code-level decision
-stays **NO-GO** with failed gates `{INCUMBENT_FAILED_GATES}`.
+({kw["inc_start"]} .. {kw["inc_end"]}, {kw["inc_sessions"]} sessions). The incumbent's published
+numbers are the numbers of the **reference sample** -- the committed raw cache truncated at
+`{INCUMBENT_REFERENCE_END}`, {kw["inc_ref_sessions"]} sessions -- because the engine's path is
+point-in-time (the weights at t use data up to t only), so truncating the return series
+reproduces the published path exactly:
+
+| Reference-sample metric | Recomputed | Committed |
+|---|---|---|
+| canonical Sharpe | {kw["inc_ref_sharpe"]!r} | {INCUMBENT_SHARPE!r} |
+| max drawdown | {kw["inc_ref_dd"]!r} | {INCUMBENT_MAX_DD!r} |
+| PSR | {kw["inc_ref_psr"]!r} | {INCUMBENT_PSR!r} |
+
+The full sample ({kw["inc_sessions"]} sessions, through {kw["inc_end"]}) gives canonical Sharpe
+{kw["inc_sharpe"]!r}, max drawdown {kw["inc_dd"]!r} and PSR {kw["inc_psr"]!r}: the difference is the
+appended session(s) only, and it is why the reference sample -- not the full sample -- is the
+invariant that is asserted. The raw-cache fingerprint of the incumbent's universe at the time of
+this audit: {kw["inc_fingerprint"]}.
+
+The code-level decision stays **NO-GO** with failed gates `{INCUMBENT_FAILED_GATES}`.
 
 ## Falsification conditions
 
@@ -506,8 +567,8 @@ This cycle's conclusions are wrong if any of the following holds:
 
 1. the opt-in engine path does not reproduce the config-faithful research path to 1e-12
    (it does: {kw["max_net_diff"]:.3e});
-2. the default path of `run_backtest` changes any incumbent number (it does not: the three values
-   above are bit-identical to the committed ones);
+2. the default path of `run_backtest` changes any incumbent number (it does not: the three
+   reference-sample values above are bit-identical to the committed ones);
 3. a month-end session is not a session of the aligned price calendar, or a signal is not effective
    from the session after its month-end session;
 4. a position exists before the first valid signal;

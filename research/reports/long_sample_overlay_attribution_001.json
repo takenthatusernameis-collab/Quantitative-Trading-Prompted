@@ -1,24 +1,24 @@
 {
-  "decision": "The overlay is a drag and the trailing window is an overlay-timing anomaly: a different risk treatment is warranted, quantified by this measurement.",
+  "decision": "The overlay is a drag and the raw signal also failed in the trailing window: retire the incumbent; the next candidate must be a structurally different family.",
   "falsification": {
     "f1": true,
     "f2": true,
-    "f3": false
+    "f3": true
   },
   "full": {
     "compounded": {
-      "base": 15.528813394756163,
-      "combined": 67.44582200757917,
-      "dd_scaled": 67.44582200757917,
-      "executed": 67.44582200757917,
-      "gated": 206.7182085264396,
-      "vol_targeted": 67.44582200757917
+      "base": 15.639212252718483,
+      "combined": 67.74281690143864,
+      "dd_scaled": 67.74281690143864,
+      "executed": 67.74281690143864,
+      "gated": 208.10559505272064,
+      "vol_targeted": 67.74281690143864
     },
     "effects": {
       "drawdown_overlay_effect": 0.0,
-      "filter_effect": 191.18939513168345,
+      "filter_effect": 192.46638280000215,
       "gross_exposure_cap_effect": 0.0,
-      "vol_overlay_effect": -139.27238651886046
+      "vol_overlay_effect": -140.362778151282
     },
     "max_drawdown": {
       "base": -0.6224126346564325,
@@ -28,28 +28,28 @@
       "gated": -0.16018924241003007,
       "vol_targeted": -0.0993489663974838
     },
-    "residual": 1.4210854715202004e-14,
+    "residual": 0.0,
     "sharpe": {
-      "base": 0.5646255767978904,
-      "combined": 1.4855911257734715,
-      "dd_scaled": 1.4855911257734715,
-      "executed": 1.4855911257734715,
-      "gated": 1.3369448245707185,
-      "vol_targeted": 1.4855911257734715
+      "base": 0.5657179297830458,
+      "combined": 1.4869411618008934,
+      "dd_scaled": 1.4869411618008934,
+      "executed": 1.4869411618008934,
+      "gated": 1.3384145831271415,
+      "vol_targeted": 1.4869411618008934
     },
     "turnover": {
-      "base": 9.214563449982327,
-      "combined": 12.15829011233273,
-      "dd_scaled": 12.15829011233273,
-      "gated": 13.510074231177095,
-      "vol_targeted": 12.15829011233273
+      "base": 9.213477851083884,
+      "combined": 12.157427322990097,
+      "dd_scaled": 12.157427322990097,
+      "gated": 13.508482563619227,
+      "vol_targeted": 12.157427322990097
     }
   },
   "rolling": {
     "drawdown_overlay_effect": {
       "percentile_rank": 100.0,
       "stats": {
-        "count": 8425,
+        "count": 8426,
         "max": 0.0,
         "mean": 0.0,
         "median": 0.0,
@@ -61,23 +61,23 @@
       "trailing": 0.0
     },
     "filter_effect": {
-      "percentile_rank": 51.96439169139466,
+      "percentile_rank": 55.35248041775457,
       "stats": {
-        "count": 8425,
-        "max": 0.32709839525221346,
-        "mean": 0.018004569265956002,
-        "median": 1.0408340855860843e-15,
+        "count": 8426,
+        "max": 0.3270983952522135,
+        "mean": 0.01800243247871817,
+        "median": 1.0443035325380379e-15,
         "min": -0.2668249115547999,
-        "negative_fraction": 0.3021958456973294,
-        "p05": -0.02752202331937977,
-        "p95": 0.12957302029915754
+        "negative_fraction": 0.30227866128649417,
+        "p05": -0.027521031747038592,
+        "p95": 0.12957194509329384
       },
-      "trailing": 1.3444106938820255e-15
+      "trailing": 1.7685505837583548e-15
     },
     "gross_exposure_cap_effect": {
       "percentile_rank": 100.0,
       "stats": {
-        "count": 8425,
+        "count": 8426,
         "max": 0.0,
         "mean": 0.0,
         "median": 0.0,
@@ -89,41 +89,41 @@
       "trailing": 0.0
     },
     "vol_overlay_effect": {
-      "percentile_rank": 21.697329376854597,
+      "percentile_rank": 34.72584856396867,
       "stats": {
-        "count": 8425,
+        "count": 8426,
         "max": 0.047493145926773034,
-        "mean": -0.0091424582627499,
-        "median": -0.0001913253846051316,
+        "mean": -0.009142036816161759,
+        "median": -0.00019173365053930247,
         "min": -0.25358670860956667,
-        "negative_fraction": 0.56973293768546,
-        "p05": -0.047430139704316455,
-        "p95": 0.004927690515492902
+        "negative_fraction": 0.5697840018988845,
+        "p05": -0.047429993878077746,
+        "p95": 0.004927478752168868
       },
-      "trailing": -0.014297316907348177
+      "trailing": -0.005591349311072409
     }
   },
   "sample": {
-    "end": "2026-10-16",
-    "sessions": 8487,
+    "end": "2026-10-19",
+    "sessions": 8488,
     "start": "1993-01-29"
   },
   "trailing": {
     "compounded": {
-      "base": 0.009122212402051355,
-      "combined": -0.005175104505293571,
-      "dd_scaled": -0.005175104505293571,
-      "executed": -0.005175104505293571,
-      "gated": 0.009122212402051355,
-      "vol_targeted": -0.005175104505293571
+      "base": -0.004211980051429642,
+      "combined": -0.009803329362497726,
+      "dd_scaled": -0.009803329362497726,
+      "executed": -0.009803329362497726,
+      "gated": -0.004211980051429642,
+      "vol_targeted": -0.009803329362497726
     },
     "sharpe": {
-      "base": 0.30723025922509417,
-      "combined": -0.21188351222842883,
-      "dd_scaled": -0.21188351222842883,
-      "executed": -0.21188351222842883,
-      "gated": 0.30723025922509417,
-      "vol_targeted": -0.21188351222842883
+      "base": -0.03425220400791309,
+      "combined": -0.4489181511478863,
+      "dd_scaled": -0.4489181511478863,
+      "executed": -0.4489181511478863,
+      "gated": -0.03425220400791309,
+      "vol_targeted": -0.4489181511478863
     }
   }
 }

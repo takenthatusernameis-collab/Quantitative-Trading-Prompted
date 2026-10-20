@@ -84,6 +84,9 @@ CYCLE_862_TRAILING = {
     "cost_drag": -0.00098798,
     "observed": -0.00517510,
 }
+# The last session of the 63-session window Cycle 862 published.  The
+# continuity check above is evaluated on the window ending on this date.
+CYCLE_862_WINDOW_END = "2026-10-16"
 
 
 def sha256_file(path: Path) -> str:
@@ -272,9 +275,16 @@ def main() -> int:
 
     print("\n--- 2. Continuity with the Cycle 862 trailing-window attribution ---")
     trailing_dates = paper_dates[-WINDOW:]
-    sl_trailing = slice(positions[trailing_dates[0]], positions[trailing_dates[-1]] + 1)
-    cycle_862_window = decompose_window(layers, sl_trailing)
-    print(f"  window: {cycle_862_window['start']} .. {cycle_862_window['end']} ({cycle_862_window['n_sessions']} sessions)")
+    # The Cycle 862 *reference* window: the WINDOW paper-record sessions
+    # ending on CYCLE_862_WINDOW_END, i.e. the window Cycle 862 published.
+    # The continuity check is evaluated on that window and not on the current
+    # trailing window, so that an append-only extension of the record cannot
+    # invalidate it; the current trailing window stays the analysis window.
+    reference_dates = [d for d in paper_dates if d <= CYCLE_862_WINDOW_END][-WINDOW:]
+    sl_reference = slice(positions[reference_dates[0]], positions[reference_dates[-1]] + 1)
+    cycle_862_window = decompose_window(layers, sl_reference)
+    print(f"  current trailing window  : {trailing_dates[0]} .. {trailing_dates[-1]} ({len(trailing_dates)} sessions)")
+    print(f"  Cycle 862 reference window: {cycle_862_window['start']} .. {cycle_862_window['end']} ({cycle_862_window['n_sessions']} sessions)")
     continuity_diffs = {}
     for key, published in CYCLE_862_TRAILING.items():
         value = (
@@ -301,13 +311,23 @@ def main() -> int:
     )
     backtest_sharpe = sharpe_ratio(backtest_net)
     backtest_dd = max_drawdown(backtest_net)
+    # The published artifact is the incumbent's path on the *reference sample*:
+    # the committed cache truncated at label_end_date.  The engine's path is
+    # point-in-time (the weights at t use data up to t only), so truncating the
+    # return series reproduces the published path exactly, and an append-only
+    # extension of the raw cache cannot invalidate the invariant.
+    reference_net = backtest_net.loc[: PUBLISHED_BACKTEST["label_end_date"]]
+    reference_sharpe = sharpe_ratio(reference_net)
+    reference_dd = max_drawdown(reference_net)
     print(f"  backtest sessions            : {len(backtest_net)} ({backtest_net.index[0].date()} .. {backtest_net.index[-1].date()})")
-    print(f"  backtest canonical Sharpe    : {backtest_sharpe!r} (published {PUBLISHED_BACKTEST['canonical_sharpe']!r})")
-    print(f"  backtest max drawdown        : {backtest_dd!r} (published {PUBLISHED_BACKTEST['max_drawdown']!r})")
+    print(f"  reference sample sessions    : {len(reference_net)} (through {PUBLISHED_BACKTEST['label_end_date']})")
+    print(f"  reference canonical Sharpe   : {reference_sharpe!r} (published {PUBLISHED_BACKTEST['canonical_sharpe']!r})")
+    print(f"  reference max drawdown       : {reference_dd!r} (published {PUBLISHED_BACKTEST['max_drawdown']!r})")
+    print(f"  full-sample canonical Sharpe : {backtest_sharpe!r} (moves with the raw cache)")
     backtest_reproduced = (
-        abs(backtest_sharpe - PUBLISHED_BACKTEST["canonical_sharpe"]) <= SHARPE_TOL
-        and abs(backtest_dd - PUBLISHED_BACKTEST["max_drawdown"]) <= SHARPE_TOL
-        and len(backtest_net) == PUBLISHED_BACKTEST["session_count"]
+        abs(reference_sharpe - PUBLISHED_BACKTEST["canonical_sharpe"]) <= SHARPE_TOL
+        and abs(reference_dd - PUBLISHED_BACKTEST["max_drawdown"]) <= SHARPE_TOL
+        and len(reference_net) == PUBLISHED_BACKTEST["session_count"]
     )
     print(f"  artifact reproduced exactly  : {backtest_reproduced}")
 

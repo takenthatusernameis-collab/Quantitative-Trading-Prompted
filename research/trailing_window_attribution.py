@@ -12,8 +12,8 @@ overlay, + drawdown overlay, + gross-exposure cap, + trading costs -- so that
 every component is a difference of two compounded paths of the *same* data and
 the components sum to the observed compounded return exactly. It then
 attributes the same window per asset and per mechanism, and decomposes the
-PSR change between the 449-session record and the 444-session record that
-ends 2026-10-09.
+PSR change between the current record and the earlier record that ends
+2026-10-09.
 
 The script is read-only with respect to the repository:
 
@@ -603,17 +603,18 @@ def main() -> int:
     print("  underlying asset returns (bp):")
     print((layers["asset_ret"].iloc[sl_tail] * 1e4).round(1).to_string())
 
-    print("\n--- 6. PSR attribution (449-session vs 444-session record) ---")
     n_previous = sum(1 for d in dates if d <= "2026-10-09")
     psr = psr_attribution(returns, n_previous)
     cur, prev = psr["current"], psr["previous"]
-    print(f"  449-session record: observed {cur['observed']:.6f}  se {cur['se']:.6f}  psr {cur['psr']:.6f}  empirical {cur['empirical']:.3f}")
-    print(f"  444-session record: observed {prev['observed']:.6f}  se {prev['se']:.6f}  psr {prev['psr']:.6f}  empirical {prev['empirical']:.3f}")
+    n_current = len(returns)
+    print(f"\n--- 6. PSR attribution ({n_current}-session vs {n_previous}-session record) ---")
+    print(f"  {n_current}-session record: observed {cur['observed']:.6f}  se {cur['se']:.6f}  psr {cur['psr']:.6f}  empirical {cur['empirical']:.3f}")
+    print(f"  {n_previous}-session record: observed {prev['observed']:.6f}  se {prev['se']:.6f}  psr {prev['psr']:.6f}  empirical {prev['empirical']:.3f}")
     print(f"  numerator effect (observed Sharpe {prev['observed']:.6f} -> {cur['observed']:.6f}): {psr['numerator_effect']:+.6f}")
     print(f"  standard-error effect (se {prev['se']:.6f} -> {cur['se']:.6f})          : {psr['se_effect']:+.6f}")
     print(f"  interaction term                                               : {psr['interaction']:+.6f}")
     print(f"  total                                                           : {cur['psr']-prev['psr']:+.6f}")
-    print(f"  PSR gate threshold 0.95: 449-session psr {cur['psr']:.6f} FAIL, 444-session psr {prev['psr']:.6f} FAIL")
+    print(f"  PSR gate threshold 0.95: {n_current}-session psr {cur['psr']:.6f} FAIL, {n_previous}-session psr {prev['psr']:.6f} FAIL")
     z_needed = float(stats.norm.ppf(0.95))
     print(
         f"  observed Sharpe needed for psr>=0.95 at se {cur['se']:.6f}: "

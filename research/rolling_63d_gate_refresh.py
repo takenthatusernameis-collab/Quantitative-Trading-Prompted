@@ -58,7 +58,18 @@ RAW_DIR = REPO_ROOT / "data" / "raw"
 WINDOW = 63
 ANNUAL = 252
 # The documented canonical full-period Sharpe of the committed record
-# (acceptance criterion of Cycle 866).
+# (acceptance criterion of Cycle 866) and the length of the reference sample
+# it was computed on.
+#
+# The reference is asserted on the *reference sample* -- the first
+# REFERENCE_SESSIONS sessions of the committed record -- and not on the whole
+# record, so that an append-only extension of the record (which necessarily
+# moves the full-period Sharpe) cannot invalidate the check, while any rewrite
+# of the record's history still fails it.  The published Sharpe of the current
+# record is checked against an independent re-derivation of the canonical
+# formula and against the production gate value instead of against a frozen
+# constant.
+REFERENCE_SESSIONS = 449
 CANONICAL_FULL_SHARPE_REFERENCE = 1.748401
 # The recorded backtest baseline Sharpe, the PSR reference (see
 # config/promotion_gates.yaml -> sharpe_convention.backtest_baseline_scale).
@@ -194,16 +205,39 @@ def main() -> int:
 
     canonical_full = sharpe_ratio(returns)
     print(f"canonical full-period Sharpe: {canonical_full:.6f}")
+    # independent re-derivation of the published number from the committed
+    # record, with the canonical formula written out (the production estimator
+    # is imported, so this is a second, independent computation path)
+    finite = returns[np.isfinite(returns)]
+    indep_canonical = (
+        float(np.mean(finite)) * ANNUAL
+        / (float(np.std(finite, ddof=1)) * math.sqrt(ANNUAL))
+    )
     check(
-        "canonical full-period Sharpe re-derived == 1.748401",
-        abs(canonical_full - CANONICAL_FULL_SHARPE_REFERENCE) < 5e-7,
-        f"{canonical_full:.6f} vs {CANONICAL_FULL_SHARPE_REFERENCE}",
+        "canonical full-period Sharpe re-derived independently from the committed record",
+        abs(canonical_full - indep_canonical) < 1e-12,
+        f"{canonical_full:.12f} vs {indep_canonical:.12f}",
     )
     check(
         "full-period Sharpe gate value == re-derived canonical Sharpe",
         abs(production_gates["full_period_sharpe"].value - canonical_full) < 1e-12,
         f"gate {production_gates['full_period_sharpe'].value:.12f}",
     )
+    if n >= REFERENCE_SESSIONS:
+        reference_sharpe = sharpe_ratio(returns[:REFERENCE_SESSIONS])
+        check(
+            f"canonical Sharpe of the {REFERENCE_SESSIONS}-session reference sample "
+            f"== {CANONICAL_FULL_SHARPE_REFERENCE}",
+            abs(reference_sharpe - CANONICAL_FULL_SHARPE_REFERENCE) < 5e-7,
+            f"{reference_sharpe:.6f} vs {CANONICAL_FULL_SHARPE_REFERENCE} "
+            f"(record: {n} sessions through {dates[-1]})",
+        )
+    else:
+        check(
+            f"record has at least the {REFERENCE_SESSIONS}-session reference sample",
+            False,
+            f"record has only {n} sessions",
+        )
 
     # ------------------------------------------------------------------
     print(f"\n--- 2. production gate table (config/promotion_gates.yaml) ---")
@@ -393,7 +427,8 @@ def main() -> int:
         )
     print(f"    decision: {trunc_result.decision}  failed_gates: {trunc_result.failed_gates}")
     check(
-        "counterfactual without the 5 failing windows: rolling gate passes, decision INCONCLUSIVE",
+        f"counterfactual without the {current_run} failing windows: rolling gate passes, "
+        "decision INCONCLUSIVE",
         trunc_result.failed_gates == ["psr"] and trunc_result.decision == "INCONCLUSIVE",
         f"failed_gates={trunc_result.failed_gates}, decision={trunc_result.decision}",
     )
