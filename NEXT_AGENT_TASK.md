@@ -41,6 +41,14 @@ Every published walk-forward record in the repository (the candidate's own 48-fo
 produced by the same generator, so the answer is a property of the **published protocol**, not
 of one candidate.
 
+The protocol question is sharpest on a record that sits **close** to its gate:
+`research/reports/sectorrotation_long_sample_feasibility_001.md` publishes **36** pre-registered
+folds with a walk-forward mean OOS Sharpe of **0.847243** against its own gate of 0.9 — a
+margin of **0.053**, five times smaller than `csmomentum_001`'s 0.2025 — and those 36 folds come
+from the same generator with the same overlapping-fold property. (That candidate is NO-GO on
+three other gates — `full_period_sharpe`, `max_drawdown`, `psr` — so its verdict would not flip;
+the point is that a protocol-level change of this size is not negligible in general.)
+
 ### Objective
 
 Quantify how much of `csmomentum_001`'s walk-forward evidence survives a **non-overlapping
@@ -158,3 +166,7 @@ git diff --stat src/ config/ research/experiments/ research/reports/month_end_ca
   the 21-day purge stays; the designs change **only** the fold calendar.
 * The new tool must not call `fetch_universe`/the fetcher: every price comes from the committed
   parquet cache, read-only.
+* Extending the measurement to `sectorrotation_001`'s published record (36 folds, mean OOS
+  Sharpe 0.847243 against its 0.9 gate) is **out of scope for this cycle** — publish the
+  protocol-level evidence for `csmomentum_001` first; a separate cycle may apply it to the
+  other candidates.
