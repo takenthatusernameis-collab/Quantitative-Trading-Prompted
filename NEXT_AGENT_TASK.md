@@ -130,3 +130,8 @@ parameters, the candidate configuration or any committed artifact.
   tool or test can run (`python3 -m pip install -r requirements.txt`). The full suite takes about
   10 minutes, and the invocation watchdog terminates a worker whose child is silent for 600
   seconds, so run the long suite **in the background** and poll it instead of blocking on it.
+  Running the suite also re-stamps `research/reports/sectorrotation_long_sample_feasibility_001.md`
+  with the current commit hash (a pre-existing side effect of that report's generator, not of this
+  cycle's tool); revert that one-line stamp so that
+  `git diff --stat src/ config/ research/experiments/ research/reports/` stays empty and is not
+  mistaken for a modified committed artifact.
