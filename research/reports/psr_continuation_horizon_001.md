@@ -21,6 +21,6 @@ Baseline n=450, mean=0.00067394, std=0.006041, sharpe=1.771084, psr=0.695606, se
 - r_future=0.00066578: min N in grid with PSR>=0.95: 504
 - r_future=0.00097217: min N in grid with PSR>=0.95: 252
 
-SE decline alone cannot reach PSR>=0.95 at current observed Sharpe 1.771084 < target-scale 1.4178? Note: observed sharpe on canonical scale vs sr_target 1.4178; max PSR at SE floor is 0 if observed sharpe < sr_target, else 1. Here observed 1.771084 > 1.4178, so as SE->0 PSR->1; but SE floor not reachable at plausible N (see grid).
+SE decline alone cannot reach PSR>=0.95 at current observed Sharpe 1.771084 vs target-scale 1.4178. Observed sharpe on canonical scale vs sr_target 1.4178; if observed < target-scale the asymptotic PSR at SE->0 approaches 0, if observed > target-scale it approaches 1. Here observed 1.771084 vs 1.4178, so as SE->0 PSR->1; but SE floor is not reachable at plausible N (see grid).
 
 Gate interactions: rolling 63d sharpe and max DD remain separate promotion gates; continuation at record mean does not address trailing-63-session underperformance documented in Cycle 862.

@@ -1,10 +1,22 @@
 # Promotion Criteria Feasibility (Cycle 867)
 
+`label_*` is the common inception of the universe (the max of the per-symbol first
+dates); `realized_*` (and the historical `start_date` / `end_date` /
+`session_count` keys) is the sample the backtest actually computed. The engine
+does not slice the price frame to the common inception, so the realized sample
+is the union calendar of the raw cache -- the two windows are published side by
+side instead of one being labelled as the other.
+
 ## Sample definition
 
 ```json
 {
-  "start_date": "2004-11-18",
+  "label_start_date": "2004-11-18",
+  "label_end_date": "2026-10-19",
+  "realized_start_date": "1993-01-29",
+  "realized_end_date": "2026-10-19",
+  "realized_session_count": 8488,
+  "start_date": "1993-01-29",
   "end_date": "2026-10-19",
   "session_count": 8488,
   "universe": [
@@ -35,7 +47,137 @@
     "GLD": "5ca9683ee5f6af6e25febb0c1c698e5505f255771ee4d19b57f725f849015696",
     "EFA": "a77623de41bdf6d5c48810c54079dbaa15181a30113b1b317e67630851592f8b",
     "EEM": "922f0181be3ed98ca4ad1ab844ed87dbda9afa562b44bde20b4dbf730f6693c8"
-  }
+  },
+  "per_symbol_stats": {
+    "SPY": {
+      "first_date": "1993-01-29",
+      "last_date": "2026-10-19",
+      "row_count": 8488
+    },
+    "QQQ": {
+      "first_date": "1999-03-10",
+      "last_date": "2026-10-19",
+      "row_count": 6946
+    },
+    "IWM": {
+      "first_date": "2000-05-26",
+      "last_date": "2026-10-19",
+      "row_count": 6638
+    },
+    "TLT": {
+      "first_date": "2002-07-30",
+      "last_date": "2026-10-19",
+      "row_count": 6095
+    },
+    "GLD": {
+      "first_date": "2004-11-18",
+      "last_date": "2026-10-19",
+      "row_count": 5513
+    },
+    "EFA": {
+      "first_date": "2001-08-27",
+      "last_date": "2026-10-19",
+      "row_count": 6323
+    },
+    "EEM": {
+      "first_date": "2003-04-14",
+      "last_date": "2026-10-19",
+      "row_count": 5917
+    }
+  },
+  "union_index_fingerprint": {
+    "first_date": "1993-01-29",
+    "last_date": "2026-10-19",
+    "count": 8488
+  },
+  "cache_fingerprint": {
+    "per_symbol": {
+      "SPY": {
+        "rows": 8488,
+        "first_date": "1993-01-29",
+        "last_date": "2026-10-19",
+        "sha256": "971d02284b9790dfd282438b98f5a0c08cc409e379d1598a41c02d96eb00f47e"
+      },
+      "QQQ": {
+        "rows": 6946,
+        "first_date": "1999-03-10",
+        "last_date": "2026-10-19",
+        "sha256": "71215972c77f917d54da229ee445c16edc4f51fd997f878a2ae3888855fb08ad"
+      },
+      "IWM": {
+        "rows": 6638,
+        "first_date": "2000-05-26",
+        "last_date": "2026-10-19",
+        "sha256": "5bd3985f67dd47ad1ae75d1c23b7effa4d3bc7abd730cf7ac8c5c99887d91593"
+      },
+      "TLT": {
+        "rows": 6095,
+        "first_date": "2002-07-30",
+        "last_date": "2026-10-19",
+        "sha256": "f745d0921006c792dd1ad180cefea529bf049cda24e4dc9fc0a378208a8c36e7"
+      },
+      "GLD": {
+        "rows": 5513,
+        "first_date": "2004-11-18",
+        "last_date": "2026-10-19",
+        "sha256": "5ca9683ee5f6af6e25febb0c1c698e5505f255771ee4d19b57f725f849015696"
+      },
+      "EFA": {
+        "rows": 6323,
+        "first_date": "2001-08-27",
+        "last_date": "2026-10-19",
+        "sha256": "a77623de41bdf6d5c48810c54079dbaa15181a30113b1b317e67630851592f8b"
+      },
+      "EEM": {
+        "rows": 5917,
+        "first_date": "2003-04-14",
+        "last_date": "2026-10-19",
+        "sha256": "922f0181be3ed98ca4ad1ab844ed87dbda9afa562b44bde20b4dbf730f6693c8"
+      }
+    },
+    "note": "derived from the raw cache at run time; a later append to the cache changes these values and is therefore visible as a fingerprint change"
+  },
+  "reference_sample_anchors": {
+    "incumbent_reference_end": "2026-10-16",
+    "incumbent_reference_sessions": 8487,
+    "incumbent_reference_sharpe": 0.5646255767978904,
+    "incumbent_reference_max_drawdown": -0.6224126346564325,
+    "incumbent_reference_psr": 2.2219753177036448e-08,
+    "paper_record_reference_sessions": 449,
+    "paper_record_reference_sharpe": 1.748401
+  },
+  "reference_sample_checks": [
+    {
+      "name": "incumbent_reference_sample",
+      "definition": "realized net returns truncated at 2026-10-16",
+      "expected": {
+        "sessions": 8487,
+        "sharpe": 0.5646255767978904,
+        "max_drawdown": -0.6224126346564325,
+        "psr": 2.2219753177036448e-08
+      },
+      "observed": {
+        "sessions": 8487,
+        "sharpe": 0.5646255767978904,
+        "max_drawdown": -0.6224126346564325,
+        "psr": 2.2219753177036448e-08
+      },
+      "pass": true
+    },
+    {
+      "name": "paper_record_reference_sample",
+      "definition": "first 449 sessions of the committed paper record",
+      "expected": {
+        "sessions": 449,
+        "sharpe": 1.748401
+      },
+      "observed": {
+        "sessions": 449,
+        "sharpe": 1.748401004742091
+      },
+      "pass": true
+    }
+  ]
 }
 ```
 
@@ -130,6 +272,43 @@
 }
 ```
 
+## Reference-sample integrity (Cycle 901/902 anchors)
+
+```json
+[
+  {
+    "name": "incumbent_reference_sample",
+    "definition": "realized net returns truncated at 2026-10-16",
+    "expected": {
+      "sessions": 8487,
+      "sharpe": 0.5646255767978904,
+      "max_drawdown": -0.6224126346564325,
+      "psr": 2.2219753177036448e-08
+    },
+    "observed": {
+      "sessions": 8487,
+      "sharpe": 0.5646255767978904,
+      "max_drawdown": -0.6224126346564325,
+      "psr": 2.2219753177036448e-08
+    },
+    "pass": true
+  },
+  {
+    "name": "paper_record_reference_sample",
+    "definition": "first 449 sessions of the committed paper record",
+    "expected": {
+      "sessions": 449,
+      "sharpe": 1.748401
+    },
+    "observed": {
+      "sessions": 449,
+      "sharpe": 1.748401004742091
+    },
+    "pass": true
+  }
+]
+```
+
 ## Decision
 
 - decision: NO-GO
@@ -158,6 +337,8 @@ not promotable in principle
 - long-sample uses different universe/window than stated -> reject.
 - canonical vs backtest-baseline scales mixed -> reject.
 - gate thresholds changed from config/promotion_gates.yaml -> reject.
+- published realized window differs from the raw-cache union index -> reject.
+- a reference-sample anchor no longer reproduces -> reject.
 
 ## Reproduction
 

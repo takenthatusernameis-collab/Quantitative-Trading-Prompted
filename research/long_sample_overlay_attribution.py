@@ -549,22 +549,25 @@ def write_report(ctx: dict) -> None:
     )
     lines.append("")
     lines.append(
-        f"The committed artifact's `sample.start_date` is the **common** (max of per-symbol"
+        f"The committed artifact publishes two windows side by side: `label_start_date` is"
     )
     lines.append(
-        f"inception) start, but `src/backtest/engine.py:run_backtest` does not slice the price"
+        f"the **common** (max of per-symbol) inception, and `realized_start_date` (published"
     )
     lines.append(
-        f"frame to it: the realized sample is the union calendar from SPY's inception"
+        f"as `start_date`) is the sample the backtest actually computed."
+    )
+    lines.append(
+        f"`src/backtest/engine.py:run_backtest` does not slice the price frame to the common"
+    )
+    lines.append(
+        f"inception, so the realized sample is the union calendar from SPY's inception"
     )
     lines.append(
         f"({ctx['backtest_net'].index[0].date()}), i.e. {len(ctx['backtest_net'])} sessions, and the"
     )
     lines.append(
-        f"published metrics reproduce bit-exactly. The label is therefore a *common-inception*"
-    )
-    lines.append(
-        f"label, not the realized start; this measurement uses the same realized sample."
+        f"published metrics reproduce bit-exactly. This measurement uses the same realized sample."
     )
     lines.append("")
     lines.append(

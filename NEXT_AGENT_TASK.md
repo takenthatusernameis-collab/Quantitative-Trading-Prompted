@@ -1,118 +1,111 @@
 # NEXT_AGENT_TASK.md
 
-## Cycle 902 — Publish the sample that was actually computed (and remove the last two frozen Sharpe literals)
+## Cycle 903 — Measure the promotion evidence on the sample the frozen configuration describes (the ragged cross-section)
 
 ### Context
 
-Cycle 901 (see `research/reports/reference_sample_invariance_001.md`) made every
-record-length-specific invariant **append-proof**: the canonical Sharpe of the
-paper record, the incumbent backtest artifact and the Cycle 862 trailing-window
-decomposition are now asserted on a *reference sample* (a fixed date boundary)
-instead of on a frozen constant, so the 2026-10-19 session append could no
-longer turn three read-only evidence tools and two tests red. All gates,
-thresholds, decisions and metrics were left untouched.
+Cycle 902 (see `research/reports/sample_definition_hygiene_001.md`) made the
+long-sample promotion artifact publish **the sample it actually computed**:
+the label (the common inception, 2004-11-18) next to the realized window (the
+union calendar of the raw cache, 1993-01-29..2026-10-19, 8,488 sessions), with
+the realized window derived independently from `data/raw/*.parquet`, a
+run-time-derived cache fingerprint and re-derived reference-sample anchors.
+Every published number, gate, threshold and decision was left untouched.
 
-Cycle 901 verification (exact commands and results):
+That publication exposes the question this cycle takes up: **which of the two
+windows is the decision-relevant one?**
 
-```
-python research/rolling_63d_gate_refresh.py      -> exit 0, OVERALL: PASS, 12/12 checks, NO-GO
-python research/rebalance_schedule_audit.py      -> exit 0, OVERALL: PASS, 12/12 checks
-python research/long_sample_overlay_attribution.py -> exit 0, OVERALL: PASS
-python research/promotion_feasibility_backtest.py -> exit 0, OVERALL: PASS, decision=NO-GO
-python -m pytest -q                              -> 234 passed in 321.77s
-git status --porcelain data/ config/              -> empty
-```
+`src/backtest/engine.py:run_backtest` does not slice the price frame it
+loads (`src/data/yfinance_fetcher.py` returns the whole parquet; the engine
+only does `close.ffill().dropna(how="all")`), and
+`src/features/momentum.py:select_top_decile` selects the single best asset
+when fewer than five assets have a momentum value and otherwise ranks the
+*available* assets. The realized long sample therefore carries a **ragged
+cross-section**:
 
-Two defects found while doing that work remain open:
+| from | cross-section |
+|---|---|
+| 1993-01-29 | SPY (1 asset) |
+| 1999-03-10 | + QQQ (2) |
+| 2000-05-26 | + IWM (3) |
+| 2001-08-27 | + EFA (4) |
+| 2002-07-30 | + TLT (5) |
+| 2003-04-14 | + EEM (6) |
+| 2004-11-18 | + GLD (7) |
 
-1. **The published sample definition does not describe the sample.**
-   `src/backtest/engine.py:run_backtest` does not slice the price frame it
-   loads, and `src/data/yfinance_fetcher.py:YFinanceFetcher._load_cached`
-   returns the whole parquet, so the *realized* sample of every committed
-   backtest artifact is the union calendar of the universe from 1993-01-29
-   (8,488 sessions), not the labelled common inception 2004-11-18.
-   `research/promotion_feasibility_backtest.py` publishes
-   `sample.start_date: 2004-11-18` together with `session_count: 8488` and
-   prints `SAMPLE: 2004-11-18..2026-10-19 (8488 sessions)` — a label and a
-   count that describe two different samples. The property is documented in
-   `README.md` (Cycle 878 entry) but is not visible in the artifact itself.
-   `run_backtest(..., end_date="2026-10-16")` also returns the 8488-session
-   series: the requested window is silently ignored.
-2. **Two published evidence generators still print frozen numbers** that the
-   2026-10-19 append invalidated:
-   `research/psr_continuation_horizon.py:93` ("current observed Sharpe
-   1.748401") and `research/rolling_63d_rolloff_projection.py:179`
-   ("Current observed Sharpe (full period): 1.748401"), while the same
-   scripts compute the live value (1.771084 for the 450-session record).
+The published long-sample evidence of the incumbent
+(`tsmomentum_spytrend_001`, `config/simulation_candidate_001.yaml`) is
+therefore the numbers of a **1-to-7-asset** strategy — canonical Sharpe
+0.5657179297830458, max DD -0.6224126346564325, PSR 1.6549061233035153e-08,
+failed gates `['full_period_sharpe', 'rolling_63d_sharpe', 'max_drawdown',
+'psr']`, decision NO-GO — while the frozen configuration describes a 7-asset
+universe whose first fully populated date is 2004-11-18, the date the artifact
+published as its `start_date` until Cycle 902. **The incumbent's long-sample
+evidence has never been measured on a window in which all seven assets
+exist.**
 
 ### Objective
 
-Make the published sample definition describe the sample that was actually
-computed, and remove the last two frozen Sharpe literals — **without changing
-any computed metric, gate, threshold, decision or committed number**.
+Measure, read-only and without changing any gate, threshold, configuration or
+committed number, the incumbent's canonical metrics and its **full promotion
+gate table** on the **common-inception sample** (2004-11-18..2026-10-19, seven
+assets throughout) and publish them next to the union-sample numbers, so that
+it is known whether the NO-GO verdict and the published numbers are an
+artefact of the sample definition.
 
 ### Acceptance criteria
 
-1. The `sample` block of `research/promotion_feasibility_backtest.py` publishes
-   both the label and the realized window: the label dates (common inception),
-   the realized first/last session of the run and the realized session count,
-   and the realized values equal the price-frame index of that run. The
-   realized window must be derived **independently** from the `data/raw/*.parquet`
-   union index (not from the engine's loader), and the block should also carry
-   the per-symbol first/last date and row count, so that the ragged edge of the
-   union calendar is visible in the artifact.
-2. No metric moves: the canonical metrics, gate table, decision, failed gates
-   and the reference-sample invariants stay bit-identical. The current-sample
-   expectations are expressed as **reference-sample anchors plus a cache
-   fingerprint**, not as values that the next session append invalidates:
-   * reference-sample anchors (exact): the 8,487 sessions through 2026-10-16
-     reproduce Sharpe 0.5646255767978904 / max DD -0.6224126346564325 /
-     PSR 2.2219753177036448e-08, and the first 449 sessions of the paper record
-     reproduce the canonical Sharpe 1.748401;
-   * cache fingerprint: the per-symbol row count, last date and SHA-256 of the
-     raw cache that the numbers were computed on (SPY 8488 rows through
-     2026-10-19, sha256 971d02284b9790df...) are published with them, so a
-     later append is visible as a fingerprint change instead of an unexplained
-     number change;
-   * decision and failed gates stay **NO-GO** and
-     `['full_period_sharpe', 'rolling_63d_sharpe', 'max_drawdown', 'psr']`.
-3. The two frozen literals are replaced by the live computed value, and the
-   reports those scripts write
-   (`research/reports/psr_continuation_horizon_001.md`,
-   `research/reports/rolling_63d_rolloff_projection_001.md` if it exists) are
-   regenerated and committed.
-4. A test asserts that the published realized window equals the independently
-   computed union index of the raw cache (no new stale literal; the test must
-   survive the next data append).
-5. The reference-sample invariants of Cycle 901 still hold: the 449-session
-   reference sample of the paper record still reproduces 1.748401, the
-   8,487-session reference sample of the incumbent still reproduces
-   0.5646255767978904 / -0.6224126346564325 / 2.2219753177036448e-08.
+1. A new read-only, deterministic tool `research/common_inception_sample_audit.py`
+   (exit 0 with `OVERALL: PASS`) computes the incumbent's path on the
+   common-inception sample by **slicing the aligned price frame** to
+   2004-11-18 before the same signal, cost model, universe, lookback / skip /
+   top_fraction and rebalance semantics are applied (the same code path as
+   `research/promotion_feasibility_backtest.py`; **no change to
+   `src/backtest/engine.py`**), and publishes for **both** samples: the
+   canonical Sharpe, max drawdown, rolling-63d Sharpe, rolling-63d max
+   drawdown, PSR (seed 20240101, target 1.4178), the gate table and the
+   decision.
+2. The **cross-section width** of each sample is published (the number of
+   assets with a price on each session: minimum, median, maximum, and the
+   dates on which the width changes), so that the raggedness of the union
+   sample is visible in the artifact.
+3. The committed artifact `research/reports/promotion_feasibility_backtest_001.md`
+   and every number in it are **not** modified; the new measurement is
+   published in a new artifact.
+4. The verdict is stated explicitly, and it is a **measurement, not a
+   decision**: if the two samples disagree about any gate or about the
+   decision, the difference is reported as a *sample-definition sensitivity*;
+   the incumbent's published decision (NO-GO) is **not** changed by this
+   cycle, and the choice of the sample on which the promotion gates are
+   evaluated is left to an explicitly recorded decision, with the evidence
+   needed for it published here.
+5. A test asserts that the new tool is **read-only** (no file under `data/`
+   or `config/` changes), **deterministic** (two runs agree bit-for-bit) and
+   that the union-sample numbers it publishes equal the committed artifact's
+   numbers exactly.
 
 ### Validation commands
 
 ```
-python research/promotion_feasibility_backtest.py     # OVERALL: PASS, decision=NO-GO, failed gates unchanged
-python research/rolling_63d_gate_refresh.py           # OVERALL: PASS, 12/12 checks, decision NO-GO
-python research/rebalance_schedule_audit.py           # OVERALL: PASS, 12/12 checks
-python research/long_sample_overlay_attribution.py    # OVERALL: PASS
-python research/psr_continuation_horizon.py           # prints the live observed Sharpe
-python research/rolling_63d_rolloff_projection.py     # prints the live observed Sharpe
-python research/go_no_go_evaluation.py                # decision NO-GO, failed gates ['rolling_63d_sharpe', 'psr']
-python -m pytest -q                                  # whole suite green
-git status --porcelain data/ config/                  # empty
+python research/common_inception_sample_audit.py  # OVERALL: PASS, both samples published
+python research/promotion_feasibility_backtest.py # OVERALL: PASS, decision=NO-GO, failed gates unchanged
+python research/rolling_63d_gate_refresh.py       # OVERALL: PASS, 12/12 checks, decision NO-GO
+python research/rebalance_schedule_audit.py       # OVERALL: PASS, 12/12 checks
+python research/long_sample_overlay_attribution.py # OVERALL: PASS
+python research/go_no_go_evaluation.py            # decision NO-GO, failed gates ['rolling_63d_sharpe', 'psr']
+python -m pytest -q                               # whole suite green
+git status --porcelain data/ config/              # empty
 ```
 
 ### Scope boundaries
 
-* Do **not** refresh the raw cache, extend the paper record, or change any
-  file under `data/` or `config/`.
-* Do **not** change the window semantics of `run_backtest` (making it slice the
-  price frame would restate every published number — that is a separate,
-  explicitly recorded research decision, not this task).
+* Do **not** change `src/backtest/engine.py`: the window semantics stay as
+  they are, and the slicing happens inside the new read-only tool. This is
+  the decision Cycle 902 explicitly deferred.
 * Do **not** change a gate, a threshold, the decision mapping, a candidate
   configuration, a universe, the cost model or the Sharpe convention.
-* Do **not** re-optimize or re-fit the incumbent, and do not start a new
-  candidate family; this task is evidence hygiene.
-* If a metric turns out to move, stop and report it instead of regenerating
-  the published artifacts around the new value.
+* Do **not** re-optimise, re-fit or re-select the incumbent, and do not start
+  a new candidate family; this is a measurement of the existing candidate.
+* Do **not** promote, retire or re-decide the incumbent in this cycle.
+* If a metric of the committed artifact moves, stop and report it instead of
+  regenerating the published artifacts around the new value.

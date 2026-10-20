@@ -66,11 +66,11 @@ def main():
         print(f"  -> min N in grid with PSR>=0.95: {min_n}")
         print()
 
-    # SE floor: current observed sharpe, push SE down by large N at record mean? quantify max PSR at SE floor
-    # Max PSR at SE floor: assume SE -> 0 (lower bound). Use current sharpe0 and sr_target.
+    # SE floor: current observed sharpe; max PSR as SE -> 0
     from scipy import stats
-    z_floor = (sharpe0 - SR_TARGET) / 1e-9
-    print(f"Max PSR at SE floor (sharpe={sharpe0:.6f}, SE->0): {stats.norm.cdf((sharpe0-SR_TARGET)/1e-12):.6f} (effectively 0 if sharpe<target)")
+    se_floor_eps = 1e-12
+    max_psr_se0 = stats.norm.cdf((sharpe0 - SR_TARGET) / se_floor_eps)
+    print(f"Max PSR at SE floor (sharpe={sharpe0:.6f}, SE->0): {max_psr_se0:.6f}")
     print("=== End ===")
 
     # Write report
@@ -90,7 +90,7 @@ def main():
     for rf in (RECORD_MEAN, REQUIRED_MEAN):
         lines.append(f"- r_future={rf:.8f}: min N in grid with PSR>=0.95: {results[rf][1]}")
     lines.append("")
-    lines.append(f"SE decline alone cannot reach PSR>=0.95 at current observed Sharpe {sharpe0:.6f} < target-scale 1.4178? Note: observed sharpe on canonical scale vs sr_target 1.4178; max PSR at SE floor is 0 if observed sharpe < sr_target, else 1. Here observed {sharpe0:.6f} > 1.4178, so as SE->0 PSR->1; but SE floor not reachable at plausible N (see grid).")
+    lines.append(f"SE decline alone cannot reach PSR>=0.95 at current observed Sharpe {sharpe0:.6f} vs target-scale {SR_TARGET:.4f}. Observed sharpe on canonical scale vs sr_target {SR_TARGET:.4f}; if observed < target-scale the asymptotic PSR at SE->0 approaches 0, if observed > target-scale it approaches 1. Here observed {sharpe0:.6f} vs {SR_TARGET:.4f}, so as SE->0 PSR->1; but SE floor is not reachable at plausible N (see grid).")
     lines.append("")
     lines.append("Gate interactions: rolling 63d sharpe and max DD remain separate promotion gates; continuation at record mean does not address trailing-63-session underperformance documented in Cycle 862.")
     report_path.write_text("\n".join(lines) + "\n")

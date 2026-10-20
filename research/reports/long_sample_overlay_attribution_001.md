@@ -29,12 +29,13 @@ candidate was changed; the incumbent's promotion decision (**NO-GO**) is unchang
 | Sessions | 8487 | 8488 | 1 |
 | Realized first session | labelled 2004-11-18 | 1993-01-29 | — |
 
-The committed artifact's `sample.start_date` is the **common** (max of per-symbol
-inception) start, but `src/backtest/engine.py:run_backtest` does not slice the price
-frame to it: the realized sample is the union calendar from SPY's inception
+The committed artifact publishes two windows side by side: `label_start_date` is
+the **common** (max of per-symbol) inception, and `realized_start_date` (published
+as `start_date`) is the sample the backtest actually computed.
+`src/backtest/engine.py:run_backtest` does not slice the price frame to the common
+inception, so the realized sample is the union calendar from SPY's inception
 (1993-01-29), i.e. 8488 sessions, and the
-published metrics reproduce bit-exactly. The label is therefore a *common-inception*
-label, not the realized start; this measurement uses the same realized sample.
+published metrics reproduce bit-exactly. This measurement uses the same realized sample.
 
 Engine agreement on the raw signal: max |backtest net − L0 net| = 5.421e-20 over 8488 common sessions
 (compounded +1563.921225% vs +1563.921225%).
