@@ -1,6 +1,6 @@
 # Roll-Date Visibility in the Cached Front-Month Futures Series (Cycle 884)
 
-**Generated:** 2026-10-19 23:54:22Z
+**Generated:** 2026-10-20 00:02:16Z
 **Candidate:** shortlist rank 7 — commodity/rate futures basis and roll yield (`futuresbasis_001`)
 **Status:** roll **dates** are observable in the committed cache; roll **prices** are not — the candidate remains **Blocked by data/infrastructure**, with a narrower block than Cycle 883 recorded.
 
@@ -90,7 +90,7 @@ The interval contains zero: the accumulated roll effect of the gold leg is **not
 | ZB-F modal roll spacing reproduces the contract cycle | PASS — 62 rolls, modal spacing 91 d (x6) inside the quarterly (Mar/Jun/Sep/Dec) window 80-100 d: True; 29.5% of spacings inside the window (descriptive) |
 | externally verified 2026-09 roll detected in the committed cache | PASS — expiry 2026-09-22 and roll 2026-09-23 detected: True / True |
 | aggregate roll effect measurable through the cached spot proxy | PASS — GC-F - GLD: +0.4441%/yr, 95% CI [-1.8677%, +3.0458%] (distinguishable from zero: False) - exploratory, it does not decide the candidate |
-| data/ and config/ untouched by the diagnostic | PASS — 1848 files fingerprinted before and after the run |
+| data/ and config/ untouched by the diagnostic | PASS — 1852 files fingerprinted before and after the run |
 
 ## 9. Reproduction
 
