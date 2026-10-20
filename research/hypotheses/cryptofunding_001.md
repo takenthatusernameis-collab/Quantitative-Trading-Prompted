@@ -13,7 +13,7 @@ Continuous (funding every 8h); position held while funding positive.
 BTC/USDT, ETH/USDT perpetuals on OKX (single accessible exchange).
 
 ## Features and data sources
-OKX 8h funding-rate history (~66 days verified); no crypto data cached in repository.
+OKX 8h funding-rate history collected: BTC/ETH USDT-SWAP, 296 8h records each (2026-07-13 16:00:00Z to 2026-10-20 00:00:00Z, ~98.3 days) saved to data/raw/crypto/*_funding.parquet. Provenance in research/experiments/cryptofunding_001_data.md.
 
 ## Entry/exit rules
 Enter spot-long/perp-short when funding positive; exit when funding turns negative or risk limits hit.
@@ -31,4 +31,4 @@ No durable positive net carry after fees over multi-year history; <100 independe
 Fees, borrow, margin, slippage per exchange schedule; capacity limited by OKX liquidity.
 
 ## Status
-Pre-registered (Cycle 886). Blocked by data: insufficient verified funding history (~66 days vs multi-year requirement), single exchange, zero diversification from existing crypto exposure. No backtest executed.
+Pre-registered (Cycle 886). Data collected but blocked: only ~98.3 days available from OKX public API (insufficient vs multi-year requirement), single exchange, zero diversification from existing crypto exposure. No backtest executed; see research/experiments/cryptofunding_001_data.md.

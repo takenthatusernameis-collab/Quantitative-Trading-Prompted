@@ -111,13 +111,13 @@ Close-to-close execution with a 1-day signal lag is the validated convention (Cy
 
 | Data Class | Cached? | Limitation |
 |------------|---------|------------|
-| Crypto spot/perpetual data (BTC-USD, ETH-USD, OKX funding rates) | NO | Only OKX accessible (Binance/Bybit geo-blocked); funding history limited to ~66 days |
+| Crypto spot/perpetual data (BTC-USD, ETH-USD, OKX funding rates) | PARTIAL | OKX accessible; collected funding history saved to data/raw/crypto/*_funding.parquet (BTC/ETH USDT-SWAP, 296 8h records each, 2026-07-13 to 2026-10-20, ~98.3 days). Still <1 year and single-exchange; not sufficient for multi-year test. |
 | Commodity/rate futures (CL=F, GC=F, ZB=F, ...) | NO | yfinance continuous futures have undocumented roll logic; no separate spot series for basis |
 | Forex spot (EURUSD=X, ...) | NO | No interest-rate differentials or forward curves available |
 | Intraday history (1m/5m) | NO | Only recent 1-day/7-day windows verified live; no multi-year intraday history |
 | VIX futures / VIX ETNs (VX=F, VXX, UVXY) | NO | ^VIX index cached but is not tradeable; no tradeable volatility instrument |
 | Historical options data (prices, IV series) | NO | Only near-term live chains verified; no historical options data |
-| Funding rate history | NO | Not cached; OKX API provides ~66 days at 8h intervals |
+| Funding rate history | PARTIAL | Cached in data/raw/crypto/ (OKX BTC/ETH USDT-SWAP, 296×8h each, ~98.3 days). Max available from public API in environment; still <1 year required. |
 | Spot-perp basis series | NO | Not cached; requires simultaneous spot + swap data |
 | Securities lending / borrow rates | NO | No source configured; blocks credible short-side cost modeling |
 
