@@ -320,7 +320,7 @@ The three break-evens of every rule (portfolio), on the full sample and on the o
 
 ### The turnover convention: the headline and the bound
 
-The pre-registered gross path is the **constant-notional** construction: the book resets the spot and the perp notionals to `w * equity` every day. The only turnover convention that is internally consistent with that gross path is therefore the daily constant-notional rebalance (`drift`), and that is the headline: the other two conventions do not describe the same book traded less often, they describe a *different* book (a fixed-coin book is paid its funding on a notional that scales with the coin's price, so its return on equity is a different quantity), and adopting them would require a self-consistent gross path that is outside this cycle's scope.
+The pre-registered gross path is the **constant-notional** construction: the book resets the spot and the perp notionals to `w * equity` every day. The only turnover convention that is internally consistent with that gross path is therefore the daily constant-notional rebalance (`drift`), and that is the headline: the other two conventions do not describe the same book traded less often, they describe a *different* book (a fixed-coin book is paid its funding on a notional that scales with the coin's price, so its return on equity is a different quantity). The fixed-coin construction is measured with its own self-consistent gross path in the next section; it is a sensitivity of the same six configurations, not a replacement of the pre-registered headline.
 
 What an implementer would actually trade is a constant-notional target rebalanced on a *threshold* rather than every day, so the headline's daily cadence **over**-states the trading cost. The two other conventions bound the other end. The rows below are the headline cost model under each convention, and they bound how much the trading-frequency question can move the answer:
 
@@ -540,6 +540,65 @@ The gates are the repository's own thresholds, unchanged: a net out-of-sample Sh
 
 **Which criterion fails:** the trade-count criterion fails in all 24 of the 24 rows (the pooled out-of-sample round trips are a property of the position path, not of the cost model); the Sharpe criterion passes in 9 and fails in 15 of them. The gate is therefore **FAIL** under every cost model, and the gate is never relaxed: the thresholds are the repository's own and are applied unchanged.
 
+## The implementable construction: fixed coin quantity (Cycle 893)
+
+The pre-registered gross path resets both legs to constant notional every day. This section measures the **fixed coin quantity** construction: ``q`` coins are held long spot and short perp from entry to exit, the book is marked to market, and ``q`` is re-sized from then-current equity at each entry. It has no daily rebalance turnover - entry and exit only - so it is what an implementer would actually run, and its gross path is self-consistent with its trading. It is a sensitivity of the same six configurations (3 rules x 2 symbols) under the Cycle 892 headline cost model, not a new trial.
+
+### Accounting conventions
+
+* Entry: at the entry day's close, ``q = weight * equity / spot_close``, so the spot notional is ``weight`` of then-current equity.
+* While held: the daily price P&L is the change of the basis level, ``q * ((S_t - P_t) - (S_{t-1} - P_{t-1}))``; funding is paid on the coin's perp notional ``q * funding_cashflow_t * P_{t-1}``, the previous day's perp close as the notional proxy.
+* Equity compounds on price P&L plus funding; each entry re-sizes ``q`` from then-current equity.
+* Entry and exit days carry no same-day P&L; entry and exit are charged as turnover costs (each leg trades ``weight`` per transition).
+* Costs: the Cycle 892 headline model - venue taker plus repository slippage on the legs actually traded, plus the capital charge on the marked-to-market spot notional - applied to entry/exit turnover only.
+
+### Results (net of the Cycle 892 headline cost model, 365-day annualization)
+
+| Rule | Sample | Sessions | Ann. net (geo) | Sharpe (canonical) | Max DD | Turnover/yr | Entries | Exits |
+|---|---|---|---|---|---|---|---|---|
+| `always_on` | full | 2464 | +54.1139% | 6.740 | -2.7412% | 0.30 | 2 | 0 |
+| `always_on` | train | 1095 | +110.3057% | 8.174 | -2.7412% | 0.67 | 2 | 0 |
+| `always_on` | val | 731 | +31.7806% | 11.273 | -0.4487% | 0.00 | 0 | 0 |
+| `always_on` | test_oos | 638 | +8.1501% | 7.143 | -2.6197% | 0.00 | 0 | 0 |
+| `always_on` | post2022 | 1369 | +20.1861% | 9.165 | -2.6197% | 0.00 | 0 | 0 |
+| `funding_positive_sameday` | full | 2464 | +16.9965% | 4.164 | -14.3245% | 81.18 | 275 | 273 |
+| `funding_positive_sameday` | train | 1095 | +40.0138% | 6.348 | -13.1184% | 89.33 | 135 | 133 |
+| `funding_positive_sameday` | val | 731 | +9.0606% | 6.070 | -3.0815% | 44.94 | 45 | 45 |
+| `funding_positive_sameday` | test_oos | 638 | -6.8343% | -6.287 | -12.9955% | 108.70 | 95 | 95 |
+| `funding_positive_sameday` | post2022 | 1369 | +1.3411% | 0.986 | -12.9955% | 74.65 | 140 | 140 |
+| `funding_positive_lagged` | full | 2464 | +16.0201% | 3.913 | -15.5975% | 81.18 | 275 | 273 |
+| `funding_positive_lagged` | train | 1095 | +37.7882% | 5.986 | -14.1699% | 89.33 | 135 | 133 |
+| `funding_positive_lagged` | val | 731 | +8.9643% | 5.922 | -3.3205% | 44.94 | 45 | 45 |
+| `funding_positive_lagged` | test_oos | 638 | -7.1925% | -6.663 | -13.5099% | 108.70 | 95 | 95 |
+| `funding_positive_lagged` | post2022 | 1369 | +1.1117% | 0.812 | -13.5099% | 74.65 | 140 | 140 |
+
+### Break-evens (portfolio, headline cost model)
+
+| Rule | Sample | Break-even flat cost/unit | Break-even capital charge (annual, spot notional) | Break-even venue fee multiple |
+|---|---|---|---|---|
+| `always_on` | full | none | +15.97% | none |
+| `always_on` | test_oos | none | +4.37% | none |
+| `funding_positive_sameday` | full | 31.7025 bp | +15.22% | 3.03x |
+| `funding_positive_sameday` | test_oos | 4.6907 bp | -5.67% | 0.32x |
+| `funding_positive_lagged` | full | 30.6544 bp | +14.60% | 2.92x |
+| `funding_positive_lagged` | test_oos | 4.3106 bp | -6.21% | 0.28x |
+
+### Promotion gate (fixed coin quantity)
+
+| Rule | Cost model | Net OOS Sharpe (canonical, 365) | Sharpe criterion | Pooled OOS round trips | Trade-count criterion | Gate |
+|---|---|---|---|---|---|---|
+| `always_on` | `realistic_rf` | 5.645 | PASS | 0 | FAIL | **FAIL** |
+| `funding_positive_sameday` | `realistic_rf` | -4.943 | FAIL | 95 | FAIL | **FAIL** |
+| `funding_positive_lagged` | `realistic_rf` | -5.224 | FAIL | 95 | FAIL | **FAIL** |
+
+### Headline: constant notional versus fixed coin quantity
+
+On the full sample under the headline model, the constant-notional book nets +9.2190%/yr (Sharpe 5.964, turnover 18.47/yr) versus +54.1139%/yr for the fixed-coin book (Sharpe 6.740, turnover 0.30/yr); for the implementable funding-positive rule the figures are +1.9706%/yr (Sharpe 1.088) versus +16.0201%/yr (Sharpe 3.913).
+
+**Headline: fixed coin quantity.** The implementable construction nets more than the constant-notional book on the same committed path on both rules, so the Cycle 892 constant-notional headline was **conservative**: it under-states the implementable book by +44.8949%/yr (always-on) and +14.0495%/yr (funding-positive).
+
+Neither construction passes the promotion gate: the trade-count criterion fails because neither book opens independent out-of-sample positions in sufficient number, and the gate is never relaxed.
+
 ## Verdict
 
 **Exploratory signal — not promoted.** Under the **realistic** cost model of this cycle (the published Binance VIP0 taker schedule plus the repository's slippage assumption, plus the repository's risk-free rate as the charge for the capital the spot leg ties up) the always-on BTC/ETH carry still nets +9.2190%/yr with a canonical Sharpe of 5.964 on the full sample, and the implementable funding-positive rule nets +1.9706%/yr with a canonical Sharpe of 1.088. The carry survives the realistic cost model, but the candidate is **not** promoted, for four measured reasons:
@@ -551,7 +610,7 @@ The gates are the repository's own thresholds, unchanged: a net out-of-sample Sh
 
 **What the realistic model changed.** The venue fee schedule is 3x (spot) and 2x (perp) the repository's flat 3 bp per unit, and the capital charge adds 2%/yr on the spot leg's notional; together they take the always-on book from +12.7694%/yr to +9.2190%/yr. The break-even columns show how much room is left: the always-on book's break-even multiple of the published fee schedule is 6.03x and its break-even capital charge is +10.82%/yr.
 
-The Sharpe criterion is met on the full sample, so the candidate deserves one more validation cycle (an independent venue's price and funding history, a self-consistent fixed-quantity or threshold-rebalanced construction, and the borrow/financing side of the spot leg) before it is either promoted or rejected.
+The Sharpe criterion is met on the full sample, so the candidate deserves one more validation cycle (an independent venue's price and funding history, the borrow/financing side of the spot leg, and threshold-rebalanced refinements of the fixed-quantity construction measured here) before it is either promoted or rejected.
 
 ## Reproduction
 
@@ -2968,7 +3027,7 @@ python -m pytest -q
         "ETHUSDT perp"
       ]
     },
-    "generated_at": "2026-10-20T05:02:49.017576+00:00",
+    "generated_at": "2026-10-20T06:15:25.062201+00:00",
     "periods_per_year": 365,
     "promotion_gates": {
       "min_pooled_oos_trades": 100,

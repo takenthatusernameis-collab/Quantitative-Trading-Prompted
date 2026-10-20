@@ -237,3 +237,50 @@ trials; the BTC/ETH portfolio remains an equal-weight combination of the two sym
   `research/experiments/cryptofunding_002_evaluation.md` (sections "Cost models (Cycle 892)",
   "Results under the cost models", "Break-evens", "Promotion gates"),
   `tests/test_eval_cryptofunding.py` (39 invariants over the committed carry paths).
+
+## Cycle 893 amendment (implementable construction with a self-consistent gross path)
+
+The rule set, the symbols, the splits and the 365-day annualization are **unchanged**. Cycle 893
+adds the fixed coin quantity construction and measures the same three pre-registered rules under
+it, under the Cycle 892 headline cost model (Binance VIP 0 taker plus the repository's slippage
+on the legs actually traded, plus the capital charge on the marked-to-market spot notional).
+
+**Construction.** Hold ``q`` coins long spot and short perp from entry to exit; ``q`` is set at
+each entry from then-current marked-to-market equity (``q = weight * equity / spot_close``), so
+the spot notional is ``weight`` of equity at entry. While held the daily price P&L is the change
+of the basis level ``q * ((S_t - P_t) - (S_{t-1} - P_{t-1}))`` and funding is paid on the coin's
+perp notional ``q * funding_cashflow_t * P_{t-1}`` (the previous day's perp close as the notional
+proxy). Equity compounds on price P&L plus funding. Entry and exit days carry no same-day P&L;
+entry and exit are charged as turnover (each leg trades ``weight`` per transition). There is no
+daily rebalancing turnover.
+
+**Results (net of the headline cost model, 365-day annualization, equal-weight BTC/ETH
+portfolio; the fixed-coin book is a sensitivity of the same six configurations, not new trials).**
+Always-on: **+54.11%/yr**, canonical Sharpe **6.740**, max drawdown -2.74%, turnover 0.30 units/yr
+(2 entries, 0 exits). Implementable funding-positive rule (previous-day signal): **+16.02%/yr**,
+canonical Sharpe **3.913**, max drawdown -15.60%, turnover 81.18 units/yr (275 entries, 273 exits).
+Out of sample (2025-01-01..2026-09-30): always-on Sharpe **5.645** with 0 round trips; funding-positive
+Sharpe **-5.224** with 95 round trips.
+
+**Headline: fixed coin quantity.** On the same committed path the fixed-coin book nets more than
+the constant-notional book on both rules, so the Cycle 892 constant-notional headline was
+**conservative**: it under-states the implementable book by **+44.89 pp/yr** (always-on: +54.11%
+vs +9.22%/yr) and **+14.05 pp/yr** (funding-positive: +16.02% vs +1.97%/yr). The reason is
+mechanical and stated in the record: the fixed-coin book earns funding on a perp notional that
+scales with the coin's price, so its return on equity is a different quantity from the
+constant-notional book (which resets notional daily). This is not an error; both constructions
+are derived from the same committed carry path with their accounting stated.
+
+**Gate.** FAIL under the headline model: the trade-count criterion (0 and 95 pooled out-of-sample
+independent round trips against the repository's 100) fails, and the Sharpe criterion fails for
+the funding-positive rule out of sample. The gate is never relaxed.
+
+**Verdict: exploratory signal (not promoted), unchanged.** The carry survives a realistic cost
+model on the full sample under both constructions, but the implementable rule's edge does not
+survive out of sample, the trade-count criterion fails, the candidate is venue-specific and
+regime-dependent, and capacity remains small. Evidence:
+`research/experiments/cryptofunding_002_evaluation.md` (section "The implementable construction:
+fixed coin quantity"),
+`tests/test_eval_cryptofunding.py` (fixed-coin invariants: funding reconciliation with the
+committed carry path, notional fraction vs the constant-notional funding-only component, turnover
+consistent with claimed trades).

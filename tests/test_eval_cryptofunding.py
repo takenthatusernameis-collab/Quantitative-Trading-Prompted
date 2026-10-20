@@ -538,6 +538,157 @@ def test_headline_convention_is_the_one_consistent_with_the_gross_path(paths) ->
 
 
 # ======================================================================
+# Fixed coin quantity (Cycle 893)
+# ======================================================================
+def earning_days_mask(path, rule) -> pd.Series:
+    """Days on which a fixed-coin book earns P&L: held and held the previous day.
+
+    The entry day sizes ``q`` and earns nothing by convention; exit days are
+    flat.
+    """
+    pos = ev.position_series(path, rule)
+    return (pos == 1.0) & (pos.shift(1).fillna(0.0) == 1.0)
+
+
+def test_fixed_coin_turnover_matches_claimed_trades(paths) -> None:
+    """Fixed-coin turnover is entry/exit only: each leg trades ``weight`` per transition."""
+    for base in ev.BASE_SYMBOLS:
+        for rule in ev.RULES:
+            book = ev.build_fixed_coin_book(paths[base], rule, weight=1.0)
+            change = ev.position_changes(book.positions).squeeze(axis=1)
+            # Entry/exit only: each leg trades ``weight`` per transition, nothing else.
+            assert book.turnover_spot.to_numpy() == pytest.approx(
+                (change.abs()).to_numpy()
+            )
+            assert book.turnover_perp.to_numpy() == pytest.approx(
+                (change.abs()).to_numpy()
+            )
+            assert book.turnover.to_numpy() == pytest.approx(
+                (2.0 * change.abs()).to_numpy()
+            )
+            assert book.entries == int((change > 0).to_numpy().sum())
+            assert book.exits == int((change < 0).to_numpy().sum())
+            assert (book.turnover[change == 0.0] == 0.0).all()
+
+
+def test_fixed_coin_funding_equals_cashflow_times_notional_per_coin(paths) -> None:
+    """Funding dollars over a holding stretch equal sum(funding_cashflow * q * P_{t-1})."""
+    for base in ev.BASE_SYMBOLS:
+        for rule in ev.RULES:
+            book = ev.build_fixed_coin_book(paths[base], rule, weight=1.0)
+            path = paths[base]
+            spot = path["spot_close"].astype(float)
+            perp = path["perp_close"].astype(float)
+            funding = path["funding_cashflow"].astype(float)
+            earning = earning_days_mask(path, rule)
+            assert earning.any(), f"{base} {rule.rule_id} has no earning days"
+            equity_prev = book.equity_path.shift(1).fillna(1.0)
+            pnl = book.gross * equity_prev
+            basis_level = book.coin_quantity * (spot - perp)
+            price_pnl = basis_level - basis_level.shift(1)
+            funding_dollars = pnl - price_pnl
+            expected = book.coin_quantity * funding * perp.shift(1)
+            np.testing.assert_allclose(
+                funding_dollars[earning].to_numpy(),
+                expected[earning].to_numpy(),
+                rtol=1e-9,
+                atol=1e-12,
+            )
+
+
+def test_fixed_coin_funding_scales_constant_notional_component(paths) -> None:
+    """The fixed-coin funding component is the constant-notional funding-only
+    return scaled by the notional fraction q * P_{t-1} / (weight * equity);
+    identical when the notional is held at its target (fraction one)."""
+    for base in ev.BASE_SYMBOLS:
+        for rule in ev.RULES:
+            fixed = ev.build_fixed_coin_book(paths[base], rule, weight=1.0)
+            constant = ev.build_book(paths[base], rule, weight=1.0)
+            path = paths[base]
+            spot = path["spot_close"].astype(float)
+            perp = path["perp_close"].astype(float)
+            funding = path["funding_cashflow"].astype(float)
+            earning = earning_days_mask(path, rule)
+            equity_prev = fixed.equity_path.shift(1).fillna(1.0)
+            pnl = fixed.gross * equity_prev
+            q = fixed.coin_quantity
+            basis_level = q * (spot - perp)
+            price_pnl = basis_level - basis_level.shift(1)
+            funding_ret = (pnl - price_pnl) / equity_prev
+            cn_funding_ret = funding * constant.position  # weight * funding while held
+            fraction = q * perp.shift(1) / equity_prev
+            np.testing.assert_allclose(
+                funding_ret[earning].to_numpy(),
+                (cn_funding_ret * fraction)[earning].to_numpy(),
+                rtol=1e-9,
+                atol=1e-12,
+            )
+
+
+def test_fixed_coin_reproduces_constant_notional_funding_when_notional_constant() -> None:
+    """With prices constant the notional stays at target and the fixed-coin
+    funding component equals the constant-notional funding-only return (w * f)."""
+    index = pd.date_range("2024-01-01", periods=6, freq="D", tz="UTC")
+    path = pd.DataFrame(
+        {
+            "spot_close": 100.0,
+            "perp_close": 100.0,
+            "spot_return": 0.0,
+            "perp_return": 0.0,
+            "basis_convergence": 0.0,
+            "gross_carry": 0.0001,
+            "funding_cashflow": 0.0001,
+        },
+        index=index,
+    )
+    rule = ev.RULES[0]
+    fixed = ev.build_fixed_coin_book(path, rule, weight=1.0)
+    constant = ev.build_book(path, rule, weight=1.0)
+    earning = earning_days_mask(path, rule)
+    first = earning.idxmax()
+    equity_prev = fixed.equity_path.shift(1).fillna(1.0)
+    q = fixed.coin_quantity
+    perp = path["perp_close"].astype(float)
+    funding = path["funding_cashflow"].astype(float)
+    # Notional held at the target weight on the first earning day.
+    np.testing.assert_allclose(
+        (q * perp.shift(1) / equity_prev).loc[first], 1.0, rtol=1e-12, atol=1e-15
+    )
+    # Funding component equals w * f = f there.
+    pnl = fixed.gross * equity_prev
+    basis_level = q * (path["spot_close"].astype(float) - perp)
+    funding_ret = (pnl - (basis_level - basis_level.shift(1))) / equity_prev
+    np.testing.assert_allclose(
+        funding_ret.loc[first],
+        funding.loc[first],
+        rtol=1e-9,
+        atol=1e-12,
+    )
+    # The constant-notional funding-only return is weight * funding = f.
+    cn_funding = constant.gross * constant.position
+    np.testing.assert_allclose(
+        cn_funding[earning].to_numpy(), funding[earning].to_numpy(), rtol=1e-12, atol=1e-15
+    )
+
+
+def test_fixed_coin_promotion_gate_never_passes(paths) -> None:
+    """The gate is re-evaluated for the fixed-coin construction and never passes."""
+    model = ev.COST_MODEL_BY_KEY[ev.HEADLINE_COST_MODEL]
+    for rule in ev.RULES:
+        books = {
+            base: ev.evaluate_book(
+                ev.build_fixed_coin_book(paths[base], rule, weight=1.0),
+                bootstrap_samples=(),
+                cost_model=model,
+            )
+            for base in ev.BASE_SYMBOLS
+        }
+        gate = ev.promotion_gate(books)
+        assert gate["promotion_gate_pass"] is False, (rule.rule_id,)
+        assert gate["pooled_oos_position_round_trips"] < ev.PROMOTION_MIN_POOLED_OOS_TRADES
+
+
+# ======================================================================
 # The committed record
 # ======================================================================
 def test_committed_artifact_is_consistent_with_the_code() -> None:

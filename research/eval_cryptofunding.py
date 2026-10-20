@@ -455,6 +455,9 @@ class Book:
     weights: pd.DataFrame
     entries: int
     exits: int
+    spot_notional_series: pd.Series | None = None
+    equity_path: pd.Series | None = None
+    coin_quantity: pd.Series | None = None
     notes: list[str] = field(default_factory=list)
 
     @property
@@ -466,12 +469,13 @@ class Book:
     def spot_notional(self) -> pd.Series:
         """The spot leg's notional as a fraction of the book's equity.
 
-        This is the capital the book ties up: the long spot leg is funded with
-        cash, while the short perp leg is self-financing (the short's proceeds
-        are posted as its margin), so the net capital at risk is the spot leg's
-        notional. It is the base of the capital charge of the realistic cost
-        model.
+        For the fixed coin quantity construction the marked-to-market
+        notional (``q * spot_close / equity``) is supplied explicitly via
+        ``spot_notional_series``; otherwise the notional implied by the
+        weight frame is used (the constant-notional convention).
         """
+        if self.spot_notional_series is not None:
+            return self.spot_notional_series
         spot_columns = [c for c in self.weights.columns if c.endswith("_spot")]
         if not spot_columns:
             return pd.Series(0.0, index=self.weights.index)
@@ -1491,6 +1495,11 @@ def evaluate_cost_models(paths: dict[str, pd.DataFrame]) -> dict[str, Any]:
     per_symbol: dict[str, dict[str, Any]] = {}
     gates: dict[str, dict[str, Any]] = {}
     break_evens: dict[str, dict[str, Any]] = {}
+    fixed_coin: dict[str, dict[str, Any]] = {}
+    fixed_coin_per_symbol: dict[str, dict[str, Any]] = {}
+    fixed_coin_gates: dict[str, dict[str, Any]] = {}
+    fixed_coin_break_evens: dict[str, dict[str, Any]] = {}
+    headline_model = COST_MODEL_BY_KEY[HEADLINE_COST_MODEL]
 
     for rule in RULES:
         portfolio[rule.rule_id] = {}
@@ -1523,6 +1532,39 @@ def evaluate_cost_models(paths: dict[str, pd.DataFrame]) -> dict[str, Any]:
                     for base, result in symbol_results.items()
                 }
             gates[rule.rule_id][model.key] = promotion_gate(symbol_results)
+        # Fixed coin quantity under the headline cost model: an implementable
+        # construction with a self-consistent gross path (no daily rebalancing;
+        # entry and exit only, q re-sized from then-current equity at each
+        # entry). Same three rules and two symbols - a sensitivity analysis of
+        # the six pre-registered configurations, not new trials.
+        symbol_books = {
+            base: build_fixed_coin_book(paths[base], rule, weight=1.0, symbol=base)
+            for base in BASE_SYMBOLS
+        }
+        symbol_results = {
+            base: evaluate_book(sb, bootstrap_samples=(), cost_model=headline_model)
+            for base, sb in symbol_books.items()
+        }
+        portfolio_fixed = build_fixed_coin_portfolio_book(paths, rule)
+        portfolio_result = evaluate_book(
+            portfolio_fixed, bootstrap_samples=(), cost_model=headline_model
+        )
+        fixed_coin[rule.rule_id] = {
+            headline_model.key: {"samples": portfolio_result["samples"]}
+        }
+        fixed_coin_per_symbol[rule.rule_id] = {
+            headline_model.key: {
+                base: _slim_samples(result["samples"])
+                for base, result in symbol_results.items()
+            }
+        }
+        fixed_coin_gates[rule.rule_id] = {
+            headline_model.key: promotion_gate(symbol_results)
+        }
+        fixed_coin_break_evens[rule.rule_id] = {
+            sample: break_even_table(portfolio_fixed, sample)
+            for sample in ("full", "test_oos")
+        }
         for sample in ("full", "test_oos"):
             book = portfolio_book(paths, rule, turnover_convention=HEADLINE_CONVENTION)
             break_evens[rule.rule_id][sample] = break_even_table(book, sample)
@@ -1534,6 +1576,10 @@ def evaluate_cost_models(paths: dict[str, pd.DataFrame]) -> dict[str, Any]:
         "per_symbol": per_symbol,
         "gates": gates,
         "break_evens": break_evens,
+        "fixed_coin": fixed_coin,
+        "fixed_coin_per_symbol": fixed_coin_per_symbol,
+        "fixed_coin_gates": fixed_coin_gates,
+        "fixed_coin_break_evens": fixed_coin_break_evens,
     }
 
 
@@ -1624,6 +1670,8 @@ def promotion_gate(
             "not read as a defect in the construction."
         ),
     }
+
+
 
 
 def main() -> int:
@@ -2296,9 +2344,10 @@ def render_artifact(summary: dict[str, Any]) -> str:
         "other two conventions do not describe the same book traded less "
         "often, they describe a *different* book (a fixed-coin book is paid "
         "its funding on a notional that scales with the coin's price, so its "
-        "return on equity is a different quantity), and adopting them would "
-        "require a self-consistent gross path that is outside this cycle's "
-        "scope."
+        "return on equity is a different quantity). The fixed-coin "
+        "construction is measured with its own self-consistent gross path in "
+        "the next section; it is a sensitivity of the same six "
+        "configurations, not a replacement of the pre-registered headline."
     )
     add("")
     add(
@@ -2678,7 +2727,154 @@ def render_artifact(summary: dict[str, Any]) -> str:
     )
     add("")
 
-    # ---- verdict -----------------------------------------------------
+    # ---- implementable construction -------------------------------------
+    add("## The implementable construction: fixed coin quantity (Cycle 893)")
+    add("")
+    add(
+        "The pre-registered gross path resets both legs to constant notional "
+        "every day. This section measures the **fixed coin quantity** "
+        "construction: ``q`` coins are held long spot and short perp from "
+        "entry to exit, the book is marked to market, and ``q`` is re-sized "
+        "from then-current equity at each entry. It has no daily rebalance "
+        "turnover - entry and exit only - so it is what an implementer would "
+        "actually run, and its gross path is self-consistent with its trading. "
+        "It is a sensitivity of the same six configurations (3 rules x 2 "
+        "symbols) under the Cycle 892 headline cost model, not a new trial."
+    )
+    add("")
+    add("### Accounting conventions")
+    add("")
+    add("* Entry: at the entry day's close, ``q = weight * equity / spot_close``, so the spot notional is ``weight`` of then-current equity.")
+    add("* While held: the daily price P&L is the change of the basis level, ``q * ((S_t - P_t) - (S_{t-1} - P_{t-1}))``; funding is paid on the coin's perp notional ``q * funding_cashflow_t * P_{t-1}``, the previous day's perp close as the notional proxy.")
+    add("* Equity compounds on price P&L plus funding; each entry re-sizes ``q`` from then-current equity.")
+    add("* Entry and exit days carry no same-day P&L; entry and exit are charged as turnover costs (each leg trades ``weight`` per transition).")
+    add("* Costs: the Cycle 892 headline model - venue taker plus repository slippage on the legs actually traded, plus the capital charge on the marked-to-market spot notional - applied to entry/exit turnover only.")
+    add("")
+    add("### Results (net of the Cycle 892 headline cost model, 365-day annualization)")
+    add("")
+    add(
+        "| Rule | Sample | Sessions | Ann. net (geo) | Sharpe (canonical) | Max DD | "
+        "Turnover/yr | Entries | Exits |"
+    )
+    add("|---|---|---|---|---|---|---|---|---|")
+    fixed = cost_eval["fixed_coin"]
+    headline_key = cost_eval["headline_cost_model"]
+    for rule_id, models in fixed.items():
+        for model_key, result in models.items():
+            for sample in ("full", "train", "val", "test_oos", "post2022"):
+                m = result["samples"][sample]
+                add(
+                    f"| `{rule_id}` | {sample} | {m['sessions']} | "
+                    f"{_fmt_pct(m['ann_return_geometric'])} | "
+                    f"{m['sharpe_canonical']:.3f} | {_fmt_pct(m['max_drawdown'])} | "
+                    f"{m['annualized_turnover_units']:.2f} | "
+                    f"{m['position_entries']} | {m['position_exits']} |"
+                )
+    add("")
+
+    # ---- break-evens --------------------------------------------------
+    add("### Break-evens (portfolio, headline cost model)")
+    add("")
+    add(
+        "| Rule | Sample | Break-even flat cost/unit | Break-even capital charge "
+        "(annual, spot notional) | Break-even venue fee multiple |"
+    )
+    add("|---|---|---|---|---|")
+    fixed_break_evens = cost_eval["fixed_coin_break_evens"]
+    for rule_id, samples in fixed_break_evens.items():
+        for sample, row in samples.items():
+            flat = row["break_even_flat_cost_bps"]["solution_bps"]
+            cap = row["break_even_capital_charge_annual"]["solution_annual_rate"]
+            mult = row["break_even_venue_fee_multiplier"]["solution_multiplier"]
+            flat_txt = _fmt_bp(flat) if flat is not None else "none"
+            cap_txt = _fmt_pct(cap, 2) if cap is not None else "none"
+            mult_txt = f"{mult:.2f}x" if mult is not None else "none"
+            add(
+                f"| `{rule_id}` | {sample} | {flat_txt} | {cap_txt} | {mult_txt} |"
+            )
+    add("")
+
+    # ---- gate ---------------------------------------------------------
+    add("### Promotion gate (fixed coin quantity)")
+    add("")
+    add(
+        "| Rule | Cost model | Net OOS Sharpe (canonical, 365) | Sharpe criterion | "
+        "Pooled OOS round trips | Trade-count criterion | Gate |"
+    )
+    add("|---|---|---|---|---|---|---|")
+    fixed_gates = cost_eval["fixed_coin_gates"]
+    for rule_id, models in fixed_gates.items():
+        for model_key, gate in models.items():
+            add(
+                f"| `{rule_id}` | `{model_key}` | "
+                f"{gate['net_oos_sharpe_canonical_365']:.3f} | "
+                f"{'PASS' if gate['sharpe_criterion_pass'] else 'FAIL'} | "
+                f"{gate['pooled_oos_position_round_trips']} | "
+                f"{'PASS' if gate['trade_count_criterion_pass'] else 'FAIL'} | "
+                f"**{'PASS' if gate['promotion_gate_pass'] else 'FAIL'}** |"
+            )
+    add("")
+
+    # ---- headline comparison ------------------------------------------
+    add("### Headline: constant notional versus fixed coin quantity")
+    add("")
+    cn_always = cost_eval["portfolio"]["always_on"][HEADLINE_COST_MODEL]["samples"]["full"]
+    fc_always = fixed["always_on"][headline_key]["samples"]["full"]
+    cn_lagged = cost_eval["portfolio"]["funding_positive_lagged"][HEADLINE_COST_MODEL]["samples"]["full"]
+    fc_lagged = fixed["funding_positive_lagged"][headline_key]["samples"]["full"]
+    add(
+        f"On the full sample under the headline model, the constant-notional "
+        f"book nets {_fmt_pct(cn_always['ann_return_geometric'])}/yr "
+        f"(Sharpe {cn_always['sharpe_canonical']:.3f}, turnover "
+        f"{cn_always['annualized_turnover_units']:.2f}/yr) versus "
+        f"{_fmt_pct(fc_always['ann_return_geometric'])}/yr for the fixed-coin "
+        f"book (Sharpe {fc_always['sharpe_canonical']:.3f}, turnover "
+        f"{fc_always['annualized_turnover_units']:.2f}/yr); for the "
+        f"implementable funding-positive rule the figures are "
+        f"{_fmt_pct(cn_lagged['ann_return_geometric'])}/yr (Sharpe "
+        f"{cn_lagged['sharpe_canonical']:.3f}) versus "
+        f"{_fmt_pct(fc_lagged['ann_return_geometric'])}/yr (Sharpe "
+        f"{fc_lagged['sharpe_canonical']:.3f})."
+    )
+    add("")
+    diff_always = fc_always["ann_return_geometric"] - cn_always["ann_return_geometric"]
+    diff_lagged = fc_lagged["ann_return_geometric"] - cn_lagged["ann_return_geometric"]
+    if diff_always >= 0.0 and diff_lagged >= 0.0:
+        add(
+            "**Headline: fixed coin quantity.** The implementable construction "
+            "nets more than the constant-notional book on the same committed "
+            "path on both rules, so the Cycle 892 constant-notional headline "
+            f"was **conservative**: it under-states the implementable book by "
+            f"{_fmt_pct(diff_always)}/yr (always-on) and {_fmt_pct(diff_lagged)}/yr "
+            "(funding-positive)."
+        )
+    elif diff_always <= 0.0 and diff_lagged <= 0.0:
+        add(
+            "**Headline: constant notional.** The implementable construction "
+            "nets less than the constant-notional book on both rules, so the "
+            f"Cycle 892 constant-notional headline was **optimistic**: it "
+            f"over-states the implementable book by {_fmt_pct(-diff_always)}/yr "
+            "(always-on) and {_fmt_pct(-diff_lagged)}/yr (funding-positive)."
+        )
+    else:
+        add(
+            "**Headline: rule-dependent.** The fixed-coin book nets "
+            f"{_fmt_pct(diff_always)}/yr more (always-on) but "
+            f"{_fmt_pct(diff_lagged)}/yr less (funding-positive) than the "
+            "constant-notional book, so neither construction dominates; the "
+            "constant-notional path remains the pre-registered headline and "
+            "the fixed-coin path is the implementable alternative measured "
+            "here."
+        )
+    add("")
+    add(
+        "Neither construction passes the promotion gate: the trade-count "
+        "criterion fails because neither book opens independent out-of-sample "
+        "positions in sufficient number, and the gate is never relaxed."
+    )
+    add("")
+
+    # ---- verdict --------------------------------------------------------
     headline_rows = cost_eval["portfolio"]
     always = headline_rows["always_on"][HEADLINE_COST_MODEL]["samples"]
     always_flat = headline_rows["always_on"]["flat_3bp"]["samples"]
@@ -2753,9 +2949,9 @@ def render_artifact(summary: dict[str, Any]) -> str:
     add(
         "The Sharpe criterion is met on the full sample, so the candidate "
         "deserves one more validation cycle (an independent venue's price and "
-        "funding history, a self-consistent fixed-quantity or "
-        "threshold-rebalanced construction, and the borrow/financing side of "
-        "the spot leg) before it is either promoted or rejected."
+        "funding history, the borrow/financing side of the spot leg, and "
+        "threshold-rebalanced refinements of the fixed-quantity construction "
+        "measured here) before it is either promoted or rejected."
     )
     add("")
 
@@ -2778,90 +2974,98 @@ def render_artifact(summary: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-if __name__ == "__main__":
-    sys.exit(main())
-
-
-def fixed_coin_book(
+def build_fixed_coin_book(
     path: pd.DataFrame,
     rule: RuleSpec,
     weight: float,
     symbol: str = "BTCUSDT",
 ) -> Book:
-    """Fixed coin quantity construction: hold q coins from entry to exit.
+    """Fixed coin quantity (no daily rebalancing): the implementable construction.
 
-    q is set at each entry from then-current equity: q = weight * equity / spot.
-    Equity is marked to market. Price P&L is the change of the basis level
-    q*(S_t - P_t); funding is paid on the coin's perp notional
-    q*funding_cashflow_t*P_{t-1} (daily close as notional proxy).
+    Hold ``q`` coins long spot and short perp from entry to exit; ``q`` is set
+    at each entry from then-current marked-to-market equity,
+    ``q = weight * equity / spot_close``, so the spot notional is ``weight`` of
+    equity at entry. While held the daily gross P&L is the change of the basis
+    level ``q * (S_t - P_t)`` plus the funding paid on the coin's perp notional
+    ``q * funding_cashflow_t * P_{t-1}``, using the previous day's perp close
+    as the notional proxy. Equity compounds on price P&L plus funding. Entry
+    and exit days carry no same-day P&L; entry and exit are charged as turnover
+    costs in the net series (each leg trades ``weight`` per transition).
     """
     position = position_series(path, rule)
-    spot_close = path["spot_close"].astype(float) if "spot_close" in path.columns else None
-    perp_close = path["perp_close"].astype(float) if "perp_close" in path.columns else None
-    # fallback column names
-    if spot_close is None:
-        spot_close = path.get("spot_price", path.get("spot_close"))
-    if perp_close is None:
-        perp_close = path.get("perp_price", path.get("perp_close"))
+    spot = path["spot_close"].astype(float)
+    perp = path["perp_close"].astype(float)
     funding = path["funding_cashflow"].astype(float)
-
     index = path.index
-    gross = pd.Series(0.0, index=index)
+
+    gross = pd.Series(0.0, index=index, dtype=float)
+    equity_path = pd.Series(1.0, index=index, dtype=float)
+    coin_quantity = pd.Series(0.0, index=index, dtype=float)
+    spot_notional = pd.Series(0.0, index=index, dtype=float)
+
     equity = 1.0
     q = 0.0
-    prev_basis = 0.0
-    prev_perp = None
     held = False
-    entries = 0
-    exits = 0
-    for i, ts in enumerate(index):
+    prev_spot = 0.0
+    prev_perp = 0.0
+    for i in range(len(index)):
         pos = float(position.iloc[i])
-        S = float(spot_close.iloc[i])
-        P = float(perp_close.iloc[i])
-        # entry transition
-        if pos == 1.0 and not held:
-            q = weight * equity / S if S != 0 else 0.0
+        s = float(spot.iloc[i])
+        p = float(perp.iloc[i])
+        f = float(funding.iloc[i])
+        if pos > 0.5 and not held:
+            # Enter at this day's close; q is sized from then-current equity.
+            q = weight * equity / s if s != 0 else 0.0
             held = True
-            entries += 1
-            prev_basis = q * (S - P)
-            prev_perp = P
-            # no same-day PnL on entry? We'll handle via basis change next day
-            gross.iloc[i] = 0.0
+            prev_spot = s
+            prev_perp = p
+            equity_path.iloc[i] = equity
+            coin_quantity.iloc[i] = q
+            spot_notional.iloc[i] = weight  # q * s == weight * equity at entry
             continue
-        if pos == 0.0 and held:
-            # exit: realize remaining basis change to exit prices already captured previous day?
+        if pos < 0.5 and held:
             held = False
-            exits += 1
             q = 0.0
-            gross.iloc[i] = 0.0
+            equity_path.iloc[i] = equity
             continue
         if held:
-            basis = q * (S - P)
-            price_pnl = basis - prev_basis
-            perp_notional = q * (prev_perp if prev_perp is not None else P)
-            fund_pnl = funding.iloc[i] * perp_notional
+            # P&L from the previous close to this day's close.
+            basis_today = q * (s - p)
+            basis_yesterday = q * (prev_spot - prev_perp)
+            price_pnl = basis_today - basis_yesterday
+            fund_pnl = f * q * prev_perp
             pnl = price_pnl + fund_pnl
             ret = pnl / equity if equity != 0 else 0.0
             gross.iloc[i] = ret
-            equity = equity + pnl
-            prev_basis = basis
-            prev_perp = P
+            equity += pnl
+            prev_spot = s
+            prev_perp = p
+            equity_path.iloc[i] = equity
+            coin_quantity.iloc[i] = q
+            spot_notional.iloc[i] = q * s / equity if equity != 0 else 0.0
         else:
-            gross.iloc[i] = 0.0
-    # turnover: entries+exits only
+            equity_path.iloc[i] = equity
+
     change = position.diff()
     if len(change) > 0:
         change.iloc[0] = position.iloc[0]
-    transition_leg = change.abs() * weight
-    turnover_spot = (2.0 * transition_leg).astype(float)  # approximate
-    turnover_perp = (2.0 * transition_leg).astype(float)
-    turnover = (4.0 * transition_leg).astype(float)
+    # Each transition trades one leg notional of ``weight`` on each leg: an
+    # entry (long spot + short perp) and an exit, each charged on both legs.
+    transition = change.abs() * weight
+    turnover_spot = transition.astype(float)
+    turnover_perp = transition.astype(float)
+    turnover = (2.0 * transition).astype(float)
+
     weights = pd.DataFrame(
         {f"{symbol}_spot": (weight * position).astype(float),
          f"{symbol}_perp": (-weight * position).astype(float)},
         index=index,
     )
     positions = pd.DataFrame({f"{symbol}_position": position}, index=index)
+    change_df = position_changes(positions)
+    entries = int((change_df > 0).to_numpy().sum())
+    exits = int((change_df < 0).to_numpy().sum())
+
     return Book(
         name=f"{symbol}_{rule.rule_id}_fixedcoin",
         symbol=symbol,
@@ -2876,5 +3080,53 @@ def fixed_coin_book(
         weights=weights,
         entries=entries,
         exits=exits,
-        notes=["fixed coin quantity construction (approx)"],
+        spot_notional_series=spot_notional,
+        equity_path=equity_path,
+        coin_quantity=coin_quantity,
+        notes=[
+            "fixed coin quantity: no daily rebalancing; entry and exit only; "
+            "equity marked to market on the basis level and funding"
+        ],
     )
+
+
+def build_fixed_coin_portfolio_book(
+    paths: dict[str, pd.DataFrame],
+    rule: RuleSpec,
+) -> Book:
+    """Equal-weight BTC/ETH fixed coin quantity portfolio (weight 0.5 per symbol)."""
+
+    books = [
+        build_fixed_coin_book(paths[base], rule, weight=0.5, symbol=base)
+        for base in BASE_SYMBOLS
+    ]
+    gross = sum(book.gross for book in books)
+    turnover = sum(book.turnover for book in books)
+    turnover_spot = sum(book.turnover_spot for book in books)
+    turnover_perp = sum(book.turnover_perp for book in books)
+    positions = pd.concat([book.positions for book in books], axis=1)
+    weights = pd.concat([book.weights for book in books], axis=1)
+    spot_notional = sum(book.spot_notional for book in books)
+    return Book(
+        name=f"PORTFOLIO_{rule.rule_id}_fixedcoin",
+        symbol="BTC+ETH",
+        rule=rule,
+        weight=0.5,
+        turnover_convention="fixed_quantity",
+        gross=gross,
+        turnover=turnover,
+        turnover_spot=turnover_spot,
+        turnover_perp=turnover_perp,
+        positions=positions,
+        weights=weights,
+        entries=int(sum(book.entries for book in books)),
+        exits=int(sum(book.exits for book in books)),
+        spot_notional_series=spot_notional,
+        notes=[
+            "fixed coin quantity portfolio: equal weight BTC/ETH, no daily "
+            "rebalancing; entry and exit only"
+        ],
+    )
+
+if __name__ == "__main__":
+    sys.exit(main())
