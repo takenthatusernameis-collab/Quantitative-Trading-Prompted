@@ -62,24 +62,38 @@ def compute_metrics(
     commission: float,
     slippage: float,
     rf_annual: float,
+    periods_per_year: int = 252,
 ) -> dict:
-    """Compute performance metrics for a backtest period."""
+    """Compute performance metrics for a backtest period.
+
+    ``periods_per_year`` is the number of return periods in a year. The
+    repository default is **252** (the equity-market convention used by every
+    committed artifact). A market that trades every calendar day (24/7 crypto)
+    must pass **365**: annualizing its daily returns at 252 understates the
+    annual return, the annual volatility and the annual turnover by the same
+    factor and therefore biases every ratio built on them. The parameter is
+    keyword-defaulted, so every existing caller keeps its current numbers.
+    """
     if returns.empty:
         return {}
 
+    ppy = int(periods_per_year)
+    if ppy <= 0:
+        raise ValueError(f"periods_per_year must be positive, got {periods_per_year!r}")
+
     # Annualized return
     n_days = len(returns)
-    ann_return = (1 + returns).prod() ** (252 / n_days) - 1 if n_days > 0 else 0.0
+    ann_return = (1 + returns).prod() ** (ppy / n_days) - 1 if n_days > 0 else 0.0
 
     # Annualized volatility
-    ann_vol = returns.std() * np.sqrt(252) if n_days > 1 else 0.0
+    ann_vol = returns.std() * np.sqrt(ppy) if n_days > 1 else 0.0
 
     # Sharpe ratio (using provided risk-free rate)
     sharpe = (ann_return - rf_annual) / ann_vol if ann_vol > 0 else 0.0
 
     # Sortino ratio (downside deviation)
     downside = returns[returns < 0]
-    downside_vol = downside.std() * np.sqrt(252) if len(downside) > 1 else 0.0
+    downside_vol = downside.std() * np.sqrt(ppy) if len(downside) > 1 else 0.0
     sortino = (ann_return - rf_annual) / downside_vol if downside_vol > 0 else 0.0
 
     # Max drawdown
@@ -96,7 +110,7 @@ def compute_metrics(
     turnover = weight_changes.sum() / n_days if n_days > 0 else 0.0
 
     # Annualized turnover
-    ann_turnover = turnover * 252
+    ann_turnover = turnover * ppy
 
     # Trade count (number of rebalancing days with non-zero weight changes)
     trade_days = (weight_changes > 1e-10).sum()

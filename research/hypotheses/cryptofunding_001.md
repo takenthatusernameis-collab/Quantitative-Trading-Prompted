@@ -54,11 +54,16 @@ liquidity. Not yet applied: the candidate has no cost model in the repository (n
 Pre-registered (Cycle 886). **Data blocker resolved (Cycle 889):** 2,464.7 days of 8h funding
 history per symbol plus coupled daily spot/perp legs are cached and checksum-verified, and a
 reproducible spot-long/perp-short return path is committed
-(data/processed/crypto/*_carry_path.parquet). The candidate is now an **exploratory signal**
-(testable, untested): no cost model, walk-forward split, block-bootstrap CI or promotion-gate test
-has been run, so no edge is claimed. Gross carry only: +11.59%/yr BTC, +13.57%/yr ETH before
-costs. Evidence: research/experiments/cryptofunding_002_data.md; Cycle 888 data note:
-research/experiments/cryptofunding_001_data.md.
+(data/processed/crypto/*_carry_path.parquet). **Net-of-cost evaluated (Cycle 891, hardened):** the
+candidate is an **exploratory signal** — net positive after the repository's cost model on every
+rule, symbol and sample, with a large Sharpe margin, but **not promoted**: the promotion gate's
+trade-count criterion is not met on independent position round trips, the pre-registered
+funding-positive rule is contaminated by a look-ahead, and the capacity of the trade is small.
+Evidence: `research/experiments/cryptofunding_002_data.md` (data),
+`research/experiments/cryptofunding_002_evaluation.md` (net-of-cost evaluation),
+`research/reports/cost_admissibility_screen_001.md` (cost screen),
+`research/reports/opportunity_shortlist.md` (rank 8); Cycle 888 data note:
+`research/experiments/cryptofunding_001_data.md`.
 
 ## Pre-registration (Cycle 890 evaluation)
 
@@ -67,6 +72,25 @@ research/experiments/cryptofunding_001_data.md.
 2. **Funding-positive only**: same construction but only when funding is positive (`funding_cashflow > 0`); zero position otherwise. This is the rule named in the hypothesis.
 
 **Trial count:** 2 rules × 2 symbols = 4 configurations. Reported explicitly; no other variants tested in this cycle.
+
+**Cycle 891 amendment (defect fixes, not new trials).** The rule set above is unchanged in
+substance, but three defects in its *evaluation* were corrected, and the corrections are recorded
+here so the pre-registration stays auditable:
+1. **Annualization.** The series is 24/7, so every annualized quantity is computed at **365**
+   periods/year. The 252 rendering is retained only to reconcile with the cost screen.
+2. **Transition turnover.** The Cycle 890 evaluation masked the turnover of rule 2 with the
+   position mask and therefore never charged an entry or an exit. Rule 2 now charges
+   `|position change| * 2 * w` on top of the daily rebalance, exactly like rule 1's opening
+   trade.
+3. **Signal timing.** Rule 2's decision variable was the *same day's* aggregate funding, which is
+   not knowable before the day starts. The implementable variant (decision on the **previous**
+   day's aggregate funding) is evaluated alongside the pre-registered one, which is retained for
+   reconciliation and labelled as look-ahead contaminated. The always-on rule is unaffected.
+
+**Trial count after the amendment:** 3 rules (always-on, funding-positive same-day [contaminated],
+funding-positive previous-day [implementable]) × 2 symbols = **6 configurations**; the BTC/ETH
+portfolio is an equal-weight combination of the two symbol books, not an additional
+configuration, and the robustness rows are sensitivity analyses of the same configurations.
 
 ### Cost model (all numbers and sources)
 All costs are applied per the repository's flat cost model used by `research/cost_admissibility_screen.py`: **3 bp per unit of weight change** (commission + slippage as per `get_cost_params()`; repository default 1 bp commission + 2 bp slippage = 3 bp/unit).
@@ -99,12 +123,50 @@ Sources and assumptions:
 No durable positive net carry after fees over multi-year history; < 100 independent funding periods; gross carry concentrated in a single regime (2020-2021) with no carry in the post-2022 sample. As stated in hypothesis.
 
 
-## Cycle 890 Verdict (net-of-cost)
-- **Evaluation:** Pre-registered (2 rules × 2 symbols), cost model 3 bp/unit weight change (repo flat). Chronological splits (train/val/test/post-2022) reported; block-bootstrap CI (126-day blocks, 2000 draws, seed 20261019); trial count 4.
-- **Full-sample net (always-on):** BTC +7.98%/yr (Sharpe ~6.87, max DD -2.43%), ETH +9.33%/yr (Sharpe ~5.99, max DD -1.91%); turnover ~10.6/14.5 units/yr.
-- **Full-sample net (funding-positive):** BTC +8.81%/yr (Sharpe ~8.34, max DD -0.35%), ETH +10.31%/yr (Sharpe ~7.43, max DD -0.27%); turnover lower (~9.09/12.47 units/yr).
-- **Post-2022 (2023-01-01+):** Still positive net across configs (e.g. ETH funding-positive post-2022 ann net ~+9.4%, Sharpe ~7.8; BTC funding-positive ~+8.1%, Sharpe ~8.4). No collapse to zero.
-- **Out-of-sample (2025-01-01+):** Strong net Sharpe across configs (pooled OOS Sharpe ~9.75, pooled OOS trades ~2335). Promotion gate (net OOS Sharpe >= 0.9 and > 100 pooled OOS trades): **PASS**.
-- **Cost screen:** Added row to `research/cost_admissibility_screen.py`; break-even ~69.2 bp/unit, gate headroom ~34.5 bp/unit, **ADMISSIBLE** at 3 bp/unit; screen still **OVERALL: PASS**.
-- **Verdict:** **exploratory signal** — net-positive after documented costs across rules/symbols with good risk-adjusted metrics and post-2022 persistence; mechanism plausible (funding carry). However, regime-dependent, venue-specific (Binance), and promotion to a "credible candidate for further validation" requires more conservative walk-forward implementation matching repo conventions and live-fee verification. Do **not** promote without additional robustness checks; do not tune further in this cycle (trial count declared).
-- **Evidence:** `research/experiments/cryptofunding_002_evaluation.md`, `research/reports/cost_admissibility_screen_001.md`, updated `research/reports/opportunity_shortlist.md`.
+## Cycle 891 Verdict (hardened net-of-cost evaluation, supersedes Cycle 890)
+- **What was fixed.** (i) The annualization of a 24/7 crypto series is **365** periods/year, not
+  252 (Cycle 890 annualized at 252 and understated the annual return, the annual volatility and
+  the annual turnover by the same factor). (ii) The funding-positive rule now pays for its
+  **position transitions**: an entry (long spot + short perp) and an exit each change the leg
+  weights by `2 * w` and are charged, which Cycle 890 omitted. (iii) The implementable funding-
+  positive rule decides with the **previous** day's aggregate funding; the pre-registered same-day
+  rule is a look-ahead (the day's funding is only known after its 00:00/08:00/16:00 UTC
+  settlements) and is reported only for reconciliation.
+- **Headline (net of 3 bp/unit, 365-day annualization, equal-weight BTC/ETH portfolio).**
+  Always-on: +12.77%/yr, canonical Sharpe 8.14, max drawdown -1.72%, turnover 18.5 units/yr.
+  Funding-positive (implementable, previous-day signal): +10.53%/yr, canonical Sharpe 6.60, max
+  drawdown -2.66%, turnover 97.0 units/yr (the entry/exit charges dominate). Out-of-sample
+  (2025-01-01..2026-09-30): always-on +3.51%/yr, Sharpe 11.14; funding-positive +0.53%/yr,
+  Sharpe 1.13. The block-bootstrap 95% CI of the OOS Sharpe of the implementable funding-positive
+  rule spans zero ([-3.88, +7.54] for ETH), so the OOS window alone does not establish the edge.
+- **Corrections to the Cycle 890 record.** Cycle 890 reported `promotion_gate_pass: true` on a
+  trade count that counted daily rebalances of one continuously held position (2,335 "trades")
+  rather than independent round trips. On the honest count the pooled out-of-sample round trips
+  are 95 (funding-positive) and 0 (always-on, the position is opened before the window), i.e.
+  **below the repository's 100-trade criterion**; the gate is therefore **FAIL** and the
+  candidate is **not promoted**. The Cycle 890 funding-positive numbers were also inflated by the
+  look-ahead and by the missing transition costs.
+- **Reconciliation.** The cost screen's crypto row and this evaluation are the **same series**
+  (identical gross and turnover), rendered at 252 (screen) and 365 (crypto). The screen's
+  cost drag (+0.376%/yr) understates the crypto drag (+0.545%/yr) by 365/252; the break-even cost
+  per unit (69.19 bp) and the ADMISSIBLE verdict are invariant. The screen still reports
+  **OVERALL: PASS**.
+- **Mechanism check.** The edge is the **funding payment**: the basis-convergence term is a near
+  zero-sum change of the price difference and contributes nothing to the annualized return (the
+  funding-only gross return is within 0.2 pp/yr of the credited one). The low daily volatility
+  that produces the large Sharpe is the same term, so the strategy is exposed to the funding
+  regime itself: the implementable funding-positive rule is **negative** in 2022 (-2.11%/yr) and
+  in 2026 YTD (-1.53%/yr).
+- **Capacity.** At a 1% participation budget the one-time entry of an always-on book is bounded
+  by the spot leg at ~$17.1m (BTC) and ~$9.3m (ETH) on a median day, and at ~$1.2m / ~$0.19m on
+  the worst observed day. The candidate's capacity is therefore **small**, and the flat cost model
+  does not capture the market impact of a larger book.
+- **Verdict: exploratory signal (not promoted).** The Sharpe criterion is met with a very large
+  margin on the canonical scale (the gate's convention), but the trade-count criterion is not,
+  the pre-registered rule was contaminated, the edge is venue-specific and regime-dependent,
+  and the capacity is small. One more validation cycle is warranted before either promotion or
+  rejection.
+- **Evidence:** `research/experiments/cryptofunding_002_evaluation.md`,
+  `research/reports/cost_admissibility_screen_001.md`,
+  `research/reports/opportunity_shortlist.md`,
+  `tests/test_eval_cryptofunding.py` (21 invariants over the committed carry paths).

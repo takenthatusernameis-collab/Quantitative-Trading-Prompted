@@ -32,12 +32,18 @@ def block_bootstrap_sharpe(
     n_samples: int = 1000,
     block_size: int = 22,
     seed: int | None = None,
+    periods_per_year: int = 252,
 ) -> np.ndarray:
     """Estimate the Sharpe ratio distribution via moving block bootstrap.
 
     Returns an array of ``n_samples`` annualized Sharpe ratios computed on
     block-bootstrapped resamples of *returns*. Pass ``seed`` for a
     reproducible bootstrap distribution.
+
+    ``periods_per_year`` is the annualization factor of the Sharpe statistic:
+    the repository default is **252**. A 24/7 crypto series must pass **365**,
+    otherwise the resampled Sharpe distribution is measured on the wrong
+    scale (the ratio itself scales as ``sqrt(ppy)``).
     """
     arr = np.asarray(returns.values, dtype=float)
     n = len(arr)
@@ -47,15 +53,15 @@ def block_bootstrap_sharpe(
     results: list[float] = []
     for posdata, _ in mbb.bootstrap(n_samples):
         sample = posdata[0]
-        s = _safe_sharpe(sample)
+        s = _safe_sharpe(sample, periods_per_year)
         if s is not None:
             results.append(s)
     if len(results) < n_samples * 0.5:
-        results.extend([_safe_sharpe(arr)] * (n_samples - len(results)))
+        results.extend([_safe_sharpe(arr, periods_per_year)] * (n_samples - len(results)))
     return np.array(results) if results else np.array([0.0])
 
 
-def _safe_sharpe(sample: np.ndarray) -> float | None:
+def _safe_sharpe(sample: np.ndarray, periods_per_year: int = 252) -> float | None:
     """Canonical Sharpe of a 1-D return array, or None if it is degenerate.
 
     Uses the repository's single Sharpe convention
@@ -70,7 +76,7 @@ def _safe_sharpe(sample: np.ndarray) -> float | None:
     std = sample.std(ddof=1)
     if std == 0 or np.isnan(std) or std < 1e-12:
         return None
-    sharpe = sharpe_ratio(sample)
+    sharpe = sharpe_ratio(sample, periods_per_year=periods_per_year)
     if not np.isfinite(sharpe):
         return None
     return sharpe
