@@ -68,3 +68,48 @@ python research/riskparity_001_eval.py
 python -m pytest -q tests/test_riskparity_001_evaluation.py
 git status --porcelain data/ config/
 ```
+
+---
+
+# Cycle 932 — Independent-sample significance of riskparity_001 excess over 1/N (negative result)
+
+**Hypothesis reference:** `research/hypotheses/riskparity_001.md` (same candidate, no re-optimisation).
+
+## Data used
+
+- **Source:** committed parquet cache `data/raw/`; the fetcher is never called.
+- **Date range:** 2006-02-15 .. 2026-05-28 (the point-in-time-complete window of Cycle 931).
+- **Frequency:** daily (UTC session index).
+- **Universe:** SPY, QQQ, IWM, TLT, GLD, EFA, EEM.
+- **Point-in-time treatment:** unchanged from Cycle 930 (lagged volatility estimate, effective-from-next-session rebalance, no forward fill).
+
+## Configuration
+
+- **Candidate:** `riskparity_001` (baseline: long-only inverse-volatility, monthly rebalance, L = 63, per-asset cap 0.30).
+- **Benchmark:** 1/N on the same universe, same folds, same cost model (3.0 bp per unit).
+- **Walk-forward:** same 10y/12m/6m design with 21d purge + embargo; **non-overlapping annual subset** — even folds 8, 10, 12, …, 48 (21 folds, 12-month spacing).
+
+## Results
+
+| Quantity | Value |
+|---|---|
+| Folds in annual subset | 21 |
+| riskparity_001 excess over 1/N | 0.038820 |
+| 95% CI (2000 draws, block = 2) | [-0.001639, 0.082736] |
+| 95% CI (1000 draws, block = 2) | [-0.000496, 0.081935] |
+| Excludes zero | **False** |
+| Report | `research/reports/annual_subset_riskparity_vs_oneoverN_932.md` |
+
+**Decision: REJECT (negative result).** The Cycle 931 significance on 41 overlapping folds did not survive non-overlapping sampling. riskparity_001 remains a rejected candidate; its edge over 1/N is not robust.
+
+## Number of trials
+
+**0** — no parameter search, no new candidate, no configuration change. The 21 folds are a subset of the already-evaluated Cycle 931 fold set.
+
+## Reproduction commands
+
+```bash
+python research/mechanism_comparison_001.py
+python research/annual_subset_riskparity_vs_oneoverN_932.py
+git status --porcelain data/ config/
+```
