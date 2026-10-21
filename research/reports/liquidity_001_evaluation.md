@@ -37,7 +37,7 @@
 | Pooled OOS trades | 832 | > 100 | PASS |
 | Benchmark-relative net excess (mean fold Sharpe difference) | -1.426408 | - | - |
 | Excess 95% CI (moving block, 2000 draws, block 4, seed 20240101) | [-2.113215, -0.859968] | excludes zero | PASS |
-| Deflated Sharpe Ratio (N = 1) | -2.851031 (probability nan) | - | - |
+| Deflated Sharpe Ratio (N = 1) | -2.919035 (probability nan) | - | - |
 
 ### Amihud dispersion and costs
 | Quantity | Value |
