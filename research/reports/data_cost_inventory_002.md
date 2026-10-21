@@ -60,7 +60,7 @@ The counters marked *n/a* apply to the crypto funding-rate files: a funding rate
 
 The published inventory (`research/reports/data_cost_inventory_001.md`) pins a SHA-256 prefix for every cached price file. This tool re-computes them: **35 of 35 match**, **0 changed**, **0 removed**, **0 added**.
 
-The configuration file set has changed: the published scan covered **8 files** (the report states "12 config files scanned"), the current tree holds **13**. Added: `config/overnight_capture_001.yaml`, `config/paper_trading_config.yaml`, `config/promotion_gates.yaml`, `config/sample_policy.yaml`, `config/simulation_candidate_001_corrected.yaml`. Removed: none.
+The configuration file set has changed: the published scan covered **10 files** (the report states "14 config files scanned"), the current tree holds **14**. Added: `config/overnight_capture_001.yaml`, `config/paper_trading_config.yaml`, `config/promotion_gates.yaml`, `config/sample_policy.yaml`. Removed: none.
 
 ## 3. The cost model actually available
 
@@ -71,13 +71,13 @@ The configuration file set has changed: the published scan covered **8 files** (
 | Round trip (one unit of weight change) | 3.0 bps | the convention every committed candidate is costed on |
 | Risk-free rate | 2.00% annual | `src/backtest/engine.py:get_risk_free_rate()` |
 
-**13 configuration files scanned.** Components with a configuration key:
+**14 configuration files scanned.** Components with a configuration key:
 
 | Component | Keys found |
 |---|---|
-| commission | `config/calendar_effects_001.yaml:54:commission_bps = 1.0`<br>`config/csmomentum_001.yaml:47:commission_bps = 1.0`<br>`config/csmomentum_candidate_001.yaml:53:commission_bps = 1.0`<br>`config/macroregime_candidate_001.yaml:52:commission_bps = 1.0`<br>`config/sectorrotation_002.yaml:35:commission_bps = 1.0`<br>`config/sectorrotation_candidate_001.yaml:55:commission_bps = 1.0`<br>`config/settings.yaml:14:default_commission_bps = 1.0`<br>`config/simulation_candidate_001.yaml:41:commission_bps = 1.0`<br>`config/simulation_candidate_001_corrected.yaml:53:commission_bps = 1.0` |
-| slippage | `config/calendar_effects_001.yaml:55:slippage_bps = 2.0`<br>`config/csmomentum_001.yaml:48:slippage_bps = 2.0`<br>`config/csmomentum_candidate_001.yaml:54:slippage_bps = 2.0`<br>`config/macroregime_candidate_001.yaml:53:slippage_bps = 2.0`<br>`config/sectorrotation_002.yaml:36:slippage_bps = 2.0`<br>`config/sectorrotation_candidate_001.yaml:56:slippage_bps = 2.0`<br>`config/settings.yaml:15:default_slippage_bps = 2.0`<br>`config/simulation_candidate_001.yaml:42:slippage_bps = 2.0`<br>`config/simulation_candidate_001_corrected.yaml:54:slippage_bps = 2.0` |
-| round_trip | `config/calendar_effects_001.yaml:56:total_round_trip_bps = 3.0`<br>`config/csmomentum_001.yaml:49:roundtrip_bps = 3.0`<br>`config/csmomentum_candidate_001.yaml:55:total_round_trip_bps = 3.0`<br>`config/macroregime_candidate_001.yaml:54:total_round_trip_bps = 3.0`<br>`config/sectorrotation_002.yaml:37:roundtrip_bps = 3.0`<br>`config/sectorrotation_candidate_001.yaml:57:total_round_trip_bps = 3.0`<br>`config/simulation_candidate_001.yaml:43:total_round_trip_bps = 3.0`<br>`config/simulation_candidate_001_corrected.yaml:55:total_round_trip_bps = 3.0` |
+| commission | `config/calendar_effects_001.yaml:54:commission_bps = 1.0`<br>`config/csmomentum_001.yaml:47:commission_bps = 1.0`<br>`config/csmomentum_candidate_001.yaml:53:commission_bps = 1.0`<br>`config/macroregime_candidate_001.yaml:52:commission_bps = 1.0`<br>`config/reversal_candidate_001.yaml:53:commission_bps = 1.0`<br>`config/sectorrotation_002.yaml:35:commission_bps = 1.0`<br>`config/sectorrotation_candidate_001.yaml:55:commission_bps = 1.0`<br>`config/settings.yaml:14:default_commission_bps = 1.0`<br>`config/simulation_candidate_001.yaml:41:commission_bps = 1.0`<br>`config/simulation_candidate_001_corrected.yaml:53:commission_bps = 1.0` |
+| slippage | `config/calendar_effects_001.yaml:55:slippage_bps = 2.0`<br>`config/csmomentum_001.yaml:48:slippage_bps = 2.0`<br>`config/csmomentum_candidate_001.yaml:54:slippage_bps = 2.0`<br>`config/macroregime_candidate_001.yaml:53:slippage_bps = 2.0`<br>`config/reversal_candidate_001.yaml:54:slippage_bps = 2.0`<br>`config/sectorrotation_002.yaml:36:slippage_bps = 2.0`<br>`config/sectorrotation_candidate_001.yaml:56:slippage_bps = 2.0`<br>`config/settings.yaml:15:default_slippage_bps = 2.0`<br>`config/simulation_candidate_001.yaml:42:slippage_bps = 2.0`<br>`config/simulation_candidate_001_corrected.yaml:54:slippage_bps = 2.0` |
+| round_trip | `config/calendar_effects_001.yaml:56:total_round_trip_bps = 3.0`<br>`config/csmomentum_001.yaml:49:roundtrip_bps = 3.0`<br>`config/csmomentum_candidate_001.yaml:55:total_round_trip_bps = 3.0`<br>`config/macroregime_candidate_001.yaml:54:total_round_trip_bps = 3.0`<br>`config/reversal_candidate_001.yaml:55:total_round_trip_bps = 3.0`<br>`config/sectorrotation_002.yaml:37:roundtrip_bps = 3.0`<br>`config/sectorrotation_candidate_001.yaml:57:total_round_trip_bps = 3.0`<br>`config/simulation_candidate_001.yaml:43:total_round_trip_bps = 3.0`<br>`config/simulation_candidate_001_corrected.yaml:55:total_round_trip_bps = 3.0` |
 | funding | `config/settings.yaml:16:default_funding_rate_annual = 0.0` |
 | risk_free | `config/settings.yaml:20:risk_free_rate_annual = 0.02` |
 

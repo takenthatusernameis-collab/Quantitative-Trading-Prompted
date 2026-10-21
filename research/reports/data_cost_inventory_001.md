@@ -103,7 +103,7 @@ Measured equity-session lag behind the newest equity bar (2026-10-19): 2026-10-0
 
 | Group | Files | Parquet files | Rows | First | Last |
 |---|---|---|---|---|---|
-| `data/processed/(top level)` | 18 | 16 | 101640 | 1993-01-29 | 2026-10-09 |
+| `data/processed/(top level)` | 19 | 16 | 101640 | 1993-01-29 | 2026-10-09 |
 | `data/processed/crypto` | 2 | 2 | 4928 | 2020-01-02 | 2026-09-30 |
 | `data/processed/paper_trading` | 1800 | 1800 | 4500 | 2025-01-02 | 2026-10-19 |
 
@@ -122,13 +122,13 @@ All figures below are read from the repository, never assumed: the first three c
 | Funding rate (placeholder) | 0.00% annual | `config/settings.yaml:backtest.default_funding_rate_annual` — a placeholder, **not** a perpetual-funding model |
 | Minimum trade size | $10.00 | `config/settings.yaml:backtest.min_trade_size_usd` |
 
-### 4.1 Cost keys found in the configuration (12 config files scanned)
+### 4.1 Cost keys found in the configuration (14 config files scanned)
 
 | Component | Configured as | Files |
 |---|---|---|
-| commission | **yes** | `calendar_effects_001.yaml:cost_model.commission_bps` = 1.0, `csmomentum_001.yaml:costs.commission_bps` = 1.0, `csmomentum_candidate_001.yaml:cost_model.commission_bps` = 1.0, `macroregime_candidate_001.yaml:cost_model.commission_bps` = 1.0, `sectorrotation_002.yaml:costs.commission_bps` = 1.0, `sectorrotation_candidate_001.yaml:cost_model.commission_bps` = 1.0, `settings.yaml:backtest.default_commission_bps` = 1.0, `simulation_candidate_001.yaml:cost_model.commission_bps` = 1.0 |
-| slippage | **yes** | `calendar_effects_001.yaml:cost_model.slippage_bps` = 2.0, `csmomentum_001.yaml:costs.slippage_bps` = 2.0, `csmomentum_candidate_001.yaml:cost_model.slippage_bps` = 2.0, `macroregime_candidate_001.yaml:cost_model.slippage_bps` = 2.0, `sectorrotation_002.yaml:costs.slippage_bps` = 2.0, `sectorrotation_candidate_001.yaml:cost_model.slippage_bps` = 2.0, `settings.yaml:backtest.default_slippage_bps` = 2.0, `simulation_candidate_001.yaml:cost_model.slippage_bps` = 2.0 |
-| round_trip | **yes** | `calendar_effects_001.yaml:cost_model.total_round_trip_bps` = 3.0, `csmomentum_001.yaml:costs.roundtrip_bps` = 3.0, `csmomentum_candidate_001.yaml:cost_model.total_round_trip_bps` = 3.0, `macroregime_candidate_001.yaml:cost_model.total_round_trip_bps` = 3.0, `sectorrotation_002.yaml:costs.roundtrip_bps` = 3.0, `sectorrotation_candidate_001.yaml:cost_model.total_round_trip_bps` = 3.0, `simulation_candidate_001.yaml:cost_model.total_round_trip_bps` = 3.0 |
+| commission | **yes** | `calendar_effects_001.yaml:cost_model.commission_bps` = 1.0, `csmomentum_001.yaml:costs.commission_bps` = 1.0, `csmomentum_candidate_001.yaml:cost_model.commission_bps` = 1.0, `macroregime_candidate_001.yaml:cost_model.commission_bps` = 1.0, `reversal_candidate_001.yaml:cost_model.commission_bps` = 1.0, `sectorrotation_002.yaml:costs.commission_bps` = 1.0, `sectorrotation_candidate_001.yaml:cost_model.commission_bps` = 1.0, `settings.yaml:backtest.default_commission_bps` = 1.0, `simulation_candidate_001.yaml:cost_model.commission_bps` = 1.0, `simulation_candidate_001_corrected.yaml:cost_model.commission_bps` = 1.0 |
+| slippage | **yes** | `calendar_effects_001.yaml:cost_model.slippage_bps` = 2.0, `csmomentum_001.yaml:costs.slippage_bps` = 2.0, `csmomentum_candidate_001.yaml:cost_model.slippage_bps` = 2.0, `macroregime_candidate_001.yaml:cost_model.slippage_bps` = 2.0, `reversal_candidate_001.yaml:cost_model.slippage_bps` = 2.0, `sectorrotation_002.yaml:costs.slippage_bps` = 2.0, `sectorrotation_candidate_001.yaml:cost_model.slippage_bps` = 2.0, `settings.yaml:backtest.default_slippage_bps` = 2.0, `simulation_candidate_001.yaml:cost_model.slippage_bps` = 2.0, `simulation_candidate_001_corrected.yaml:cost_model.slippage_bps` = 2.0 |
+| round_trip | **yes** | `calendar_effects_001.yaml:cost_model.total_round_trip_bps` = 3.0, `csmomentum_001.yaml:costs.roundtrip_bps` = 3.0, `csmomentum_candidate_001.yaml:cost_model.total_round_trip_bps` = 3.0, `macroregime_candidate_001.yaml:cost_model.total_round_trip_bps` = 3.0, `reversal_candidate_001.yaml:cost_model.total_round_trip_bps` = 3.0, `sectorrotation_002.yaml:costs.roundtrip_bps` = 3.0, `sectorrotation_candidate_001.yaml:cost_model.total_round_trip_bps` = 3.0, `simulation_candidate_001.yaml:cost_model.total_round_trip_bps` = 3.0, `simulation_candidate_001_corrected.yaml:cost_model.total_round_trip_bps` = 3.0 |
 | funding | **yes** | `settings.yaml:backtest.default_funding_rate_annual` = 0.0 |
 | risk_free | **yes** | `settings.yaml:evaluation.risk_free_rate_annual` = 0.02 |
 | bid_ask_spread | **NOT CONFIGURED** | — |
