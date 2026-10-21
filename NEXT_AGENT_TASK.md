@@ -1,20 +1,23 @@
 # NEXT_AGENT_TASK.md
 
-## Cycle 933 — Record Cycle 932 negative result for riskparity_001 vs 1/N
+## Cycle 934 — Evidence-based candidate shortlist for next structurally distinct edge
 
 ### Context
-Cycle 932 recomputed riskparity_001's excess over 1/N on a non-overlapping annual subset (21 folds, even folds 8..48): excess +0.038820, 95% CI [-0.001639, 0.082736], EXCLUDES_ZERO=False. The Cycle 931 significance on 41 overlapping folds did not survive non-overlapping sampling. riskparity_001 remains a rejected candidate; its edge over 1/N is not robust.
+Cycle 933 persisted the Cycle 932 negative result: riskparity_001's excess over 1/N (+0.038820, 95% CI [-0.001639, 0.082736]) does not survive non-overlapping sampling (EXCLUDES_ZERO=False). riskparity_001 is rejected and must not be reopened or variant-spawned. Per AGENTS.md priority order, the next candidate must be structurally distinct (not another risk-parity variant) and grounded in real data/costs available in the repository.
 
 ### Objective
-Persist the negative result durably: append a Cycle 932 section to the riskparity_001 evaluation experiment record (or create `research/experiments/riskparity_001_annual_subset_932.md`) documenting the annual subset, excess, CI, and conclusion that significance does not survive. No parameter search, no new candidate, no data/config changes.
+Produce one bounded research artifact `research/experiments/candidate_shortlist_934.md` that inventories real data and costs available, scores at least 3 structurally distinct candidate mechanisms on the 7 dimensions in AGENTS.md Market Opportunity Search, and selects ONE for a hypothesis-first next cycle with a stated falsification condition and cost model. No parameter search, no new candidate implementation, no data/config changes.
 
 ### Acceptance criteria
-- A new or updated experiment record under `research/experiments/` citing `research/reports/annual_subset_riskparity_vs_oneoverN_932.md` with N_FOLDS=21, EXCESS=0.038820, CI=[-0.001639,0.082736], EXCLUDES_ZERO=False.
-- `data/` and `config/` byte-identical; no fetcher call.
-- Validation: `python research/annual_subset_riskparity_vs_oneoverN_932.py` still passes; `git status --porcelain data/ config/` empty.
+- `research/experiments/candidate_shortlist_934.md` exists and lists >=3 candidates, each scored on (a) data quality/access, (b) plausible structural explanation, (c) expected return after costs, (d) robustness/statistical power, (e) liquidity/capacity, (f) automation/operating burden, (g) diversification from existing research.
+- One selected candidate with mechanism, holding horizon, universe, benchmark, known confounders, falsification condition, and cost model assumptions.
+- `data/` and `config/` byte-identical; `git status --porcelain data/ config/` empty.
+- Validation: `test -f research/experiments/candidate_shortlist_934.md` and `git status --porcelain data/ config/` empty.
 
 ### Scope boundaries
 - Read-only on `data/` and `config/`; new/modified files only under `research/` and `tests/`.
 - Single bounded task; do not dispatch the workflow or start agent sessions.
-- Do not run further parameter searches or new candidates on this evidence.
+- Do not reopen riskparity_001 or spawn risk-parity variants.
 EOF
+filePath">
+NEXT_AGENT_TASK.md
