@@ -1,0 +1,122 @@
+# Frozen pre-registered configuration for the cross-sectional short-horizon
+# reversal candidate (reversal_001).
+#
+# Candidate selected by the Cycle 934 evidence-based candidate shortlist
+# (reversal_001: 28/35, rank 1 of 4; next best pairs_001 25/35,
+# liquidity_001 24/35, leadlag_001 16/35). See
+# research/experiments/candidate_shortlist_934.md and
+# research/hypotheses/reversal_001.md for the full hypothesis and the
+# evaluation plan.
+#
+# This configuration is FROZEN before any backtest execution. No reversal
+# backtest exists in this repository at the time of this freeze.
+# Code revision at freeze: 5b6421a
+
+candidate_id: "reversal_001"
+
+universe:
+  - "XLB"   # Materials
+  - "XLE"   # Energy
+  - "XLF"   # Financials
+  - "XLI"   # Industrials
+  - "XLK"   # Information Technology
+  - "XLP"   # Consumer Staples
+  - "XLU"   # Utilities
+  - "XLV"   # Health Care
+  - "XLY"   # Consumer Discretionary
+  # The nine GICS sector ETFs are the repository's only membership-stable
+  # cross-section: identical cached history, 6991 sessions, no gaps.
+
+signal:
+  type: "cross_sectional_reversal"
+  # Rank the cross-section by the trailing 5-session total return and take
+  # the BOTTOM of the ranking (the mirror of the rejected momentum signal).
+  lookback_sessions: 5        # trailing 5-session total return (Close[t]/Close[t-5]-1)
+  selection: "bottom"        # the short-horizon reversal direction
+  select_count: 2            # bottom quintile: 2 of 9
+  rebalance_every_n_sessions: 5
+  rebalance_anchor: "first_session_of_panel"   # rebalance when (session index mod 5) == 0
+  rebalance_freq: "weekly"
+
+portfolio:
+  selected_weight: 0.5       # equal weight across the 2 selected ETFs (0.5 each)
+  cash_weight_when_unselected: 0.0
+  gross_exposure_max: 1.0    # long-only; no leverage, no short leg, no borrow
+
+risk_overlay:
+  # BASELINE BEFORE COMPLEXITY (AGENTS.md): NO risk overlay.
+  # Vol-targeting, drawdown control and regime filters are reserved for
+  # later cycles ONLY IF this baseline clears every promotion gate.
+  none: true
+
+cost_model:
+  commission_bps: 1.0
+  slippage_bps: 2.0
+  total_round_trip_bps: 3.0  # per unit of weight change
+
+execution:
+  signal_lag_days: 1         # weights formed at t are effective at t+1
+  price_field: "Close"       # "Close" (EOD)
+  timezone: "UTC"
+  rebalance_schedule: "every_5_sessions"
+
+history_start: "1998-12-22"  # common start of the nine cached files
+history_end: "2026-10-08"    # common end of the nine cached files
+seed: 42                     # engine is deterministic; bootstrap seed
+
+# Data integrity measured at freeze time (2026-10-21, cache-only, no fetch):
+#   XLB..XLY: 6991 rows each, 1998-12-22 -> 2026-10-08, 0 NaN Close,
+#   0 duplicate timestamps, 0 non-positive closes, 1 zero-volume row in
+#   total (XLI, one session). Median daily dollar volume $238m-$1.06bn.
+#   Measured median cross-sectional dispersion of the 5-session return:
+#   1.4965% per rebalance (77.8181%/yr of scale at 52 rebalances/yr).
+#   Measured cost hurdle: 3 bp / 1.4965% = 2.0047% of the dispersion per
+#   rebalance, against a 1.5600%/yr drag (52 units of turnover at 3 bp/unit).
+data:
+  source: "yahoo_finance"
+  cached: true
+  fetch_new: false
+  frequency: "daily"
+  common_start: "1998-12-22"
+  common_end: "2026-10-08"
+  sessions: 6991
+  close_completeness: 1.0
+
+# Pre-registered evaluation metadata (traceability; not used by the engine)
+evaluation:
+  splits:
+    train_start: "1998-12-22"
+    train_end: "2008-12-31"
+    validation_end: "2017-12-31"
+    test_start: "2018-01-01"
+    test_end: "2026-10-08"
+  walk_forward:
+    train_years: 10
+    test_months: 12
+    step_months: 6
+    purge_days: 21
+    embargo_days: 21
+  promotion_gates:
+    wf_mean_oos_sharpe_min: 0.9
+    positive_fold_rate_min: 0.5
+    pooled_oos_trades_min: 100
+  multiple_testing:
+    total_configs: 1          # one baseline rule, no grid
+    dsr_method: "compute_dsr"
+    bootstrap_seed: 20240101  # the seed of Cycles 929/930
+    n_bootstrap: 2000
+  cost_hurdle:
+    capture_fraction_min: 0.020047   # 3 bp / 1.4965% dispersion per rebalance
+    definition: >
+      [mean(bottom-quintile 5-session return) - mean(all nine)] /
+      std(all nine 5-session returns) at the formation date; the test
+      statistic is the median over the out-of-sample rebalances.
+  benchmarks:
+    - "equal_weight_9"             # 1/N of the same nine sector ETFs
+  mirror_test:
+    # The same panel was traded by two rejected momentum candidates. The
+    # reversal excess must not be explained by the arithmetic mirror of the
+    # rejected sector-momentum signal on this panel.
+    reference_signals:
+      - "sectorrotation_001"
+      - "sectorrotation_002"
