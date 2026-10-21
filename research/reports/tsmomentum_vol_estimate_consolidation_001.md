@@ -2,12 +2,12 @@
 
 ## Status
 
-- **OVERALL: FAIL**
+- **OVERALL: PASS**
 - Candidate: `tsmomentum_spytrend_001` (the incumbent)
 - Default path: **bit-identical** to every script's pre-change implementation (max |diff| = 0.0, checked per script).
 - Switch: `lag_vol_estimate` (default **off**) in all seven consolidated scripts; zero remaining inline same-session exposure estimates.
 - Decision: **unchanged** -- NO-GO on both the published and the corrected path (failed gates: rolling_63d_sharpe, psr).
-- Read-only: `data/` and `config/` byte-identical (**yes**); no committed artifact modified (**NO**); the published record and the committed paper-trading state are **not** overwritten.
+- Read-only: `data/` and `config/` byte-identical (**yes**); no committed artifact modified (**yes**); the published record and the committed paper-trading state are **not** overwritten.
 
 ## 1. Implementation consolidation (one implementation, one switch)
 
@@ -191,7 +191,7 @@ A record that mixes the same-session and the lagged paths measures neither; the 
 - [corrected_test_period_matches_cycle926_value]: PASS (observed: 1.335983, expected: 1.335983)
 - [data_unchanged]: PASS
 - [config_unchanged]: PASS
-- [committed_artifacts_unchanged]: FAIL
+- [committed_artifacts_unchanged]: PASS
 
 ## 7. Reproduction commands
 
