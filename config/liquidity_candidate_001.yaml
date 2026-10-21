@@ -1,0 +1,105 @@
+# Frozen pre-registered configuration for the liquidity-provision premium
+# candidate (liquidity_001).
+#
+# Candidate selected by the Cycle 934 evidence-based candidate shortlist
+# (liquidity_001: 24/35, rank 3 of 4; reversal_001 28/35 rank 1,
+# pairs_001 25/35 rank 2, leadlag_001 16/35). See
+# research/experiments/candidate_shortlist_934.md and
+# research/hypotheses/liquidity_001.md for the full hypothesis and the
+# evaluation plan.
+#
+# This configuration is FROZEN before any liquidity_001 backtest execution. No
+# liquidity_001 backtest exists in this repository at the time of this freeze.
+# Code revision at freeze: 5b6421a
+
+candidate_id: "liquidity_001"
+
+universe:
+  - "XLB"   # Materials
+  - "XLE"   # Energy
+  - "XLF"   # Financials
+  - "XLI"   # Industrials
+  - "XLK"   # Information Technology
+  - "XLP"   # Consumer Staples
+  - "XLU"   # Utilities
+  - "XLV"   # Health Care
+  - "XLY"   # Consumer Discretionary
+  # The nine GICS sector ETFs are the repository's only membership-stable
+  # cross-section: identical cached history, 6991 sessions, no gaps.
+
+signal:
+  type: "amihud_illiquidity"
+  # Score each ETF by Amihud measure |21-session return| / dollar volume
+  # over the trailing 21 sessions; hold the most illiquid quintile.
+  lookback_sessions: 21
+  selection: "top_illiquid"  # most illiquid = highest Amihud score
+  select_count: 2            # top quintile: 2 of 9
+  rebalance_every_n_sessions: 21
+  rebalance_anchor: "first_session_of_panel"
+  rebalance_freq: "monthly"
+
+portfolio:
+  selected_weight: 0.5       # equal weight across the 2 selected ETFs (0.5 each)
+  cash_weight_when_unselected: 0.0
+  gross_exposure_max: 1.0    # long-only; no leverage, no short leg, no borrow
+
+risk_overlay:
+  # BASELINE BEFORE COMPLEXITY (AGENTS.md): NO risk overlay.
+  none: true
+
+cost_model:
+  commission_bps: 1.0
+  slippage_bps: 2.0
+  total_round_trip_bps: 3.0  # per unit of weight change
+
+execution:
+  signal_lag_days: 1         # weights formed at t are effective at t+1
+  price_field: "Close"       # "Close" (EOD)
+  volume_field: "Volume"
+  timezone: "UTC"
+  rebalance_schedule: "every_21_sessions"
+
+history_start: "1998-12-22"
+history_end: "2026-10-08"
+seed: 42
+
+# Data integrity measured at freeze time (2026-10-21, cache-only, no fetch):
+#   XLB..XLY: 6991 rows each, 1998-12-22 -> 2026-10-08, 0 NaN Close/Volume
+data:
+  source: "yahoo_finance"
+  cached: true
+  fetch_new: false
+  frequency: "daily"
+  common_start: "1998-12-22"
+  common_end: "2026-10-08"
+  sessions: 6991
+  close_completeness: 1.0
+
+# Pre-registered evaluation metadata (traceability; not used by the engine)
+evaluation:
+  splits:
+    train_start: "1998-12-22"
+    train_end: "2008-12-31"
+    validation_end: "2017-12-31"
+    test_start: "2018-01-01"
+    test_end: "2026-10-08"
+  walk_forward:
+    train_years: 10
+    test_months: 12
+    step_months: 6
+    purge_days: 21
+    embargo_days: 21
+  promotion_gates:
+    wf_mean_oos_sharpe_min: 0.9
+    positive_fold_rate_min: 0.5
+    pooled_oos_trades_min: 100
+  multiple_testing:
+    total_configs: 1          # one baseline rule, no grid
+    dsr_method: "compute_dsr"
+    bootstrap_seed: 20240101
+    n_bootstrap: 2000
+  amihud:
+    lookback_sessions: 21
+    description: "Amihud illiquidity = |r_{t-21:t}| / dollar_volume_{t-21:t} (trailing sum/mean as appropriate), rank by score descending (most illiquid)"
+  benchmarks:
+    - "equal_weight_9"       # 1/N of the same nine sector ETFs
