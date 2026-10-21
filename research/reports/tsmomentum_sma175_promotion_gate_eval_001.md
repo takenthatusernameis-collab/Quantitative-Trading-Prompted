@@ -4,7 +4,7 @@
 
 - Candidate: `tsmomentum_sma175_candidate` (SMA window 175)
 - Incumbent SMA window (run_cycle6): 200 (unchanged)
-- Git rev: b5ddcc5
+- Git rev: 5707645
 - Date: 2026-10-21
 - Sharpe convention: `arithmetic_annualized_rf0`
 - PSR target: 1.4178 (config/promotion_gates.yaml gate 'psr' (backtest Sharpe baseline 1.4178); src.simulation.evaluation.GoNoGoConfig.backtest_sharpe)
