@@ -54,7 +54,7 @@ Mixed evidence: the phase gap shrinks inside some state buckets but persists ins
 
 ## Monitoring statement
 
-No observable state among F2/F3/F4 is wired into any gate or decision. If monitored on the live stance, the candidate input would be: watch the SPY trend state (F2), the trailing 12-month return sign (F3) and the training-window realised volatility tercile (F4); phase-B-like weakness concentrates where the state-vs-calendar gap collapses. This attribution does not select, re-rank or re-fit anything and does not change the incumbent's published verdict.
+No observable state among F2/F3/F4 is wired into any gate or decision. If monitored on the live stance, the candidate input would be: watch the SPY trend state (F2), the trailing 12-month return sign (F3) and the training-window realised volatility tercile (F4). The phase-A / phase-B gap collapses to about zero in risk-on and up-trend buckets (both phases ~1.4, no calendar weakness), while it persists in risk-off and down-trend buckets (phase B far weaker than phase A) -- so the phase-B weakness concentrates in observable risk-off/down states, albeit with small fold counts (11 risk-off, 10 down) and no dispersion share reaching conventional significance. Treat the monitorable signal as tentative. This attribution does not select, re-rank or re-fit anything and does not change the incumbent's published verdict.
 
 ## Trial count
 

@@ -926,6 +926,7 @@ def run_attribution(
             "committed_artifacts_unchanged": artifacts_before == artifacts_after,
         },
         "data_source": "committed parquet cache in data/raw/ (fetcher never called)",
+        "_fold_rows": rows,
     }
     return payload
 
