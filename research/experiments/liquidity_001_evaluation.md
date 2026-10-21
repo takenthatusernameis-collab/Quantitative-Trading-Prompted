@@ -2,6 +2,8 @@
 
 **Cycle 938.** Execution of the **frozen** pre-registration (`research/hypotheses/liquidity_001.md` + `config/liquidity_candidate_001.yaml`, freeze commit **5b6421a**). The frozen values are re-asserted by the tool before the run; a post-freeze edit of the config fails closed. No threshold, gate, cost model, universe or Sharpe convention was changed after the result was known; nothing under `data/` or `config/` was written; the fetcher was never called; no other candidate was executed, re-tuned or re-ranked.
 
+**Correction (published by Cycle 940).** The Deflated Sharpe Ratio line of this record was produced by an **unseeded** moving-block bootstrap and was therefore not reproducible: the published value changed on every run of this tool (three consecutive runs gave -2.963458, -2.954174 and -2.886135). The line is regenerated from the frozen configuration's declared bootstrap seed (20240101) and draw count (2000); every other measured value, every threshold and the **verdict are unchanged**. The correction is of record in `research/experiments/liquidity_001_evaluation_erratum_001.md`.
+
 ## Hypothesis reference
 `research/hypotheses/liquidity_001.md` (frozen at `5b6421a`).
 
@@ -37,7 +39,7 @@
 | Pooled OOS trades | 832 | > 100 | PASS |
 | Benchmark-relative net excess (mean fold Sharpe difference) | -1.426408 | - | - |
 | Excess 95% CI (moving block, 2000 draws, block 4, seed 20240101) | [-2.113215, -0.859968] | excludes zero | PASS |
-| Deflated Sharpe Ratio (N = 1) | -2.919035 (probability nan) | - | - |
+| Deflated Sharpe Ratio (N = 1) | -2.968111 (probability 0.001498; moving-block bootstrap, 2000 draws, block 22, seed 20240101) | - | - |
 
 ### Amihud dispersion and costs
 | Quantity | Value |

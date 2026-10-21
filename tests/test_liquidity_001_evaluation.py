@@ -19,12 +19,14 @@ from research.liquidity_001_evaluation import (  # noqa: E402
     FROZEN,
     OUT_EXP,
     OUT_REPORT,
+    DSR_BLOCK_SIZE,
     EvaluationError,
     build_liquidity_weights,
     build_benchmark_weights,
     load_frozen_config,
     load_ohlcv,
     build_payload,
+    evaluate,
     run_checks,
     verdict,
     render_experiment,
@@ -172,6 +174,62 @@ def test_two_runs_byte_identical_output():
         assert result.returncode == 0, result.stdout + result.stderr
         outputs.append(result.stdout)
     assert outputs[0] == outputs[1]
+
+
+def test_the_dsr_is_reproducible_across_processes():
+    """The published Deflated Sharpe Ratio must not change between runs.
+
+    Before the Cycle-940 correction the ``compute_dsr`` call was unseeded, so the
+    published value changed on every execution (see
+    ``research/experiments/liquidity_001_evaluation_erratum_001.md``).
+    """
+    dsr_lines = []
+    for _ in range(2):
+        result = subprocess.run(
+            [sys.executable, "research/liquidity_001_evaluation.py", "--no-report"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=1800,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+        lines = [line for line in result.stdout.splitlines() if line.startswith("DSR|")]
+        assert len(lines) == 1, result.stdout
+        dsr_lines.append(lines[0])
+    assert dsr_lines[0] == dsr_lines[1]
+
+
+def test_the_dsr_uses_the_frozen_bootstrap_seed(monkeypatch):
+    """The DSR call must consume the seed and draw count the frozen config declares."""
+    import research.liquidity_001_evaluation as module
+
+    captured: dict = {}
+
+    def fake_compute_dsr(*args, **kwargs):
+        captured.update(kwargs)
+        return {"dsr": -1.0, "dsr_probability": 0.25}
+
+    monkeypatch.setattr(module, "compute_dsr", fake_compute_dsr)
+    config = load_frozen_config()
+    close, volume = load_ohlcv(config["universe"])
+    module.evaluate(close, config, volume)
+
+    assert captured["seed"] == config["bootstrap_seed"] == 20240101
+    assert captured["n_bootstrap"] == config["bootstrap_draws"] == 2000
+    assert captured["block_size"] == DSR_BLOCK_SIZE == 22
+    assert captured["n_configs"] == config["total_configs"]
+
+
+def test_the_published_dsr_and_probability_are_reported(payload):
+    dsr = payload["evaluation"]["dsr"]
+    assert np.isfinite(dsr["dsr"])
+    assert np.isfinite(dsr["probability"])
+    assert dsr["seed"] == 20240101
+    text = OUT_REPORT.read_text()
+    assert f"Deflated Sharpe Ratio (N = 1) | {dsr['dsr']:.6f}" in text
+    assert f"probability {dsr['probability']:.6f}" in text
+    assert "seed 20240101" in text
+    assert "Correction (published by Cycle 940)" in text
 
 
 def test_data_and_config_unchanged_before_and_after():

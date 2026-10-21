@@ -65,6 +65,12 @@ from src.evaluation.walkforward import generate_walkforward_splits  # noqa: E402
 
 CYCLE = "938"
 
+#: Block length of the Deflated Sharpe Ratio's moving-block bootstrap: the
+#: shared helper's default (``src/evaluation/statistics.py``) and the
+#: repository's committed monthly block length. Stated explicitly so that the
+#: published statistic is fully specified and reproducible.
+DSR_BLOCK_SIZE = 22
+
 RAW_DIR = REPO_ROOT / "data" / "raw"
 REPORTS_DIR = REPO_ROOT / "research" / "reports"
 EXPERIMENTS_DIR = REPO_ROOT / "research" / "experiments"
@@ -355,11 +361,21 @@ def evaluate(close: pd.DataFrame, config: dict[str, Any], volume: pd.DataFrame) 
     amihud_disp = amihud.std(axis=1).median()
     amihud_disp_pct = float(amihud_disp) if pd.notna(amihud_disp) else 0.0
 
-    # DSR
+    # DSR -- seeded with the frozen configuration's declared bootstrap seed and
+    # draw count so that the published statistic is reproducible. Before this
+    # correction the call was unseeded, so the published Deflated Sharpe Ratio
+    # changed on every run; see
+    # research/experiments/liquidity_001_evaluation_erratum_001.md.
     try:
-        dsr_res = compute_dsr(strat_excess.dropna(), n_configs=int(config["total_configs"]))
+        dsr_res = compute_dsr(
+            strat_excess.dropna(),
+            n_configs=int(config["total_configs"]),
+            n_bootstrap=int(config["bootstrap_draws"]),
+            block_size=DSR_BLOCK_SIZE,
+            seed=int(config["bootstrap_seed"]),
+        )
     except Exception:
-        dsr_res = {"dsr": float("nan"), "probability": float("nan")}
+        dsr_res = {"dsr": float("nan"), "dsr_probability": float("nan")}
 
     # post-2009 excess
     post2009_mask = close.index >= pd.Timestamp("2009-01-01", tz=close.index.tz)
@@ -381,8 +397,11 @@ def evaluate(close: pd.DataFrame, config: dict[str, Any], volume: pd.DataFrame) 
         "post2009_excess_annualized": post2009_excess,
         "dsr": {
             "dsr": float(dsr_res.get("dsr", np.nan)),
-            "probability": float(dsr_res.get("probability", np.nan)),
+            "probability": float(dsr_res.get("dsr_probability", dsr_res.get("probability", np.nan))),
             "n_configs": int(config["total_configs"]),
+            "n_bootstrap": int(config["bootstrap_draws"]),
+            "block_size": int(DSR_BLOCK_SIZE),
+            "seed": int(config["bootstrap_seed"]),
         },
         "n_folds": len(folds),
     }
@@ -440,6 +459,8 @@ def render_experiment(payload: dict[str, Any]) -> str:
     lines.append("")
     lines.append(f"**Cycle {CYCLE}.** Execution of the **frozen** pre-registration (`research/hypotheses/liquidity_001.md` + `config/liquidity_candidate_001.yaml`, freeze commit **{FREEZE_COMMIT}**). The frozen values are re-asserted by the tool before the run; a post-freeze edit of the config fails closed. No threshold, gate, cost model, universe or Sharpe convention was changed after the result was known; nothing under `data/` or `config/` was written; the fetcher was never called; no other candidate was executed, re-tuned or re-ranked.")
     lines.append("")
+    lines.append(f"**Correction (published by Cycle 940).** The Deflated Sharpe Ratio line of this record was produced by an **unseeded** moving-block bootstrap and was therefore not reproducible: the published value changed on every run of this tool (three consecutive runs gave -2.963458, -2.954174 and -2.886135). The line is regenerated from the frozen configuration's declared bootstrap seed ({config['bootstrap_seed']}) and draw count ({config['bootstrap_draws']}); every other measured value, every threshold and the **verdict are unchanged**. The correction is of record in `research/experiments/liquidity_001_evaluation_erratum_001.md`.")
+    lines.append("")
     lines.append("## Hypothesis reference")
     lines.append(f"`research/hypotheses/liquidity_001.md` (frozen at `{FREEZE_COMMIT}`).")
     lines.append("")
@@ -453,7 +474,7 @@ def render_experiment(payload: dict[str, Any]) -> str:
     lines.append("## Configuration (frozen)")
     lines.append("| Item | Value |")
     lines.append("|---|---|")
-    lines.append("| Signal | Amihud illiquidity \|21-session return\| / dollar volume, **most illiquid** 2 of 9, equal weight, cash otherwise |")
+    lines.append(r"| Signal | Amihud illiquidity \|21-session return\| / dollar volume, **most illiquid** 2 of 9, equal weight, cash otherwise |")
     lines.append("| Rebalance | every 21 sessions (monthly), anchored on the panel's first session |")
     lines.append("| Signal lag | 1 session |")
     lines.append("| Cost model | 1.0 bp commission + 2.0 bp slippage = **3.0 bp per unit of weight change**, 2.00% annual risk-free |")
@@ -476,7 +497,7 @@ def render_experiment(payload: dict[str, Any]) -> str:
     lines.append(f"| Benchmark-relative net excess (mean fold Sharpe difference) | {ev['excess_sharpe']:.6f} | - | - |")
     ci = ev['excess_ci']
     lines.append(f"| Excess 95% CI (moving block, {ci.get('n_draws', ci.get('draws', 2000))} draws, block {ci.get('block', 4)}, seed {ci.get('seed', 20240101)}) | [{ci['ci_low']:.6f}, {ci['ci_high']:.6f}] | excludes zero | {'PASS' if not (ci['ci_low'] <= 0.0 <= ci['ci_high']) else 'FAIL'} |")
-    lines.append(f"| Deflated Sharpe Ratio (N = 1) | {ev['dsr']['dsr']:.6f} (probability {ev['dsr']['probability']:.6f}) | - | - |")
+    lines.append(f"| Deflated Sharpe Ratio (N = 1) | {ev['dsr']['dsr']:.6f} (probability {ev['dsr']['probability']:.6f}; moving-block bootstrap, {ev['dsr']['n_bootstrap']} draws, block {ev['dsr']['block_size']}, seed {ev['dsr']['seed']}) | - | - |")
     lines.append("")
     lines.append("### Amihud dispersion and costs")
     lines.append("| Quantity | Value |")
@@ -572,6 +593,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"WF_MEAN_OOS_SHARPE|{evaluation['wf_mean_oos_sharpe']:.6f}")
     ci = evaluation['excess_ci']
     print(f"EXCESS_CI|{ci['ci_low']:.6f}|{ci['ci_high']:.6f}")
+    dsr = evaluation["dsr"]
+    print(f"DSR|{dsr['dsr']:.6f}|PROB|{dsr['probability']:.6f}|N_CONFIGS|{dsr['n_configs']}|SEED|{dsr['seed']}|DRAWS|{dsr['n_bootstrap']}|BLOCK|{dsr['block_size']}")
     print(f"VERDICT|{payload['verdict']['label']}")
     print(f"FROZEN_CONDITIONS_FIRED|{','.join(payload['verdict']['fired']) or 'none'}")
     print(f"REPORT|{OUT_REPORT if not args.no_report else '(not written: --no-report)'}")
