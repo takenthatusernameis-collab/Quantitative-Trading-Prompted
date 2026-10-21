@@ -195,8 +195,11 @@ CANDIDATES: list[dict[str, Any]] = [
             "ETF expense ratios are embedded in the observed (adjusted) prices "
             "and are not modelled separately.",
             "The turnover estimate of one book rotation per rebalance follows "
-            "the repository's committed cost-screen convention and is an upper "
-            "bound; a partial rotation turns over less.",
+            "the repository's committed cost-screen convention; for a rule that "
+            "rotates part of the book the convention is a proxy, not an "
+            "upper bound, and the evaluation cycle must measure the realized "
+            "turnover rather than assume it (see the Cycle 935 correction "
+            "below).",
         ],
         "falsification": (
             "Falsified if ANY of: (i) the walk-forward mean OOS Sharpe (net, "
@@ -1336,7 +1339,20 @@ below is the material that pre-registration must contain.
 | **Falsification condition** | {selected['falsification']} |
 | **Cost model assumptions** | {cost['commission_bps']:.1f} bp commission + {cost['slippage_bps']:.1f} bp slippage = {cost['round_trip_bps']:.1f} bp per unit of weight change, applied to the absolute weight change on rebalance days; risk-free {cost['risk_free_annual']:.2%} annual for the Sharpe convention; no borrow (the rule is long-only), and **no** market-impact, spread, latency or margin term exists in the repository's cost model -- a disclosed gap, bounded by the committed Cycle-913 break-even audit; turnover estimated at {selected['measured']['turnover_units_per_year']:.2f} units/yr ({selected['measured']['annual_cost_drag']:.4%}/yr drag) under the committed one-book-rotation-per-rebalance convention |
 
-### 8. What this cycle deliberately does **not** propose
+### 8. Correction (published by Cycle 935)
+
+The turnover wording published with `reversal_001` in Cycle 934 -- that the
+one-book-rotation-per-rebalance convention is an **upper** bound -- is **wrong
+for this rule**: the rule rotates two of nine names, so a typical rebalance
+changes 1.5-2.0 units of weight and the realized turnover is roughly twice the
+convention's estimate. The Cycle 935 evaluation measured it (see
+`research/experiments/reversal_001_evaluation.md`). **No score, no ranking and
+no selection changes**: the correction moves the cost hurdle from 2.0047% to
+3.5% of the measured cross-sectional dispersion per rebalance, and the measured
+gross capture fraction is of the opposite sign, so the candidate's outcome is
+unchanged. The correction is published here rather than applied silently.
+
+### 9. What this cycle deliberately does **not** propose
 
 - **No risk-parity candidate and no risk-parity variant.** `riskparity_001` is closed
   (`research/experiments/riskparity_001_evaluation.md`: "**Decision: REJECT (negative

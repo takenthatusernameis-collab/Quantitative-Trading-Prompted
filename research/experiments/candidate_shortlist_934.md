@@ -47,7 +47,7 @@ four candidates are alternatives, not trials of one hypothesis.
 
 ### 1. The inventory that the scores rest on
 
-**Data available** (1856 files under `data/`, 13 configuration files under `config/`, all read-only).
+**Data available** (1856 files under `data/`, 14 configuration files under `config/`, all read-only).
 
 | Data class | Available in the cache | Consequence for this shortlist |
 |---|---|---|
@@ -115,7 +115,7 @@ implementing the candidate. Every such prior is labelled in the candidate block.
 - **Baseline rule**: Rank the nine sector ETFs by the trailing 5-session total return; hold the bottom quintile (2 of 9) at equal weight and cash otherwise; rebalance every 5th session; the signal formed at t is effective at t+1 (one-session lag).
 - **Benchmark**: 1/N equal-weight buy-and-hold of the same nine sector ETFs over the same window (the same benchmark the committed cross-sectional candidates use).
 - **Cost model**: 1.5600%/yr (52.00 units of turnover at 3 bp/unit); friction components absent from the repository's cost model: none
-- **Known confounders**: (1) Momentum-crash risk: the book is long the laggards, so a sharp rally in the recent winners is a direct loss. (2) The nine ETFs are all US equity sectors: the rule is a short-beta tilt against the 1/N benchmark in a risk-on market, so the benchmark-relative result, not the absolute return, is the relevant statistic. (3) The sector panel ends 2026-10-08, eight sessions behind the rest of the committed cache. (4) Constituent-level (GICS) membership history is not in the repository: the sector ETFs' underlying composition changed over the sample and cannot be reconstructed. (5) ETF expense ratios are embedded in the observed (adjusted) prices and are not modelled separately. (6) The turnover estimate of one book rotation per rebalance follows the repository's committed cost-screen convention and is an upper bound; a partial rotation turns over less.
+- **Known confounders**: (1) Momentum-crash risk: the book is long the laggards, so a sharp rally in the recent winners is a direct loss. (2) The nine ETFs are all US equity sectors: the rule is a short-beta tilt against the 1/N benchmark in a risk-on market, so the benchmark-relative result, not the absolute return, is the relevant statistic. (3) The sector panel ends 2026-10-08, eight sessions behind the rest of the committed cache. (4) Constituent-level (GICS) membership history is not in the repository: the sector ETFs' underlying composition changed over the sample and cannot be reconstructed. (5) ETF expense ratios are embedded in the observed (adjusted) prices and are not modelled separately. (6) The turnover estimate of one book rotation per rebalance follows the repository's committed cost-screen convention; for a rule that rotates part of the book the convention is a proxy, not an upper bound, and the evaluation cycle must measure the realized turnover rather than assume it (see the Cycle 935 correction below).
 - **Falsification condition**: Falsified if ANY of: (i) the walk-forward mean OOS Sharpe (net, canonical convention) < 0.9; (ii) the benchmark-relative net excess has a moving-block bootstrap 95% CI that includes zero; (iii) the benchmark-relative net excess is not positive in the post-2009 sub-sample; (iv) the measured gross capture fraction falls below the pre-registered cost hurdle; (v) the positive-fold rate < 0.5 or the pooled OOS trades <= 100.
 
 | Dimension | Score | Basis (measured where measurable) |
@@ -256,11 +256,24 @@ below is the material that pre-registration must contain.
 | **Features and data sources** | `data/raw/XLB.parquet`, `data/raw/XLE.parquet`, `data/raw/XLF.parquet`, `data/raw/XLI.parquet`, `data/raw/XLK.parquet`, `data/raw/XLP.parquet`, `data/raw/XLU.parquet`, `data/raw/XLV.parquet`, `data/raw/XLY.parquet` -- committed parquet cache, daily OHLCV, the fetcher is never called |
 | **Entry / exit rules** | Rank the nine sector ETFs by the trailing 5-session total return; hold the bottom quintile (2 of 9) at equal weight and cash otherwise; rebalance every 5th session; the signal formed at t is effective at t+1 (one-session lag). |
 | **Benchmark** | 1/N equal-weight buy-and-hold of the same nine sector ETFs over the same window (the same benchmark the committed cross-sectional candidates use). |
-| **Known confounders** | (1) Momentum-crash risk: the book is long the laggards, so a sharp rally in the recent winners is a direct loss. (2) The nine ETFs are all US equity sectors: the rule is a short-beta tilt against the 1/N benchmark in a risk-on market, so the benchmark-relative result, not the absolute return, is the relevant statistic. (3) The sector panel ends 2026-10-08, eight sessions behind the rest of the committed cache. (4) Constituent-level (GICS) membership history is not in the repository: the sector ETFs' underlying composition changed over the sample and cannot be reconstructed. (5) ETF expense ratios are embedded in the observed (adjusted) prices and are not modelled separately. (6) The turnover estimate of one book rotation per rebalance follows the repository's committed cost-screen convention and is an upper bound; a partial rotation turns over less. |
+| **Known confounders** | (1) Momentum-crash risk: the book is long the laggards, so a sharp rally in the recent winners is a direct loss. (2) The nine ETFs are all US equity sectors: the rule is a short-beta tilt against the 1/N benchmark in a risk-on market, so the benchmark-relative result, not the absolute return, is the relevant statistic. (3) The sector panel ends 2026-10-08, eight sessions behind the rest of the committed cache. (4) Constituent-level (GICS) membership history is not in the repository: the sector ETFs' underlying composition changed over the sample and cannot be reconstructed. (5) ETF expense ratios are embedded in the observed (adjusted) prices and are not modelled separately. (6) The turnover estimate of one book rotation per rebalance follows the repository's committed cost-screen convention; for a rule that rotates part of the book the convention is a proxy, not an upper bound, and the evaluation cycle must measure the realized turnover rather than assume it (see the Cycle 935 correction below). |
 | **Falsification condition** | Falsified if ANY of: (i) the walk-forward mean OOS Sharpe (net, canonical convention) < 0.9; (ii) the benchmark-relative net excess has a moving-block bootstrap 95% CI that includes zero; (iii) the benchmark-relative net excess is not positive in the post-2009 sub-sample; (iv) the measured gross capture fraction falls below the pre-registered cost hurdle; (v) the positive-fold rate < 0.5 or the pooled OOS trades <= 100. |
 | **Cost model assumptions** | 1.0 bp commission + 2.0 bp slippage = 3.0 bp per unit of weight change, applied to the absolute weight change on rebalance days; risk-free 2.00% annual for the Sharpe convention; no borrow (the rule is long-only), and **no** market-impact, spread, latency or margin term exists in the repository's cost model -- a disclosed gap, bounded by the committed Cycle-913 break-even audit; turnover estimated at 52.00 units/yr (1.5600%/yr drag) under the committed one-book-rotation-per-rebalance convention |
 
-### 8. What this cycle deliberately does **not** propose
+### 8. Correction (published by Cycle 935)
+
+The turnover wording published with `reversal_001` in Cycle 934 -- that the
+one-book-rotation-per-rebalance convention is an **upper** bound -- is **wrong
+for this rule**: the rule rotates two of nine names, so a typical rebalance
+changes 1.5-2.0 units of weight and the realized turnover is roughly twice the
+convention's estimate. The Cycle 935 evaluation measured it (see
+`research/experiments/reversal_001_evaluation.md`). **No score, no ranking and
+no selection changes**: the correction moves the cost hurdle from 2.0047% to
+3.5% of the measured cross-sectional dispersion per rebalance, and the measured
+gross capture fraction is of the opposite sign, so the candidate's outcome is
+unchanged. The correction is published here rather than applied silently.
+
+### 9. What this cycle deliberately does **not** propose
 
 - **No risk-parity candidate and no risk-parity variant.** `riskparity_001` is closed
   (`research/experiments/riskparity_001_evaluation.md`: "**Decision: REJECT (negative
