@@ -1,0 +1,188 @@
+# Frozen pre-registered configuration for the futures-to-ETF delayed price
+# discovery candidate (leadlag_001).
+#
+# Candidate selected by the Cycle 934 evidence-based candidate shortlist
+# (leadlag_001: 16/35, rank 4 of 4; reversal_001 28/35 rank 1,
+# pairs_001 25/35 rank 2, liquidity_001 24/35 rank 3). See
+# research/experiments/candidate_shortlist_934.md and
+# research/hypotheses/leadlag_001.md for the full hypothesis and the
+# evaluation plan.
+#
+# This configuration is FROZEN before any leadlag_001 backtest execution. No
+# leadlag_001 backtest exists in this repository at the time of this freeze.
+# Code revision at freeze: 429e7f5
+#
+# Every measured value below is transcribed from the committed Cycle-934
+# shortlist (research/experiments/candidate_shortlist_934.md and
+# research/candidate_shortlist_934.py) or from the repository's committed
+# cost model, walk-forward design and gate table. No new number and no new
+# claim was introduced by this freeze.
+
+candidate_id: "leadlag_001"
+
+universe:
+  - "CL-F"   # WTI crude oil front month (futures leg)
+  - "GC-F"   # COMEX gold front month (futures leg)
+  - "NG-F"   # Henry Hub natural gas front month (futures leg)
+  - "ZB-F"   # US Treasury bond front month (futures leg)
+  - "USO"    # WTI crude oil ETF (traded leg)
+  - "BNO"    # Brent crude oil ETF (traded leg)
+  - "UNG"    # natural gas ETF (traded leg)
+  - "GSG"    # broad commodity ETF (in the pre-registered universe, in no pair)
+  - "GLD"    # gold ETF (traded leg)
+  - "TLT"    # 20+ year Treasury ETF (traded leg)
+  # GSG is part of the Cycle-934 universe but of none of the five
+  # pre-registered pairs. It is retained in the panel definition so that the
+  # sample is exactly the Cycle-934 complete panel (2,960 sessions, 592
+  # non-overlapping holding-horizon observations).
+
+# The five pre-registered futures-to-ETF pairs (Cycle 934, verbatim).
+pairs:
+  - ["CL-F", "USO"]
+  - ["CL-F", "BNO"]
+  - ["GC-F", "GLD"]
+  - ["NG-F", "UNG"]
+  - ["ZB-F", "TLT"]
+
+signal:
+  type: "futures_lead_lag_sign"
+  # The signal for a pair is the SIGN of the futures contract's trailing
+  # 5-session return: long the ETF leg when the signal is positive, hold
+  # cash otherwise.
+  lookback_sessions: 5          # trailing 5-session total return of the futures leg
+  direction: "sign_of_futures_trailing_return"
+  etf_side: "long_only"         # no short leg, no borrow
+  cash_when_signal_non_positive: true
+  rebalance_every_n_sessions: 5
+  rebalance_anchor: "first_session_of_panel"  # rebalance when (session index mod 5) == 0
+  rebalance_freq: "weekly"
+  rebalances_per_year: 52
+
+portfolio:
+  pair_weight: 0.2              # 1/5 of the book per pair (equal weight across the five pairs)
+  gross_exposure_max: 1.0       # long-only; no leverage, no short leg, no borrow
+  cash_weight_when_flat: 0.0    # the uninvested book earns the benchmark's cash return of 0
+
+risk_overlay:
+  # BASELINE BEFORE COMPLEXITY (AGENTS.md): NO risk overlay.
+  none: true
+
+cost_model:
+  commission_bps: 1.0
+  slippage_bps: 2.0
+  total_round_trip_bps: 3.0  # per unit of weight change
+  risk_free_rate_annual: 0.02 # the cash benchmark's hurdle
+
+execution:
+  signal_lag_days: 1         # weights formed at t are effective at t+1
+  price_field: "Close"       # "Close" (EOD)
+  timezone: "UTC"
+  rebalance_schedule: "every_5_sessions"
+
+history_start: "2015-01-02"  # common start of the ten cached files
+history_end: "2026-10-15"    # common end of the ten cached files
+seed: 42                     # the engine is deterministic; the bootstrap seed
+
+# Data integrity measured at freeze time (2026-10-21, cache-only, no fetch).
+# Reproduced from the committed cache by research/candidate_shortlist_934.py:
+#   union calendar of the ten instruments: 6,098 sessions (TLT from 2002-07-30)
+#   complete cross-section (every instrument has a Close): 2,960 sessions,
+#   2015-01-02 -> 2026-10-15, i.e. 51.46% of the union calendar is NOT covered
+#   (the futures and the ETF legs have different trading calendars)
+#   592 non-overlapping 5-session holding-horizon observations
+#   1 integrity defect row: CL-F has a non-positive close (-37.63) on
+#   2020-04-20 (the front month went negative in 2020)
+#   median annualised volatility of the traded ETF legs: 30.1518%/yr
+#   measured cost hurdle: 1.5600%/yr drag / 30.1518%/yr scale = 5.1738%
+#   effective independent bets (correlation eigenvalues): 2.96
+data:
+  source: "yahoo_finance"
+  cached: true
+  fetch_new: false
+  frequency: "daily"
+  panel_rule: "complete_cross_section_of_the_ten_universe_instruments"
+  common_start: "2015-01-02"
+  common_end: "2026-10-15"
+  sessions: 2960
+  union_calendar_sessions: 6098
+  calendar_churn: 0.5146
+  holding_horizon_observations: 592
+  close_completeness: 1.0
+
+# The data-quality rules that make the frozen signal computable. They are
+# rules, not thresholds: no number below was fitted to any result.
+data_quality:
+  futures_series:
+    - "CL-F"
+    - "GC-F"
+    - "NG-F"
+    - "ZB-F"
+  roll_detector: "research/futures_roll_visibility.py::detect_roll_events"
+  roll_detector_inputs: "the cached futures Volume column (the front contract's volume)"
+  roll_window_rule: >
+    A futures signal at session t is UNUSABLE when the trailing 5-session
+    futures window [t-5, t] contains a detected roll date (the first session
+    of the new front month), because the spliced front-month price jumps
+    there and the roll price is unobservable.
+  roll_window_sessions_per_event: 6   # t = roll, roll+1, ..., roll+5
+  non_positive_close_rule: >
+    A futures signal at session t is UNUSABLE when the trailing 5-session
+    futures window [t-5, t] contains a non-positive close, because the
+    return that spans it is not computable.
+  unusable_signal_action: "flat"     # the pair holds cash from the next session on
+  cl_f_non_positive_close_sessions: 1
+  detected_rolls:                    # measured at freeze with the committed detector
+    CL-F: 127
+    GC-F: 72
+    NG-F: 125
+    ZB-F: 62
+  unusable_signal_sessions:          # measured at freeze with the rules above
+    CL-F: 762
+    GC-F: 432
+    NG-F: 750
+    ZB-F: 368
+
+# Pre-registered evaluation metadata (traceability; not used by the engine)
+evaluation:
+  splits:
+    train_start: "2015-01-02"
+    train_end: "2024-12-31"
+    validation_end: "2025-12-31"
+    test_start: "2026-01-01"
+    test_end: "2026-10-15"
+  walk_forward:
+    train_years: 10
+    test_months: 12
+    step_months: 6
+    purge_days: 21
+    embargo_days: 21
+  promotion_gates:
+    wf_mean_oos_sharpe_min: 0.9
+    positive_fold_rate_min: 0.5
+    pooled_oos_trades_min: 100
+  multiple_testing:
+    total_configs: 5          # the five pre-registered pairs (components of one rule)
+    dsr_method: "compute_dsr"
+    dsr_n_bootstrap: 1000
+    dsr_block_size: 22
+    dsr_seed: 42
+    bootstrap_seed: 20240101
+    n_bootstrap: 2000
+    bootstrap_block_sessions: 22   # the repository's committed monthly block length
+  cost_hurdle:
+    annual_drag_pct: 1.5600        # 52 units of turnover at 3 bp/unit
+    measured_gross_scale_pct: 30.1518   # median annualised volatility of the traded ETF legs
+    required_capture_fraction: 0.051738  # 1.5600% / 30.1518%
+    definition: >
+      The rule must capture at least 5.1738% of the measured gross scale
+      (30.1518%/yr) to cover the 1.5600%/yr cost drag. The realized
+      turnover and the realized drag are MEASURED by the evaluation; the
+      52 units/yr figure is the Cycle-934 one-book-rotation-per-rebalance
+      convention and is quoted as a proxy, not as a measurement.
+  benchmarks:
+    - "cash"                  # the rule is a directional tilt on the ETF leg only
+  falsification_conditions:
+    - "i_wf_mean_oos_sharpe"       # < 0.9 fires
+    - "ii_bootstrap_ci_includes_zero"   # the CI includes zero OR the DSR <= 0 fires
+    - "iii_roll_window_exclusion"  # the excess disappears once the roll windows are excluded
+    - "iv_cl_f_window_carries_excess"  # the excess is carried by the CL-F pairs
