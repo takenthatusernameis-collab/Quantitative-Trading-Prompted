@@ -1,0 +1,71 @@
+# Corrected-path simulation config for the successor live paper-trading record
+# of tsmomentum_spytrend_001 (Cycle 927).
+#
+# This file is a NEW config and is NOT a modification of any committed config.
+# It is byte-for-byte identical to the frozen committed
+# config/simulation_candidate_001.yaml EXCEPT for the single opt-in switch
+# `lag_vol_estimate: true` under `risk_overlay`, which moves the
+# realised-volatility estimate for session t from sessions up to and
+# INCLUDING t (the committed same-session feedback) to sessions up to and
+# INCLUDING t-1 only (no same-session feedback).
+#
+# The committed config/simulation_candidate_001.yaml and
+# config/paper_trading_config.yaml are NOT edited by this cycle. This file
+# exists only to feed the NEW corrected live record
+# (data/processed/paper_trading_state_corrected_001.yaml); it must never
+# feed a committed record, and a computed record must never mix the two
+# paths.
+
+candidate_id: "tsmomentum_spytrend_001"
+
+universe:
+  - "SPY"
+  - "QQQ"
+  - "IWM"
+  - "TLT"
+  - "GLD"
+  - "EFA"
+  - "EEM"
+
+signal:
+  type: "tsmomentum"
+  lookback: 226        # trading days (~12 months)
+  skip: 21             # trading days (~1 month, short-term reversal skip)
+  top_fraction: 0.5    # equal-weight top 50% by momentum
+  rebalance_freq: "monthly"   # signal horizon (~21 trading days)
+
+risk_overlay:
+  vol_target: 0.10     # annualized volatility target
+  vol_lookback: 63     # trailing realized-vol window (trading days)
+  max_leverage: 1.0    # gross exposure cap (no leverage)
+  lag_vol_estimate: true   # <-- the ONLY difference from the committed config
+  dd_control:
+    threshold: 0.15    # drawdown threshold that triggers reduction
+    reduction: 0.5     # exposure multiplier while in drawdown
+
+regime_filter:
+  type: "spy_sma"      # SPY 200-day SMA trend filter
+  window: 200
+  exposure_below: 0.0  # exposure when SPY < SMA (cash)
+  exposure_above: 1.0  # exposure when SPY >= SMA
+
+cost_model:
+  commission_bps: 1.0
+  slippage_bps: 2.0
+  total_round_trip_bps: 3.0
+
+execution:
+  signal_lag_days: 1   # signal computed on T-1 close
+  price_field: "Close" # "Close" (EOD) reproduces the backtest exactly;
+                        # "Open" executes at the T open for prospective studies
+  timezone: "UTC"
+  rebalance_schedule: "daily"  # "daily" = backtest-exact execution;
+                                # "M" = month-end calendar rebalancing
+
+history_start: "1993-01-01"  # earliest price data loaded for signals
+overlay_warmup: "slice"      # "slice": overlay state initializes at start_date
+                             # (Cycle 5 test-period convention);
+                             # "full": overlay state initializes at
+                             # history_start, then sliced (Cycle 6
+                             # walk-forward fold convention)
+seed: 42                     # engine is deterministic; seed reserved
