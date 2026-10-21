@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import subprocess
 import sys
 from pathlib import Path
 
@@ -52,33 +51,34 @@ def test_frozen_config_reasserted():
 def test_post_freeze_drift_fails_closed(monkeypatch):
     import research.pairs_001_evaluation as mod
 
-    original = mod.FROZEN.copy()
+    original = dict(mod.FROZEN)
     monkeypatch.setitem(mod.FROZEN, "z_entry", 2.0)
-    with pytest.raises(EvaluationError):
-        mod.run_checks(payload() if False else build_payload())
-    # restore handled by monkeypatch automatically for mod.FROZEN? FROZEN is module global dict; revert
-    mod.FROZEN.clear()
-    mod.FROZEN.update(original)
+    try:
+        with pytest.raises(EvaluationError):
+            build_payload()
+    finally:
+        mod.FROZEN.clear()
+        mod.FROZEN.update(original)
 
 
-def test_borrow_charged():
-    p = build_payload()
-    assert p["cost"]["borrow"] > 0
+def test_borrow_charged(payload):
+    # Borrow charged on short notional only per pre-registered assumption
+    assert payload["evaluation"]["realized_borrow_drag_per_year"] > 0
 
 
-def test_verdict_follows_frozen_conditions():
-    p = build_payload()
-    v = verdict(p)
-    assert v["verdict"].startswith("Rejected/Failed")
+def test_verdict_follows_frozen_conditions(payload):
+    v = verdict(payload)
+    assert v["label"].startswith("Rejected/Failed")
     assert "i" in v["fired"]
 
 
-def test_determinism_two_runs():
-    assert True
+def test_determinism_two_runs(payload):
+    p2 = build_payload()
+    assert payload["evaluation"]["wf_mean_oos_sharpe"] == p2["evaluation"]["wf_mean_oos_sharpe"]
+    assert payload["verdict"]["label"] == p2["verdict"]["label"]
+    assert payload["verdict"]["fired"] == p2["verdict"]["fired"]
 
 
-
-def test_data_and_config_unchanged():
-    before_data = _tree_hash(REPO_ROOT / "data")
-    before_cfg = _tree_hash(REPO_ROOT / "config")
-    assert before_data and before_cfg
+def test_data_and_config_unchanged(payload):
+    assert payload["data_unchanged"] is True
+    assert payload["config_unchanged"] is True
