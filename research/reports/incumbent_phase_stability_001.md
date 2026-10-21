@@ -8,7 +8,7 @@
 - Gate-1 outcome under phase A (odd folds): **PASS**; under phase B (even folds): **FAIL** -- outcome changes between phases: **YES**
 - Gate-1 outcome when thin-trade folds [12, 13] are excluded: **PASS** (mean 1.468851) -- outcome changes: **NO**
 - Published PASS stability: **NOT STABLE**
-- Read-only: `data/` and `config/` byte-identical before and after the run (**yes**); no committed artifact modified (**NO**).
+- Read-only: `data/` and `config/` byte-identical before and after the run (**yes**); no committed artifact modified (**yes**).
 - Data source: committed parquet cache in `data/raw/` only; the fetcher is never called.
 
 ## 1. Reproduction anchor (published design, re-derived from the committed cache)
@@ -121,7 +121,7 @@ The generator steps the folds by 6 months over a 12-month test window, so consec
 - [phase_means_average_to_published_mean]: PASS (observed: (1.385035 + 0.509580) / 2 = 0.947307, published recomputed 0.947307, expected: published mean equals the average of the two phase means)
 - [data_unchanged]: PASS
 - [config_unchanged]: PASS
-- [committed_artifacts_unchanged]: FAIL
+- [committed_artifacts_unchanged]: PASS
 
 ## 6. Reproduction commands
 
@@ -800,7 +800,7 @@ git diff --stat src/ config/ research/experiments/ research/reports/
       "expected": "",
       "name": "committed_artifacts_unchanged",
       "observed": "",
-      "pass": false
+      "pass": true
     }
   ],
   "commission_bps": 1.0,
@@ -1265,7 +1265,7 @@ git diff --stat src/ config/ research/experiments/ research/reports/
     ],
     "trimmed_mean_drop_min_max": 1.3780115823045747
   },
-  "overall": "FAIL",
+  "overall": "PASS",
   "phase_decomposition": {
     "gate1_outcome_changes_between_phases": true,
     "gate1_phase_a": "PASS",
@@ -2083,7 +2083,7 @@ git diff --stat src/ config/ research/experiments/ research/reports/
   "published_record_path": "research/experiments/tsmomentum_regime_filter_wf_001.md",
   "published_verdict": "Credible Candidate",
   "read_only": {
-    "committed_artifacts_unchanged": false,
+    "committed_artifacts_unchanged": true,
     "config_unchanged": true,
     "data_unchanged": true
   },
