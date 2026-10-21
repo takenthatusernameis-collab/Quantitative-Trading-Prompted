@@ -63,6 +63,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from src.backtest.engine import compute_metrics, get_cost_params, get_risk_free_rate  # noqa: E402
 from src.backtest.rebalance import build_month_end_weights, month_end_sessions  # noqa: E402
+from src.evaluation.risk import realized_vol_scale  # noqa: E402
 from src.evaluation.sharpe import sharpe_ratio  # noqa: E402
 from src.evaluation.utils import fetch_close_prices, max_drawdown  # noqa: E402
 from src.evaluation.walkforward import (  # noqa: E402
@@ -349,12 +350,17 @@ def overlay_weights(
     vol_target: float,
     dd_threshold: float,
     dd_reduction: float,
+    lag_vol_estimate: bool = False,
 ) -> pd.DataFrame:
-    """The incumbent's combined vol-target + drawdown overlay (Cycle 6 / run_cycle19)."""
+    """The incumbent's combined vol-target + drawdown overlay (Cycle 6 / run_cycle19).
+
+    The volatility estimate is computed by the shared
+    ``src.evaluation.risk.realized_vol_scale``.  ``lag_vol_estimate`` selects the
+    same-session estimate (default, the committed behaviour) or the estimate
+    lagged one session; the default path is bit-for-bit unchanged.
+    """
     port_ret = (gated * asset_ret).sum(axis=1)
-    realized_vol = port_ret.rolling(vol_lookback).std() * np.sqrt(252)
-    realized_vol = realized_vol.replace(0, np.nan)
-    vol_scale = (vol_target / realized_vol).clip(upper=1.0).fillna(0.0)
+    vol_scale = realized_vol_scale(port_ret, vol_target, vol_lookback, lag_vol_estimate)
     vol_targeted = gated.mul(vol_scale, axis=0)
     vol_port_ret = (vol_targeted * asset_ret).sum(axis=1)
     cum = (1.0 + vol_port_ret).cumprod()
@@ -448,6 +454,7 @@ def build_macroregime(
     close: pd.DataFrame,
     vix: pd.Series,
     cost_per_trade: float,
+    lag_vol_estimate: bool = False,
 ) -> dict[str, Any]:
     """The execution paths of ``macroregime_001`` (overlay + VIX regime gate)."""
     cfg = load_yaml(CONFIG_MACRO)
@@ -486,6 +493,7 @@ def build_macroregime(
         vol_target=float(overlay_cfg["vol_target"]),
         dd_threshold=float(overlay_cfg["dd_threshold"]),
         dd_reduction=float(overlay_cfg["dd_reduction"]),
+        lag_vol_estimate=lag_vol_estimate,
     )
     legacy_w = legacy_calendar_schedule(combined)
     faithful_w, segments = faithful_schedule(combined, mask)

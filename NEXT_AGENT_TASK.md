@@ -1,51 +1,51 @@
 # NEXT_AGENT_TASK.md
 
-## Cycle 927 — One implementation of the volatility estimate everywhere it is still inlined, and the corrected successor backtest record for the incumbent
+## Cycle 927 — COMPLETE (evidence below)
 
-### Context
-Cycle 926 made the same-session volatility estimate correctable and measured the correction on the incumbent (`research/reports/tsmomentum_same_session_vol_correction_001.md`, `research/experiments/tsmomentum_same_session_vol_correction_001.md`):
+### What was done
+Cycle 927 consolidated the same-session volatility estimate onto one shared implementation behind a default-off `lag_vol_estimate` switch in all seven research scripts that inlined it, and published the incumbent's corrected backtest as a new labelled successor reference.
 
-- A **default-off, opt-in** switch `lag_vol_estimate` now exists in the three code paths that carried the defect (`src/evaluation/risk.py` — one shared `realized_vol_scale` implementation used by both overlay helpers, `src/simulation/engine.py` via `SimulationConfig.lag_vol_estimate`, and `research/run_cycle6.py`). The default is a **code** default: no config file sets it, and the default path is **bit-identical** (max |diff| = 0.0) to a frozen copy of the pre-change implementation in all four comparisons (research path net returns *and* combined weights, simulation path weights *and* `vol_scale`, both risk-overlay helpers).
-- The **corrected path is worse on every record-level statistic**: canonical Sharpe 1.771084 -> 1.635705, trailing 63-session Sharpe -0.448918 -> -0.515807, PSR vs 1.4178 0.695606 -> 0.623929, max DD -4.9857% -> -5.1057%. The production gate table is **NO-GO** on both paths with the same failed gates (`rolling_63d_sharpe`, `psr`).
-- The corrected 48-fold mean (**1.318605**) is **higher only because a numerical artefact disappears**: the published path's fold 12 (-21.829879) is 242/244 flat sessions scored by the backtest-scale estimator `(CAGR - 2%) / ann_vol`, and on the corrected path the same segment is 244/244 flat and scores 0.000000. On the strictest comparable statistic (both paths with fold 12 excluded) the corrected path is **lower**: 1.346660 vs 1.431928.
-- The corrected path's own 2018-2026 backtest reference is **1.335983** (published 1.417752, reproduced with all eight documented values of `research/run_cycle7.py::DOCUMENTED` on the 2026-10-09 vintage). The fixed PSR reference 1.4178 was **not** restated.
-- **Blast radius, measured**: 11 code paths compute the same-session estimate (3 shared + 8 research scripts, of which **7 still inline it**), and **61 distinct committed files** quote at least one of the affected statistics (51 quote the walk-forward mean 0.9473, 13 the trailing Sharpe 0.448918, 7 the record Sharpe 1.771084, 5 the full-path Sharpe 1.486941).
-- **Decision recommendation (published, not executed): adopt only for new live paper-trading records.** The published backtest artefacts stay as they are; a corrected live record would have to be **started fresh** (the `track_record_length` gate needs 126 sessions) and would face a stricter PSR bar than its own path's backtest.
+**Implementation consolidation (verified, 16/16 per-script checks):**
+- `research/run_cycle5.py` — `_apply_overlay` now calls `realized_vol_scale(..., lag_vol_estimate=False)`, default path bit-identical (max |diff| = 0.0)
+- `research/run_cycle13.py`, `run_cycle15.py`, `run_cycle15_c4_corrected.py`, `run_cycle18.py`, `run_cycle19.py` — `_incumbent_overlay` routed through `realized_vol_scale`, default path bit-identical
+- `research/run_cycle19.build_overlay_weights` — threads `lag_vol_estimate=False`, bit-identical
+- `research/month_end_candidate_reaudit.py` — `overlay_weights` routed through `realized_vol_scale`, default path bit-identical
+- **Zero** remaining inline same-session exposure estimates (`vol_target / realized_vol`) in any of the seven scripts
+- Switch defaults off everywhere (`SimulationConfig()`, `from_yaml`, `PaperTradingConfig`); no config file mentions the switch
 
-### Objective
-Close the **implementation gap** the blast radius measured, and publish the **corrected successor record** the recommendation depends on, in one bounded cycle: make every code path that still inlines the same-session estimate route through the **one** shared implementation behind the **same** default-off switch, and publish the incumbent's corrected backtest as a new, clearly labelled **successor reference** that supersedes nothing.
+**Corrected successor record published (supersedes nothing):**
+- New report: `research/reports/tsmomentum_vol_estimate_consolidation_001.md`
+- New experiment record: `research/experiments/tsmomentum_vol_estimate_consolidation_001.md`
+- Anchor reproduced: published 48-fold WF mean 0.947307, committed 450 sessions (max |diff| = 5.4e-20), published 2018-2026 baseline 1.4178
+- Corrected path: canonical Sharpe 1.771084 -> 1.635705, trailing 63d -0.448918 -> -0.515807, PSR 0.695606 -> 0.623929, decision NO-GO on both paths
+- Corrected 48-fold mean 1.318605 (artefact fold caveat: comparable statistic 1.346660 vs 1.431928, lower)
+- Corrected path's own 2018-2026 backtest reference 1.335983 (vs unchanged 1.4178)
+- Read-only: `data/` and `config/` byte-identical; no committed artifact modified
 
-### Acceptance criteria
-1. **Fail-closed reproduction anchor (unchanged from Cycle 926).** Before publishing anything, reproduce the incumbent's published artefacts on the **default** path exactly as committed: the 48-fold walk-forward mean OOS Sharpe **0.947307** (all 48 published folds: test windows exactly, OOS Sharpe to the published precision, trade counts exactly), the committed paper-trading record's **450** sessions, the committed trailing 63-session Sharpe **-0.448918**, and the published 2018-2026 backtest baseline **1.4178** with all eight documented values of `research/run_cycle7.py::DOCUMENTED` (on the 2026-10-09 vintage). Fail closed on any mismatch.
-2. **One implementation, one switch.** The seven research scripts that still inline the same-session estimate (`research/run_cycle5.py`, `research/run_cycle13.py`, `research/run_cycle15.py`, `research/run_cycle15_c4_corrected.py`, `research/run_cycle18.py`, `research/run_cycle19.py`, `research/month_end_candidate_reaudit.py`) must call the shared `src/evaluation/risk.py::realized_vol_scale` and accept the same `lag_vol_estimate` switch (**default off**). Their **default** paths must stay bit-identical (max |diff| = 0.0) to their pre-change implementations — pinned per script, not asserted. After the change the inventory must show **0** remaining inline same-session estimates in any production or research path; the only permitted copies are the **frozen pre-change reference implementations** that pin the bit-identity (in the Cycle 926 tool and its test), and they must be labelled as such.
-3. **Read-only with respect to `data/` and `config/`.** `config/promotion_gates.yaml`, `config/paper_trading_config.yaml`, `config/simulation_candidate_001.yaml` and everything under `data/` must remain byte-identical (SHA-256 before/after). The switch's default must not be set through a config-file edit, and no config file may mention the switch.
-4. **Corrected successor record (new artefact, nothing overwritten).** A **new** experiment record (e.g. `research/experiments/tsmomentum_regime_filter_wf_corrected_001.md`) plus its report publishes, for the corrected path: the 48-fold table (per fold and aggregate, with **and** without the numerical-artefact fold), the corrected SMA-window plateau table (the 6 pre-specified windows of the published record), the corrected 2018-2026 test-period statistics (**1.335983**), and the corrected record-level statistics and production gate table. Every section must state that it is a **successor reference that supersedes nothing** and must carry the artefact-fold caveat (the corrected all-fold mean 1.318605 is inflated by a flat fold scoring 0.000000; the comparable statistic is 1.346660 vs 1.431928). The published record `research/experiments/tsmomentum_regime_filter_wf_001.md`, the committed paper-trading state and every other committed record must be **byte-identical** before and after.
-5. **The live-record start procedure is specified, not executed.** Publish an explicit, executable specification for starting a corrected live paper-trading record: the exact configuration change, the new state file path, the re-initialised drift flags and gate table, the restart cost (126 sessions for `track_record_length`), the statement that the committed record is not modified, and the PSR-reference consequence (the corrected path's own backtest reference is 1.335983, so the unchanged 1.4178 is a **stricter** bar). **No** live record is started, no state file is written, and the fetcher is never called in this cycle.
-6. **Honest accounting.** State explicitly that the successor record does **not** promote, rescue or re-score the incumbent: the decision stays **NO-GO**, the incumbent stays a **Credible Candidate**, and the corrected numbers are **lower** on every record-level statistic. The corrected walk-forward mean must never be presented without the fold-level table and the artefact caveat.
-7. **Evidence artifacts and tests.** A new report under `research/reports/` and a new experiment record under `research/experiments/` documenting the anchor, the implementation consolidation (per script, with the bit-identity numbers), the successor record, the start procedure, the decision and the reproduction commands; plus tests that pin the per-script default bit-identity, the anchor reproduction, the absence of any remaining inline same-session estimate, the byte-identity of every committed artefact and the read-only guarantee.
-8. **No scope creep.** No gate, threshold, universe, cost model, Sharpe convention, parameter, hypothesis or drift-flag change; no candidate selection, re-fit or re-ranking; no live trading, no scheduled job, no new dependency; the fetcher is never called; the shortlist (`research/reports/opportunity_shortlist.md`) and the promotion decision are **not** re-stated in this cycle.
+**Tests:** `tests/test_tsmomentum_vol_estimate_consolidation.py` — 24 passed.
 
-### Scope boundaries
-- `src/` may be touched only to consolidate the volatility-estimate implementation and to add the switch to the scripts that need it; the default behaviour of every existing call site must not change.
-- `research/run_cycle5.py`, `run_cycle13.py`, `run_cycle15.py`, `run_cycle15_c4_corrected.py`, `run_cycle18.py`, `run_cycle19.py` and `month_end_candidate_reaudit.py` may be touched **only** to route through the shared implementation and to accept the default-off switch.
-- `data/` and `config/` are read-only; no paper-trading state is written and no live record is started.
-- New files under `research/reports/` and `research/experiments/` may be written; existing committed records may not be overwritten.
-- Do not re-derive the committed paper-trading state, the shortlist scores or the promotion decision — the task is to make the corrected path **executable everywhere and published once**, not to adopt it.
+**Incumbent unchanged:** Credible Candidate (published verdict), NO-GO promotion decision (unchanged).
 
-### Validation commands
+### Next task (bounded)
+Execute the corrected live paper-trading record start procedure specified in Cycle 927 section 4:
+- Create a new config file (not editing committed configs) with `lag_vol_estimate: true`
+- Start a new state file `data/processed/paper_trading_state_corrected_001.yaml` with re-initialised drift flags and gate table
+- The `track_record_length` gate requires 126 sessions, so promotion evidence restarts from zero
+- The corrected path's own backtest reference is 1.335983; the unchanged PSR reference 1.4178 is stricter
+- No live trading, no fetcher call, no committed record modified, no config edit to committed files
+
+This follows from the Cycle 927 evidence: the procedure was specified but not executed, and the next bounded step is to execute it so the corrected path has a live record to measure against.
+
+## Validation commands
 ```bash
-python research/tsmomentum_same_session_vol_correction.py --no-report   # Cycle 926 anchor still reproduces
+python research/tsmomentum_vol_estimate_consolidation.py --no-report
+python -m pytest -q tests/test_tsmomentum_vol_estimate_consolidation.py
 python -m pytest -q tests/test_tsmomentum_same_session_vol_correction.py
-python -m pytest -q
 git status --porcelain data/ config/
-git diff --stat src/ research/run_cycle5.py research/run_cycle13.py research/run_cycle15.py \
-  research/run_cycle15_c4_corrected.py research/run_cycle18.py research/run_cycle19.py \
-  research/month_end_candidate_reaudit.py
 ```
 
-### Evidence artifacts
-- New report under `research/reports/` and new experiment record under `research/experiments/` for Cycle 927.
-- A per-script table: script, the inline estimate before, the shared call after, and the default-path max |diff| (0.0) — plus the "0 remaining inline estimates" inventory result.
-- The corrected successor record: 48-fold table, plateau table, test-period statistics, record statistics, gate table, each labelled as a successor reference with the artefact caveat.
-- The live-record start procedure (specification, with the restart cost and the PSR-reference consequence).
-- The reproduction commands with their observed outputs.
+## Scope boundaries
+- `data/` and `config/` read-only except the new state file and new config file for the corrected record
+- No committed record, committed config, or committed paper-trading state may be modified
+- No live trading, no fetcher call, no new dependency
+- The committed record stays published and NO-GO; the corrected record starts fresh (126 sessions)

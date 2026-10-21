@@ -52,6 +52,7 @@ from src.backtest.engine import (
     get_cost_params,
     get_risk_free_rate,
 )
+from src.evaluation.risk import realized_vol_scale
 from src.evaluation.statistics import compute_dsr, compute_pbo, compute_psr
 from src.evaluation.utils import (
     annualize_return,
@@ -283,17 +284,23 @@ def eval_equal_weight(
 def _incumbent_overlay(
     gated: pd.DataFrame,
     asset_ret: pd.DataFrame,
+    lag_vol_estimate: bool = False,
 ) -> pd.DataFrame:
     """Combined vol-targeting (10%) + drawdown control (15%).
 
     Replicates Cycle 6's ``_apply_overlay`` / the simulation engine's
     ``_target_weights``: vol-scale on the regime-gated weights, then
     drawdown scale on the vol-targeted portfolio.
+
+    ``lag_vol_estimate`` selects the same-session volatility estimate (default,
+    the committed behaviour) or the estimate lagged one session, computed by
+    the shared ``src.evaluation.risk.realized_vol_scale``.  The default path is
+    bit-for-bit unchanged.
     """
     port_ret = (gated * asset_ret).sum(axis=1)
-    realized_vol = port_ret.rolling(INCUMBENT["vol_lookback"]).std() * np.sqrt(252)
-    realized_vol = realized_vol.replace(0, np.nan)
-    vol_scale = (INCUMBENT["vol_target"] / realized_vol).clip(upper=1.0).fillna(0.0)
+    vol_scale = realized_vol_scale(
+        port_ret, INCUMBENT["vol_target"], INCUMBENT["vol_lookback"], lag_vol_estimate
+    )
     vol_targeted = gated.mul(vol_scale, axis=0)
 
     vol_port_ret = (vol_targeted * asset_ret).sum(axis=1)
@@ -311,6 +318,7 @@ def eval_incumbent(
     start_date: str,
     end_date: str,
     warmup: str = "full",
+    lag_vol_estimate: bool = False,
 ) -> tuple[pd.Series, pd.DataFrame]:
     """Incumbent TSMOM benchmark (tsmomentum_spytrend_001).
 
@@ -348,12 +356,12 @@ def eval_incumbent(
     if warmup == "slice":
         sim_ret = daily_ret.loc[mask]
         sim_gated = gated.loc[mask]
-        combined = _incumbent_overlay(sim_gated, sim_ret)
+        combined = _incumbent_overlay(sim_gated, sim_ret, lag_vol_estimate=lag_vol_estimate)
         wc = combined.diff().abs().sum(axis=1)
         net_ret = (combined * sim_ret).sum(axis=1) - wc * TOTAL_COST
         return net_ret, combined
 
-    combined = _incumbent_overlay(gated, daily_ret)
+    combined = _incumbent_overlay(gated, daily_ret, lag_vol_estimate=lag_vol_estimate)
     wc = combined.diff().abs().sum(axis=1)
     net_ret = (combined * daily_ret).sum(axis=1) - wc * TOTAL_COST
     return net_ret[mask], combined[mask]

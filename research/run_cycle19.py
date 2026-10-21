@@ -38,6 +38,7 @@ from src.backtest.engine import (
     get_cost_params,
     get_risk_free_rate,
 )
+from src.evaluation.risk import realized_vol_scale
 from src.evaluation.statistics import (
     block_bootstrap_sharpe,
     compute_dsr,
@@ -169,16 +170,22 @@ def _net_returns(
 def _incumbent_overlay(
     gated: pd.DataFrame,
     asset_ret: pd.DataFrame,
+    lag_vol_estimate: bool = False,
 ) -> pd.DataFrame:
     """Combined vol-targeting (10%) + drawdown control (15%).
 
     Replicates Cycle 6's overlay: vol-scale on the regime-gated weights,
     then drawdown scale on the vol-targeted portfolio.
+
+    ``lag_vol_estimate`` selects the same-session volatility estimate (default,
+    the committed behaviour) or the estimate lagged one session, computed by
+    the shared ``src.evaluation.risk.realized_vol_scale``.  The default path is
+    bit-for-bit unchanged.
     """
     port_ret = (gated * asset_ret).sum(axis=1)
-    realized_vol = port_ret.rolling(BASELINE["vol_lookback"]).std() * np.sqrt(252)
-    realized_vol = realized_vol.replace(0, np.nan)
-    vol_scale = (BASELINE["vol_target"] / realized_vol).clip(upper=1.0).fillna(0.0)
+    vol_scale = realized_vol_scale(
+        port_ret, BASELINE["vol_target"], BASELINE["vol_lookback"], lag_vol_estimate
+    )
     vol_targeted = gated.mul(vol_scale, axis=0)
 
     vol_port_ret = (vol_targeted * asset_ret).sum(axis=1)
@@ -200,6 +207,7 @@ def build_overlay_weights(
     vix_threshold: float,
     vix_exposure: float,
     spy_sma_window: int = 200,
+    lag_vol_estimate: bool = False,
 ) -> pd.DataFrame:
     """Compute regime-gated weights for one configuration.
 
@@ -228,7 +236,7 @@ def build_overlay_weights(
     gated = gated.mul(vix_exposure_mult, axis=0)
 
     # Combined vol+dd overlay
-    combined = _incumbent_overlay(gated, daily_ret)
+    combined = _incumbent_overlay(gated, daily_ret, lag_vol_estimate=lag_vol_estimate)
     weights_out = _apply_monthly_schedule(combined)
     return weights_out
 
@@ -241,11 +249,13 @@ def eval_config(
     top_fraction: float,
     vix_threshold: float,
     vix_exposure: float,
+    lag_vol_estimate: bool = False,
 ) -> dict:
     """Evaluate one VIX-gate configuration on the pre-registered splits."""
     weights = build_overlay_weights(
         close, vix, lookback, skip, top_fraction,
         vix_threshold, vix_exposure,
+        lag_vol_estimate=lag_vol_estimate,
     )
     net_ret, weights_a, gross_ret, turnover = _net_returns(close, weights)
 
@@ -630,6 +640,7 @@ def eval_incumbent(
     start_date: str,
     end_date: str,
     warmup: str = "full",
+    lag_vol_estimate: bool = False,
 ) -> tuple[pd.Series, pd.DataFrame]:
     """Incumbent benchmark (tsmomentum_spytrend_001): SPY trend filter +
     vol+dd overlay, NO VIX gate (vix_exposure=1.0).
@@ -650,13 +661,13 @@ def eval_incumbent(
     if warmup == "slice":
         sim_ret = daily_ret.loc[mask]
         sim_gated = gated.loc[mask]
-        combined = _incumbent_overlay(sim_gated, sim_ret)
+        combined = _incumbent_overlay(sim_gated, sim_ret, lag_vol_estimate=lag_vol_estimate)
         combined = _apply_monthly_schedule(combined)
         wc = combined.diff().abs().sum(axis=1)
         net_ret = (combined * sim_ret).sum(axis=1) - wc * TOTAL_COST
         return net_ret, combined
 
-    combined = _incumbent_overlay(gated, daily_ret)
+    combined = _incumbent_overlay(gated, daily_ret, lag_vol_estimate=lag_vol_estimate)
     weights_out = _apply_monthly_schedule(combined)
     wc = weights_out.diff().abs().sum(axis=1)
     net_ret = (weights_out * daily_ret).sum(axis=1) - wc * TOTAL_COST

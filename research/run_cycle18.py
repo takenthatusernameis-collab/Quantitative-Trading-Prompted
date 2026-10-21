@@ -25,6 +25,7 @@ from src.backtest.engine import (
     get_cost_params,
     get_risk_free_rate,
 )
+from src.evaluation.risk import realized_vol_scale
 from src.evaluation.statistics import compute_dsr, compute_pbo, compute_psr
 from src.evaluation.utils import (
     fetch_close_prices,
@@ -244,11 +245,15 @@ def eval_equal_weight(close: pd.DataFrame, start_date: str, end_date: str) -> tu
 from src.features.momentum import build_weights as build_mom_weights
 
 
-def _incumbent_overlay(gated: pd.DataFrame, asset_ret: pd.DataFrame) -> pd.DataFrame:
+def _incumbent_overlay(
+    gated: pd.DataFrame,
+    asset_ret: pd.DataFrame,
+    lag_vol_estimate: bool = False,
+) -> pd.DataFrame:
     port_ret = (gated * asset_ret).sum(axis=1)
-    realized_vol = port_ret.rolling(INCUMBENT["vol_lookback"]).std() * np.sqrt(252)
-    realized_vol = realized_vol.replace(0, np.nan)
-    vol_scale = (INCUMBENT["vol_target"] / realized_vol).clip(upper=1.0).fillna(0.0)
+    vol_scale = realized_vol_scale(
+        port_ret, INCUMBENT["vol_target"], INCUMBENT["vol_lookback"], lag_vol_estimate
+    )
     vol_targeted = gated.mul(vol_scale, axis=0)
     vol_port_ret = (vol_targeted * asset_ret).sum(axis=1)
     cum = (1 + vol_port_ret).cumprod()
@@ -259,7 +264,7 @@ def _incumbent_overlay(gated: pd.DataFrame, asset_ret: pd.DataFrame) -> pd.DataF
     return gated.mul(vol_scale * dd_scale, axis=0)
 
 
-def eval_incumbent(close_core: pd.DataFrame, start_date: str, end_date: str, warmup: str = "full") -> tuple[pd.Series, pd.DataFrame]:
+def eval_incumbent(close_core: pd.DataFrame, start_date: str, end_date: str, warmup: str = "full", lag_vol_estimate: bool = False) -> tuple[pd.Series, pd.DataFrame]:
     lb = INCUMBENT["lookback"]; sk = INCUMBENT["skip"]; tf = INCUMBENT["top_fraction"]
     weights = build_mom_weights(close_core, lookback=lb, skip=sk, top_fraction=tf)
     common = close_core.index.intersection(weights.index)
@@ -275,11 +280,11 @@ def eval_incumbent(close_core: pd.DataFrame, start_date: str, end_date: str, war
     mask = (close_a.index >= start_ts) & (close_a.index <= end_ts)
     if warmup == "slice":
         sim_ret = daily_ret.loc[mask]; sim_gated = gated.loc[mask]
-        combined = _incumbent_overlay(sim_gated, sim_ret)
+        combined = _incumbent_overlay(sim_gated, sim_ret, lag_vol_estimate=lag_vol_estimate)
         wc = combined.diff().abs().sum(axis=1)
         net_ret = (combined * sim_ret).sum(axis=1) - wc * TOTAL_COST
         return net_ret, combined
-    combined = _incumbent_overlay(gated, daily_ret)
+    combined = _incumbent_overlay(gated, daily_ret, lag_vol_estimate=lag_vol_estimate)
     wc = combined.diff().abs().sum(axis=1)
     net_ret = (combined * daily_ret).sum(axis=1) - wc * TOTAL_COST
     return net_ret[mask], combined[mask]

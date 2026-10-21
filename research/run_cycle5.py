@@ -37,6 +37,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.backtest.engine import compute_metrics, get_cost_params, get_risk_free_rate
 from src.data.yfinance_fetcher import fetch_universe
+from src.evaluation.risk import realized_vol_scale
 from src.features.momentum import build_weights
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -118,12 +119,19 @@ def _apply_overlay(
     commission_bps: float = COMMISSION_BPS,
     slippage_bps: float = SLIPPAGE_BPS,
     rf_annual: float = RF_ANNUAL,
+    lag_vol_estimate: bool = False,
 ) -> tuple[pd.DataFrame, pd.Series, dict]:
     """Replicate src.evaluation.risk.combined_risk_overlay exactly, but return
     the final combined weights for trade-counting / regime segmentation.
 
     exposure_factor (optional pd.Series aligned to the weight index) multiplies
-    the base momentum weights BEFORE the overlay (regime filter on exposure)."""
+    the base momentum weights BEFORE the overlay (regime filter on exposure).
+
+    ``lag_vol_estimate`` selects the same-session volatility estimate (default,
+    the committed behaviour) or the estimate lagged one session, computed by
+    the shared ``src.evaluation.risk.realized_vol_scale``.  The default path is
+    bit-for-bit unchanged.
+    """
     weights = base_weights.copy()
     if exposure_factor is not None:
         ef = exposure_factor.reindex(weights.index).fillna(0.0)
@@ -131,11 +139,11 @@ def _apply_overlay(
 
     daily_ret = asset_ret.copy()
 
-    # Step 1: volatility targeting
+    # Step 1: volatility targeting (shared implementation; same-session by default)
     port_ret = (weights * daily_ret).sum(axis=1)
-    realized_vol = port_ret.rolling(VOL_TARGET_LOOKBACK).std() * np.sqrt(252)
-    realized_vol = realized_vol.replace(0, np.nan)
-    vol_scale = (vol_target / realized_vol).clip(upper=1.0).fillna(0.0)
+    vol_scale = realized_vol_scale(
+        port_ret, vol_target, VOL_TARGET_LOOKBACK, lag_vol_estimate
+    )
     vol_targeted_weights = weights.mul(vol_scale, axis=0)
 
     # Step 2: drawdown control on the vol-targeted portfolio
@@ -168,11 +176,16 @@ def _apply_overlay(
     return combined_weights, net_ret, metrics
 
 
-def _eval_config(close: pd.DataFrame, exposure_factor: pd.Series | None = None) -> dict:
+def _eval_config(
+    close: pd.DataFrame,
+    exposure_factor: pd.Series | None = None,
+    lag_vol_estimate: bool = False,
+) -> dict:
     """Evaluate the best Cycle 4 config on the test period.
 
     Returns full-period base weights/returns plus test-period combined-overlay
-    net returns, combined weights, and metrics."""
+    net returns, combined weights, and metrics.
+    """
     weights = build_weights(close, lookback=LOOKBACK, skip=SKIP, top_fraction=TOP_FRACTION)
     common = close.index.intersection(weights.index)
     close_a = close.loc[common]
@@ -183,7 +196,12 @@ def _eval_config(close: pd.DataFrame, exposure_factor: pd.Series | None = None) 
     test_asset_ret = daily_ret[test_mask]
     test_weights = weights_a[test_mask]
 
-    cw, net_ret_test, metrics_test = _apply_overlay(test_asset_ret, test_weights, exposure_factor)
+    cw, net_ret_test, metrics_test = _apply_overlay(
+        test_asset_ret, test_weights, exposure_factor,
+        vol_target=VOL_TARGET, dd_threshold=DD_THRESHOLD,
+        commission_bps=COMMISSION_BPS, slippage_bps=SLIPPAGE_BPS, rf_annual=RF_ANNUAL,
+        lag_vol_estimate=lag_vol_estimate,
+    )
 
     return {
         "close": close_a,
