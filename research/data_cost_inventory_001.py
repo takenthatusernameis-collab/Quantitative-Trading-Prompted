@@ -100,6 +100,66 @@ COST_COMPONENTS = (
     ("margin", ("margin",)),
 )
 
+#: The components whose presence in a configuration file is a *price*. The
+#: first five are the shared cost model and are matched by name; the six gap
+#: components below are matched by the stricter rule in
+#: :func:`_prices_component`, so that a key which merely names a component
+#: (for example ``data_quality.roll_detector``) is not counted as a price.
+COST_GAP_COMPONENTS = (
+    "bid_ask_spread",
+    "borrow",
+    "roll",
+    "market_impact",
+    "latency",
+    "margin",
+)
+
+#: Words that turn a component name into a price. A key prices a component
+#: when the component is the subject of one of them (``roll_cost``,
+#: ``borrow_bps``) or when the key *is* the component (``bid_ask_spread``).
+COST_VALUE_WORDS = frozenset(
+    {
+        "cost",
+        "costs",
+        "price",
+        "prices",
+        "bps",
+        "bp",
+        "fee",
+        "fees",
+        "rate",
+        "spread",
+        "premium",
+        "discount",
+        "notional",
+    }
+)
+
+
+def _prices_component(key_path: str, needle: str) -> bool:
+    """True when a configuration key prices the given cost component.
+
+    The key must name the component and the name must be the subject of a
+    cost term (``roll_cost``, ``borrow_bps``), or the key must *be* the
+    component (``bid_ask_spread``). A key that only names the component as
+    part of a rule (``roll_detector``, ``roll_window_sessions_per_event``)
+    describes the rule, not a price.
+    """
+    words = [word for word in re.split(r"[._\-]+", key_path.lower()) if word]
+    for position, word in enumerate(words):
+        if word != needle:
+            continue
+        if position + 1 == len(words):
+            return True
+        if words[position + 1] in COST_VALUE_WORDS:
+            return True
+    return False
+
+
+def _is_number(value: Any) -> bool:
+    """True when a configuration value is a number (not a boolean)."""
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
 # ---------------------------------------------------------------------------
 # Candidate definitions
 # ---------------------------------------------------------------------------
@@ -715,11 +775,19 @@ def build_cost_model() -> dict[str, Any]:
         for key, value in leaves:
             lowered = key.lower()
             for component, needles in COST_COMPONENTS:
-                if any(needle in lowered for needle in needles):
-                    config_entries.append(
-                        {"file": path.name, "key": key, "value": value, "component": component}
-                    )
-                    break
+                if not any(needle in lowered for needle in needles):
+                    continue
+                if component in COST_GAP_COMPONENTS:
+                    # A gap component counts as priced only when the key names
+                    # it as the subject of a cost term and carries a number.
+                    if not any(
+                        _prices_component(key, needle) for needle in needles
+                    ) or not _is_number(value):
+                        continue
+                config_entries.append(
+                    {"file": path.name, "key": key, "value": value, "component": component}
+                )
+                break
 
     component_coverage: dict[str, list[dict[str, Any]]] = {}
     for component, _ in COST_COMPONENTS:
@@ -1283,14 +1351,56 @@ def render_report(payload: dict[str, Any]) -> str:
         else:
             lines.append(f"| {component} | **NOT CONFIGURED** | — |")
     lines.append("")
+    gap_components = [
+        component for component in COST_GAP_COMPONENTS if not cost["component_coverage"][component]
+    ]
+    priced_elsewhere = [
+        component for component in COST_GAP_COMPONENTS if cost["component_coverage"][component]
+    ]
+    gap_names = {
+        "bid_ask_spread": "bid-ask spread",
+        "borrow": "borrow / short-sale cost",
+        "roll": "futures roll cost",
+        "market_impact": "market impact",
+        "latency": "latency",
+        "margin": "margin",
+    }
     lines.append(
-        "**Measured cost gaps.** Six components that a credible net-of-cost evaluation would need "
-        "have **no configuration key at all**: bid-ask spread, borrow / short-sale cost, futures "
-        "roll cost, market impact, latency and margin. Consequences that bind today: (i) the "
+        f"**Measured cost gaps.** {len(gap_components)} components that a credible "
+        "net-of-cost evaluation would need have **no configuration key at all**: "
+        + ", ".join(gap_names[component] for component in gap_components)
+        + "."
+    )
+    if priced_elsewhere:
+        lines.append("")
+        lines.append(
+            "Components priced **outside** the shared cost model (a candidate's own "
+            "pre-registered assumption, not part of `config/settings.yaml` and not "
+            "applied to any other candidate): "
+            + "; ".join(
+                f"**{component}** -> "
+                + ", ".join(
+                    f"`{entry['file']}:{entry['key']}` = {entry['value']}"
+                    for entry in cost["component_coverage"][component]
+                )
+                for component in priced_elsewhere
+            )
+            + ". A key that only *names* a component (for example the module that "
+            "detects a roll) describes a rule, not a price, and is not counted as one."
+        )
+    lines.append("")
+    lines.append(
+        "Consequences that bind today: (i) the "
         "flat 2 bps slippage is the *entire* execution-cost model, so any claim of an edge below "
-        "roughly 3 bps per unit of turnover is inside the model's own uncertainty; (ii) a "
-        "short-side or lending candidate cannot be costed at all; (iii) a futures roll candidate "
-        "cannot be charged for the roll."
+        "roughly 3 bps per unit of turnover is inside the model's own uncertainty; (ii) "
+        + (
+            "a short-side or lending candidate is costed only by the candidate's own "
+            "pre-registered assumption, never by the shared model; (iii) a futures roll candidate "
+            "cannot be charged for the roll."
+            if "borrow" not in gap_components
+            else "a short-side or lending candidate cannot be costed at all; (iii) a futures roll candidate "
+            "cannot be charged for the roll."
+        )
     )
     lines.append("")
 

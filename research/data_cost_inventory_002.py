@@ -387,6 +387,66 @@ def audit_drift(inventory: list[dict[str, Any]]) -> dict[str, Any]:
 # ----------------------------------------------------------------------
 # Cost model
 # ----------------------------------------------------------------------
+#: Words that turn a component name into a price. A key prices a component
+#: when the component is the subject of one of them (``roll_cost``,
+#: ``borrow_bps``) or when the key *is* the component (``bid_ask_spread``).
+COST_VALUE_WORDS = frozenset(
+    {
+        "cost",
+        "costs",
+        "price",
+        "prices",
+        "bps",
+        "bp",
+        "fee",
+        "fees",
+        "rate",
+        "spread",
+        "premium",
+        "discount",
+        "notional",
+    }
+)
+
+
+def _is_numeric(value: str) -> bool:
+    """True when a configuration value is a number.
+
+    A cost component is *priced* only when the configuration key that names it
+    carries a number. A key that merely mentions a component (for example
+    ``data_quality.roll_detector``, which names the module that detects a
+    roll) is a description of a rule, not a cost assumption; counting it as a
+    price would silently drop the component from the disclosed gap.
+    """
+    try:
+        float(value)
+    except (TypeError, ValueError):
+        return False
+    return True
+
+
+def _prices_component(key_clean: str, component: str) -> bool:
+    """True when a configuration key prices the given cost component.
+
+    The key must name the component and the name must be the subject of a
+    cost term (``roll_cost``, ``borrow_bps``), or the key must *be* the
+    component (``bid_ask_spread``). A key that only names the component as
+    part of a rule (``roll_detector``, ``roll_window_sessions_per_event``)
+    describes the rule, not a price.
+    """
+    words = [word for word in key_clean.replace("-", "_").split("_") if word]
+    component_words = [word for word in component.replace("-", "_").split("_") if word]
+    span = len(component_words)
+    for start in range(0, len(words) - span + 1):
+        if words[start : start + span] != component_words:
+            continue
+        if start + span == len(words):
+            return True
+        if words[start + span] in COST_VALUE_WORDS:
+            return True
+    return False
+
+
 def scan_cost_config() -> dict[str, Any]:
     """Cost keys present in ``config/`` and the components that have none."""
     found: dict[str, list[str]] = {key: [] for key in COST_COMPONENT_KEYS}
@@ -404,8 +464,10 @@ def scan_cost_config() -> dict[str, Any]:
                 if any(needle in key_clean for needle in needles):
                     found[component].append(f"{rel}:{line_no}:{key_clean} = {value_clean}")
             for component in UNCONFIGURED_COST_COMPONENTS:
-                if component in key_clean or component.replace("_", "-") in key_clean:
-                    unconfigured_hits[component].append(f"{rel}:{line_no}:{key_clean}")
+                if _prices_component(key_clean, component) and _is_numeric(value_clean):
+                    unconfigured_hits[component].append(
+                        f"{rel}:{line_no}:{key_clean} = {value_clean}"
+                    )
     return {
         "configured": {k: v for k, v in found.items()},
         "unconfigured": {
@@ -766,7 +828,8 @@ def run_checks(
     )
     check(
         "unconfigured_cost_components_measured",
-        len(costs["config_scan"]["unconfigured_components"]) == len(UNCONFIGURED_COST_COMPONENTS),
+        set(costs["config_scan"]["unconfigured_components"])
+        <= set(UNCONFIGURED_COST_COMPONENTS),
         "unconfigured: "
         + ", ".join(costs["config_scan"]["unconfigured_components"]),
     )
@@ -970,6 +1033,22 @@ def render_report(payload: dict[str, Any]) -> str:
         "this inventory re-states the gap and does not redo that measurement."
     )
     add("")
+    priced_elsewhere = costs["config_scan"]["unconfigured"]
+    if priced_elsewhere:
+        add(
+            "Components priced **outside** the shared cost model (a candidate's own "
+            "pre-registered assumption, not part of `config/settings.yaml` and not "
+            "applied to any other candidate): "
+            + "; ".join(
+                f"`{component}` -> "
+                + ", ".join(f"`{hit}`" for hit in hits)
+                for component, hits in sorted(priced_elsewhere.items())
+            )
+            + ". A key that only *names* a component (for example the module that "
+            "detects a roll) describes a rule, not a price, and is not counted as "
+            "one."
+        )
+        add("")
 
     add("## 4. Point-in-time universe membership of the published walk-forward")
     add("")

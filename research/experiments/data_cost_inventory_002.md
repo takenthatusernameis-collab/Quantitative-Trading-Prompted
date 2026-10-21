@@ -27,7 +27,7 @@ which no committed record measures.
 | Quantity | Value |
 |---|---|
 | Published inventory digests re-verified | 35/35 match, 0 changed, 0 removed, 0 added |
-| Configuration files | 10 published vs 14 current (added: config/overnight_capture_001.yaml, config/paper_trading_config.yaml, config/promotion_gates.yaml, config/sample_policy.yaml) |
+| Configuration files | 13 published vs 17 current (added: config/overnight_capture_001.yaml, config/paper_trading_config.yaml, config/promotion_gates.yaml, config/sample_policy.yaml) |
 | Anchor (recomputed) | 48 folds, mean 0.947307, positive 91.67%, 6013 pooled trades |
 | Folds on an incomplete cross-section | 7 of 48 (mean OOS Sharpe 1.883186) |
 | Folds on the complete cross-section | 41 of 48 (mean OOS Sharpe 0.787522; 1.352958 without the fold-12 artefact) |

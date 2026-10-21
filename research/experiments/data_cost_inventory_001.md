@@ -33,7 +33,7 @@ Produce a bounded, evidence-based inventory of the real data and the real cost m
 | Duplicate timestamps (whole cache) | 0 |
 | Repeat (unchanged) prices (whole cache) | 5252 |
 | Sub-daily files (whole cache) | 4 |
-| Cost components with no configuration key | 6 of 11 |
+| Cost components with no configuration key | 5 of 11 |
 | Candidates scored | 10 |
 | Segments explicitly rejected or blocked | 8 |
 

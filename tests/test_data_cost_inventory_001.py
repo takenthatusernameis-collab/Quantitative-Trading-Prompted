@@ -150,11 +150,28 @@ def test_cost_figures_match_the_engine(report_text: str):
 
 def test_unconfigured_cost_components_are_reported(payload: dict, report_text: str):
     coverage = payload["cost_model"]["component_coverage"]
-    for component in ("bid_ask_spread", "borrow", "roll", "market_impact", "latency", "margin"):
+    for component in ("bid_ask_spread", "roll", "market_impact", "latency", "margin"):
         assert coverage[component] == [], f"{component} unexpectedly has a config key"
         assert "NOT CONFIGURED" in report_text
+    # Borrow is priced, but only by one candidate's own pre-registered
+    # assumption (Cycle 936, pairs_001); it is not part of the shared cost
+    # model, and the report must say where the price comes from.
+    borrow = coverage["borrow"]
+    assert borrow, "the pairs candidate's explicit borrow assumption must be measured"
+    assert {entry["file"] for entry in borrow} == {"pairs_candidate_001.yaml"}
+    assert all(entry["value"] == 25.0 for entry in borrow)
+    assert "borrow" in report_text
     for component, _ in COST_COMPONENTS:
         assert component in payload["cost_model"]["component_coverage"]
+
+
+def test_a_rule_parameter_is_not_counted_as_a_cost(payload: dict):
+    coverage = payload["cost_model"]["component_coverage"]
+    # `data_quality.roll_window_sessions_per_event` and `roll_detector` name
+    # the roll *rule* of the leadlag candidate; they are not a price and must
+    # not close the futures-roll cost gap.
+    assert coverage["roll"] == []
+    assert coverage["market_impact"] == []
 
 
 # ---------------------------------------------------------------------------
