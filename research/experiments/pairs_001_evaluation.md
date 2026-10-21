@@ -8,6 +8,8 @@ Sharpe convention was changed after the result was known; nothing under `data/` 
 `config/` was written; the fetcher was never called; no other candidate was executed,
 re-tuned or re-ranked.
 
+**Correction notice (published 2026-10-21).** This record was regenerated after an implementation defect in the evaluator was found and fixed: the weight frame was initialised to `0.0` instead of `NaN`, so the forward fill was a no-op and every position was held for **one** session instead of the frozen **five**, and a pair that left the active set at a rebalance was never exited to flat. The defect was in the **evaluator**, not in the frozen specification: `config/pairs_candidate_001.yaml` and `research/hypotheses/pairs_001.md` are byte-identical to the freeze commit `fe17260`; no frozen value, threshold, gate, cost model, universe or Sharpe convention changed. The superseded figures are published verbatim in `research/experiments/pairs_001_evaluation_erratum_001.md`.
+
 ## Hypothesis reference
 
 `research/hypotheses/pairs_001.md` (frozen at `fe17260`).
@@ -52,81 +54,81 @@ on the full sample. No parameter search.
 
 | Fold | Test start | Test end | Sessions | Sharpe (canonical) | Sharpe (backtest) | Excess over cash (Sharpe) | Trades |
 |---|---|---|---|---|---|---|---|
-| 1 | 2008-09-17 | 2009-09-03 | 244 | 0.261516 | 0.066108 | 0.261516 | 97 |
-| 2 | 2009-03-12 | 2010-02-26 | 243 | -1.070847 | -1.282899 | -1.070847 | 97 |
-| 3 | 2009-09-04 | 2010-08-23 | 243 | -4.514317 | -4.301167 | -4.514317 | 96 |
-| 4 | 2010-03-01 | 2011-02-15 | 245 | -6.260876 | -5.580462 | -6.260876 | 97 |
-| 5 | 2010-08-24 | 2011-08-10 | 244 | -5.744202 | -5.314012 | -5.744202 | 98 |
-| 6 | 2011-02-16 | 2012-02-02 | 243 | -2.958713 | -3.003016 | -2.958713 | 96 |
-| 7 | 2011-08-11 | 2012-07-27 | 243 | -2.876394 | -2.956996 | -2.876394 | 97 |
-| 8 | 2012-02-03 | 2013-01-18 | 241 | -5.822682 | -5.486781 | -5.822682 | 96 |
-| 9 | 2012-07-30 | 2013-07-16 | 241 | -6.055767 | -5.606576 | -6.055767 | 96 |
-| 10 | 2013-01-22 | 2014-01-08 | 244 | -4.495706 | -4.229645 | -4.495706 | 95 |
-| 11 | 2013-07-17 | 2014-07-03 | 244 | -4.800803 | -4.429071 | -4.800803 | 95 |
-| 12 | 2014-01-09 | 2014-12-26 | 244 | -6.144111 | -5.426593 | -6.144111 | 98 |
-| 13 | 2014-07-07 | 2015-06-22 | 243 | -3.810001 | -3.547507 | -3.810001 | 96 |
-| 14 | 2014-12-29 | 2015-12-15 | 244 | -2.797636 | -2.737644 | -2.797636 | 98 |
-| 15 | 2015-06-23 | 2016-06-08 | 243 | -2.350287 | -2.478956 | -2.350287 | 98 |
-| 16 | 2015-12-16 | 2016-12-01 | 243 | -2.093125 | -2.276382 | -2.093125 | 94 |
-| 17 | 2016-06-09 | 2017-05-26 | 244 | -3.227137 | -3.289160 | -3.227137 | 95 |
-| 18 | 2016-12-02 | 2017-11-20 | 244 | -4.736939 | -4.836270 | -4.736939 | 97 |
-| 19 | 2017-05-30 | 2018-05-15 | 243 | -4.856397 | -4.486118 | -4.856397 | 96 |
-| 20 | 2017-11-21 | 2018-11-07 | 243 | -3.829704 | -3.620330 | -3.829704 | 94 |
-| 21 | 2018-05-16 | 2019-05-02 | 242 | -3.009410 | -2.906538 | -3.009410 | 93 |
-| 22 | 2018-11-08 | 2019-10-25 | 242 | -3.551818 | -3.375604 | -3.551818 | 96 |
-| 23 | 2019-05-03 | 2020-04-20 | 243 | -2.879776 | -2.745865 | -2.879776 | 96 |
-| 24 | 2019-10-28 | 2020-10-13 | 243 | -3.626955 | -3.093512 | -3.626955 | 98 |
-| 25 | 2020-04-21 | 2021-04-07 | 243 | -1.779813 | -1.760119 | -1.779813 | 98 |
-| 26 | 2020-10-14 | 2021-09-30 | 243 | -0.377145 | -0.589309 | -0.377145 | 92 |
-| 27 | 2021-04-08 | 2022-03-25 | 245 | -2.170259 | -2.153904 | -2.170259 | 94 |
-| 28 | 2021-10-01 | 2022-09-19 | 243 | -3.141842 | -2.780950 | -3.141842 | 97 |
-| 29 | 2022-03-28 | 2023-03-14 | 242 | -3.325074 | -2.972502 | -3.325074 | 96 |
-| 30 | 2022-09-20 | 2023-09-06 | 242 | -3.512729 | -3.006494 | -3.512729 | 96 |
-| 31 | 2023-03-15 | 2024-02-29 | 242 | -3.820591 | -3.294773 | -3.820591 | 95 |
-| 32 | 2023-09-07 | 2024-08-23 | 243 | -2.065968 | -2.159821 | -2.065968 | 93 |
-| 33 | 2024-03-01 | 2025-02-14 | 241 | -1.677175 | -1.852730 | -1.677175 | 94 |
-| 34 | 2024-08-26 | 2025-08-12 | 241 | -3.395498 | -3.285614 | -3.395498 | 96 |
-| 35 | 2025-02-18 | 2026-02-04 | 243 | -3.319556 | -3.112881 | -3.319556 | 96 |
-| 36 | 2025-08-13 | 2026-07-30 | 242 | -1.853381 | -1.857042 | -1.853381 | 97 |
+| 1 | 2008-09-17 | 2009-09-03 | 244 | 0.008375 | -0.233643 | 0.008375 | 37 |
+| 2 | 2009-03-12 | 2010-02-26 | 243 | 0.058170 | -0.141050 | 0.058170 | 36 |
+| 3 | 2009-09-04 | 2010-08-23 | 243 | -1.412554 | -1.497443 | -1.412554 | 35 |
+| 4 | 2010-03-01 | 2011-02-15 | 245 | -2.890131 | -2.644048 | -2.890131 | 32 |
+| 5 | 2010-08-24 | 2011-08-10 | 244 | -2.751527 | -2.601552 | -2.751527 | 35 |
+| 6 | 2011-02-16 | 2012-02-02 | 243 | -1.170330 | -1.286265 | -1.170330 | 39 |
+| 7 | 2011-08-11 | 2012-07-27 | 243 | -0.270261 | -0.480111 | -0.270261 | 39 |
+| 8 | 2012-02-03 | 2013-01-18 | 241 | -0.832936 | -1.057447 | -0.832936 | 35 |
+| 9 | 2012-07-30 | 2013-07-16 | 241 | -1.745650 | -1.858121 | -1.745650 | 35 |
+| 10 | 2013-01-22 | 2014-01-08 | 244 | -1.889820 | -1.933510 | -1.889820 | 40 |
+| 11 | 2013-07-17 | 2014-07-03 | 244 | -1.186887 | -1.323271 | -1.186887 | 42 |
+| 12 | 2014-01-09 | 2014-12-26 | 244 | -1.413287 | -1.499111 | -1.413287 | 40 |
+| 13 | 2014-07-07 | 2015-06-22 | 243 | -0.835770 | -0.989921 | -0.835770 | 39 |
+| 14 | 2014-12-29 | 2015-12-15 | 244 | 0.205462 | 0.001066 | 0.205462 | 43 |
+| 15 | 2015-06-23 | 2016-06-08 | 243 | 0.586611 | 0.402094 | 0.586611 | 46 |
+| 16 | 2015-12-16 | 2016-12-01 | 243 | -0.281158 | -0.480115 | -0.281158 | 44 |
+| 17 | 2016-06-09 | 2017-05-26 | 244 | -1.628800 | -1.685325 | -1.628800 | 37 |
+| 18 | 2016-12-02 | 2017-11-20 | 244 | -1.457922 | -1.574132 | -1.457922 | 34 |
+| 19 | 2017-05-30 | 2018-05-15 | 243 | -1.636764 | -1.641710 | -1.636764 | 36 |
+| 20 | 2017-11-21 | 2018-11-07 | 243 | -0.771504 | -0.919350 | -0.771504 | 40 |
+| 21 | 2018-05-16 | 2019-05-02 | 242 | -0.631266 | -0.790189 | -0.631266 | 42 |
+| 22 | 2018-11-08 | 2019-10-25 | 242 | -0.652498 | -0.812992 | -0.652498 | 39 |
+| 23 | 2019-05-03 | 2020-04-20 | 243 | -0.984274 | -1.049364 | -0.984274 | 41 |
+| 24 | 2019-10-28 | 2020-10-13 | 243 | -2.211562 | -1.711751 | -2.211562 | 38 |
+| 25 | 2020-04-21 | 2021-04-07 | 243 | -1.270144 | -1.229508 | -1.270144 | 38 |
+| 26 | 2020-10-14 | 2021-09-30 | 243 | 0.685299 | 0.522665 | 0.685299 | 43 |
+| 27 | 2021-04-08 | 2022-03-25 | 245 | -0.314706 | -0.495489 | -0.314706 | 38 |
+| 28 | 2021-10-01 | 2022-09-19 | 243 | -1.204888 | -1.179301 | -1.204888 | 28 |
+| 29 | 2022-03-28 | 2023-03-14 | 242 | -1.261136 | -1.247910 | -1.261136 | 31 |
+| 30 | 2022-09-20 | 2023-09-06 | 242 | -1.719922 | -1.569557 | -1.719922 | 36 |
+| 31 | 2023-03-15 | 2024-02-29 | 242 | -1.297586 | -1.294995 | -1.297586 | 40 |
+| 32 | 2023-09-07 | 2024-08-23 | 243 | 1.271531 | 1.203284 | 1.271531 | 42 |
+| 33 | 2024-03-01 | 2025-02-14 | 241 | 0.867304 | 0.726886 | 0.867304 | 40 |
+| 34 | 2024-08-26 | 2025-08-12 | 241 | -0.346043 | -0.522568 | -0.346043 | 39 |
+| 35 | 2025-02-18 | 2026-02-04 | 243 | 0.298810 | 0.102658 | 0.298810 | 39 |
+| 36 | 2025-08-13 | 2026-07-30 | 242 | 0.241369 | 0.032220 | 0.241369 | 42 |
 
 ### Gate statistics
 
 | Statistic | Value | Gate | Outcome |
 |---|---|---|---|
-| Walk-forward mean OOS Sharpe (canonical) | -3.380309 | >= 0.9 | FAIL |
-| Walk-forward median OOS Sharpe | -3.322315 | - | - |
-| Walk-forward std of OOS Sharpe | 1.571789 | - | - |
-| Positive-fold rate | 0.0278 | >= 0.5 | FAIL |
-| Pooled OOS trades | 3453 | > 100 | PASS |
-| Net excess over cash (mean fold Sharpe difference) | -3.380309 | - | - |
-| Excess 95% CI (moving block, 2000 draws, block 4, seed 20240101) | [-4.101434, -2.881548] | excludes zero | PASS |
-| Deflated Sharpe Ratio (N = 1) | -8.538808 (probability 0.000000) | z > 0 | FAIL |
+| Walk-forward mean OOS Sharpe (canonical) | -0.829067 | >= 0.9 | FAIL |
+| Walk-forward median OOS Sharpe | -0.910022 | - | - |
+| Walk-forward std of OOS Sharpe | 0.981866 | - | - |
+| Positive-fold rate | 0.2500 | >= 0.5 | FAIL |
+| Pooled OOS trades | 1380 | > 100 | PASS |
+| Net excess over cash (mean fold Sharpe difference) | -0.829067 | - | - |
+| Excess 95% CI (moving block, 2000 draws, block 4, seed 20240101) | [-1.219160, -0.467513] | excludes zero | PASS |
+| Deflated Sharpe Ratio (N = 1) | -3.341643 (probability 0.000416) | z > 0 | FAIL |
 | Out-of-sample sessions | 4494 | - | - |
-| Absolute out-of-sample Sharpe | -2.637485 | - | - |
-| Absolute out-of-sample annualised return | -25.8137% | - | - |
+| Absolute out-of-sample Sharpe | -0.654744 | - | - |
+| Absolute out-of-sample annualised return | -13.6774% | - | - |
 
 ### Per-pair attribution (out of sample)
 
 | Pair | Net excess annualized | Sharpe | Trades |
 |---|---|---|---|
-| XLP/XLU | -0.032524 | -1.261827 | 893 |
-| XLF/XLK | -0.040877 | -1.000159 | 950 |
-| XLE/XLB | -0.047784 | -1.373462 | 980 |
-| XLI/XLB | -0.042787 | -2.152719 | 952 |
-| XLV/XLY | -0.046602 | -1.521623 | 935 |
-| XLK/XLU | -0.047563 | -1.337530 | 1088 |
+| XLP/XLU | 0.009094 | 0.179750 | 226 |
+| XLF/XLK | -0.026539 | -0.314578 | 205 |
+| XLE/XLB | -0.032287 | -0.408004 | 211 |
+| XLI/XLB | -0.019626 | -0.451870 | 228 |
+| XLV/XLY | -0.028693 | -0.439405 | 201 |
+| XLK/XLU | -0.038723 | -0.452537 | 194 |
 
 ### Cost model and the implied hurdle
 
 | Quantity | Value |
 |---|---|
 | Gross scale (frozen, shortlist Cycle 934) | 69.6626%/yr |
-| Realized turnover | 294.6168 units/yr (shortlist proxy: 52 units/yr, a lower bound) |
-| Realized turnover cost drag | 0.0029%/yr |
+| Realized turnover | 68.6916 units/yr (shortlist proxy: 52 units/yr, a lower bound) |
+| Realized turnover cost drag | 0.0006%/yr |
 | Realized borrow drag (25 bp x short notional per active pair per rebalance) | 20.3271%/yr |
-| Realized total cost drag | 20.3300%/yr |
-| Gross excess (before borrow) annualized | -5.4866% |
-| Net excess after borrow annualized | -25.8137% |
+| Realized total cost drag | 20.3277%/yr |
+| Gross excess (before borrow) annualized | 6.6497% |
+| Net excess after borrow annualized | -13.6774% |
 
 **Turnover-convention disclosure.** The Cycle-934 shortlist's 52 units/yr figure was
 published as an upper bound and corrected in Cycle 935 to a lower bound (a rule that
@@ -154,10 +156,10 @@ conditions above are the complete set.
 
 | # | Condition | Observed | Requirement | Outcome |
 |---|---|---|---|---|
-| i | walk-forward mean OOS Sharpe (net, canonical) >= 0.9 | -3.380308782997972 | 0.9 | **FIRED** |
-| ii | net excess over cash bootstrap 95% CI excludes zero | [-4.101434, -2.881548] | excludes zero | not fired |
+| i | walk-forward mean OOS Sharpe (net, canonical) >= 0.9 | -0.829066502937328 | 0.9 | **FIRED** |
+| ii | net excess over cash bootstrap 95% CI excludes zero | [-1.219160, -0.467513] | excludes zero | not fired |
 | iii | cointegration of every pair holds on all training windows | any pair failed | no pair fails | **FIRED** |
-| iv | net excess survives the pre-registered borrow cost | -0.2581371841606682 | > 0 | **FIRED** |
+| iv | net excess survives the pre-registered borrow cost | -0.13677385668139808 | > 0 | **FIRED** |
 
 **Rejected/Failed (a pre-registered falsification condition fired)**
 

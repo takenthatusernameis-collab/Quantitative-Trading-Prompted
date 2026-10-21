@@ -34,6 +34,19 @@ The tool is **read-only**: the price panel is read from the committed cache
 written, and the SHA-256 of every file under those two trees and of every
 committed artefact is compared before and after the run.
 
+Correction (2026-10-21)
+-----------------------
+The first execution of this tool (Cycle 936, commit ``18e6f49``) did not
+implement the frozen holding rule: the weight frame was initialised to
+``0.0`` instead of ``NaN``, so the forward fill was a no-op and every
+position was held for one session instead of the frozen five (and a pair
+that left the active set was never exited). The defect was in the
+evaluator, not in the frozen specification -- ``config/pairs_candidate_001.yaml``
+and ``research/hypotheses/pairs_001.md`` are byte-identical to the freeze
+commit ``fe17260``. The evaluator is corrected here, the record and this
+report are regenerated from it, and the superseded figures are published
+verbatim in ``research/experiments/pairs_001_evaluation_erratum_001.md``.
+
 Reproduction
 ------------
 ```bash
@@ -131,6 +144,29 @@ FROZEN: dict[str, Any] = {
 #: Shortlist (Cycle 934) measured gross scale, published as a reference only --
 #: NOT a frozen hurdle; no hurdle number is frozen from the turnover proxy.
 MEASURED_GROSS_SCALE_PCT_PER_YEAR = 69.6626
+
+#: Correction notice published with the record. The first execution of this
+#: tool (Cycle 936, commit 18e6f49) did not implement the frozen holding
+#: rule: the weight frame was initialised to 0.0 instead of NaN, so the
+#: forward fill was a no-op and every position was held for ONE session
+#: instead of the frozen FIVE, and a pair that left the active set at a
+#: rebalance was never exited to flat. The defect was in the evaluator, not
+#: in the frozen specification: `config/pairs_candidate_001.yaml` and
+#: `research/hypotheses/pairs_001.md` are byte-identical to the freeze
+#: commit. The superseded figures are published verbatim in
+#: `research/experiments/pairs_001_evaluation_erratum_001.md`.
+CORRECTION_NOTICE = (
+    "**Correction notice (published 2026-10-21).** This record was regenerated after an "
+    "implementation defect in the evaluator was found and fixed: the weight frame was "
+    "initialised to `0.0` instead of `NaN`, so the forward fill was a no-op and every "
+    "position was held for **one** session instead of the frozen **five**, and a pair that "
+    "left the active set at a rebalance was never exited to flat. The defect was in the "
+    "**evaluator**, not in the frozen specification: `config/pairs_candidate_001.yaml` and "
+    "`research/hypotheses/pairs_001.md` are byte-identical to the freeze commit "
+    f"`{FREEZE_COMMIT}`; no frozen value, threshold, gate, cost model, universe or Sharpe "
+    "convention changed. The superseded figures are published verbatim in "
+    "`research/experiments/pairs_001_evaluation_erratum_001.md`."
+)
 
 
 class EvaluationError(RuntimeError):
@@ -245,12 +281,21 @@ def build_one_pair_weights(
     per-session z-score of the log price ratio, the rebalance dates at which
     a signal was formed, and (aligned with the rebalance dates) a flag per
     date stating whether the pair was active (|z| >= z_entry).
+
+    The frozen entry/exit rules (`research/hypotheses/pairs_001.md`, "Entry /
+    exit rules" 2-5) are implemented literally: the target weight is set on
+    the rebalance dates only, it is carried forward across the sessions
+    between two rebalances (the frozen 5-session holding horizon), and a pair
+    that leaves the active set at a rebalance (|z| < 1) is exited to flat.
     """
     logpx = np.log(close)
     ratio = logpx[a] - logpx[b]
     z = (ratio - ratio.rolling(lookback).mean()) / ratio.rolling(lookback).std()
 
-    weights = pd.DataFrame(0.0, index=close.index, columns=close.columns)
+    # `NaN` marks "no target weight set yet" so that the forward fill really
+    # carries a position across the sessions between two rebalances; an
+    # explicit 0.0 marks the exit of a pair that left the active set.
+    weights = pd.DataFrame(np.nan, index=close.index, columns=close.columns)
     active_flags: list[bool] = []
     formed: list[pd.Timestamp] = []
     n = len(close)
@@ -260,26 +305,31 @@ def build_one_pair_weights(
         if pd.isna(zi):
             formed.append(date)
             active_flags.append(False)
+            weights.loc[date, a] = 0.0
+            weights.loc[date, b] = 0.0
             continue
         formed.append(date)
         active = bool(abs(zi) >= z_entry)
         active_flags.append(active)
         if not active:
+            # Exit: the pair leaves the active set at this rebalance.
+            weights.loc[date, a] = 0.0
+            weights.loc[date, b] = 0.0
             continue
         # z >= z_entry: spread rich -> short a (numerator), long b (denominator)
         # z <= -z_entry: spread cheap -> long a, short b
         if zi >= z_entry:
-            weights.loc[date, a] -= leg_weight
-            weights.loc[date, b] += leg_weight
+            weights.loc[date, a] = -leg_weight
+            weights.loc[date, b] = leg_weight
         else:
-            weights.loc[date, a] += leg_weight
-            weights.loc[date, b] -= leg_weight
+            weights.loc[date, a] = leg_weight
+            weights.loc[date, b] = -leg_weight
 
     # Signal formed at rebalance date `t` is effective from `t+1` (one-session
     # lag) and held until the next rebalance decision: forward-fill the
     # rebalance-date signals across the sessions between rebalances, then
     # shift by one session.
-    held = weights.ffill()
+    held = weights.ffill().fillna(0.0)
     weights_lagged = held.shift(1).fillna(0.0)
     return weights_lagged, z, formed, active_flags
 
@@ -712,6 +762,8 @@ Sharpe convention was changed after the result was known; nothing under `data/` 
 `config/` was written; the fetcher was never called; no other candidate was executed,
 re-tuned or re-ranked.
 
+{CORRECTION_NOTICE}
+
 ## Hypothesis reference
 
 `research/hypotheses/pairs_001.md` (frozen at `{FREEZE_COMMIT}`).
@@ -855,6 +907,8 @@ This report is the long-form evidence behind the record
 `research/experiments/pairs_001_evaluation.md`; both are generated by
 `research/pairs_001_evaluation.py` and carry no timestamp, so two consecutive runs are
 byte-identical.
+
+{CORRECTION_NOTICE}
 
 ## 1. The frozen specification
 
