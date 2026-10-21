@@ -1,0 +1,123 @@
+# Frozen pre-registered configuration for the cointegrated-pairs relative
+# value candidate (pairs_001).
+#
+# Candidate selected by the Cycle 934 evidence-based candidate shortlist
+# (pairs_001: 25/35, rank 2 of 4; reversal_001 28/35 rank 1,
+# liquidity_001 24/35, leadlag_001 16/35). See
+# research/experiments/candidate_shortlist_934.md and
+# research/hypotheses/pairs_001.md for the full hypothesis and the
+# evaluation plan.
+#
+# This configuration is FROZEN before any pairs backtest execution. No pairs
+# backtest exists in this repository at the time of this freeze.
+# Code revision at freeze: bf66a64
+
+candidate_id: "pairs_001"
+
+universe:
+  - "XLB"   # Materials
+  - "XLE"   # Energy
+  - "XLF"   # Financials
+  - "XLI"   # Industrials
+  - "XLK"   # Information Technology
+  - "XLP"   # Consumer Staples
+  - "XLU"   # Utilities
+  - "XLV"   # Health Care
+  - "XLY"   # Consumer Discretionary
+  # The nine GICS sector ETFs are the repository's only membership-stable
+  # cross-section: identical cached history, 6991 sessions,
+  # 1998-12-22 .. 2026-10-08, 0 missing closes, 0 duplicate timestamps.
+
+# The six pre-registered pairs, frozen verbatim with the config. They are
+# components of the single baseline configuration, not a search grid, and no
+# pair may be added, dropped or swapped after the freeze.
+pairs:
+  - ["XLP", "XLU"]   # Consumer Staples / Utilities
+  - ["XLF", "XLK"]   # Financials / Information Technology
+  - ["XLE", "XLB"]   # Energy / Materials
+  - ["XLI", "XLB"]   # Industrials / Materials
+  - ["XLV", "XLY"]   # Health Care / Consumer Discretionary
+  - ["XLK", "XLU"]   # Information Technology / Utilities
+
+signal:
+  type: "cointegrated_pairs"
+  # z-score the log price ratio log(Close[a]) - log(Close[b]) over the
+  # trailing 126 sessions; take the contrarian side when |z| >= 1.
+  lookback_sessions: 126
+  z_entry: 1.0
+  # An asset can belong to more than one pair (e.g. XLB is paired with XLE
+  # and XLI); an asset's weight is the sum of its weights across the pairs
+  # in which it is active. The book is market-neutral (net exposure 0).
+  leg_weight: 0.5                # long 0.5 of the cheap leg, short 0.5 of the rich leg
+  gross_exposure_per_active_pair: 1.0
+  rebalance_every_n_sessions: 5  # rebalance on session index % 5 == 0, anchored on the first session
+  holding_horizon_sessions: 5    # positions are held 5 sessions between rebalances
+  signal_lag_days: 1             # weights formed at t are effective at t+1
+  price_field: "Close"           # EOD close
+  log_ratio: true                # z-scored on log(price_a) - log(price_b)
+
+risk_overlay:
+  # BASELINE BEFORE COMPLEXITY (AGENTS.md): NO risk overlay.
+  none: true
+
+cost_model:
+  # Shared committed cost model (config/settings.yaml via
+  # src.backtest.engine.get_cost_params()): NOT modified by this candidate.
+  commission_bps: 1.0
+  slippage_bps: 2.0
+  total_round_trip_bps: 3.0  # per unit of weight change, both legs
+  # Pre-registered short-side borrow assumption (NOT in the shared cost
+  # model: no borrow key exists anywhere in config/ or data/). Stated as an
+  # assumption, not a measurement, because the repository holds no borrow
+  # data. Charged on the short notional only, per rebalance.
+  borrow_bps_per_unit_short_notional_per_rebalance: 25.0
+  risk_free_rate_annual: 0.02  # hurdle for the cash benchmark; canonical Sharpe uses rf 0
+
+execution:
+  signal_lag_days: 1
+  price_field: "Close"
+  timezone: "UTC"
+  rebalance_schedule: "every_5_sessions"
+
+history_start: "1998-12-22"  # common start of the nine cached files
+history_end: "2026-10-08"    # common end of the nine cached files
+seed: 42                     # deterministic engine; bootstrap seed
+
+data:
+  source: "yahoo_finance"
+  cached: true
+  fetch_new: false
+  frequency: "daily"
+  common_start: "1998-12-22"
+  common_end: "2026-10-08"
+  sessions: 6991
+  close_completeness: 1.0
+
+# Pre-registered evaluation metadata (traceability; not used by the engine)
+evaluation:
+  walk_forward:
+    train_years: 10
+    test_months: 12
+    step_months: 6
+    purge_days: 21
+    embargo_days: 21
+  promotion_gates:
+    wf_mean_oos_sharpe_min: 0.9
+    positive_fold_rate_min: 0.5
+    pooled_oos_trades_min: 100
+  multiple_testing:
+    total_configs: 1          # one baseline rule; the six pairs are pre-registered components, not a grid
+    dsr_method: "compute_dsr"
+    bootstrap_seed: 20240101  # the seed of Cycles 929/930/935
+    n_bootstrap: 2000
+  cointegration:
+    # Reported pre-registered check (Engle-Granger on the log price ratio),
+    # computed on each fold's training window only; never a selection step.
+    test: "engle_granger"
+    alpha: 0.05               # significance level, frozen
+    uses_training_window_only: true
+  borrow:
+    # Falsification condition (iv): robustness to the pre-registered borrow cost.
+    bps_per_unit_short_notional_per_rebalance: 25.0
+  benchmarks:
+    - "cash"                  # market-neutral book vs cash; 2.00% annual risk-free hurdle
