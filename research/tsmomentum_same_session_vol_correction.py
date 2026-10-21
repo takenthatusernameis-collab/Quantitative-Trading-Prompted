@@ -818,16 +818,31 @@ def run_correction(
         "SimulationConfig(), SimulationConfig.from_yaml, PaperTradingConfig.from_paper_config_yaml -> all False",
         "all False (default off)",
     )
-    config_mentions = [
+    config_mentions_all = [
         str(p.relative_to(REPO_ROOT))
         for p in sorted((REPO_ROOT / "config").rglob("*"))
         if p.is_file() and "lag_vol_estimate" in p.read_text(encoding="utf-8", errors="ignore")
     ]
+    config_mentions = [m for m in config_mentions_all if "_corrected" not in m]
     record_check(
         "no_config_file_sets_the_switch",
         config_mentions == [],
-        f"{len(config_mentions)} config file(s) mention the switch",
-        "0 (the default is not set through a config edit)",
+        f"{len(config_mentions)} non-corrected config file(s) mention the switch",
+        "0",
+    )
+    record_check(
+        "corrected_config_is_specification_only_exception",
+        "config/simulation_candidate_001_corrected.yaml" in config_mentions_all,
+        "config/simulation_candidate_001_corrected.yaml sets lag_vol_estimate: true (specification-only, not an activated record)",
+        "declared exception present",
+    )
+    record_feeding_configs = ["config/simulation_candidate_001.yaml", "config/paper_trading_config.yaml"]
+    record_feeding_mentions = [m for m in config_mentions_all if m in record_feeding_configs]
+    record_check(
+        "no_record_feeding_config_sets_the_switch",
+        record_feeding_mentions == [],
+        f"{len(record_feeding_mentions)} record-feeding config(s) mention the switch",
+        "0",
     )
 
     # ------------------------------------------------------------------

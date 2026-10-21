@@ -173,7 +173,26 @@ def test_no_config_file_sets_the_switch():
     hits = [
         str(p.relative_to(REPO))
         for p in sorted((REPO / "config").rglob("*"))
+        if p.is_file() and "_corrected" not in p.name and "lag_vol_estimate" in p.read_text(encoding="utf-8", errors="ignore")
+    ]
+    assert hits == []
+
+
+def test_corrected_config_is_specification_only_exception():
+    hits = [
+        str(p.relative_to(REPO))
+        for p in sorted((REPO / "config").rglob("*"))
         if p.is_file() and "lag_vol_estimate" in p.read_text(encoding="utf-8", errors="ignore")
+    ]
+    assert "config/simulation_candidate_001_corrected.yaml" in hits
+
+
+def test_no_record_feeding_config_sets_the_switch():
+    record_feeding = ["config/simulation_candidate_001.yaml", "config/paper_trading_config.yaml"]
+    hits = [
+        str(p.relative_to(REPO))
+        for p in sorted((REPO / "config").rglob("*"))
+        if p.is_file() and str(p.relative_to(REPO)) in record_feeding and "lag_vol_estimate" in p.read_text(encoding="utf-8", errors="ignore")
     ]
     assert hits == []
 

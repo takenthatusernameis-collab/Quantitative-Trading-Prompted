@@ -156,6 +156,15 @@ No live record is started in this cycle, no state file is written, and the fetch
 
 A record that mixes the same-session and the lagged paths measures neither; the two paths must never be concatenated into a single record.
 
+### 4.6 Provenance of the corrected files
+
+Two new files feed the corrected live record only; they are specification-only and not an activated record:
+
+- `config/simulation_candidate_001_corrected.yaml` — new config, byte-for-byte identical to the committed `config/simulation_candidate_001.yaml` except for `lag_vol_estimate: true` under `risk_overlay`. It does not edit any committed config and must never feed a committed record.
+- `data/processed/paper_trading_state_corrected_001.yaml` — new re-initialised state file (empty positions, null last_run_date, zero PnL) for the corrected live record. It does not append to or modify `data/processed/paper_trading_state.yaml` (the committed 450-session record).
+
+Both files are committed at HEAD d46b1b6. Neither feeds any committed record, and a computed record must never mix the same-session and lagged paths.
+
 ## 5. What this cycle does NOT change
 
 - It does **not** cause the `rolling_63d_sharpe` failure: the corrected failing window is worse (-0.515807 vs -0.448918).
