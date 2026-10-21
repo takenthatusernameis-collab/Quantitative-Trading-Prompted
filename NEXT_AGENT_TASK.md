@@ -10,8 +10,8 @@ Cycle 927 consolidated the same-session volatility estimate onto one shared impl
 - `research/run_cycle13.py`, `run_cycle15.py`, `run_cycle15_c4_corrected.py`, `run_cycle18.py`, `run_cycle19.py` — `_incumbent_overlay` routed through `realized_vol_scale`, default path bit-identical
 - `research/run_cycle19.build_overlay_weights` — threads `lag_vol_estimate=False`, bit-identical
 - `research/month_end_candidate_reaudit.py` — `overlay_weights` routed through `realized_vol_scale`, default path bit-identical
-- **Zero** remaining inline same-session exposure estimates (`vol_target / realized_vol`) in any of the seven scripts
-- Switch defaults off everywhere (`SimulationConfig()`, `from_yaml`, `PaperTradingConfig`); no config file mentions the switch
+- **Zero** remaining inline same-session exposure estimates in any of the seven scripts
+- Switch defaults off everywhere (`SimulationConfig()`, `from_yaml`, `PaperTradingConfig`)
 
 **Corrected successor record published (supersedes nothing):**
 - New report: `research/reports/tsmomentum_vol_estimate_consolidation_001.md`
@@ -26,22 +26,41 @@ Cycle 927 consolidated the same-session volatility estimate onto one shared impl
 
 **Incumbent unchanged:** Credible Candidate (published verdict), NO-GO promotion decision (unchanged).
 
-### Next task (bounded)
-Execute the corrected live paper-trading record start procedure specified in Cycle 927 section 4:
-- Create a new config file (not editing committed configs) with `lag_vol_estimate: true`
-- Start a new state file `data/processed/paper_trading_state_corrected_001.yaml` with re-initialised drift flags and gate table
-- The `track_record_length` gate requires 126 sessions, so promotion evidence restarts from zero
-- The corrected path's own backtest reference is 1.335983; the unchanged PSR reference 1.4178 is stricter
-- No live trading, no fetcher call, no committed record modified, no config edit to committed files
+## Cycle 928 — COMPLETE (evidence below)
 
-This follows from the Cycle 927 evidence: the procedure was specified but not executed, and the next bounded step is to execute it so the corrected path has a live record to measure against.
+### What was done
+Corrected live paper-trading record start procedure executed:
+- New config `config/simulation_candidate_001_corrected.yaml` with `lag_vol_estimate: true` (byte-identical to committed `config/simulation_candidate_001.yaml` except the switch; does not edit any committed config)
+- New state file `data/processed/paper_trading_state_corrected_001.yaml` with re-initialised drift flags and gate table (empty positions, null last_run_date, zero PnL)
+- No live trading, no fetcher call, no committed record modified, no committed config edited
+- `track_record_length` gate requires 126 sessions; promotion evidence restarts from zero on the corrected record
+
+### Check fix (cycle 0047/0048/0049) — COMPLETE
+The `no_config_file_sets_the_switch` check deterministically failed once `config/simulation_candidate_001_corrected.yaml` existed (it legitimately sets `lag_vol_estimate: true`). Fixed in all 4 mirrored sites:
+- `research/tsmomentum_vol_estimate_consolidation.py` — explicit allowlist for `_corrected` config + positive invariant over record-feeding configs (`simulation_candidate_001.yaml`, `paper_trading_config.yaml`) requiring zero switch hits
+- `research/tsmomentum_same_session_vol_correction.py` — same
+- `tests/test_tsmomentum_vol_estimate_consolidation.py` — same + new exception and invariant tests
+- `tests/test_tsmomentum_same_session_vol_correction.py` — same + new exception and invariant tests
+- Main report regenerated: OVERALL: PASS, `no_config_file_sets_the_switch` PASS (0 non-corrected), `corrected_config_is_specification_only_exception` PASS, `no_record_feeding_config_sets_the_switch` PASS (0 record-feeding)
+- All 6 targeted tests pass; committed at HEAD 6f36269; git status clean; committed diffs empty
+
+**Tests:** `tests/test_tsmomentum_same_session_vol_correction.py` — 17 passed.
+
+## Next task (bounded)
+
+Run the full test suite to confirm all tests pass:
+```bash
+python -m pytest -q
+```
+
+If green, the Cycle 927/928 work is complete and the next cycle should investigate new market opportunities per AGENTS.md Market Opportunity Search (inventory real data and costs, compare plausible candidates, score against data quality, structural mechanism, net capture, automation, diversification, statistical testability).
 
 ## Validation commands
 ```bash
-python research/tsmomentum_vol_estimate_consolidation.py --no-report
-python -m pytest -q tests/test_tsmomentum_vol_estimate_consolidation.py
-python -m pytest -q tests/test_tsmomentum_same_session_vol_correction.py
-git status --porcelain data/ config/
+python -m pytest -q tests/test_tsmomentum_vol_estimate_consolidation.py tests/test_tsmomentum_same_session_vol_correction.py
+python -m pytest -q
+git status --porcelain
+git diff --stat -- research/reports/tsmomentum_vol_estimate_consolidation_001.md research/experiments/tsmomentum_vol_estimate_consolidation_001.md config/ data/processed/paper_trading_state.yaml
 ```
 
 ## Scope boundaries
