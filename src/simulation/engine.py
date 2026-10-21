@@ -33,6 +33,7 @@ import yaml
 
 from src.backtest.engine import compute_metrics, get_risk_free_rate
 from src.data.yfinance_fetcher import fetch_universe
+from src.evaluation.risk import realized_vol_scale
 from src.features.momentum import (
     build_weights,
     compute_momentum,
@@ -42,6 +43,17 @@ from src.features.momentum import (
 
 def _project_root() -> Path:
     return Path(__file__).resolve().parent.parent.parent
+
+
+def _as_bool(value: object, default: bool = False) -> bool:
+    """Read a YAML boolean strictly: only a real ``bool`` is honoured.
+
+    Anything else (a string, a number, ``None``) falls back to *default* so a
+    malformed config file can never silently enable an opt-in switch.
+    """
+    if isinstance(value, bool):
+        return value
+    return default
 
 
 @dataclass
@@ -68,6 +80,12 @@ class SimulationConfig:
     max_leverage: float = 1.0
     dd_threshold: float = 0.15
     dd_reduction: float = 0.5
+
+    # Opt-in switch: when True the volatility estimate for session t is
+    # computed from sessions up to and including t-1 only (no same-session
+    # feedback).  The default (False) is the committed behaviour and is
+    # bit-for-bit unchanged.
+    lag_vol_estimate: bool = False
 
     regime_type: str = "spy_sma"
     regime_window: int = 200
@@ -110,6 +128,7 @@ class SimulationConfig:
             max_leverage=float(overlay.get("max_leverage", 1.0)),
             dd_threshold=float(dd_control.get("threshold", 0.15)),
             dd_reduction=float(dd_control.get("reduction", 0.5)),
+            lag_vol_estimate=_as_bool(overlay.get("lag_vol_estimate", False)),
             regime_type=str(regime.get("type", "spy_sma")),
             regime_window=int(regime.get("window", 200)),
             exposure_below=float(regime.get("exposure_below", 0.0)),
@@ -206,9 +225,12 @@ def _target_weights(
 ) -> dict:
     """Apply volatility targeting + drawdown control + leverage cap."""
     port_ret = (weights * asset_ret).sum(axis=1)
-    realized_vol = port_ret.rolling(config.vol_lookback).std() * np.sqrt(252)
-    realized_vol = realized_vol.replace(0, np.nan)
-    vol_scale = (config.vol_target / realized_vol).clip(upper=1.0).fillna(0.0)
+    vol_scale = realized_vol_scale(
+        port_ret,
+        config.vol_target,
+        config.vol_lookback,
+        config.lag_vol_estimate,
+    )
 
     vol_targeted = weights.mul(vol_scale, axis=0)
     vol_port_ret = (vol_targeted * asset_ret).sum(axis=1)

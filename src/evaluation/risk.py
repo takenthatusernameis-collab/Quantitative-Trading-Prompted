@@ -10,6 +10,32 @@ import pandas as pd
 from src.backtest.engine import compute_metrics, get_cost_params, get_risk_free_rate
 
 
+def realized_vol_scale(
+    port_ret: pd.Series,
+    target_vol: float,
+    lookback: int,
+    lag_vol_estimate: bool = False,
+) -> pd.Series:
+    """Exposure scale that targets ``target_vol`` against trailing realized vol.
+
+    By default the trailing ``lookback``-session window **includes session t
+    itself**, so session t's own return moves session t's exposure.  This is the
+    committed behaviour of every call site in this repository.
+
+    With ``lag_vol_estimate=True`` the estimate is computed from sessions up to
+    and including ``t-1`` only, which removes that same-session feedback.  The
+    switch is opt-in: the default reproduces the committed computation
+    bit-for-bit, so no existing call site changes behaviour.
+
+    If realized vol is zero or NaN the scale is zero (no positions).
+    """
+    realized_vol = port_ret.rolling(lookback).std() * np.sqrt(252)
+    if lag_vol_estimate:
+        realized_vol = realized_vol.shift(1)
+    realized_vol = realized_vol.replace(0, np.nan)
+    return (target_vol / realized_vol).clip(upper=1.0).fillna(0.0)
+
+
 def volatility_target_overlay(
     returns: pd.Series,
     weights: pd.DataFrame,
@@ -18,19 +44,19 @@ def volatility_target_overlay(
     commission_bps: float = 1.0,
     slippage_bps: float = 2.0,
     rf_annual: float = 0.02,
+    lag_vol_estimate: bool = False,
 ) -> tuple[pd.Series, dict]:
     """Apply volatility targeting: scale gross exposure to hit target annualized vol.
 
     Uses rolling realized vol over `vol_lookback` days.  If realized vol is zero
     or NaN, exposure is set to zero (no positions).
+
+    ``lag_vol_estimate`` selects the same-session estimate (default, the
+    committed behaviour) or the estimate lagged one session.
     """
     daily_ret = returns.copy()
     port_ret = (weights * daily_ret).sum(axis=1)
-    realized_vol = port_ret.rolling(vol_lookback).std() * np.sqrt(252)
-    realized_vol = realized_vol.replace(0, np.nan)
-
-    scale = target_vol / realized_vol
-    scale = scale.clip(upper=1.0).fillna(0.0)
+    scale = realized_vol_scale(port_ret, target_vol, vol_lookback, lag_vol_estimate)
 
     scaled_weights = weights.mul(scale, axis=0)
 
@@ -88,6 +114,7 @@ def combined_risk_overlay(
     commission_bps: float = 1.0,
     slippage_bps: float = 2.0,
     rf_annual: float = 0.02,
+    lag_vol_estimate: bool = False,
 ) -> tuple[pd.Series, dict]:
     """Apply combined risk overlay: volatility targeting first, then drawdown control.
 
@@ -96,16 +123,15 @@ def combined_risk_overlay(
 
     This is an additive combination: vol targeting scales the weights, then DD
     control further reduces them when drawdown exceeds threshold.
+
+    ``lag_vol_estimate`` selects the same-session volatility estimate
+    (default, the committed behaviour) or the estimate lagged one session.
     """
     daily_ret = returns.copy()
 
     # Step 1: Volatility targeting
     port_ret = (weights * daily_ret).sum(axis=1)
-    realized_vol = port_ret.rolling(vol_lookback).std() * np.sqrt(252)
-    realized_vol = realized_vol.replace(0, np.nan)
-
-    vol_scale = target_vol / realized_vol
-    vol_scale = vol_scale.clip(upper=1.0).fillna(0.0)
+    vol_scale = realized_vol_scale(port_ret, target_vol, vol_lookback, lag_vol_estimate)
 
     vol_targeted_weights = weights.mul(vol_scale, axis=0)
 
@@ -138,6 +164,7 @@ def run_risk_overlays(
     weights: pd.DataFrame,
     vol_targets: Sequence[float] = (0.10, 0.15, 0.20),
     dd_thresholds: Sequence[float] = (0.15, 0.20),
+    lag_vol_estimate: bool = False,
 ) -> dict:
     """Run all risk overlay combinations and return results keyed by name."""
     commission_bps, slippage_bps = get_cost_params()
@@ -149,6 +176,7 @@ def run_risk_overlays(
         net_ret, metrics = volatility_target_overlay(
             returns, weights, target_vol=tv,
             commission_bps=commission_bps, slippage_bps=slippage_bps, rf_annual=rf_annual,
+            lag_vol_estimate=lag_vol_estimate,
         )
         results[f"vol_target_{tv}"] = {"net_ret": net_ret, "metrics": metrics}
 
@@ -167,6 +195,7 @@ def run_combined_risk_overlays(
     weights: pd.DataFrame,
     vol_targets: Sequence[float] = (0.10, 0.15),
     dd_thresholds: Sequence[float] = (0.15, 0.20),
+    lag_vol_estimate: bool = False,
 ) -> dict:
     """Run combined risk overlay configurations and return results keyed by name.
 
@@ -186,6 +215,7 @@ def run_combined_risk_overlays(
                 commission_bps=commission_bps,
                 slippage_bps=slippage_bps,
                 rf_annual=rf_annual,
+                lag_vol_estimate=lag_vol_estimate,
             )
             results[f"combined_vol_{tv}_dd_{dd}"] = {"net_ret": net_ret, "metrics": metrics}
 

@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.backtest.engine import compute_metrics, get_cost_params, get_risk_free_rate
 from src.data.yfinance_fetcher import fetch_universe
+from src.evaluation.risk import realized_vol_scale
 from src.evaluation.walkforward import (
     evaluate_walkforward,
     summarize_walkforward,
@@ -109,9 +110,15 @@ def _apply_overlay(
     commission_bps: float = COMMISSION_BPS,
     slippage_bps: float = SLIPPAGE_BPS,
     rf_annual: float = RF_ANNUAL,
+    lag_vol_estimate: bool = False,
 ) -> tuple[pd.DataFrame, pd.Series, dict]:
     """Replicate Cycle 5's _apply_overlay: combined vol-targeting + DD control
     with correct 3 bps cost model. Returns combined weights, net returns, metrics.
+
+    ``lag_vol_estimate`` is the opt-in switch: when True the volatility
+    estimate for session t is computed from sessions up to and including t-1
+    (no same-session feedback).  The default (False) is the committed
+    behaviour and is bit-for-bit unchanged.
     """
     weights = base_weights.copy()
     if exposure_factor is not None:
@@ -122,9 +129,12 @@ def _apply_overlay(
 
     # Step 1: volatility targeting
     port_ret = (weights * daily_ret).sum(axis=1)
-    realized_vol = port_ret.rolling(VOL_TARGET_LOOKBACK).std() * np.sqrt(252)
-    realized_vol = realized_vol.replace(0, np.nan)
-    vol_scale = (vol_target / realized_vol).clip(upper=1.0).fillna(0.0)
+    vol_scale = realized_vol_scale(
+        port_ret,
+        vol_target,
+        VOL_TARGET_LOOKBACK,
+        lag_vol_estimate,
+    )
     vol_targeted_weights = weights.mul(vol_scale, axis=0)
 
     # Step 2: drawdown control on the vol-targeted portfolio
@@ -154,6 +164,7 @@ def _apply_overlay(
 def _eval_candidate(
     close: pd.DataFrame,
     spy_sma_window: int = SPY_SMA_WINDOW,
+    lag_vol_estimate: bool = False,
 ) -> dict:
     """Evaluate the full candidate config (TSMOM + combined overlay + SPY SMA filter)
     on the test period (post VAL_END).
@@ -181,6 +192,7 @@ def _eval_candidate(
 
     cw, net_ret_test, metrics_test = _apply_overlay(
         test_asset_ret, test_weights, exposure_factor=test_exposure,
+        lag_vol_estimate=lag_vol_estimate,
     )
 
     return {
@@ -196,6 +208,7 @@ def _eval_candidate_period(
     start_date: str,
     end_date: str,
     spy_sma_window: int = SPY_SMA_WINDOW,
+    lag_vol_estimate: bool = False,
 ) -> tuple[pd.Series, pd.DataFrame]:
     """Evaluate candidate on an arbitrary period (for walk-forward folds).
 
@@ -216,7 +229,10 @@ def _eval_candidate_period(
     exposure[spy.isna() | spy_sma.isna()] = 0.0
 
     # Apply combined overlay
-    cw, net_ret, _ = _apply_overlay(daily_ret, weights_a, exposure_factor=exposure)
+    cw, net_ret, _ = _apply_overlay(
+        daily_ret, weights_a, exposure_factor=exposure,
+        lag_vol_estimate=lag_vol_estimate,
+    )
 
     # Slice to requested period
     mask = (cw.index >= start_date) & (cw.index <= end_date)
@@ -226,12 +242,21 @@ def _eval_candidate_period(
 # ---------------------------------------------------------------------------
 # 1. Walk-Forward Evaluation
 # ---------------------------------------------------------------------------
-def run_walkforward() -> dict:
-    """Run walk-forward evaluation of the SPY trend-filter candidate."""
+def run_walkforward(lag_vol_estimate: bool = False) -> dict:
+    """Run walk-forward evaluation of the SPY trend-filter candidate.
+
+    ``lag_vol_estimate`` is the opt-in switch that selects the lagged
+    (no same-session feedback) volatility estimate.  The default (False) is
+    the published protocol and is bit-for-bit unchanged.
+    """
     print("\n=== [1] Walk-Forward Evaluation ===")
 
     def config_fn(symbols: list[str], start: str, end: str) -> tuple[pd.Series, pd.DataFrame]:
-        return _eval_candidate_period(symbols, start, end, spy_sma_window=SPY_SMA_WINDOW)
+        return _eval_candidate_period(
+            symbols, start, end,
+            spy_sma_window=SPY_SMA_WINDOW,
+            lag_vol_estimate=lag_vol_estimate,
+        )
 
     wf_df = evaluate_walkforward(
         SYMBOLS, START_DATE, END_DATE, config_fn,

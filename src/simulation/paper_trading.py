@@ -97,6 +97,7 @@ class PaperTradingConfig(SimulationConfig):
             max_leverage=sim_base.max_leverage,
             dd_threshold=sim_base.dd_threshold,
             dd_reduction=sim_base.dd_reduction,
+            lag_vol_estimate=sim_base.lag_vol_estimate,
             regime_type=sim_base.regime_type,
             regime_window=sim_base.regime_window,
             exposure_below=sim_base.exposure_below,
