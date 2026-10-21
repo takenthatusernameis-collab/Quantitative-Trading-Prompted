@@ -68,6 +68,31 @@ def test_cost_breakdown_present(payload):
     assert cb["net_excess_after_borrow_annualized"] < 0
 
 
+def test_the_cost_breakdown_is_internally_consistent(payload):
+    """gross - turnover drag - borrow drag = net (Cycle-940 erratum)."""
+    cb = payload["cost_breakdown"]
+    reconstructed = (
+        cb["gross_excess_before_any_cost_annualized"]
+        - cb["realized_turnover_cost_drag"]
+        - cb["realized_borrow_drag_per_year"]
+    )
+    assert reconstructed == pytest.approx(cb["net_excess_after_borrow_annualized"], abs=5e-5)
+    assert (
+        cb["gross_excess_before_any_cost_annualized"]
+        - cb["realized_turnover_cost_drag"]
+        == pytest.approx(cb["excess_net_of_turnover_cost_before_borrow_annualized"], abs=5e-5)
+    )
+
+
+def test_the_turnover_drag_is_not_negligible(payload):
+    """The defective value (6e-6) understated the drag by the cost rate."""
+    cb = payload["cost_breakdown"]
+    assert cb["realized_turnover_cost_drag"] > 0.01
+    assert cb["realized_cost_drag_per_year"] == pytest.approx(
+        cb["realized_turnover_cost_drag"] + cb["realized_borrow_drag_per_year"], abs=5e-5
+    )
+
+
 def test_determinism_two_runs():
     p1 = build_payload()
     p2 = build_payload()

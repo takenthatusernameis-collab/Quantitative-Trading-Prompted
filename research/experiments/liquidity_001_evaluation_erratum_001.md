@@ -54,6 +54,15 @@ A second, smaller defect in the same line: the code read the probability from
 `dsr_res["probability"]`, but `compute_dsr` returns it under `dsr_probability`, so
 the published probability was `nan`.
 
+A third, independent reporting defect was found in the same record's cost table: the
+**Realized cost drag** line published the fraction of return under a percent label.
+The record's own turnover figure is 23.862681 units/yr and the committed cost model is
+3.0 bp per unit of weight change, which implies a drag of **0.715880%/yr**; the record
+published **0.007159%/yr**, the fraction 0.0071588 with a `%/yr` suffix. The line now
+carries 0.715880%/yr. (The sibling records use the percent convention correctly:
+`reversal_001` publishes 3.0230%/yr for 100.7664 units/yr, `leadlag_001` publishes
+0.7654%/yr for 25.5124 units/yr.)
+
 ## The correction
 
 | Item | Before (Cycle 938) | After (Cycle 940) |
@@ -62,6 +71,7 @@ the published probability was `nan`.
 | Published DSR | -2.919035 (not reproducible) | **-2.968111** (reproducible) |
 | Published probability | `nan` (wrong key) | **0.001498** |
 | Seed recorded in the record | not recorded | `seed 20240101, 2000 draws, block 22` |
+| Published "Realized cost drag" | 0.007159%/yr (a **fraction** under a percent label) | **0.715880%/yr** |
 | Verdict | Rejected/Failed (conditions i, iv) | **Rejected/Failed (conditions i, iv)** |
 
 * **No new number is introduced.** The seed (20240101) and the draw count (2000) are

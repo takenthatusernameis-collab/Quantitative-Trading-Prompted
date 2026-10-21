@@ -164,7 +164,23 @@ CORRECTION_NOTICE = (
     "**evaluator**, not in the frozen specification: `config/pairs_candidate_001.yaml` and "
     "`research/hypotheses/pairs_001.md` are byte-identical to the freeze commit "
     f"`{FREEZE_COMMIT}`; no frozen value, threshold, gate, cost model, universe or Sharpe "
-    "convention changed. The superseded figures are published verbatim in "
+    "convention changed. The superseded figures were never published in this repository "
+    "(the defect was found and fixed before the record was committed, so no pre-fix "
+    "version exists in the git history); the correction of record is "
+    "`research/experiments/pairs_001_evaluation_erratum_001.md`, which publishes the "
+    "post-fix figures together with the Cycle-940 corrections to the cost-drag lines."
+    "\n\n"
+    "**Correction notice (published by Cycle 940).** A second, independent defect was "
+    "found in the same evaluator: the *reported* realized turnover cost drag applied the "
+    "3.0 bp cost rate to a series that already carried it, so the published drag "
+    "(0.0006%/yr) understated the drag implied by the record's own turnover figure "
+    "(68.6916 units/yr x 3.0 bp = 2.0607%/yr) by a factor of the cost rate. The drag is "
+    "now applied once (2.1364%/yr measured from the pair-level cost series) and the "
+    "record now publishes the gross excess **before any cost** (8.7862%/yr) next to the "
+    "excess net of the turnover cost and before borrow (6.6497%/yr), which the previous "
+    "version labelled \"Gross excess (before borrow)\". The strategy's return series, the "
+    "fold Sharpes, the bootstrap CI, the Deflated Sharpe Ratio and the **verdict are "
+    "unchanged**; only the reported drag lines and their labels changed. See "
     "`research/experiments/pairs_001_evaluation_erratum_001.md`."
 )
 
@@ -551,7 +567,11 @@ def evaluate(
 
     weight_changes = book_weights.loc[oos_index].diff().abs().sum(axis=1).fillna(0.0)
     realized_turnover = float(weight_changes.sum() / len(oos_index) * 252.0)
-    realized_turnover_cost = float((oos_turnover * cost_per_unit).sum() / len(oos_index) * 252.0)
+    # ``oos_turnover`` already carries the cost per unit of weight change
+    # (``path_returns_pair`` returns the cost series), so it must not be scaled
+    # by the cost rate a second time. See
+    # research/experiments/pairs_001_evaluation_erratum_001.md.
+    realized_turnover_cost = float(oos_turnover.sum() / len(oos_index) * 252.0)
     realized_borrow_drag = float((oos_borrow * 1.0).sum() / len(oos_index) * 252.0)
     realized_cost_drag = realized_turnover_cost + realized_borrow_drag
 
@@ -636,7 +656,7 @@ def pair_attribution(
                 "b": b,
                 "net_excess_annualized": float(oos_net.mean() * 252.0),
                 "turnover_cost_annualized": float(
-                    (oos_turnover * cost_per_unit).sum() / len(oos_index) * 252.0
+                    oos_turnover.sum() / len(oos_index) * 252.0
                 ),
                 "borrow_drag_annualized": float(
                     oos_borrow.sum() / len(oos_index) * 252.0
@@ -841,7 +861,8 @@ on the full sample. No parameter search.
 | Realized turnover cost drag | {evaluation['realized_turnover_cost_per_year']:.4%}/yr |
 | Realized borrow drag (25 bp x short notional per active pair per rebalance) | {evaluation['realized_borrow_drag_per_year']:.4%}/yr |
 | Realized total cost drag | {evaluation['realized_cost_drag_per_year']:.4%}/yr |
-| Gross excess (before borrow) annualized | {evaluation['net_excess_before_borrow_annualized']:.4%} |
+| Gross excess (before any cost) annualized | {evaluation['gross_excess_annualized']:.4%} |
+| Excess net of the turnover cost, before borrow, annualized | {evaluation['net_excess_before_borrow_annualized']:.4%} |
 | Net excess after borrow annualized | {evaluation['net_excess_annualized']:.4%} |
 
 **Turnover-convention disclosure.** The Cycle-934 shortlist's 52 units/yr figure was

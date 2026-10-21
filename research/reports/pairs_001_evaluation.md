@@ -10,7 +10,9 @@ This report is the long-form evidence behind the record
 `research/pairs_001_evaluation.py` and carry no timestamp, so two consecutive runs are
 byte-identical.
 
-**Correction notice (published 2026-10-21).** This record was regenerated after an implementation defect in the evaluator was found and fixed: the weight frame was initialised to `0.0` instead of `NaN`, so the forward fill was a no-op and every position was held for **one** session instead of the frozen **five**, and a pair that left the active set at a rebalance was never exited to flat. The defect was in the **evaluator**, not in the frozen specification: `config/pairs_candidate_001.yaml` and `research/hypotheses/pairs_001.md` are byte-identical to the freeze commit `fe17260`; no frozen value, threshold, gate, cost model, universe or Sharpe convention changed. The superseded figures are published verbatim in `research/experiments/pairs_001_evaluation_erratum_001.md`.
+**Correction notice (published 2026-10-21).** This record was regenerated after an implementation defect in the evaluator was found and fixed: the weight frame was initialised to `0.0` instead of `NaN`, so the forward fill was a no-op and every position was held for **one** session instead of the frozen **five**, and a pair that left the active set at a rebalance was never exited to flat. The defect was in the **evaluator**, not in the frozen specification: `config/pairs_candidate_001.yaml` and `research/hypotheses/pairs_001.md` are byte-identical to the freeze commit `fe17260`; no frozen value, threshold, gate, cost model, universe or Sharpe convention changed. The superseded figures were never published in this repository (the defect was found and fixed before the record was committed, so no pre-fix version exists in the git history); the correction of record is `research/experiments/pairs_001_evaluation_erratum_001.md`, which publishes the post-fix figures together with the Cycle-940 corrections to the cost-drag lines.
+
+**Correction notice (published by Cycle 940).** A second, independent defect was found in the same evaluator: the *reported* realized turnover cost drag applied the 3.0 bp cost rate to a series that already carried it, so the published drag (0.0006%/yr) understated the drag implied by the record's own turnover figure (68.6916 units/yr x 3.0 bp = 2.0607%/yr) by a factor of the cost rate. The drag is now applied once (2.1364%/yr measured from the pair-level cost series) and the record now publishes the gross excess **before any cost** (8.7862%/yr) next to the excess net of the turnover cost and before borrow (6.6497%/yr), which the previous version labelled "Gross excess (before borrow)". The strategy's return series, the fold Sharpes, the bootstrap CI, the Deflated Sharpe Ratio and the **verdict are unchanged**; only the reported drag lines and their labels changed. See `research/experiments/pairs_001_evaluation_erratum_001.md`.
 
 ## 1. The frozen specification
 
@@ -80,7 +82,7 @@ byte-identical.
 | Excess 95% CI | [-1.219160, -0.467513] |
 | DSR (N = 1) | -3.341643 |
 | Realized turnover | 68.6916 units/yr |
-| Realized turnover cost drag | 0.0006%/yr |
+| Realized turnover cost drag | 2.1364%/yr |
 | Realized borrow drag | 20.3271%/yr |
 | Net excess after borrow annualized | -13.6774% |
 | Any pair fails cointegration | True |

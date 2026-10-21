@@ -23,10 +23,10 @@
 | XLK/XLU | 36 | 10 | True | 0.001517 | 0.813088 |
 
 ## 3) Cost breakdown
-- Turnover: 68.6916 units/yr; turnover cost drag: 0.000600%/yr
+- Turnover: 68.6916 units/yr; turnover cost drag: 2.136400%/yr
 - Borrow: 20.3271%/yr (pre-registered 25 bp per unit short notional per rebalance)
-- Total drag: 20.3277%/yr
-- Gross before borrow: 6.6497%/yr; Net after borrow: -13.6774%/yr
+- Total drag: 22.4636%/yr
+- Gross before any cost: 8.7862%/yr; net of the turnover cost, before borrow: 6.6497%/yr; Net after borrow: -13.6774%/yr
 
 ## 4) Fired pre-registered conditions
 - (i) >= 0.9: observed -0.829067 → **FIRED**
@@ -43,3 +43,4 @@ python research/pairs_001_failure_analysis.py
 python -m pytest -q tests/test_pairs_001_failure_analysis.py
 git status --porcelain data/ config/
 ```
+

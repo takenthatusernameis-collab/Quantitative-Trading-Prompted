@@ -72,10 +72,11 @@ FIRED_CONDITIONS = {
 
 COST_BREAKDOWN = {
     "realized_turnover_per_year": 68.6916,
-    "realized_turnover_cost_drag": 0.000006,
+    "realized_turnover_cost_drag": 0.021364,
     "realized_borrow_drag_per_year": 0.203271,
-    "realized_cost_drag_per_year": 0.203277,
-    "gross_excess_before_borrow_annualized": 0.066497,
+    "realized_cost_drag_per_year": 0.224636,
+    "gross_excess_before_any_cost_annualized": 0.087862,
+    "excess_net_of_turnover_cost_before_borrow_annualized": 0.066497,
     "net_excess_after_borrow_annualized": -0.136774,
 }
 
@@ -146,7 +147,8 @@ def render_experiment(payload: dict[str, Any]) -> str:
     lines.append(f"| Realized turnover cost drag | {cb['realized_turnover_cost_drag']:.6%}/yr |")
     lines.append(f"| Realized borrow drag (25 bp x short notional per rebalance) | {cb['realized_borrow_drag_per_year']:.4%}/yr |")
     lines.append(f"| Realized total cost drag | {cb['realized_cost_drag_per_year']:.4%}/yr |")
-    lines.append(f"| Gross excess (before borrow) annualized | {cb['gross_excess_before_borrow_annualized']:.4%} |")
+    lines.append(f"| Gross excess (before any cost) annualized | {cb['gross_excess_before_any_cost_annualized']:.4%} |")
+    lines.append(f"| Excess net of the turnover cost, before borrow, annualized | {cb['excess_net_of_turnover_cost_before_borrow_annualized']:.4%} |")
     lines.append(f"| Net excess after borrow annualized | {cb['net_excess_after_borrow_annualized']:.4%} |")
     lines.append("")
     lines.append("## Pre-registered conditions fired")
@@ -158,7 +160,7 @@ def render_experiment(payload: dict[str, Any]) -> str:
     lines.append("")
     lines.append("## Failure mechanism hypothesis (evidence-based, no speculation beyond measured)")
     lines.append("- **Structural instability**: cointegration fails in most training windows for nearly all pairs (only 1/36 for XLE/XLB, 4/36 for XLF/XLK) — the mean-reverting spread assumption is not stable out of sample in this regime set.")
-    lines.append("- **Cost sensitivity**: gross excess before borrow is modest (+6.65%/yr) while pre-registered borrow drag is ~20.33%/yr, leaving net -13.68%/yr; the strategy is not robust to the assumed short-borrow cost.")
+    lines.append("- **Cost sensitivity**: the gross excess before any cost is modest (+8.79%/yr); the measured turnover drag is 2.14%/yr and the pre-registered borrow drag is 20.33%/yr, leaving net -13.68%/yr; the strategy is not robust to the assumed short-borrow cost.")
     lines.append("- **Broad underperformance**: all pairs except XLP/XLU have negative net excess/Sharpe; performance is consistently negative across folds with positive-fold rate 0.25 and mean OOS Sharpe -0.829.")
     lines.append("- **Conclusion**: rejection is driven by a combination of unstable cointegration (condition iii) and insufficient gross edge to survive pre-registered borrow costs (condition iv), producing mean OOS Sharpe below threshold (condition i).")
     lines.append("")
@@ -193,7 +195,7 @@ def render_report(payload: dict[str, Any]) -> str:
     lines.append(f"- Turnover: {cb['realized_turnover_per_year']:.4f} units/yr; turnover cost drag: {cb['realized_turnover_cost_drag']:.6%}/yr")
     lines.append(f"- Borrow: {cb['realized_borrow_drag_per_year']:.4%}/yr (pre-registered 25 bp per unit short notional per rebalance)")
     lines.append(f"- Total drag: {cb['realized_cost_drag_per_year']:.4%}/yr")
-    lines.append(f"- Gross before borrow: {cb['gross_excess_before_borrow_annualized']:.4%}/yr; Net after borrow: {cb['net_excess_after_borrow_annualized']:.4%}/yr")
+    lines.append(f"- Gross before any cost: {cb['gross_excess_before_any_cost_annualized']:.4%}/yr; net of the turnover cost, before borrow: {cb['excess_net_of_turnover_cost_before_borrow_annualized']:.4%}/yr; Net after borrow: {cb['net_excess_after_borrow_annualized']:.4%}/yr")
     lines.append("")
     lines.append("## 4) Fired pre-registered conditions")
     for k in ["i", "iii", "iv", "ii"]:

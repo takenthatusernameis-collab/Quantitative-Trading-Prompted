@@ -32,10 +32,11 @@
 | Item | Value |
 |---|---|
 | Realized turnover (per year) | 68.6916 units/yr |
-| Realized turnover cost drag | 0.000600%/yr |
+| Realized turnover cost drag | 2.136400%/yr |
 | Realized borrow drag (25 bp x short notional per rebalance) | 20.3271%/yr |
-| Realized total cost drag | 20.3277%/yr |
-| Gross excess (before borrow) annualized | 6.6497% |
+| Realized total cost drag | 22.4636%/yr |
+| Gross excess (before any cost) annualized | 8.7862% |
+| Excess net of the turnover cost, before borrow, annualized | 6.6497% |
 | Net excess after borrow annualized | -13.6774% |
 
 ## Pre-registered conditions fired
@@ -48,10 +49,11 @@
 
 ## Failure mechanism hypothesis (evidence-based, no speculation beyond measured)
 - **Structural instability**: cointegration fails in most training windows for nearly all pairs (only 1/36 for XLE/XLB, 4/36 for XLF/XLK) — the mean-reverting spread assumption is not stable out of sample in this regime set.
-- **Cost sensitivity**: gross excess before borrow is modest (+6.65%/yr) while pre-registered borrow drag is ~20.33%/yr, leaving net -13.68%/yr; the strategy is not robust to the assumed short-borrow cost.
+- **Cost sensitivity**: the gross excess before any cost is modest (+8.79%/yr); the measured turnover drag is 2.14%/yr and the pre-registered borrow drag is 20.33%/yr, leaving net -13.68%/yr; the strategy is not robust to the assumed short-borrow cost.
 - **Broad underperformance**: all pairs except XLP/XLU have negative net excess/Sharpe; performance is consistently negative across folds with positive-fold rate 0.25 and mean OOS Sharpe -0.829.
 - **Conclusion**: rejection is driven by a combination of unstable cointegration (condition iii) and insufficient gross edge to survive pre-registered borrow costs (condition iv), producing mean OOS Sharpe below threshold (condition i).
 
 ## Integrity
 - data/ unchanged: True
 - config/ unchanged: True
+

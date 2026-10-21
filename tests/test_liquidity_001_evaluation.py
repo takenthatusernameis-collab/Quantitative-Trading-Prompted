@@ -232,6 +232,22 @@ def test_the_published_dsr_and_probability_are_reported(payload):
     assert "Correction (published by Cycle 940)" in text
 
 
+def test_the_published_cost_drag_uses_the_percent_convention(payload):
+    """The drag is published as a percentage per year, like the sibling records.
+
+    The Cycle-938 record published the fraction of return under a percent label
+    (0.007159%/yr) while its own turnover figure implies 0.715880%/yr.
+    """
+    ev = payload["evaluation"]
+    cost_per_unit = 3.0 / 10_000.0
+    implied_pct = ev["realized_turnover_per_year"] * cost_per_unit * 100.0
+    assert ev["realized_cost_drag_per_year"] == pytest.approx(
+        ev["realized_turnover_per_year"] * cost_per_unit, abs=1e-12
+    )
+    text = OUT_REPORT.read_text()
+    assert f"| Realized cost drag | {implied_pct:.6f}%/yr |" in text
+
+
 def test_data_and_config_unchanged_before_and_after():
     data_before = _tree_hash(REPO_ROOT / "data")
     config_before = _tree_hash(REPO_ROOT / "config")
