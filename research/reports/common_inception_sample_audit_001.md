@@ -830,7 +830,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
     "expected": "identical SHA-256 fingerprint of every file under data/ and config/",
     "observed": {
       "data_files": 1856,
-      "config_files": 13,
+      "config_files": 14,
       "data_unchanged": true,
       "config_unchanged": true
     },
