@@ -1,0 +1,125 @@
+# Frozen pre-registered configuration for the crypto perpetual funding-rate
+# carry candidate (cryptofunding_001).
+#
+# Pre-registered (Cycle 886). Data blocker resolved (Cycle 889):
+# Binance 8h funding history plus coupled daily spot/perp legs cached and
+# checksum-verified. Net-of-cost evaluated in Cycles 891-896 as an
+# exploratory signal (not promoted). This cycle freezes the hypothesis and
+# configuration for the spot-long/perp-short funding carry before any new
+# evaluation run under this frozen config.
+#
+# Candidate selected/considered as part of crypto carry investigation.
+# Distinct from equity/index/futures mechanisms in the repository.
+#
+# Code revision at freeze: current working tree
+# Every measured value below is transcribed from committed data/reports
+# or from the repository's committed cost model. No new number was fitted
+# to satisfy this freeze.
+
+candidate_id: "cryptofunding_001"
+
+universe:
+  - "BTCUSDT"  # Bitcoin
+  - "ETHUSDT"  # Ethereum
+# Perpetual contracts; no point-in-time membership set to reconstruct.
+
+signal:
+  type: "funding_rate_carry"
+  # Spot-long / perp-short when funding positive (delta-neutral by construction
+  # when held at equal notional).
+  entry_condition: "funding_cashflow > 0"
+  exit_condition: "funding_cashflow <= 0 or risk_limits_hit"
+  direction: "long_spot_short_perp"
+  rebalance: "daily"
+  rebalance_freq: "daily"
+  rebalance_per_year: 365
+
+portfolio:
+  leg_weight: 0.5              # 50% spot, 50% perp (delta-neutral)
+  gross_exposure_max: 1.0
+  equal_weight_across_symbols: true
+  cash_when_flat: true
+
+risk_overlay:
+  # BASELINE BEFORE COMPLEXITY (AGENTS.md): NO risk overlay.
+  none: true
+
+cost_model:
+  # Explicit cost model (3 bp/unit default unless justified).
+  commission_bps_per_unit: 3.0  # default per unit of weight change
+  slippage_bps_per_unit: 2.0    # repository slippage assumption
+  total_round_trip_bps: 5.0     # conservative default unless justified
+  capital_charge_annual: 0.02   # repository risk-free rate as capital charge on spot leg
+  # Venue schedule notes (for reference; headline uses conservative corner)
+  venue_notes: "Binance VIP0 published fees (spot/taker/maker, perp maker/taker) considered; headline model uses conservative assumptions."
+  justification: "3 bp/unit default per task requirement; extended with slippage and capital charge per repository conventions."
+
+execution:
+  signal_lag_days: 0           # funding observed/settled per 8h; evaluated on daily path
+  price_field: "Close"
+  timezone: "UTC"
+  trading_hours: "24/7"
+  annualization: 365
+
+history_start: "2020-01-02"
+history_end: "2026-09-30"
+seed: 42
+
+data:
+  source: "binance_archive"
+  cached: true
+  fetch_new: false
+  frequency: "daily"
+  funding_frequency: "8h"
+  # Coupled paths
+  carry_paths:
+    - "data/processed/crypto/BTCUSDT_carry_path.parquet"
+    - "data/processed/crypto/ETHUSDT_carry_path.parquet"
+  raw_funding:
+    - "data/raw/crypto/BTC_USDT_USDT_funding_binance.parquet"
+    - "data/raw/crypto/ETH_USDT_USDT_funding_binance.parquet"
+  spot_perp:
+    - "data/raw/crypto/BTCUSDT_spot_1d_binance.parquet"
+    - "data/raw/crypto/ETHUSDT_spot_1d_binance.parquet"
+    - "data/raw/crypto/BTCUSDT_perp_1d_binance.parquet"
+    - "data/raw/crypto/ETHUSDT_perp_1d_binance.parquet"
+  provenance_manifest: "research/reports/binance_crypto_manifest.json"
+  checksum_verified: true
+  rows_per_symbol_daily: 2464
+  rows_per_symbol_funding_8h: 7395
+  missing_periods: 0
+  duplicate_timestamps: 0
+  okx_crosscheck_agreement_pct: 91.2
+
+rules_pre_registered:
+  - id: "always_on"
+    description: "spot-long + perp-short carry every day"
+  - id: "funding_positive_only"
+    description: "same construction but only when funding_cashflow > 0"
+
+trial_count:
+  total: 4  # 2 rules × 2 symbols
+
+evaluation:
+  splits:
+    train_start: "2020-01-02"
+    train_end: "2023-12-31"
+    validation_end: "2024-12-31"
+    test_start: "2025-01-01"
+    test_end: "2026-09-30"
+  walk_forward:
+    purge_days: 2
+    embargo_days: 2
+  promotion_gates:
+    wf_mean_oos_sharpe_min: 0.9
+    positive_fold_rate_min: 0.5
+    pooled_oos_trades_min: 100
+  annualization: 365
+  benchmarks:
+    - "spot_hold"
+    - "risk_free"
+
+falsification_conditions:
+  - "no_durable_positive_net_carry_after_fees"
+  - "fewer_than_100_independent_funding_periods"
+  - "gross_carry_concentrated_in_single_regime_no_carry_post_2022"
