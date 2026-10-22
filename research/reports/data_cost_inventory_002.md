@@ -60,7 +60,7 @@ The counters marked *n/a* apply to the crypto funding-rate files: a funding rate
 
 The published inventory (`research/reports/data_cost_inventory_001.md`) pins a SHA-256 prefix for every cached price file. This tool re-computes them: **35 of 35 match**, **0 changed**, **0 removed**, **0 added**.
 
-The configuration file set has changed: the published scan covered **14 files** (the report states "18 config files scanned"), the current tree holds **19**. Added: `config/commoditytrend_001.yaml`, `config/overnight_capture_001.yaml`, `config/paper_trading_config.yaml`, `config/promotion_gates.yaml`, `config/sample_policy.yaml`. Removed: none.
+The configuration file set has changed: the published scan covered **15 files** (the report states "19 config files scanned"), the current tree holds **19**. Added: `config/overnight_capture_001.yaml`, `config/paper_trading_config.yaml`, `config/promotion_gates.yaml`, `config/sample_policy.yaml`. Removed: none.
 
 ## 3. The cost model actually available
 
