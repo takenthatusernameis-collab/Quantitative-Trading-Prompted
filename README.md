@@ -1,3 +1,7 @@
+## Cycle 950/951: commoditytrend_001 rejection — **Rejected/Failed** (`wf_mean_oos_sharpe,benchmark_relative_excess_ci,fold_or_trade_gate,no_post_2010_excess`).
+- Frozen evaluation: `python research/commoditytrend_001_evaluation.py` -> OVERALL: PASS; VERDICT|Rejected/Failed; FROZEN_CONDITIONS_FIRED|wf_mean_oos_sharpe,benchmark_relative_excess_ci,fold_or_trade_gate,no_post_2010_excess.
+- No promotion, no variant opened.
+
 # Quantitative Trading Research
 
 Autonomous research pipeline for discovering reproducible, net-of-cost trading edges.

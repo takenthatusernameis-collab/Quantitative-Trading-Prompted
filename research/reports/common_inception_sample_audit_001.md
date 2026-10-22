@@ -1002,3 +1002,4 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
 - a file under data/ or config/ changed during the run -> reject.
 - the common-inception sample does not have seven assets with a price -> reject.
 - two runs of the tool disagree -> reject.
+

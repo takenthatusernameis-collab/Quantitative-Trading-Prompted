@@ -13,10 +13,9 @@
   backtest of this candidate is executed** -- no `commoditytrend_001`
   backtest exists in this repository at the time of this freeze.
 
-**Status at the freeze: Blocked by data/infrastructure.** The pre-registered
-data gate (section "Data gate") is **not** satisfied by the committed cache.
-This is a *block*, not a rejection: no trading verdict is published for this
-candidate, and it is neither promoted, nor simulated, nor paper-traded.
+**Status: Rejected/Failed.** Frozen evaluation run 2026-10-22: VERDICT|Rejected/Failed;
+FROZEN_CONDITIONS_FIRED|wf_mean_oos_sharpe,benchmark_relative_excess_ci,fold_or_trade_gate,no_post_2010_excess.
+No promotion; no variant opened.
 
 ---
 
