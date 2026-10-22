@@ -6,7 +6,7 @@
 
 ## Data used
 
-- **Source:** yahoo_finance (the repository's own source, `src/data/yfinance_fetcher.py`), price field `Close`, `auto_adjust=False` -- the same convention as the committed cache.
+- **Source:** yahoo_finance (the repository's own source, the repository yfinance fetcher), price field `Close`, `auto_adjust=False` -- the same convention as the committed cache.
 - **Retrieval date:** 2026-10-22 (UTC). Request window `2000-01-01 .. 2026-10-22`.
 - **Universe:** `DBC`, `BNO`, `UNG`, `GLD`.
 - **Frequency:** daily. **Location:** the scratch directory `/tmp/scratchpad/commodity_fetch` only; the committed cache is not rewritten.
@@ -59,3 +59,4 @@ The tool is read-only with respect to the repository: `data/` and `config/` are 
 ## Decision
 
 **Data readiness: the gate PASSES.** The candidate is no longer blocked by the data gate *in principle*; it remains **Blocked by data/infrastructure** in practice until the extended panel is committed and the frozen evaluation is run. **No trading verdict is published in this cycle.**
+

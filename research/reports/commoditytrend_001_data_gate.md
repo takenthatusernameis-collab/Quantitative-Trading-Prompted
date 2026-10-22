@@ -13,7 +13,7 @@
 | `UNG` | yahoo_finance | 2026-10-22 | Close | raw (auto_adjust=False; the upstream close is split-adjusted but not dividend-adjusted -- the same convention as src/data/yfinance_fetcher.py) | 4910 | 2007-04-18 | 2026-10-21 |
 | `GLD` | yahoo_finance | 2026-10-22 | Close | raw (auto_adjust=False; the upstream close is split-adjusted but not dividend-adjusted -- the same convention as src/data/yfinance_fetcher.py) | 5515 | 2004-11-18 | 2026-10-21 |
 
-The request window was `2000-01-01 .. 2026-10-22`; the source is the same one the repository's own fetcher uses (`src/data/yfinance_fetcher.py`), with the same `auto_adjust=False` price convention, so the fetched panel is comparable with the committed cache.
+The request window was `2000-01-01 .. 2026-10-22`; the source is the same one the repository's own fetcher uses (the repository yfinance fetcher), with the same `auto_adjust=False` price convention, so the fetched panel is comparable with the committed cache.
 
 ## 2. Integrity counters
 
@@ -107,3 +107,4 @@ python research/commodity_data_gate_001.py
 python -m pytest -q tests/test_commodity_data_gate_001.py
 git status --porcelain data/ config/
 ```
+
