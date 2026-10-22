@@ -69,13 +69,14 @@ funding-positive rule is contaminated by a look-ahead, and the capacity of the t
 VIP0 fee schedule (plus the repository's slippage) and a capital charge on the spot leg. The
 always-on book still nets +9.22%/yr (canonical Sharpe 5.96) on the full sample, but its
 out-of-sample Sharpe falls from 11.14 to 1.52 and the implementable funding-positive rule's
-out-of-sample Sharpe turns **negative**; the gate is FAIL under every cost model. **Cycle 944 evaluation (implemented):** produced reproducible evaluation script and tests following repository patterns; under the frozen config (5.0 bp/unit, 365-day annualization) portfolio net ann headline 13.77%, with per-rule OOS Sharpe always_on 9.209, funding_positive_sameday 1.762, funding_positive_lagged 0.977 (all gate_pass=False). Verdict unchanged: **exploratory signal, not promoted**. Evidence: `research/experiments/cryptofunding_002_data.md`
+out-of-sample Sharpe turns **negative**; the gate is FAIL under every cost model. **Cycle 944 evaluation (implemented):** produced a reproducible evaluation script and tests following repository patterns. **Corrected in Cycle 945:** the Cycle 944 generator applied 0.02 bp/unit of trading cost and no capital charge instead of the frozen 5.0 bp/unit and 2.00%/yr, and evaluated the gate at the module's flat-3 bp default, so its published headline (13.77%) was the **gross** return of the headline rule's portfolio and its per-rule OOS Sharpes (always_on 9.209, funding_positive_sameday 1.762, funding_positive_lagged 0.977) were the Cycle 891 flat-3 bp rows. The corrected figures under the frozen config are portfolio net ann headline **+6.52%** (gross +13.80%) with per-rule OOS Sharpe always_on **3.154**, funding_positive_sameday **-3.956**, funding_positive_lagged **-4.378** (all gate_pass=False; 0 / 95 / 95 pooled OOS independent round trips). Verdict unchanged: **exploratory signal, not promoted**. Evidence: `research/experiments/cryptofunding_002_data.md`
 (data), `research/experiments/cryptofunding_002_evaluation.md` (net-of-cost evaluation and the
 realistic cost model), `research/reports/cost_admissibility_screen_001.md` (cost screen),
 `research/reports/opportunity_shortlist.md` (rank 8); Cycle 888 data note:
 `research/experiments/cryptofunding_001_data.md`; Cycle 944: `research/cryptofunding_001_evaluation.py`,
 `tests/test_eval_cryptofunding_001.py`, `research/experiments/cryptofunding_001_evaluation.md`,
-`research/reports/cryptofunding_001_evaluation.md`.
+`research/reports/cryptofunding_001_evaluation.md`; Cycle 945 correction of record:
+`research/experiments/cryptofunding_001_evaluation_erratum_001.md`.
 
 ## Pre-registration (Cycle 890 evaluation)
 
@@ -411,3 +412,82 @@ candidate's status. Evidence:
 notional"),
 `tests/test_eval_cryptofunding.py` (threshold invariants: exact reproduction of the daily-drift book
 at a threshold of 0, the cumulative-turnover inequality, the transition charge, the gate).
+
+## Cycle 945 reconciliation (metric deltas and explanations)
+
+Cycle 944 published a frozen-configuration evaluation of this candidate. Cycle 945
+compared every published figure with the prior cycles' record and found that the
+Cycle 944 numbers did not follow from the specification the same record claimed to
+implement. The correction is of record in
+`research/experiments/cryptofunding_001_evaluation_erratum_001.md`; this section is
+the reconciliation the task asked for: every metric delta, and why it exists.
+
+### Deltas against the Cycle 944 publication
+
+Equal-weight BTC/ETH portfolio, 365-day annualization, 2020-01-02..2026-09-30, OOS
+window 2025-01-01..2026-09-30.
+
+| Metric | Cycle 944 (as published) | Cycle 945 (corrected) | Delta | Explanation |
+|---|---|---|---|---|
+| Portfolio net ann, headline rule `funding_positive_lagged` | +13.7746% | **+6.5212%** | **-7.2534 pp** | The Cycle 944 generator called `net_series(book, cost_bps)` with `CAPITAL_CHARGE_RATES["repo_rf"]` (the **annual** capital-charge rate 0.02) in the **basis-points** argument, so it charged 0.02 bp/unit instead of the frozen 5.0 bp/unit and charged no capital charge at all. The published figure was the **gross** return of the same portfolio (+13.7966%/yr). |
+| Portfolio gross ann (no cost) | not published | +13.7966% | - | Published here so that the net line can be read against it. Unchanged by the correction: the gross path was never in dispute. |
+| Annualized fee drag of the headline rule | not published | 4.8480%/yr | - | 96.9597 turnover units/yr x 5.0 bp/unit, the frozen cost model's trading cost. |
+| Annualized capital-charge drag of the headline rule | 0 (not applied) | 1.7585%/yr | +1.7585 pp | 2.00%/yr charged on the spot leg, whose average notional is 87.93% of the book's equity. |
+| Mean per-symbol OOS Sharpe, `always_on` | 9.209 | **3.154** | **-6.055** | The Cycle 944 gate was evaluated with the module's default flat model (3 bp/unit, no capital charge), i.e. the Cycle 891 row, instead of the frozen configuration's cost model. |
+| Mean per-symbol OOS Sharpe, `funding_positive_sameday` | 1.762 | **-3.956** | **-5.718** | Same cause. The look-ahead-contaminated rule's OOS edge does not survive the frozen cost model. |
+| Mean per-symbol OOS Sharpe, `funding_positive_lagged` | 0.977 | **-4.378** | **-5.355** | Same cause. The implementable rule's OOS Sharpe is negative under the frozen cost model, as it already was under the Cycle 892 realistic model (-6.46) and the Cycle 894 threshold-rebalanced book (-6.28). |
+| Pooled OOS independent round trips | 0 / 95 / 95 | 0 / 95 / 95 | 0 | A property of the **position path**, not of the cost model: the count is unchanged by any cost convention. |
+| Promotion gate | FAIL (3 of 3 rules) | FAIL (3 of 3 rules) | 0 | The trade-count criterion (95 against the repository's 100) fails under every cost model; the Sharpe criterion is met only by `always_on` under the frozen configuration. |
+| Verdict | exploratory signal, not promoted | **exploratory signal, not promoted** | 0 | The verdict is driven by the gate and by the capacity/regime findings, none of which changed. |
+
+### Reconciliation against the prior cycles (891-896)
+
+Every figure the prior cycles published is reproduced under **its own** cost model
+(the flat-3 bp and the venue rows by the corrected generator's reconciliation table,
+the threshold-rebalanced rows by the same committed evaluation module), so the prior
+record is consistent and is **not** rewritten by this cycle; the Cycle 944 record was
+the only outlier.
+
+| Prior-cycle figure | Prior cycle's cost model | Reproduced | Matches |
+|---|---|---|---|
+| `always_on` +12.77%/yr, OOS Sharpe 11.14 | flat 3 bp/unit (Cycle 891) | +12.7694%, 11.144 | yes |
+| `funding_positive_lagged` +10.53%/yr, OOS Sharpe 1.13 | flat 3 bp/unit (Cycle 891) | +10.5340%, 1.128 | yes |
+| `always_on` +9.22%/yr, OOS Sharpe 1.52 | venue taker + slippage + rf (Cycle 892) | +9.2190%, 1.516 | yes |
+| `funding_positive_lagged` +1.97%/yr, per-symbol OOS Sharpe -6.46 | venue taker + slippage + rf (Cycle 892) | +1.9706%, -6.459 | yes |
+| `always_on` +9.51%/yr, OOS Sharpe 2.088 (threshold-rebalanced) | venue taker + slippage + rf (Cycle 894) | +9.5081%, 2.088 | yes |
+| `funding_positive_lagged` +2.21%/yr, OOS Sharpe -6.276 (threshold-rebalanced) | venue taker + slippage + rf (Cycle 894) | +2.2113%, -6.276 | yes |
+
+**Sharpe conventions.** The promotion gate's "net OOS Sharpe" is the **mean of the
+per-symbol** canonical (arithmetic, zero risk-free) out-of-sample Sharpes, because the
+gate is applied to the per-symbol books; the "OOS Sharpe" in the reconciliation table
+of `research/reports/cryptofunding_001_evaluation.md` is the **portfolio-level**
+canonical out-of-sample Sharpe of the equal-weight BTC/ETH book. The prior record
+uses both conventions and labels each of them: 11.14 and 1.13 (Cycle 891) and 1.52
+(Cycle 892) are portfolio-level, while -6.46 (Cycle 892) and 2.088 / -6.276 (Cycle
+894) are per-symbol means. The Cycle 944/945 "sharpe_oos" line is the per-symbol mean,
+i.e. the gate statistic. All of them are reproduced under their own cost model; none
+is compared across conventions silently.
+
+The corrected frozen-configuration headline (+6.52%/yr) sits **between** the Cycle 891
+flat-model headline (+10.53%/yr) and the Cycle 892 realistic-model headline
+(+1.97%/yr), which is the expected ordering for a 5 bp/unit model with a 2%/yr capital
+charge between a 3 bp/unit model with no capital charge and a 12 bp/7 bp venue
+schedule with the same capital charge.
+
+### Finalized status
+
+**Verdict: exploratory signal (not promoted) — unchanged by this cycle.** The
+candidate's edge is the funding payment, it is large on the full sample and negative
+out of sample under every cost model that charges a realistic fee schedule or the
+capital the spot leg ties up, it fails the trade-count criterion (95 pooled
+out-of-sample independent round trips against the repository's 100) under every cost
+model, it is venue-specific and regime-dependent, and its capacity is small. The
+Cycle 944 record's more favourable figures are withdrawn and replaced by the
+corrected ones above; the frozen specification, the data, the trial count, the gates
+and the cost model are unchanged.
+
+The open question the record names is unchanged as well: the fixed-coin construction's
+advantage is **leverage**, not a better carry (Cycle 896 measured the same gross
+return per unit of capital for the fixed-coin and the constant-notional books), and
+the margin and funding cost of that leverage gap are still unpriced. That is the
+next bounded step, not a promotion.
