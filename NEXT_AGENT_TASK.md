@@ -1,76 +1,47 @@
-# Cycle 946 — Backfill README.md with Cycles 936–945 (stale by ten cycles)
+# Cycle 947 — New evidence-based market-opportunity search (data-first, shortlist from actual repo)
 
 ## Context
 
-`README.md` ends at **Cycle 935** (`reversal_001` Rejected/Failed). Ten research
-cycles have executed since then and are recorded only in
-`research/experiments/*.md` / `research/reports/*.md` and in git history:
+Cycle 946 backfilled `README.md` with Cycles 936–945 and confirmed:
+- The Cycle-934 shortlist is **fully exhausted**: `reversal_001`, `pairs_001`, `liquidity_001`, `leadlag_001` are all **Rejected/Failed**.
+- `cryptofunding_001` remains an **exploratory signal (not promoted)** and fails the trade-count gate under every cost model (<100 pooled OOS round trips).
+- The incumbent `tsmomentum_spytrend_001` stays **Credible Candidate / NO-GO** (with canonical Sharpe convention and enforced promotion gates).
+- `sectorrotation_001` remains **Rejected/Failed** on its own pre-registered falsification condition.
 
-| Cycle | What happened | Verdict |
-|---|---|---|
-| 936 | `pairs_001` frozen pre-registration + evaluation (6 cointegrated sector pairs, short-side borrow 25 bp/unit) | **Rejected/Failed** (conditions i, iii, iv fired) |
-| 937 | (task handoff commit; the `pairs_001` record carries the cycle) | — |
-| 938 | `liquidity_001` frozen pre-registration + evaluation (Amihud illiquidity, top-2-of-9) | **Rejected/Failed** (conditions i, iv fired) |
-| 939 | `leadlag_001` frozen pre-registration + evaluation (futures→ETF lead-lag, 5 pairs) | **Rejected/Failed** (conditions i, ii fired) |
-| 940 | Seeded the `liquidity_001` DSR (unseeded bootstrap → non-reproducible) and corrected the cost-drag lines of `liquidity_001` and `pairs_001` | defect repair; verdicts unchanged |
-| 941 | Re-verified all four closed shortlist candidates; decomposed each failure into gross edge vs cost drag | **no_gross_edge** / **gross_edge_below_cost_hurdle**; consolidated statement published |
-| 942 | (task handoff commit; `common_inception_sample_audit_001.md` regenerated) | — |
-| 943 | `cryptofunding_001` pre-registration frozen (`config/cryptofunding_001.yaml`) | — |
-| 944 | `cryptofunding_001` evaluation implemented | exploratory signal (not promoted) |
-| 945 | Corrected the Cycle 944 cost-model defect (0.02 bp/unit + no capital charge → frozen 5.0 bp/unit + 2.00%/yr) and reconciled every metric against Cycles 891–896 | verdict unchanged |
-
-The strategic consequence is not recorded in `README.md`: **the Cycle-934
-shortlist is now fully exhausted.** All four candidates (`reversal_001`,
-`pairs_001`, `liquidity_001`, `leadlag_001`) are **Rejected/Failed**, and
-`cryptofunding_001` (the older Cycle-11 shortlist's rank 7) remains an
-**exploratory signal** that fails the trade-count gate under every cost model.
-The incumbent `tsmomentum_spytrend_001` stays **Credible Candidate / NO-GO**.
-No candidate line in the repository is open for promotion.
+The repository now has a correct month-end rebalance path (`src/backtest/rebalance.py`) and enforced promotion gates (`config/promotion_gates.yaml`). A data/cost inventory (Cycle 912) exists, but no systematic market-opportunity search from first principles has been executed against the actual cached data and the real 3 bp/unit cost model.
 
 ## Objective
 
-Append one entry per cycle (936–945) to `README.md`, in the repository's
-existing cycle-entry format (UTC timestamp, what was and was not changed, the
-measured result, the artifacts, the tests, the verification commands, the
-decision and the handoff). Every number quoted must be re-derived from the
-committed artifact named in this task — never transcribed from this file.
+Conduct a new, bounded, evidence-based search for plausible trading opportunities using **only the data already cached in `data/raw/`** and the **actual cost model** implemented in `src/backtest/engine.py` (1.0 bp commission + 2.0 bp slippage = 3.0 bp per unit weight change; RF 2.00%/yr). Produce a short, scored shortlist with explicit rejection reasons for non-viable segments, and prepare **at most one** concrete candidate for pre-registration (or zero if nothing meets minimum bar). Do **not** re-score closed candidates.
 
 ## Acceptance criteria
 
-- `README.md` carries one entry per cycle 936–945, in chronological order, each
-  stating: what was changed (nothing, for measurement/defect cycles), the
-  measured result with its verdict, the artifacts, the test count, the
-  verification commands, the decision and the next task.
-- Every figure quoted is re-derived from the committed record for that cycle
-  (the tool, report and experiment record named in the cycle's handoff).
-- The new entries state explicitly that the Cycle-934 shortlist is exhausted
-  and that no candidate line is open for promotion.
-- `git status --porcelain data/ config/` is empty after the work.
-- No candidate, gate, threshold, cost model, universe, hypothesis or committed
-  record is modified.
+- Read-only inventory of **all files under `data/raw/`** (counts, date ranges, frequencies, asset classes, gaps). Distinguish sub-daily from daily; note missing/duplicate timestamps.
+- Build a scored shortlist against AGENTS.md criteria (a)-(g) using only measured facts. For each rejected segment, state an explicit, evidence-based reason (no data / unobservable prices / insufficient history / omitted costs make it infeasible / look-ahead / gate failures / illiquidity / etc.).
+- If any segment appears plausible on paper, do **not** tune freely — pre-register a hypothesis in `research/hypotheses/` with: mechanism, expected direction/magnitude, horizon/universe, features/data sources, entry/exit, benchmark, confounders, falsification conditions, and a **concrete cost model** (must cover bid-ask/borrow/roll/impact/latency if relevant; if not measurable from cached data, mark as **blocked**).
+- Run only the smallest necessary read-only checks to score; **no full grid search, no parameter sweep across multiple candidates**.
+- Produce `research/reports/market_opportunity_search_001.md` and `research/experiments/market_opportunity_search_001.md` with all numbers re-derived.
+- If pre-registering a candidate, write `research/hypotheses/<name>.md` and a minimal config in `config/` (or explicitly say "no candidate pre-registered"). Do **not** run a full walk-forward evaluation this cycle.
+- `git status --porcelain data/ config/` empty. No changes to `src/`, closed experiment records, or promotion gates/thresholds.
+- `python -m pytest -q` passes (or only pre-existing failures unchanged; report count).
 
 ## Scope boundaries
 
-- Documentation only. No backtest, no new candidate, no code change, no data
-  write, no fetcher call.
-- Do not re-open any closed candidate line and do not propose a new candidate
-  here (that is a separate, later task once the record is current).
+- **Data-first**: use only `data/raw/`. Do not call external fetchers/networks. Do not download data.
+- **Cost-realistic**: use the actual model in code; do not assume free trading. If a plausible mechanism requires costs not present/measurable in cache, reject or block.
+- **No re-opening**: do not re-evaluate `reversal_001`, `pairs_001`, `liquidity_001`, `leadlag_001`, `sectorrotation_001`, or `cryptofunding_001`.
+- **Narrow**: at most one pre-registered candidate. Prefer "reject/block with evidence" over expanding scope.
+- **Deterministic**: no randomness in inventory/scoring unless seeded and recorded.
 
 ## Validation commands
 
+- `python -m pytest -q`
 - `git status --porcelain data/ config/`
-- `git diff --stat README.md` (only `README.md` should appear)
-- Spot-check: for each cycle entry, the quoted headline matches the committed
-  `research/experiments/<cycle>_*.md` and `research/reports/<cycle>_*.md`.
+- `git diff --stat` (expect only new reports/experiments/hypotheses/config if pre-registered)
 
 ## Handoff notes
 
-- Follow the format of the existing Cycle 934/935 entries: a one-paragraph
-  "what was measured / what did not change", an artifacts line, a tests line,
-  a verification line and a handoff line.
-- Measurement and defect-repair cycles state explicitly that no candidate was
-  executed, re-tuned, re-ranked or promoted.
-- The final entry (Cycle 945) should point at the consolidated consequence:
-  the shortlist is exhausted and the next evidence-based step is a new
-  market-opportunity search over the repository's actual data and cost model,
-  not a re-score of the closed list.
+- Start from `data/raw/` inventory (file list + date ranges). Cross-check against Cycle 912 inventory but verify by direct inspection.
+- Score segments: equities (sectors/indexes), rates/commodities/futures, crypto spot/perps/funding (note sub-daily), volatility, etc. Be explicit about capacity/liquidity and automation feasibility.
+- If nothing clears a high bar, the correct output is a **rejection list with evidence**, not a weak candidate.
+- Next task should flow from concrete evidence (either a pre-registered candidate ready for bounded evaluation, or a specific blocked question that needs new data to answer).
