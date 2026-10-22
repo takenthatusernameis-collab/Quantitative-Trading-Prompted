@@ -142,7 +142,9 @@ def backtest(close: pd.DataFrame, weights: pd.DataFrame, commission_bps: float =
     cost = turn * (commission_bps + slippage_bps) / 10000.0
     port_ret_net = port_ret_gross - cost
     # metrics
-    metrics = compute_metrics(port_ret_net, rf_annual=rf_annual)
+    metrics = compute_metrics(
+        port_ret_net, weights, commission_bps / 10000.0, slippage_bps / 10000.0, rf_annual
+    )
     return {
         "returns": port_ret_net,
         "gross_returns": port_ret_gross,
@@ -154,8 +156,11 @@ def backtest(close: pd.DataFrame, weights: pd.DataFrame, commission_bps: float =
 
 def run_walkforward(close: pd.DataFrame) -> dict[str, Any]:
     # use generate_walkforward_splits
+    start_date = str(close.index[0].date())
+    end_date = str(close.index[-1].date())
     splits = generate_walkforward_splits(
-        close.index,
+        start_date,
+        end_date,
         train_years=10,
         test_months=12,
         step_months=6,
