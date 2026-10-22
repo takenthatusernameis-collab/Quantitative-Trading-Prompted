@@ -494,7 +494,7 @@ def render_report(payload: dict[str, Any], checks: list[dict[str, Any]]) -> str:
         f"The request window was `{prov.get('request_start', '(not recorded)')} .. "
         f"{prov.get('request_end', '(not recorded)')}`; the "
         "source is the same one the repository's own fetcher uses "
-        "(`src/data/yfinance_fetcher.py`), with the same `auto_adjust=False` price "
+        "(the repository yfinance fetcher), with the same `auto_adjust=False` price "
         "convention, so the fetched panel is comparable with the committed cache."
     )
     add("")
@@ -684,7 +684,7 @@ def render_experiment(payload: dict[str, Any], checks: list[dict[str, Any]]) -> 
     add("")
     add(
         f"- **Source:** {prov['source']} (the repository's own source, "
-        f"`src/data/yfinance_fetcher.py`), price field `{PRICE_FIELD}`, "
+        f"the repository yfinance fetcher), price field `{PRICE_FIELD}`, "
         "`auto_adjust=False` -- the same convention as the committed cache."
     )
     add(
@@ -779,12 +779,38 @@ def render_experiment(payload: dict[str, Any], checks: list[dict[str, Any]]) -> 
 # ----------------------------------------------------------------------
 # Entry point
 # ----------------------------------------------------------------------
+def evaluate(scratch_dir: Path | str = DEFAULT_SCRATCH_DIR,
+             raw_dir: Path | str = REPO_ROOT / "data" / "raw") -> dict[str, Any]:
+    """Compute the measurement payload and the internal checks in memory.
+
+    This is the programmatic entry point used by the regression tests; it
+    performs exactly the work ``main`` performs before the optional report
+    write, so the tests can assert on the payload without writing a tracked
+    artifact. The read-only guarantee (``data/`` and ``config/`` unchanged) is
+    enforced by ``run_checks``.
+    """
+    scratch = Path(scratch_dir)
+    raw = Path(raw_dir)
+    data_before = fingerprint(REPO_ROOT / "data")
+    config_before = fingerprint(REPO_ROOT / "config")
+    payload = measure_panel(scratch, raw)
+    checks = run_checks(payload, data_before, config_before)
+    payload["checks"] = checks
+    return payload
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scratch-dir", default=str(DEFAULT_SCRATCH_DIR))
     parser.add_argument("--raw-dir", default=str(REPO_ROOT / "data" / "raw"))
     parser.add_argument("--report-out", default=str(DEFAULT_REPORT))
     parser.add_argument("--experiment-out", default=str(DEFAULT_EXPERIMENT))
+    parser.add_argument(
+        "--no-report",
+        action="store_true",
+        help="compute the payload and run the checks but write no tracked "
+        "artifact (the report and experiment paths are left untouched)",
+    )
     args = parser.parse_args(argv)
 
     scratch_dir = Path(args.scratch_dir)
@@ -792,11 +818,8 @@ def main(argv: list[str] | None = None) -> int:
     report_out = Path(args.report_out)
     experiment_out = Path(args.experiment_out)
 
-    data_before = fingerprint(REPO_ROOT / "data")
-    config_before = fingerprint(REPO_ROOT / "config")
-
-    payload = measure_panel(scratch_dir, raw_dir)
-    checks = run_checks(payload, data_before, config_before)
+    payload = evaluate(scratch_dir, raw_dir)
+    checks = payload["checks"]
 
     failed = [check["check"] for check in checks if not check["ok"]]
     integrity_failures = [
@@ -817,10 +840,11 @@ def main(argv: list[str] | None = None) -> int:
     if integrity_failures:
         fail("failed integrity checks: " + ", ".join(integrity_failures))
 
-    report_out.parent.mkdir(parents=True, exist_ok=True)
-    experiment_out.parent.mkdir(parents=True, exist_ok=True)
-    report_out.write_text(render_report(payload, checks), encoding="utf-8")
-    experiment_out.write_text(render_experiment(payload, checks), encoding="utf-8")
+    if not args.no_report:
+        report_out.parent.mkdir(parents=True, exist_ok=True)
+        experiment_out.parent.mkdir(parents=True, exist_ok=True)
+        report_out.write_text(render_report(payload, checks), encoding="utf-8")
+        experiment_out.write_text(render_experiment(payload, checks), encoding="utf-8")
 
     gate = payload["gate"]
     verdict = "PASS" if gate["gate_passed"] else "BLOCKED"
@@ -833,8 +857,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Business days: {gate['business_days']} (required {REQUIRED_BUSINESS_DAYS})")
     for check in checks:
         print(f"  [{'PASS' if check['ok'] else 'FAIL'}] {check['check']}: {check['detail']}")
-    print(f"Report: {report_out}")
-    print(f"Experiment: {experiment_out}")
+    print(f"REPORT|{report_out if not args.no_report else '(not written: --no-report)'}")
+    print(f"EXPERIMENT|{experiment_out if not args.no_report else '(not written: --no-report)'}")
     return 0 if gate["gate_passed"] else 1
 
 
