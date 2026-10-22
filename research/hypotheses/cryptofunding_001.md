@@ -69,12 +69,13 @@ funding-positive rule is contaminated by a look-ahead, and the capacity of the t
 VIP0 fee schedule (plus the repository's slippage) and a capital charge on the spot leg. The
 always-on book still nets +9.22%/yr (canonical Sharpe 5.96) on the full sample, but its
 out-of-sample Sharpe falls from 11.14 to 1.52 and the implementable funding-positive rule's
-out-of-sample Sharpe turns **negative**; the gate is FAIL under every cost model. Verdict
-unchanged: **exploratory signal, not promoted**. Evidence: `research/experiments/cryptofunding_002_data.md`
+out-of-sample Sharpe turns **negative**; the gate is FAIL under every cost model. **Cycle 944 evaluation (implemented):** produced reproducible evaluation script and tests following repository patterns; under the frozen config (5.0 bp/unit, 365-day annualization) portfolio net ann headline 13.77%, with per-rule OOS Sharpe always_on 9.209, funding_positive_sameday 1.762, funding_positive_lagged 0.977 (all gate_pass=False). Verdict unchanged: **exploratory signal, not promoted**. Evidence: `research/experiments/cryptofunding_002_data.md`
 (data), `research/experiments/cryptofunding_002_evaluation.md` (net-of-cost evaluation and the
 realistic cost model), `research/reports/cost_admissibility_screen_001.md` (cost screen),
 `research/reports/opportunity_shortlist.md` (rank 8); Cycle 888 data note:
-`research/experiments/cryptofunding_001_data.md`.
+`research/experiments/cryptofunding_001_data.md`; Cycle 944: `research/cryptofunding_001_evaluation.py`,
+`tests/test_eval_cryptofunding_001.py`, `research/experiments/cryptofunding_001_evaluation.md`,
+`research/reports/cryptofunding_001_evaluation.md`.
 
 ## Pre-registration (Cycle 890 evaluation)
 
