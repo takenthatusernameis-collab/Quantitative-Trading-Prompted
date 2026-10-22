@@ -29,7 +29,7 @@ This report is the long-form evidence behind the search record `research/experim
 
 ## 3. Measured inventory of `data/raw/`
 
-35 files, 1856 files under `data/` in total, 18 under `config/`.
+35 files, 1856 files under `data/` in total, 19 under `config/`.
 
 | File | Kind | Rows | First | Last | Modal spacing | Missing close | Duplicate stamps | Non-positive close | Zero-volume rows | Median $/day |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -312,9 +312,13 @@ This report is the long-form evidence behind the search record `research/experim
 
 ## 7. Disposition
 
-**No candidate is pre-registered by this cycle, and the reason is published rather than smoothed over.** The selection rule leaves exactly one segment open -- `commodity_complex`, the commodity complex, the only segment the repository has never traded as a book -- and its only instantiation that the committed cache can actually evaluate fails the pre-declared screen of section 4 on both the edge and the trade count. The remaining ten segments are closed by committed records, by the absence of the data their mechanism needs, or by the repository's own cost model; each one's reason is published in section 6.
+**Exactly one candidate is pre-registered by this cycle, and its status is a block, not a verdict.** The selection rule leaves exactly one segment open -- `commodity_complex`, the commodity complex, the only segment the repository has never traded as a book -- and its only instantiation that the committed cache can actually evaluate fails the pre-declared screen of section 4 on both the edge and the trade count. The remaining ten segments are closed by committed records, by the absence of the data their mechanism needs, or by the repository's own cost model; each one's reason is published in section 6.
 
-The **conditional candidate specification** below is published so that the next cycle does not have to re-derive it, and so that the specification can be frozen and evaluated without modification once -- and only once -- its **data gate** is satisfied. It is **not** a pre-registration: no hypothesis file and no configuration file is written for it by this cycle, and no result of it exists.
+**Pre-registered candidate: `commoditytrend_001`** -- hypothesis `research/hypotheses/commoditytrend_001.md`, frozen configuration `config/commoditytrend_001.yaml` (SHA-256 `3ddfcf0a7b5ac42f...`, hypothesis `90939438b3cd88d8...`). The tool verifies the committed configuration against the rule this search published and **fails closed** on any drift.
+
+**Its status at the freeze is `FAILED -- blocked by data/infrastructure`.** The cached common inception of its universe (DBC, BNO, UNG, GLD) is 2015-01-02, which supports **3** folds of the frozen 10y/12m/6m design against the **10** the data gate requires. The data gate is therefore not satisfied today, and the candidate is **blocked, not rejected**: no trading verdict is published for it, it is not promoted, not simulated and not paper-traded.
+
+**Why the candidate is pre-registered at all, given that its one measurable instantiation is negative.** The screen settles the two-asset instantiation and does not settle the segment: time-series momentum needs a *diversified* cross-section, and the committed cache offers only two long-history commodity ETFs whose exposures overlap. The pre-registration therefore (i) freezes the rule before any result is known, (ii) states the data gate in measured terms, (iii) publishes the negative prior evidence inside the hypothesis itself so that no reader can mistake the pre-registration for a strong claim, and (iv) marks the cost-model components that the cache cannot measure as **blocked** rather than assuming them away. The next cycle's work is bounded and unbiased: measure the data gate, and -- only if it is satisfied -- evaluate the frozen rule.
 
 | Field | Value |
 |---|---|
@@ -329,6 +333,8 @@ The **conditional candidate specification** below is published so that the next 
 | falsification | 1) walk-forward mean OOS Sharpe < 0.9; 2) the benchmark-relative net excess has a moving-block bootstrap 95% CI that includes zero; 3) the measured gross capture fraction is below the measured cost hurdle; 4) the positive-fold rate < 0.5 or the pooled OOS trades <= 100; 5) no positive benchmark-relative excess after 2010; 6) the data gate fails (the candidate is then blocked by data/infrastructure, not rejected) |
 
 **The data gate, measured.** The frozen design needs 4,536 business days (18.00 years) to produce 15 folds. The four-instrument universe (DBC, BNO, UNG, GLD) has a cached common inception of 2015-01-02, which is **3 folds** -- the data gate fails today by a factor of 5.0. The two-instrument universe that section 4 could evaluate (DBC, GLD) has 21 folds and does clear the gate, and its screen is negative.
+
+**The evidence that the gate is satisfiable, and its status.** Four of the six cached commodity ETFs and all four cached futures series share the *identical* first session 2015-01-02; eight independent instruments do not incept on the same day, so that common start is a **fetch window**, not instrument history. The upstream history of the four commodity ETFs is a **declared prior** (2010-2011) and must be **measured** by a fetch into a scratch directory before the candidate is evaluated; the committed cache is not to be rewritten in the same step.
 
 ## 8. Verification and reproduction
 
