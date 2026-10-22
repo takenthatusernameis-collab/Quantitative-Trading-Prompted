@@ -6,24 +6,24 @@
 
 ## 1. Data inventory — `data/raw/`
 
-**35 parquet files, 174052 rows** (27 equity/futures files, 8 crypto files). Measured across the whole cache: **0 missing prices**, **0 duplicate timestamps**, **4 sub-daily files** (all of them the 8-hourly crypto funding series; **0** equity/futures file is finer than daily), **2133 non-positive price observations**.
+**35 parquet files, 177168 rows** (27 equity/futures files, 8 crypto files). Measured across the whole cache: **0 missing prices**, **0 duplicate timestamps**, **4 sub-daily files** (all of them the 8-hourly crypto funding series; **0** equity/futures file is finer than daily), **2133 non-positive price observations**.
 
 | # | Path | Provenance | Universe | Rows | First | Last | Frequency | Median gap (d) | Dup timestamps | Missing prices | Stale (repeat) prices | Non-positive prices | Zero-volume rows | SHA-256 (16) |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | `data/raw/BNO.parquet` | yfinance-cache | BNO | 2964 | 2015-01-02 | 2026-10-15 | daily | 1.0000 | 0 | 0 | 42 | 0 | 0 | `c0d43a0b06b4380c` |
+| 1 | `data/raw/BNO.parquet` | yfinance-cache | BNO | 4123 | 2010-06-02 | 2026-10-21 | daily | 1.0000 | 0 | 0 | 77 | 0 | 27 | `f9f85c5844ba3884` |
 | 2 | `data/raw/CL-F.parquet` | yfinance-cache | CL-F | 2964 | 2015-01-02 | 2026-10-15 | daily | 1.0000 | 0 | 0 | 12 | 1 | 7 | `5d7ec126885110fc` |
-| 3 | `data/raw/DBC.parquet` | yfinance-cache | DBC | 5201 | 2006-02-06 | 2026-10-08 | daily | 1.0000 | 0 | 0 | 85 | 0 | 0 | `1420b2b7ace04898` |
+| 3 | `data/raw/DBC.parquet` | yfinance-cache | DBC | 5210 | 2006-02-06 | 2026-10-21 | daily | 1.0000 | 0 | 0 | 85 | 0 | 0 | `a04e11a54bb3710f` |
 | 4 | `data/raw/EEM.parquet` | yfinance-cache | EEM | 5917 | 2003-04-14 | 2026-10-19 | daily | 1.0000 | 0 | 0 | 40 | 0 | 0 | `922f0181be3ed98c` |
 | 5 | `data/raw/EFA.parquet` | yfinance-cache | EFA | 6323 | 2001-08-27 | 2026-10-19 | daily | 1.0000 | 0 | 0 | 49 | 0 | 0 | `a77623de41bdf6d5` |
 | 6 | `data/raw/GC-F.parquet` | yfinance-cache | GC-F | 2964 | 2015-01-02 | 2026-10-15 | daily | 1.0000 | 0 | 0 | 15 | 0 | 36 | `2dc89075a6bfe3a9` |
-| 7 | `data/raw/GLD.parquet` | yfinance-cache | GLD | 5513 | 2004-11-18 | 2026-10-19 | daily | 1.0000 | 0 | 0 | 20 | 0 | 0 | `5ca9683ee5f6af6e` |
+| 7 | `data/raw/GLD.parquet` | yfinance-cache | GLD | 5515 | 2004-11-18 | 2026-10-21 | daily | 1.0000 | 0 | 0 | 20 | 0 | 0 | `a50a33932759e90a` |
 | 8 | `data/raw/GSG.parquet` | yfinance-cache | GSG | 2964 | 2015-01-02 | 2026-10-15 | daily | 1.0000 | 0 | 0 | 59 | 0 | 0 | `d38c0d9bed4894da` |
 | 9 | `data/raw/IWM.parquet` | yfinance-cache | IWM | 6638 | 2000-05-26 | 2026-10-19 | daily | 1.0000 | 0 | 0 | 20 | 0 | 0 | `5bd3985f67dd47ad` |
 | 10 | `data/raw/NG-F.parquet` | yfinance-cache | NG-F | 2965 | 2015-01-02 | 2026-10-15 | daily | 1.0000 | 0 | 0 | 11 | 0 | 7 | `6d480ef7769f42eb` |
 | 11 | `data/raw/QQQ.parquet` | yfinance-cache | QQQ | 6946 | 1999-03-10 | 2026-10-19 | daily | 1.0000 | 0 | 0 | 38 | 0 | 0 | `71215972c77f917d` |
 | 12 | `data/raw/SPY.parquet` | yfinance-cache | SPY | 8488 | 1993-01-29 | 2026-10-19 | daily | 1.0000 | 0 | 0 | 62 | 0 | 0 | `971d02284b9790df` |
 | 13 | `data/raw/TLT.parquet` | yfinance-cache | TLT | 6095 | 2002-07-30 | 2026-10-19 | daily | 1.0000 | 0 | 0 | 31 | 0 | 0 | `f745d0921006c792` |
-| 14 | `data/raw/UNG.parquet` | yfinance-cache | UNG | 2964 | 2015-01-02 | 2026-10-15 | daily | 1.0000 | 0 | 0 | 41 | 0 | 0 | `34b66574358d164d` |
+| 14 | `data/raw/UNG.parquet` | yfinance-cache | UNG | 4910 | 2007-04-18 | 2026-10-21 | daily | 1.0000 | 0 | 0 | 63 | 0 | 0 | `0ce2a5b25a2e8e6b` |
 | 15 | `data/raw/USO.parquet` | yfinance-cache | USO | 2964 | 2015-01-02 | 2026-10-15 | daily | 1.0000 | 0 | 0 | 23 | 0 | 0 | `fa22094f98b4e826` |
 | 16 | `data/raw/VNQ.parquet` | yfinance-cache | VNQ | 5542 | 2004-09-29 | 2026-10-08 | daily | 1.0000 | 0 | 0 | 30 | 0 | 0 | `8714f6b1bf45d1b0` |
 | 17 | `data/raw/XLB.parquet` | yfinance-cache | XLB | 6991 | 1998-12-22 | 2026-10-08 | daily | 1.0000 | 0 | 0 | 78 | 0 | 0 | `465b9a7b6c784869` |
@@ -84,16 +84,17 @@ The committed crypto manifest (`research/reports/binance_crypto_manifest.json`, 
 | Last observation | Files | Names |
 |---|---|---|
 | 2026-09-30 | 6 | crypto/BTCUSDT_perp_1d_binance, crypto/BTCUSDT_spot_1d_binance, crypto/BTC_USDT_USDT_funding_binance, crypto/ETHUSDT_perp_1d_binance, crypto/ETHUSDT_spot_1d_binance, crypto/ETH_USDT_USDT_funding_binance |
-| 2026-10-08 | 11 | DBC, VNQ, XLB, XLE, XLF, XLI, XLK, XLP, XLU, XLV, XLY |
-| 2026-10-15 | 8 | BNO, CL-F, GC-F, GSG, NG-F, UNG, USO, ZB-F |
-| 2026-10-19 | 8 | EEM, EFA, GLD, IWM, QQQ, SPY, TLT, ^VIX |
+| 2026-10-08 | 10 | VNQ, XLB, XLE, XLF, XLI, XLK, XLP, XLU, XLV, XLY |
+| 2026-10-15 | 6 | CL-F, GC-F, GSG, NG-F, USO, ZB-F |
+| 2026-10-19 | 7 | EEM, EFA, IWM, QQQ, SPY, TLT, ^VIX |
 | 2026-10-20 | 2 | crypto/BTC_USDT_USDT_funding, crypto/ETH_USDT_USDT_funding |
+| 2026-10-21 | 4 | BNO, DBC, GLD, UNG |
 
-Measured equity-session lag behind the newest equity bar (2026-10-19): 2026-10-08 → 7 sessions; 2026-10-15 → 2 sessions; 2026-10-19 → 0 sessions.
+Measured equity-session lag behind the newest equity bar (2026-10-21): 2026-10-08 → 9 sessions; 2026-10-15 → 4 sessions; 2026-10-19 → 2 sessions; 2026-10-21 → 0 sessions.
 
-**Zero-volume observations** (a non-trading or non-tradable print): `CL-F.parquet` 7 of 2964 rows; `GC-F.parquet` 36 of 2964 rows; `NG-F.parquet` 7 of 2965 rows; `XLI.parquet` 1 of 6991 rows; `ZB-F.parquet` 9 of 2964 rows; `^VIX.parquet` 5515 of 5515 rows.
+**Zero-volume observations** (a non-trading or non-tradable print): `BNO.parquet` 27 of 4123 rows; `CL-F.parquet` 7 of 2964 rows; `GC-F.parquet` 36 of 2964 rows; `NG-F.parquet` 7 of 2965 rows; `XLI.parquet` 1 of 6991 rows; `ZB-F.parquet` 9 of 2964 rows; `^VIX.parquet` 5515 of 5515 rows.
 
-**Repeat (unchanged) prices** — the largest counts are `crypto/ETH_USDT_USDT_funding_binance.parquet` 1924/7395 (26.02%); `crypto/BTC_USDT_USDT_funding_binance.parquet` 1902/7395 (25.72%); `XLP.parquet` 130/6991 (1.86%); `XLF.parquet` 100/6991 (1.43%); `XLV.parquet` 91/6991 (1.30%); `XLU.parquet` 88/6991 (1.26%); `DBC.parquet` 85/5201 (1.63%); `XLB.parquet` 78/6991 (1.12%).
+**Repeat (unchanged) prices** — the largest counts are `crypto/ETH_USDT_USDT_funding_binance.parquet` 1924/7395 (26.02%); `crypto/BTC_USDT_USDT_funding_binance.parquet` 1902/7395 (25.72%); `XLP.parquet` 130/6991 (1.86%); `XLF.parquet` 100/6991 (1.43%); `XLV.parquet` 91/6991 (1.30%); `XLU.parquet` 88/6991 (1.26%); `DBC.parquet` 85/5210 (1.63%); `XLB.parquet` 78/6991 (1.12%).
 
 **Survivorship.** Every cached instrument is a still-listed ETF, a still-traded futures front month or a live crypto contract; the repository holds no delisted series and no constituent-level membership, so ETF-level survivorship is not observable and constituent-level survivorship is **not modelled** (a limitation, inherited, not measured away).
 
@@ -158,14 +159,14 @@ Criteria (a)–(g) are AGENTS.md's: (a) data quality/access, (b) structural mech
 
 | Candidate | Depth (y) | Weakest provenance | Missing prices | Duplicate timestamps | Max coverage lag (sessions) | Rubric score | Committed (a) | Published (a) |
 |---|---|---|---|---|---|---|---|---|
-| TSMOM incumbent | 21.92 | yfinance-cache | 0 | 0 | 0 | 5 | 5 | 5 |
-| Long-only cross-sectional momentum, broad 18-ETF universe | 20.67 | yfinance-cache | 0 | 0 | 7 | 5 | 5 | 5 |
-| Sector rotation | 27.79 | yfinance-cache | 0 | 0 | 7 | 5 | 5 | 5 |
-| Calendar / rebalancing effects | 26.40 | yfinance-cache | 0 | 0 | 0 | 5 | 5 | 5 |
-| TSMOM parameter variants | 21.92 | yfinance-cache | 0 | 0 | 0 | 5 | 5 | 5 |
-| Macro regime overlay extension | 21.92 | yfinance-cache | 0 | 0 | 0 | 5 | 4 | 4 |
+| TSMOM incumbent | 21.92 | yfinance-cache | 0 | 0 | 2 | 5 | 5 | 5 |
+| Long-only cross-sectional momentum, broad 18-ETF universe | 20.70 | yfinance-cache | 0 | 0 | 9 | 5 | 5 | 5 |
+| Sector rotation | 27.79 | yfinance-cache | 0 | 0 | 9 | 5 | 5 | 5 |
+| Calendar / rebalancing effects | 26.40 | yfinance-cache | 0 | 0 | 2 | 5 | 5 | 5 |
+| TSMOM parameter variants | 21.92 | yfinance-cache | 0 | 0 | 2 | 5 | 5 | 5 |
+| Macro regime overlay extension | 21.92 | yfinance-cache | 0 | 0 | 2 | 4 | 4 | 4 |
 | Crypto perpetual funding-rate carry | 6.75 | binance-archive | 0 | 0 | 20 | 3 | 4 | 3 |
-| Commodity/rate futures basis and roll yield | 11.78 | yfinance-cache | 0 | 0 | 2 | 2 | 2 | 2 |
+| Commodity/rate futures basis and roll yield | 11.78 | yfinance-cache | 0 | 0 | 4 | 2 | 2 | 2 |
 | Volatility risk premium | 0.00 | none present in the cache | 0 | 0 | 0 | 2 | 2 | 2 |
 | Intraday session / time-of-day effects | 0.00 | none present in the cache | 0 | 0 | 0 | 1 | 1 | 1 |
 
@@ -228,7 +229,7 @@ Rejected on the candidate's own pre-registered gate (the numeric evidence is in 
 
 Every candidate the cache can support has now been carried through the repository's own walk-forward protocol at its own cost model (the crypto carry additionally through a realistic fee, slippage and capital-charge model). Only the incumbent clears the 0.9 walk-forward gate; the crypto carry's promotion gate fails in all 24 of its cost-model rows; the other four candidates fail gate 1 outright. The inventory explains why the others cannot be rescued by better data: their universe, sample and cost assumptions are already the ones the repository's own protocol uses, and their gate failures are properties of the effect, not of the measurement.
 
-The data-readiness picture that survives this cycle is: one 33-year daily ETF cache with zero missing prices and zero duplicate timestamps; one 6.75-year, checksum-pinned crypto archive (spot, perpetual and 8-hourly funding for BTC and ETH) whose newest observation is 19 days behind the equity cache (2026-10-19); and no intraday equity, options, FX, borrow or contract-leg data at all. The next candidate segment must therefore be built from what the cache actually holds, or the cache must be extended first — with the extension itself being the preregistered, costed step.
+The data-readiness picture that survives this cycle is: one 33-year daily ETF cache with zero missing prices and zero duplicate timestamps; one 6.75-year, checksum-pinned crypto archive (spot, perpetual and 8-hourly funding for BTC and ETH) whose newest observation is 21 days behind the equity cache (2026-10-21); and no intraday equity, options, FX, borrow or contract-leg data at all. The next candidate segment must therefore be built from what the cache actually holds, or the cache must be extended first — with the extension itself being the preregistered, costed step.
 
 ## 8. Reproduction
 

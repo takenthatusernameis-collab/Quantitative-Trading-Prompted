@@ -80,8 +80,8 @@ Per-symbol cache fingerprint (derived at run time, never a frozen literal):
 | QQQ | 1999-03-10 | 2026-10-19 | 6946 | `71215972c77f917d` |
 | IWM | 2000-05-26 | 2026-10-19 | 6638 | `5bd3985f67dd47ad` |
 | TLT | 2002-07-30 | 2026-10-19 | 6095 | `f745d0921006c792` |
-| GLD | 2004-11-18 | 2026-10-19 | 5513 | `5ca9683ee5f6af6e` |
-| DBC | 2006-02-06 | 2026-10-08 | 5201 | `1420b2b7ace04898` |
+| GLD | 2004-11-18 | 2026-10-21 | 5515 | `a50a33932759e90a` |
+| DBC | 2006-02-06 | 2026-10-21 | 5210 | `a04e11a54bb3710f` |
 | VNQ | 2004-09-29 | 2026-10-08 | 5542 | `8714f6b1bf45d1b0` |
 | EFA | 2001-08-27 | 2026-10-19 | 6323 | `a77623de41bdf6d5` |
 | EEM | 2003-04-14 | 2026-10-19 | 5917 | `922f0181be3ed98c` |
@@ -305,8 +305,8 @@ the price frame is truncated at the common inception before the signal is formed
 
 the union frame is kept (warm-up preserved); only the evaluation window is truncated at the common inception.
 
-- path (full sample): Sharpe 0.3975 (backtest scale) /
-  0.5804 (canonical), max drawdown
+- path (full sample): Sharpe 0.3976 (backtest scale) /
+  0.5805 (canonical), max drawdown
   -0.4277, annual turnover
   2.45x, 176 trade days,
   mean 9.94 positions
@@ -353,7 +353,7 @@ the union frame is kept (warm-up preserved); only the evaluation window is trunc
 |---|---|---|---|---|---|---|---|---|
 | union_sample | 8482 | 0.4247 | 0.6051 | 0.0905 | -0.4474 | 2.16 | 232 | 7.56 |
 | common_inception_slice | 5202 | 0.3667 | 0.5530 | 0.0793 | -0.4277 | 2.28 | 164 | 9.44 |
-| common_inception_window | 5202 | 0.3975 | 0.5804 | 0.0856 | -0.4277 | 2.45 | 176 | 9.94 |
+| common_inception_window | 5202 | 0.3976 | 0.5805 | 0.0856 | -0.4277 | 2.45 | 176 | 9.94 |
 
 The `common_inception_slice` and the `common_inception_window` produce **identical** gate
 tables. The reason is mechanical and is published here: the slice's signal has no history
@@ -612,13 +612,13 @@ samples).
 |---|---|---|---|
 | `policy_universe_matches_candidate_config` | PASS | 18 | 18 |
 | `common_inception_rederived_from_raw_cache` | PASS | 2006-02-06 | max of per-symbol first dates in data/raw |
-| `aligned_index_matches_the_raw_cache_union` | PASS | 8488 | 8488 |
+| `aligned_index_matches_the_raw_cache_union` | PASS | 8490 | 8490 |
 | `union_sample_reproduces_the_committed_config_faithful_record` | PASS | {'n_folds': 48.0, 'mean_test_sharpe': 0.6975243375140185, 'mean_test_sharpe_canonical': 0.8403888341999609, 'median_test_sharpe': 0.6178806353181572, 'pct_positive_sharpe': 0.7916666666666666, 'total_test_trades': 400.0} | {'n_folds': '48', 'mean_test_sharpe': '0.6975', 'mean_test_sharpe_canonical': '0.8404', 'median_test_sharpe': '0.6179', 'pct_positive_sharpe': '0.7917', 'total_test_trades': '400'} |
 | `union_sample_does_not_reproduce_the_legacy_or_daily_values` | PASS | ['legacy_calendar_path', 'daily_rerank_path'] | no legacy (0.6868) or daily re-rank (0.6928) value produced |
 | `config_faithful_path_equals_the_shared_month_end_module` | PASS | {'union': True, 'slice': True} | True |
 | `config_faithful_path_is_point_in_time` | PASS | {'union_segments': 392, 'slice_segments': 235} | every segment equals the selection at its own signal date and becomes effective strictly after it |
 | `evaluation_window_ends_at_the_frozen_test_end` | PASS | {'union_sample': '2026-10-09', 'common_inception_slice': '2026-10-09', 'common_inception_window': '2026-10-09'} | 2026-10-09 |
-| `cached_sessions_after_the_test_end_are_excluded` | PASS | ['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-19'] | the six cached sessions 2026-10-12..2026-10-19 are outside the window |
+| `cached_sessions_after_the_test_end_are_excluded` | FAIL | ['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-19', '2026-10-20', '2026-10-21'] | the six cached sessions 2026-10-12..2026-10-19 are outside the window |
 | `common_inception_sample_is_fully_populated` | PASS | {'min': 18, 'max': 18} | 18 |
 | `union_sample_is_ragged` | PASS | 1 | < 18 |
 | `plateau_gate_is_reported_as_not_evaluated` | PASS | NOT EVALUATED on every sample | NOT EVALUATED on every sample |
@@ -630,7 +630,7 @@ samples).
 ## 8. Reproduction
 
 ```bash
-python research/csmomentum_sample_gate_audit.py    # this report; OVERALL: PASS
+python research/csmomentum_sample_gate_audit.py    # this report; OVERALL: FAIL
 python research/csmomentum_common_inception_audit.py # the Cycle 905/906 sample audit still passes
 python research/month_end_candidate_reaudit.py        # the committed config-faithful record is unchanged
 python -m pytest -q tests/test_csmomentum_sample_gate_audit.py
@@ -707,10 +707,10 @@ git status --porcelain data/                          # empty
         "sessions": 8482,
         "start_date": "1993-01-29",
         "end_date": "2026-10-09",
-        "sharpe_backtest_scale": 0.4246924532684473,
-        "sharpe_canonical": 0.6051131803909181,
-        "annualized_return": 0.09046819523297822,
-        "annualized_volatility": 0.16592758993161436,
+        "sharpe_backtest_scale": 0.4247216517058661,
+        "sharpe_canonical": 0.6051399292052503,
+        "annualized_return": 0.09047309296986206,
+        "annualized_volatility": 0.16592771450857657,
         "max_drawdown": -0.44735270979791464,
         "annualized_turnover": 2.155081348738505,
         "trade_days": 232,
@@ -2096,10 +2096,10 @@ git status --porcelain data/                          # empty
         "sessions": 5202,
         "start_date": "2006-02-06",
         "end_date": "2026-10-09",
-        "sharpe_backtest_scale": 0.3666864481425193,
-        "sharpe_canonical": 0.5529580429160976,
-        "annualized_return": 0.07929682878537192,
-        "annualized_volatility": 0.16170989979516542,
+        "sharpe_backtest_scale": 0.3667348491397918,
+        "sharpe_canonical": 0.5530028356569879,
+        "annualized_return": 0.0793047328754879,
+        "annualized_volatility": 0.1617101102188468,
         "max_drawdown": -0.42767805532587955,
         "annualized_turnover": 2.2768166089965396,
         "trade_days": 164,
@@ -2756,10 +2756,10 @@ git status --porcelain data/                          # empty
         "sessions": 5202,
         "start_date": "2006-02-06",
         "end_date": "2026-10-09",
-        "sharpe_backtest_scale": 0.39753748113101917,
-        "sharpe_canonical": 0.5804428155405407,
-        "annualized_return": 0.08561845972759907,
-        "annualized_volatility": 0.16506232202536078,
+        "sharpe_backtest_scale": 0.3975851532655808,
+        "sharpe_canonical": 0.5804866825091727,
+        "annualized_return": 0.08562641011335792,
+        "annualized_volatility": 0.16506252704441526,
         "max_drawdown": -0.4276780553258793,
         "annualized_turnover": 2.453364090734333,
         "trade_days": 176,
@@ -3550,15 +3550,15 @@ git status --porcelain data/                          # empty
       },
       "GLD": {
         "first_date": "2004-11-18",
-        "last_date": "2026-10-19",
-        "row_count": 5513,
-        "sha256": "5ca9683ee5f6af6e25febb0c1c698e5505f255771ee4d19b57f725f849015696"
+        "last_date": "2026-10-21",
+        "row_count": 5515,
+        "sha256": "a50a33932759e90a5fb105cce54d02ecc387de198a33c6f7783c50d59d883057"
       },
       "DBC": {
         "first_date": "2006-02-06",
-        "last_date": "2026-10-08",
-        "row_count": 5201,
-        "sha256": "1420b2b7ace048985dbe778be5d5fc0c7b9c46a94a6b1758f5078be1729e1e95"
+        "last_date": "2026-10-21",
+        "row_count": 5210,
+        "sha256": "a04e11a54bb3710f2e97600d093fc7f647ed6d448399e8a4412b3c8837aeeaf4"
       },
       "VNQ": {
         "first_date": "2004-09-29",
@@ -3649,8 +3649,8 @@ git status --porcelain data/                          # empty
     },
     {
       "name": "aligned_index_matches_the_raw_cache_union",
-      "expected": 8488,
-      "observed": 8488,
+      "expected": 8490,
+      "observed": 8490,
       "pass": true
     },
     {
@@ -3719,9 +3719,11 @@ git status --porcelain data/                          # empty
         "2026-10-14",
         "2026-10-15",
         "2026-10-16",
-        "2026-10-19"
+        "2026-10-19",
+        "2026-10-20",
+        "2026-10-21"
       ],
-      "pass": true
+      "pass": false
     },
     {
       "name": "common_inception_sample_is_fully_populated",
@@ -3782,6 +3784,6 @@ git status --porcelain data/                          # empty
       "pass": true
     }
   ],
-  "overall": "PASS"
+  "overall": "FAIL"
 }
 ```

@@ -10,7 +10,7 @@ Produce a bounded, evidence-based inventory of the real data and the real cost m
 
 ## Data used
 
-* Source: the committed cache `data/raw/` — 35 parquet files, 174052 rows (27 equity/futures files from the Yahoo Finance cache, 8 crypto files from the Binance public archive and the OKX funding cross-check). The fetcher is never called; nothing is downloaded.
+* Source: the committed cache `data/raw/` — 35 parquet files, 177168 rows (27 equity/futures files from the Yahoo Finance cache, 8 crypto files from the Binance public archive and the OKX funding cross-check). The fetcher is never called; nothing is downloaded.
 * Point-in-time treatment: the Yahoo Finance cache carries session-dated UTC bars and is consumed with a 1-session signal lag; the Binance funding series carries settlement timestamps (a same-day funding rule is a look-ahead — the committed rule decides on the previous day's funding); the OKX series is a cross-check only.
 * Provenance verification: the committed digests in `research/reports/binance_crypto_manifest.json` were re-verified against the cached bytes — **8/8 match**.
 * Frequency: every file's frequency is derived from its own median inter-observation spacing; measured sub-daily files in the cache: **4**.
@@ -28,10 +28,10 @@ Produce a bounded, evidence-based inventory of the real data and the real cost m
 | Item | Value |
 |---|---|
 | Raw files inventoried | 35 |
-| Raw rows inventoried | 174052 |
+| Raw rows inventoried | 177168 |
 | Missing prices (whole cache) | 0 |
 | Duplicate timestamps (whole cache) | 0 |
-| Repeat (unchanged) prices (whole cache) | 5252 |
+| Repeat (unchanged) prices (whole cache) | 5309 |
 | Sub-daily files (whole cache) | 4 |
 | Cost components with no configuration key | 5 of 11 |
 | Candidates scored | 10 |
