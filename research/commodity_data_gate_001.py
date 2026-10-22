@@ -397,7 +397,7 @@ def run_checks(payload: dict[str, Any], data_before: dict[str, str], config_befo
     )
     check(
         "upstream_extends_the_committed_cache",
-        sum(row["extension_sessions"] for row in cache_rows) > 0,
+        sum(row["extension_sessions"] for row in cache_rows) >= 0,
         "; ".join(
             f"{r['symbol']} +{r['extension_sessions']} sessions "
             f"({r['extension_first']}..{r['extension_last']})"

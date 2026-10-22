@@ -252,4 +252,6 @@ Results will be labeled as exactly one of:
 
 *Created: 2026-10-12*
 *Code revision: 8604ed1*
-*Status: PRE-REGISTERED — No backtest executed. Cycle 13 will execute evaluation.*
+*Status: Rejected/Failed.*
+
+Frozen evaluation (Cycle 25): WF mean OOS Sharpe 0.6619 < 0.9; positive fold rate 78.3% (36/46); pooled OOS trades 2855; DSR prob 0.4460. Primary gate failed → FALSIFIED per pre-registered condition. No promotion; no variant opened.
