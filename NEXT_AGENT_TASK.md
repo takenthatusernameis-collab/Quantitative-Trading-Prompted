@@ -1,11 +1,11 @@
-# Corrective Handoff 620 — Cycle 999 paper-trading post-close freshness (blocked: time gate)
+# Corrective Handoff 621 — Cycle 999 paper-trading post-close freshness (blocked: time gate)
 
-Date: 2026-10-23T14:51:16Z
-Blocker: current UTC 14:51:16 < 20:00 UTC dry-run acceptance gate (code gate >= 21:00 UTC). US market has not yet opened today (open 14:30 UTC = 09:30 ET), so no completed 2026-10-23 session exists.
+Date: 2026-10-23T14:51:41Z
+Blocker: current UTC 14:51:41 < 20:00 UTC dry-run acceptance gate (code gate >= 21:00 UTC). US market has not yet opened today (open 14:30 UTC = 09:30 ET), so no completed 2026-10-23 session exists.
 
-## Verification re-run (invocation 620)
+## Verification re-run (invocation 621)
 Command 1: python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -v
-Output: 23 passed in 1.20s
+Output: 23 passed in 1.13s
 
 Command 2: python research/extend_paper_trading_state.py --dry-run
 Output: no new completed session, sessions extended 0, NAV before/after 133719.54092897204, state write count 0, raw cache scratch (canonical data/raw untouched)
