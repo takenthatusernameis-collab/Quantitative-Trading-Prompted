@@ -188,11 +188,11 @@ Each variant is recomputed from the committed cache on a scratch path and evalua
 
 | Variant | Trailing 63d Sharpe | Record Sharpe | Full-path Sharpe | WF mean OOS Sharpe | WF mean excl. worst fold | Clears gate? |
 |---|---|---|---|---|---|---|
-| V0_baseline | -0.448918 | 1.771084 | 1.486941 | 0.947307 | 1.431928 | no |
-| V1_no_vol_target | -0.034252 | 1.359084 | 1.342654 | 0.930602 | 1.414867 | no |
-| V2_vol_estimate_lagged_1d | -0.515807 | 1.635705 | 1.413736 | 1.318605 | 1.357135 | no |
-| V3_no_drawdown_control | -0.448918 | 1.771084 | 1.486941 | 0.947307 | 1.431928 | no |
-| V4_no_overlay | -0.034252 | 1.359084 | 1.338415 | 0.930602 | 1.414867 | no |
+| V0_baseline | -0.448918 | 1.771084 | 1.486763 | 0.947307 | 1.431928 | no |
+| V1_no_vol_target | -0.034252 | 1.359084 | 1.342495 | 0.930602 | 1.414867 | no |
+| V2_vol_estimate_lagged_1d | -0.515807 | 1.635705 | 1.413566 | 1.318605 | 1.357135 | no |
+| V3_no_drawdown_control | -0.448918 | 1.771084 | 1.486763 | 0.947307 | 1.431928 | no |
+| V4_no_overlay | -0.034252 | 1.359084 | 1.338256 | 0.930602 | 1.414867 | no |
 
 - **V0_baseline** -- committed overlay: volatility target on the same-session estimate.
 - **V1_no_vol_target** -- volatility target disabled (vol_scale == 1).
@@ -227,7 +227,7 @@ This is a **measurement** finding, not a fix: lagging the estimate makes the fai
 
 **4. The gate is a symptom, not the binding constraint.** Per Cycle 866, clearing `rolling_63d_sharpe` alone cannot yield GO on this record: the PSR gate is decisive and the decision stays NO-GO (failed gates: rolling_63d_sharpe, psr).
 
-**5. Separate measurement defect found and quantified (not a fix).** The volatility estimate sets session t's exposure from a trailing window that includes session t itself (same-session feedback, in `research/run_cycle6.py`, `src/simulation/engine.py` and `src/evaluation/risk.py`). Lagging the estimate one session changes the committed record's Sharpe from 1.771084 to 1.635705, the full-path Sharpe from 1.486941 to 1.413736 and the failing window from -0.448918 to -0.515807: it makes the failing window slightly worse, so it is **not** the cause of the gate failure, but it does flatter the published Sharpe statistics of this candidate (the headline walk-forward mean moves the other way only because of the one numerical-artifact fold documented in section 5). It is handed off as a separate, explicitly scoped re-derivation task -- **no production code is changed by this cycle**.
+**5. Separate measurement defect found and quantified (not a fix).** The volatility estimate sets session t's exposure from a trailing window that includes session t itself (same-session feedback, in `research/run_cycle6.py`, `src/simulation/engine.py` and `src/evaluation/risk.py`). Lagging the estimate one session changes the committed record's Sharpe from 1.771084 to 1.635705, the full-path Sharpe from 1.486763 to 1.413566 and the failing window from -0.448918 to -0.515807: it makes the failing window slightly worse, so it is **not** the cause of the gate failure, but it does flatter the published Sharpe statistics of this candidate (the headline walk-forward mean moves the other way only because of the one numerical-artifact fold documented in section 5). It is handed off as a separate, explicitly scoped re-derivation task -- **no production code is changed by this cycle**.
 
 ## 7. Checks
 
@@ -1004,8 +1004,8 @@ git status --porcelain data/ config/
     "V0_baseline": {
       "dd_mode": "base",
       "description": "committed overlay: volatility target on the same-session estimate",
-      "full_path_return_sum": 4.359019680952301,
-      "full_path_sharpe": 1.4869411618008934,
+      "full_path_return_sum": 4.359016776789801,
+      "full_path_sharpe": 1.4867634959178584,
       "record_return_sum": 0.3032746228175681,
       "record_sharpe": 1.7710837711005303,
       "rolling_gate_passes_on_current_window": false,
@@ -1029,7 +1029,7 @@ git status --porcelain data/ config/
       "dd_mode": "base",
       "description": "volatility target disabled (vol_scale == 1)",
       "full_path_return_sum": 5.61893237984689,
-      "full_path_sharpe": 1.3426542668246315,
+      "full_path_sharpe": 1.3424949994469288,
       "record_return_sum": 0.350746843464282,
       "record_sharpe": 1.359083950363297,
       "rolling_gate_passes_on_current_window": false,
@@ -1052,8 +1052,8 @@ git status --porcelain data/ config/
     "V2_vol_estimate_lagged_1d": {
       "dd_mode": "base",
       "description": "volatility estimate lagged one session (no same-session feedback)",
-      "full_path_return_sum": 4.236661266628294,
-      "full_path_sharpe": 1.4137356463827744,
+      "full_path_return_sum": 4.236655438049334,
+      "full_path_sharpe": 1.4135658575513321,
       "record_return_sum": 0.2881624374604081,
       "record_sharpe": 1.6357048500763227,
       "rolling_gate_passes_on_current_window": false,
@@ -1076,8 +1076,8 @@ git status --porcelain data/ config/
     "V3_no_drawdown_control": {
       "dd_mode": "off",
       "description": "drawdown control disabled (dd_scale == 1)",
-      "full_path_return_sum": 4.359019680952301,
-      "full_path_sharpe": 1.4869411618008934,
+      "full_path_return_sum": 4.359016776789801,
+      "full_path_sharpe": 1.4867634959178584,
       "record_return_sum": 0.3032746228175681,
       "record_sharpe": 1.7710837711005303,
       "rolling_gate_passes_on_current_window": false,
@@ -1101,7 +1101,7 @@ git status --porcelain data/ config/
       "dd_mode": "off",
       "description": "no overlay at all (raw signal + SPY filter + costs)",
       "full_path_return_sum": 5.604591334176604,
-      "full_path_sharpe": 1.3384145831271415,
+      "full_path_sharpe": 1.3382558257770476,
       "record_return_sum": 0.350746843464282,
       "record_sharpe": 1.359083950363297,
       "rolling_gate_passes_on_current_window": false,
@@ -1122,7 +1122,7 @@ git status --porcelain data/ config/
       "wf_worst_fold_test_start": "2008-01-22"
     }
   },
-  "verdict": "**1. The failing gate value is a tail state of the record's own rolling-window distribution, not a new level.** The trailing 63-session Sharpe -0.448918 sits at the 6.44% percentile of the 388 rolling windows the record has produced; the gate passes in 73.97% of them (bootstrap 95% CI [59.54%, 92.78%]). The current failing run covers 2026-10-12 .. 2026-10-19 (6 window(s)), and the record has produced longer failing runs before (the longest: 36 windows).\n\n**2. The weakness does not cluster in any published observable-state bucket.** The families F2_spy_trend_state, F3_spy_12m_return_sign are one-sided inside the record period (the risk-off / down-trend / high-volatility states that Cycle 923 flagged never occur in the committed record), so their bucket gaps are **not estimable** from this record and are reported as absent rather than imputed; the two-sided F1_calendar_phase, F4_train_63d_realvol_tercile partition the record identically (the published folds that cover it are contiguous in time), i.e. they are a time split of the record rather than an independent state, and their bucket gap CI includes zero. The apparent concentration is therefore consistent with sampling noise at this record's effective sample size -- the same conclusion Cycle 924 reached for the fold-level buckets.\n\n**3. No permitted change clears the gate.** The strongest isolated overlay variant (`V1_no_vol_target`, volatility target disabled (vol_scale == 1)) lifts the trailing window from -0.448918 to -0.034252, still far below the 0.9 gate, and every other variant is below that. The weakness is an overlay-timing outcome -- the volatility target de-risks into the high-volatility sessions that dominate the window -- not evidence that the momentum edge has decayed, and not something a threshold, universe, cost-model or parameter change may fix.\n\n**4. The gate is a symptom, not the binding constraint.** Per Cycle 866, clearing `rolling_63d_sharpe` alone cannot yield GO on this record: the PSR gate is decisive and the decision stays NO-GO (failed gates: rolling_63d_sharpe, psr).\n\n**5. Separate measurement defect found and quantified (not a fix).** The volatility estimate sets session t's exposure from a trailing window that includes session t itself (same-session feedback, in `research/run_cycle6.py`, `src/simulation/engine.py` and `src/evaluation/risk.py`). Lagging the estimate one session changes the committed record's Sharpe from 1.771084 to 1.635705, the full-path Sharpe from 1.486941 to 1.413736 and the failing window from -0.448918 to -0.515807: it makes the failing window slightly worse, so it is **not** the cause of the gate failure, but it does flatter the published Sharpe statistics of this candidate (the headline walk-forward mean moves the other way only because of the one numerical-artifact fold documented in section 5). It is handed off as a separate, explicitly scoped re-derivation task -- **no production code is changed by this cycle**.",
+  "verdict": "**1. The failing gate value is a tail state of the record's own rolling-window distribution, not a new level.** The trailing 63-session Sharpe -0.448918 sits at the 6.44% percentile of the 388 rolling windows the record has produced; the gate passes in 73.97% of them (bootstrap 95% CI [59.54%, 92.78%]). The current failing run covers 2026-10-12 .. 2026-10-19 (6 window(s)), and the record has produced longer failing runs before (the longest: 36 windows).\n\n**2. The weakness does not cluster in any published observable-state bucket.** The families F2_spy_trend_state, F3_spy_12m_return_sign are one-sided inside the record period (the risk-off / down-trend / high-volatility states that Cycle 923 flagged never occur in the committed record), so their bucket gaps are **not estimable** from this record and are reported as absent rather than imputed; the two-sided F1_calendar_phase, F4_train_63d_realvol_tercile partition the record identically (the published folds that cover it are contiguous in time), i.e. they are a time split of the record rather than an independent state, and their bucket gap CI includes zero. The apparent concentration is therefore consistent with sampling noise at this record's effective sample size -- the same conclusion Cycle 924 reached for the fold-level buckets.\n\n**3. No permitted change clears the gate.** The strongest isolated overlay variant (`V1_no_vol_target`, volatility target disabled (vol_scale == 1)) lifts the trailing window from -0.448918 to -0.034252, still far below the 0.9 gate, and every other variant is below that. The weakness is an overlay-timing outcome -- the volatility target de-risks into the high-volatility sessions that dominate the window -- not evidence that the momentum edge has decayed, and not something a threshold, universe, cost-model or parameter change may fix.\n\n**4. The gate is a symptom, not the binding constraint.** Per Cycle 866, clearing `rolling_63d_sharpe` alone cannot yield GO on this record: the PSR gate is decisive and the decision stays NO-GO (failed gates: rolling_63d_sharpe, psr).\n\n**5. Separate measurement defect found and quantified (not a fix).** The volatility estimate sets session t's exposure from a trailing window that includes session t itself (same-session feedback, in `research/run_cycle6.py`, `src/simulation/engine.py` and `src/evaluation/risk.py`). Lagging the estimate one session changes the committed record's Sharpe from 1.771084 to 1.635705, the full-path Sharpe from 1.486763 to 1.413566 and the failing window from -0.448918 to -0.515807: it makes the failing window slightly worse, so it is **not** the cause of the gate failure, but it does flatter the published Sharpe statistics of this candidate (the headline walk-forward mean moves the other way only because of the one numerical-artifact fold documented in section 5). It is handed off as a separate, explicitly scoped re-derivation task -- **no production code is changed by this cycle**.",
   "worst_windows": [
     {
       "rolling_sharpe": -1.8098874856306422,
