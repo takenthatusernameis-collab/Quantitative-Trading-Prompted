@@ -19,8 +19,8 @@ re-tuned or re-ranked.
 - **Date range**: 2015-01-02 .. 2026-10-15
 - **Frequency**: daily, session hours
 - **Universe**: CL-F, GC-F, NG-F, ZB-F, USO, BNO, UNG, GSG, GLD, TLT; the **complete cross-section** of the ten
-  instruments is the panel: 2960 sessions out of a 6098-session
-  union calendar (calendar churn 51.46%, because the futures and the ETF legs
+  instruments is the panel: 2960 sessions out of a 6101-session
+  union calendar (calendar churn 51.48%, because the futures and the ETF legs
   have different trading calendars).
 - **Point-in-time treatment**: the futures signal at session `t` uses only closes up to
   and including `t`; the weights formed at `t` become effective at `t+1` (one-session lag)

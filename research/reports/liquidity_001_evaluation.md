@@ -54,8 +54,8 @@
 |---|---|---|---|---|
 | i | walk-forward mean OOS Sharpe (net, canonical) >= 0.9 | -0.6499904032699622 | 0.9 | **FIRED** |
 | ii | benchmark-relative net excess bootstrap 95% CI excludes zero | [-2.113215, -0.859968] | excludes zero | not fired |
-| iii | measured cross-sectional dispersion of Amihud score sufficient to cover cost hurdle | 3.2180143291199496e-12 | > 0 | not fired |
-| iv | benchmark-relative net excess positive in the post-2009 sub-sample | -0.12563873769605635 | > 0 | **FIRED** |
+| iii | measured cross-sectional dispersion of Amihud score sufficient to cover cost hurdle | 3.218014329119949e-12 | > 0 | not fired |
+| iv | benchmark-relative net excess positive in the post-2009 sub-sample | -0.12563873769605632 | > 0 | **FIRED** |
 
 **Rejected/Failed**
 

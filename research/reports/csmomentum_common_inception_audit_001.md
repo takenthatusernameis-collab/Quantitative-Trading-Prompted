@@ -6,8 +6,8 @@ No backtest is executed here and no gate, threshold, universe, cost model or
 Sharpe convention is changed.
 
 - common inception: **2006-02-06** (re-derived; max of per-symbol first dates)
-- union sample: 1993-01-29 .. 2026-10-21, 8490 sessions, price width 1..18 of 18
-- common-inception slice: 2006-02-06 .. 2026-10-21, 5210 sessions, price width 18..18 of 18
+- union sample: 1993-01-29 .. 2026-10-22, 8491 sessions, price width 1..18 of 18
+- common-inception slice: 2006-02-06 .. 2026-10-22, 5211 sessions, price width 18..18 of 18
 - slice warm-up ramp: 273 flat sessions before the first selectable asset (2007-03-09), first selectable asset in the warm-up-preserving window: 2006-02-06
 
 ```json
@@ -53,8 +53,8 @@ Sharpe convention is changed.
   "samples": {
     "union_sample": {
       "start": "1993-01-29",
-      "end": "2026-10-21",
-      "sessions": 8490,
+      "end": "2026-10-22",
+      "sessions": 8491,
       "price_width_min": 1,
       "price_width_median": 18.0,
       "price_width_max": 18,
@@ -97,7 +97,7 @@ Sharpe convention is changed.
         }
       ],
       "momentum_breadth": {
-        "sessions": 8490,
+        "sessions": 8491,
         "opening_breadth": 0,
         "breadth_min": 0,
         "breadth_median": 18.0,
@@ -110,15 +110,15 @@ Sharpe convention is changed.
     },
     "common_inception_slice": {
       "start": "2006-02-06",
-      "end": "2026-10-21",
-      "sessions": 5210,
+      "end": "2026-10-22",
+      "sessions": 5211,
       "price_width_min": 18,
       "price_width_median": 18.0,
       "price_width_max": 18,
       "price_width_changes": [],
       "fully_populated": true,
       "momentum_breadth": {
-        "sessions": 5210,
+        "sessions": 5211,
         "opening_breadth": 0,
         "breadth_min": 0,
         "breadth_median": 18.0,
@@ -131,13 +131,13 @@ Sharpe convention is changed.
     },
     "common_inception_window": {
       "start": "2006-02-06",
-      "end": "2026-10-21",
-      "sessions": 5210,
+      "end": "2026-10-22",
+      "sessions": 5211,
       "note": "warm-up preserved: the union price frame is kept, only the evaluation window is truncated",
       "price_width_min": 18,
       "price_width_max": 18,
       "momentum_breadth": {
-        "sessions": 5210,
+        "sessions": 5211,
         "opening_breadth": 17,
         "breadth_min": 17,
         "breadth_median": 18.0,
@@ -196,33 +196,33 @@ Sharpe convention is changed.
     "per_symbol": {
       "SPY": {
         "first_date": "1993-01-29",
-        "last_date": "2026-10-19",
-        "row_count": 8488,
-        "sha256": "971d02284b9790dfd282438b98f5a0c08cc409e379d1598a41c02d96eb00f47e"
+        "last_date": "2026-10-22",
+        "row_count": 8491,
+        "sha256": "f307f910a62dc3e237afc7a4910f5b3508c75c3f83330735d55aead81e459375"
       },
       "QQQ": {
         "first_date": "1999-03-10",
-        "last_date": "2026-10-19",
-        "row_count": 6946,
-        "sha256": "71215972c77f917d54da229ee445c16edc4f51fd997f878a2ae3888855fb08ad"
+        "last_date": "2026-10-22",
+        "row_count": 6949,
+        "sha256": "3de8a01c4f0d6f77ddebd98295f5da5adb19ac6feade90d747cb7876a9faa872"
       },
       "IWM": {
         "first_date": "2000-05-26",
-        "last_date": "2026-10-19",
-        "row_count": 6638,
-        "sha256": "5bd3985f67dd47ad1ae75d1c23b7effa4d3bc7abd730cf7ac8c5c99887d91593"
+        "last_date": "2026-10-22",
+        "row_count": 6641,
+        "sha256": "0e32b42393e5dad65ea810d099c88ed21eba890c1d0d5e521b473da92ad74cb4"
       },
       "TLT": {
         "first_date": "2002-07-30",
-        "last_date": "2026-10-19",
-        "row_count": 6095,
-        "sha256": "f745d0921006c792dd1ad180cefea529bf049cda24e4dc9fc0a378208a8c36e7"
+        "last_date": "2026-10-22",
+        "row_count": 6098,
+        "sha256": "851db269e1622eb6684c075ce94a0a38f2e72b3f4a6f2202ab72b7a712f5c6ce"
       },
       "GLD": {
         "first_date": "2004-11-18",
-        "last_date": "2026-10-21",
-        "row_count": 5515,
-        "sha256": "a50a33932759e90a5fb105cce54d02ecc387de198a33c6f7783c50d59d883057"
+        "last_date": "2026-10-22",
+        "row_count": 5516,
+        "sha256": "6e681051e18253fa9487ca86aff096e6ea5f81dc1d44995eefa0380cef2166c7"
       },
       "DBC": {
         "first_date": "2006-02-06",
@@ -238,15 +238,15 @@ Sharpe convention is changed.
       },
       "EFA": {
         "first_date": "2001-08-27",
-        "last_date": "2026-10-19",
-        "row_count": 6323,
-        "sha256": "a77623de41bdf6d5c48810c54079dbaa15181a30113b1b317e67630851592f8b"
+        "last_date": "2026-10-22",
+        "row_count": 6326,
+        "sha256": "f72c519b0974467167e2f822eece66da6dbe1329dbd2981a86a373c5e303b101"
       },
       "EEM": {
         "first_date": "2003-04-14",
-        "last_date": "2026-10-19",
-        "row_count": 5917,
-        "sha256": "922f0181be3ed98ca4ad1ab844ed87dbda9afa562b44bde20b4dbf730f6693c8"
+        "last_date": "2026-10-22",
+        "row_count": 5920,
+        "sha256": "17ad1692de6eee0b4eb32862c9133eab4b851865c5c2a78f05a6cbf5dfeb9ed5"
       },
       "XLB": {
         "first_date": "1998-12-22",
@@ -332,7 +332,7 @@ Sharpe convention is changed.
     {
       "name": "common_inception_sample_is_nonempty",
       "expected": "> 0 sessions",
-      "observed": 5210,
+      "observed": 5211,
       "pass": true
     },
     {
@@ -343,8 +343,8 @@ Sharpe convention is changed.
     },
     {
       "name": "aligned_index_matches_raw_cache_union",
-      "expected": 8490,
-      "observed": 8490,
+      "expected": 8491,
+      "observed": 8491,
       "pass": true
     },
     {
@@ -364,14 +364,14 @@ Sharpe convention is changed.
     },
     {
       "name": "common_inception_sample_is_a_subset_of_the_union_sample",
-      "expected": "subset of 8490 union sessions",
-      "observed": 5210,
+      "expected": "subset of 8491 union sessions",
+      "observed": 5211,
       "pass": true
     },
     {
       "name": "common_inception_sample_ends_with_the_union_sample",
-      "expected": "2026-10-21",
-      "observed": "2026-10-21",
+      "expected": "2026-10-22",
+      "observed": "2026-10-22",
       "pass": true
     },
     {

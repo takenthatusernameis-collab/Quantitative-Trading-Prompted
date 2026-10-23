@@ -18,7 +18,7 @@
 
 | Percentile | Median (High-Low)/Close across symbols |
 |------------|----------------------------------------|
-| p10 | 67.96 bp |
+| p10 | 67.97 bp |
 | p25 | 94.18 bp |
 | p50 | 127.82 bp |
 
