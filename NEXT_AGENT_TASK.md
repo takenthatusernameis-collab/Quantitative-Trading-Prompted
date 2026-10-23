@@ -1,18 +1,20 @@
-# Cycle 958 — Re-derive SMA-175 trailing 63d Sharpe/PSR on committed paper series
+# Cycle 959 — Execute Gate-Met Protocol (paper-trading data refresh)
 
 ## Context
-- Cycle 957 diagnostic note: research/reports/tsmomentum_sma175_rolling63_psr_diagnosis_001.md.
-- Failing gates: rolling_63d_sharpe (-0.118932 < 0.9) and psr (0.899699 < 0.95).
-- Need to determine whether the SMA-175 failing window is a tail state of its own rolling distribution (as with the incumbent, Cycle 925) or a structural shortfall, and whether the PSR gap is closable at current record length.
+- Gate 2026-10-18T20:00:00Z reached; paper-trading state last run 2026-10-19 (450 cumulative returns).
+- SMA-175 candidate remains NO-GO (Cycle 958); incumbent monitoring continues.
 
 ## Objective
-Re-derive the SMA-175 candidate's trailing 63d Sharpe and PSR on the committed paper-trading return series using existing machinery (Cycle 925 rolling63 diagnosis pattern), read-only over cached parquet and paper-trading state.
+Execute Cycle 486 gate-met protocol: refresh incumbent 7-ETF universe (SPY,QQQ,IWM,TLT,GLD,EFA,EEM) plus SPY,^VIX via Yahoo Finance (force=True, end_date 2026-11-30), verify per-symbol max dates and real (nonzero volume) data, run paper-trading replay, confirm state, write validation report.
 
 ## Acceptance criteria
-1. A diagnostic note under research/reports/ citing specific dates/periods and metrics.
-2. No new backtest executed; no data fetched; no production code changed.
-3. Existing tests still pass.
+1. Yahoo fetch completed with verification of per-symbol max dates and nonzero volume (except ^VIX).
+2. `research/run_paper_trading_replay.py` executed with appropriate end_date.
+3. State confirmed: track length/dates, NAV, Sharpe, max DD, rolling 63d Sharpe, regime flips, drift flag status.
+4. Validation report written under research/reports/paper_trading_validation_*.md.
+5. Existing tests still pass.
 
 ## Scope boundaries
-- Reuse cached data and existing machinery only.
-- No promotion to production/paper-trading state.
+- No strategy/parameter changes.
+- No promotion of SMA-175.
+- No commits unless explicitly requested.
