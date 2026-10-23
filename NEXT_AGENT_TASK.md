@@ -44,5 +44,12 @@ The 2026-10-23 session cannot enter the paper-trading state before the local clo
 3. If new completed session: run without --dry-run, then python research/drift_persistence_report.py, re-audit persistence/streak
 4. If none: document blocker explicitly, advance NEXT_AGENT_TASK.md with evidence
 5. Do not change strategy/gate/threshold/config. Preserve raw data integrity. Dry-run first.
-
 CORRECTIVE_VERIFICATION=PASS
+
+## Re-verification (invocation 11, 2026-10-23T17:01:28Z)
+- Current UTC 17:01:28 < 20:00 UTC gate -> blocker persists (time-only).
+- Command: python research/extend_paper_trading_state.py --dry-run -> no new completed session; sessions extended: 0; NAV unchanged 133719.54092897204; state write count 0.
+- Command: python research/drift_persistence_report.py -> last_run_date 2026-10-22; persistence streak 9 days; rolling 63d Sharpe -0.1429350026091491; stored == recomputed True.
+- Command: python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q -> 24 passed in 1.29s.
+- git status --porcelain data/ -> empty; canonical state unchanged.
+- Next action unchanged: execute after 2026-10-23T20:00:00Z.
