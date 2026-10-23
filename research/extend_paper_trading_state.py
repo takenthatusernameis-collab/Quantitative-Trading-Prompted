@@ -104,16 +104,43 @@ def run_extension(
     canonical raw cache can be kept read-only.
     """
     state = PaperTradingState.from_yaml(state_path)
-    last_run = pd.Timestamp(state.last_run_date).date()
     nav_before = state.current_nav
 
+    # Clock gate before any download. If the local clock has not yet passed
+    # close_hour+1 on the calendar day after the last processed session, no
+    # candidate session can be complete, so the fetch is skipped entirely.
+    # This keeps monitoring/no-op runs off the network (Cycle 854: the
+    # canonical raw cache is read-only and a no-op run must not re-download
+    # the universe to discover that the clock has not advanced).
+    tz = tz or ZoneInfo("America/New_York")
+    if state.last_run_date is None:
+        # Fresh state: no prior session to extend from; fall through to the
+        # normal candidate scan below.
+        last_run = None
+    else:
+        last_run = pd.Timestamp(state.last_run_date).date()
+        next_calendar = (pd.Timestamp(state.last_run_date) + pd.Timedelta(days=1)).strftime(
+            "%Y-%m-%d"
+        )
+        if not session_is_complete(next_calendar, now_et, close_hour=close_hour, tz=tz):
+            return {
+                "target": None,
+                "sessions_extended": 0,
+                "nav_before": nav_before,
+                "nav_after": nav_before,
+                "state_writes": 0,
+            }
+
     # Candidate new sessions strictly after the last processed session.
-    end_fetch = (pd.Timestamp(state.last_run_date) + pd.Timedelta(days=7)).strftime(
-        "%Y-%m-%d"
+    end_fetch = (
+        (pd.Timestamp(state.last_run_date) + pd.Timedelta(days=7)).strftime("%Y-%m-%d")
+        if state.last_run_date is not None
+        else now_et.strftime("%Y-%m-%d")
     )
     data = fetch(end_fetch)
     candidate_dates = sorted(
-        d for d in data.index.unique() if pd.Timestamp(d).date() > last_run
+        d for d in data.index.unique()
+        if last_run is None or pd.Timestamp(d).date() > last_run
     )
 
     if through:

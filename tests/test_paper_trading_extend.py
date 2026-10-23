@@ -272,6 +272,20 @@ def test_main_uses_scratch_raw_dir_and_leaves_cache_untouched(tmp_path, monkeypa
         return _market_frame(["2026-10-15", "2026-10-16"])
 
     monkeypatch.setattr(ext, "fetch_universe", fake_fetch_universe)
+    # The committed state's last_run_date is 2026-10-22, so the clock gate
+    # only releases once the 2026-10-23 session is complete. Pin the clock to
+    # 2026-10-24 00:00 UTC (19:00 ET the prior evening) so the gate releases
+    # and the scratch/raw_dir contract is actually exercised.
+    fixed_now = datetime(2026, 10, 24, 0, 0, tzinfo=timezone.utc)
+
+    class _StubClock:
+        timezone = timezone
+
+        @staticmethod
+        def now(tz=None):
+            return fixed_now if tz is None else fixed_now.astimezone(tz)
+
+    monkeypatch.setattr(ext, "datetime", _StubClock)
     monkeypatch.setattr(sys, "argv", ["extend_paper_trading_state.py"])
     ext.main()
 
@@ -284,3 +298,27 @@ def test_main_uses_scratch_raw_dir_and_leaves_cache_untouched(tmp_path, monkeypa
         for p in sorted(raw_dir.glob("*.parquet"))
     }
     assert after == before
+
+
+def test_clock_gate_skips_fetch_when_session_not_complete(tmp_path, monkeypatch):
+    """A no-op monitoring run must not touch the network at all."""
+    state_path = _write_state(tmp_path / "state.yaml")
+    before = hashlib.sha256(state_path.read_bytes()).hexdigest()
+
+    called = {"fetch": False}
+
+    def fake_fetch(end_date):
+        called["fetch"] = True
+        return _market_frame(["2026-10-15", "2026-10-16"])
+
+    # 2026-10-17 10:30 ET -> the 10-17 session is still open, so the gate
+    # releases only once the following day has started.
+    now = datetime(2026, 10, 17, 14, 30, tzinfo=timezone.utc)
+    result = run_extension(
+        _config(tmp_path), state_path, now, fake_fetch, close_hour=16, tz=TZ,
+    )
+    assert result["target"] is None
+    assert result["sessions_extended"] == 0
+    assert result["state_writes"] == 0
+    assert called["fetch"] is False
+    assert hashlib.sha256(state_path.read_bytes()).hexdigest() == before
