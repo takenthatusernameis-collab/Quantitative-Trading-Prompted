@@ -272,11 +272,11 @@ def test_main_uses_scratch_raw_dir_and_leaves_cache_untouched(tmp_path, monkeypa
         return _market_frame(["2026-10-15", "2026-10-16"])
 
     monkeypatch.setattr(ext, "fetch_universe", fake_fetch_universe)
-    # The committed state's last_run_date is 2026-10-22, so the clock gate
-    # only releases once the 2026-10-23 session is complete. Pin the clock to
-    # 2026-10-24 00:00 UTC (19:00 ET the prior evening) so the gate releases
+    # The committed state's last_run_date is now 2026-10-23, so the clock gate
+    # only releases once the 2026-10-24 session is complete. Pin the clock to
+    # 2026-10-25 00:00 UTC (20:00 ET the prior evening) so the gate releases
     # and the scratch/raw_dir contract is actually exercised.
-    fixed_now = datetime(2026, 10, 24, 0, 0, tzinfo=timezone.utc)
+    fixed_now = datetime(2026, 10, 25, 0, 0, tzinfo=timezone.utc)
 
     class _StubClock:
         timezone = timezone
