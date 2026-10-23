@@ -45,7 +45,7 @@ def main() -> None:
     # end_date = 2026-10-16 silently truncates the cache to 2026-10-15.
     end_date = "2026-11-30"
     print(f"Fetching market data from {config.history_start} to {end_date}...")
-    all_market_data = fetch_universe(config.universe, config.history_start, end_date, force=True)
+    all_market_data = fetch_universe(config.universe, config.history_start, end_date, force=False)
     print(f"Loaded market data: {len(all_market_data)} rows, {all_market_data.index.min().date()} to {all_market_data.index.max().date()}")
 
     # Get trading days from 2025-01-01 to latest available (captures 2025 regime flips)

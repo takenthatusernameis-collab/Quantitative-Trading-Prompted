@@ -150,9 +150,9 @@ def run_extension(
     fetch_end = (target_ts + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
     all_data = fetch(fetch_end)
     max_date = pd.Timestamp(all_data.index.max()).strftime("%Y-%m-%d")
-    if max_date != target:
+    if pd.Timestamp(max_date) < pd.Timestamp(target):
         raise RuntimeError(
-            f"captured index max {max_date} != target session {target}"
+            f"captured index max {max_date} < target session {target}"
         )
 
     market_slice = all_data.loc[:target]

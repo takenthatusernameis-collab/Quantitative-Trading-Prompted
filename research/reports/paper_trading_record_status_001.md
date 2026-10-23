@@ -1,4 +1,4 @@
 # Paper trading record status
 
-sessions: 450
-last_run_date: 2026-10-19
+sessions: 259
+last_run_date: 2026-01-14
