@@ -69,3 +69,10 @@ CORRECTIVE_VERIFICATION=PASS
 - Command: `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q` → 24 passed in 1.22s.
 - git status --porcelain data/ → empty; canonical state unchanged.
 - Blocker remains time-only. No safe code change can create a completed 2026-10-23 session before market close+slack. Do not modify strategy/gates/thresholds/config.
+
+## Re-verification (corrective invocation 5, 2026-10-23T19:16:29Z)
+- Current UTC: 2026-10-23T19:16:29Z < 2026-10-23T20:00:00Z gate; ET local ~15:16 < 17:00 ET close+1 gate.
+- Command: `python research/extend_paper_trading_state.py --dry-run` → no new completed session; sessions extended: 0; NAV unchanged 133719.54092897204; state write count: 0; raw cache untouched; exit 0.
+- Command: `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q` → 24 passed in 1.24s.
+- git status --porcelain data/ → empty; canonical state unchanged.
+- Blocker remains time-only. Next action unchanged: execute after 2026-10-23T20:00:00Z.
