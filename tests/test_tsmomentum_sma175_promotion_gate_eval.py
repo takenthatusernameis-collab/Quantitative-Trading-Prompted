@@ -137,7 +137,7 @@ def test_reported_psr_matches_the_documented_baseline_psr(tool_run, expected_psr
     assert len(psr_lines) == 1
     reported = float(psr_lines[0].split("|")[3])
     assert reported == pytest.approx(expected_psr, abs=1e-9)
-    assert reported == pytest.approx(0.896591902163973, abs=1e-9)
+    assert reported == pytest.approx(0.8996990715818167, abs=1e-9)
 
 
 def test_overall_is_the_tool_check_verdict_and_not_the_candidate_verdict(payload):
@@ -177,8 +177,8 @@ def test_committed_artifacts_record_the_corrected_psr():
     experiment = OUT_EXP.read_text()
     assert "PSR target: 1.4178" in report
     assert "psr_target: 1.4178" in experiment
-    assert "0.896592" in report
-    assert "0.896592" in experiment
+    assert "0.899699" in report
+    assert "0.899699" in experiment
     assert "0.856637" not in report
     assert "0.856637" not in experiment
 

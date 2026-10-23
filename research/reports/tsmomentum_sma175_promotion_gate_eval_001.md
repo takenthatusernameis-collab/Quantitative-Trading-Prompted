@@ -4,8 +4,8 @@
 
 - Candidate: `tsmomentum_sma175_candidate` (SMA window 175)
 - Incumbent SMA window (run_cycle6): 200 (unchanged)
-- Git rev: 5932ce0
-- Date: 2026-10-21
+- Git rev: 8a8d118
+- Date: 2026-10-23
 - Sharpe convention: `arithmetic_annualized_rf0`
 - PSR target: 1.4178 (config/promotion_gates.yaml gate 'psr' (backtest Sharpe baseline 1.4178); src.simulation.evaluation.GoNoGoConfig.backtest_sharpe)
 - PSR bootstrap: n=1000, block_size=22, seed=20240101
@@ -14,17 +14,17 @@
 
 | Gate | Metric | Value | Threshold | Comparison | Result | Source |
 |------|--------|-------|-----------|------------|--------|--------|
-| track_record_length | paper_days | 8488.000000 | 126.000000 | gte | PASS | research/reports/paper_trading_validation_002.md |
-| full_period_sharpe | paper_sharpe | 1.607869 | 0.900000 | gte | PASS | research/reports/paper_trading_validation_002.md |
-| rolling_63d_sharpe | rolling_sharpe_63d | -0.448918 | 0.900000 | gte | FAIL | research/reports/paper_trading_validation_002.md |
+| track_record_length | paper_days | 8490.000000 | 126.000000 | gte | PASS | research/reports/paper_trading_validation_002.md |
+| full_period_sharpe | paper_sharpe | 1.607677 | 0.900000 | gte | PASS | research/reports/paper_trading_validation_002.md |
+| rolling_63d_sharpe | rolling_sharpe_63d | -0.118932 | 0.900000 | gte | FAIL | research/reports/paper_trading_validation_002.md |
 | max_drawdown | paper_max_dd | -0.094633 | -0.150000 | gte | PASS | research/reports/paper_trading_validation_002.md |
 | rolling_63d_max_dd | rolling_max_dd_63d | -0.038564 | -0.150000 | gte | PASS | research/reports/paper_trading_validation_002.md |
 | regime_flips | regime_flips | 277.000000 | 1.000000 | gte | PASS | research/reports/paper_trading_validation_002.md |
-| psr | psr_normal | 0.896592 | 0.950000 | gte | FAIL | research/reports/go_no_go_evaluation_002.md |
+| psr | psr_normal | 0.899699 | 0.950000 | gte | FAIL | research/reports/go_no_go_evaluation_002.md |
 
 - PSR zone: grey_zone
-- Sharpe standard error: 0.150565
-- Sharpe on backtest-baseline scale (diagnostic): 1.447467
+- Sharpe standard error: 0.148360
+- Sharpe on backtest-baseline scale (diagnostic): 1.447212
 - Failed gates: rolling_63d_sharpe, psr
 
 ## Decision mapping
