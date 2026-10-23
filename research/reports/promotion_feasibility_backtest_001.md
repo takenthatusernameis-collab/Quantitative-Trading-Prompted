@@ -12,13 +12,13 @@ side instead of one being labelled as the other.
 ```json
 {
   "label_start_date": "2004-11-18",
-  "label_end_date": "2026-10-19",
+  "label_end_date": "2026-10-22",
   "realized_start_date": "1993-01-29",
-  "realized_end_date": "2026-10-19",
-  "realized_session_count": 8488,
+  "realized_end_date": "2026-10-22",
+  "realized_session_count": 8491,
   "start_date": "1993-01-29",
-  "end_date": "2026-10-19",
-  "session_count": 8488,
+  "end_date": "2026-10-22",
+  "session_count": 8491,
   "universe": [
     "SPY",
     "QQQ",
@@ -40,99 +40,99 @@ side instead of one being labelled as the other.
   "overlay_warmup": "slice",
   "data_source": "committed raw cache (data/raw/*.parquet)",
   "sha256_raw_files": {
-    "SPY": "971d02284b9790dfd282438b98f5a0c08cc409e379d1598a41c02d96eb00f47e",
-    "QQQ": "71215972c77f917d54da229ee445c16edc4f51fd997f878a2ae3888855fb08ad",
-    "IWM": "5bd3985f67dd47ad1ae75d1c23b7effa4d3bc7abd730cf7ac8c5c99887d91593",
-    "TLT": "f745d0921006c792dd1ad180cefea529bf049cda24e4dc9fc0a378208a8c36e7",
-    "GLD": "5ca9683ee5f6af6e25febb0c1c698e5505f255771ee4d19b57f725f849015696",
-    "EFA": "a77623de41bdf6d5c48810c54079dbaa15181a30113b1b317e67630851592f8b",
-    "EEM": "922f0181be3ed98ca4ad1ab844ed87dbda9afa562b44bde20b4dbf730f6693c8"
+    "SPY": "f307f910a62dc3e237afc7a4910f5b3508c75c3f83330735d55aead81e459375",
+    "QQQ": "3de8a01c4f0d6f77ddebd98295f5da5adb19ac6feade90d747cb7876a9faa872",
+    "IWM": "0e32b42393e5dad65ea810d099c88ed21eba890c1d0d5e521b473da92ad74cb4",
+    "TLT": "851db269e1622eb6684c075ce94a0a38f2e72b3f4a6f2202ab72b7a712f5c6ce",
+    "GLD": "6e681051e18253fa9487ca86aff096e6ea5f81dc1d44995eefa0380cef2166c7",
+    "EFA": "f72c519b0974467167e2f822eece66da6dbe1329dbd2981a86a373c5e303b101",
+    "EEM": "17ad1692de6eee0b4eb32862c9133eab4b851865c5c2a78f05a6cbf5dfeb9ed5"
   },
   "per_symbol_stats": {
     "SPY": {
       "first_date": "1993-01-29",
-      "last_date": "2026-10-19",
-      "row_count": 8488
+      "last_date": "2026-10-22",
+      "row_count": 8491
     },
     "QQQ": {
       "first_date": "1999-03-10",
-      "last_date": "2026-10-19",
-      "row_count": 6946
+      "last_date": "2026-10-22",
+      "row_count": 6949
     },
     "IWM": {
       "first_date": "2000-05-26",
-      "last_date": "2026-10-19",
-      "row_count": 6638
+      "last_date": "2026-10-22",
+      "row_count": 6641
     },
     "TLT": {
       "first_date": "2002-07-30",
-      "last_date": "2026-10-19",
-      "row_count": 6095
+      "last_date": "2026-10-22",
+      "row_count": 6098
     },
     "GLD": {
       "first_date": "2004-11-18",
-      "last_date": "2026-10-19",
-      "row_count": 5513
+      "last_date": "2026-10-22",
+      "row_count": 5516
     },
     "EFA": {
       "first_date": "2001-08-27",
-      "last_date": "2026-10-19",
-      "row_count": 6323
+      "last_date": "2026-10-22",
+      "row_count": 6326
     },
     "EEM": {
       "first_date": "2003-04-14",
-      "last_date": "2026-10-19",
-      "row_count": 5917
+      "last_date": "2026-10-22",
+      "row_count": 5920
     }
   },
   "union_index_fingerprint": {
     "first_date": "1993-01-29",
-    "last_date": "2026-10-19",
-    "count": 8488
+    "last_date": "2026-10-22",
+    "count": 8491
   },
   "cache_fingerprint": {
     "per_symbol": {
       "SPY": {
-        "rows": 8488,
+        "rows": 8491,
         "first_date": "1993-01-29",
-        "last_date": "2026-10-19",
-        "sha256": "971d02284b9790dfd282438b98f5a0c08cc409e379d1598a41c02d96eb00f47e"
+        "last_date": "2026-10-22",
+        "sha256": "f307f910a62dc3e237afc7a4910f5b3508c75c3f83330735d55aead81e459375"
       },
       "QQQ": {
-        "rows": 6946,
+        "rows": 6949,
         "first_date": "1999-03-10",
-        "last_date": "2026-10-19",
-        "sha256": "71215972c77f917d54da229ee445c16edc4f51fd997f878a2ae3888855fb08ad"
+        "last_date": "2026-10-22",
+        "sha256": "3de8a01c4f0d6f77ddebd98295f5da5adb19ac6feade90d747cb7876a9faa872"
       },
       "IWM": {
-        "rows": 6638,
+        "rows": 6641,
         "first_date": "2000-05-26",
-        "last_date": "2026-10-19",
-        "sha256": "5bd3985f67dd47ad1ae75d1c23b7effa4d3bc7abd730cf7ac8c5c99887d91593"
+        "last_date": "2026-10-22",
+        "sha256": "0e32b42393e5dad65ea810d099c88ed21eba890c1d0d5e521b473da92ad74cb4"
       },
       "TLT": {
-        "rows": 6095,
+        "rows": 6098,
         "first_date": "2002-07-30",
-        "last_date": "2026-10-19",
-        "sha256": "f745d0921006c792dd1ad180cefea529bf049cda24e4dc9fc0a378208a8c36e7"
+        "last_date": "2026-10-22",
+        "sha256": "851db269e1622eb6684c075ce94a0a38f2e72b3f4a6f2202ab72b7a712f5c6ce"
       },
       "GLD": {
-        "rows": 5513,
+        "rows": 5516,
         "first_date": "2004-11-18",
-        "last_date": "2026-10-19",
-        "sha256": "5ca9683ee5f6af6e25febb0c1c698e5505f255771ee4d19b57f725f849015696"
+        "last_date": "2026-10-22",
+        "sha256": "6e681051e18253fa9487ca86aff096e6ea5f81dc1d44995eefa0380cef2166c7"
       },
       "EFA": {
-        "rows": 6323,
+        "rows": 6326,
         "first_date": "2001-08-27",
-        "last_date": "2026-10-19",
-        "sha256": "a77623de41bdf6d5c48810c54079dbaa15181a30113b1b317e67630851592f8b"
+        "last_date": "2026-10-22",
+        "sha256": "f72c519b0974467167e2f822eece66da6dbe1329dbd2981a86a373c5e303b101"
       },
       "EEM": {
-        "rows": 5917,
+        "rows": 5920,
         "first_date": "2003-04-14",
-        "last_date": "2026-10-19",
-        "sha256": "922f0181be3ed98ca4ad1ab844ed87dbda9afa562b44bde20b4dbf730f6693c8"
+        "last_date": "2026-10-22",
+        "sha256": "17ad1692de6eee0b4eb32862c9133eab4b851865c5c2a78f05a6cbf5dfeb9ed5"
       }
     },
     "note": "derived from the raw cache at run time; a later append to the cache changes these values and is therefore visible as a fingerprint change"
@@ -185,14 +185,14 @@ side instead of one being labelled as the other.
 
 ```json
 {
-  "paper_sharpe": 0.5657179297830458,
+  "paper_sharpe": 0.5643531603402314,
   "paper_max_dd": -0.6224126346564325,
-  "rolling_sharpe_63d": -0.03425220400791309,
-  "rolling_63d_max_dd": -0.061360722514321675,
+  "rolling_sharpe_63d": 0.3822172141588271,
+  "rolling_63d_max_dd": -0.061716508955863225,
   "regime_flips": 6,
-  "paper_days": 8488,
-  "sharpe_observed_canonical": 0.5657179297830458,
-  "sharpe_se": 0.15424519947175822
+  "paper_days": 8491,
+  "sharpe_observed_canonical": 0.5643531603402314,
+  "sharpe_se": 0.15699397227536388
 }
 ```
 
@@ -200,13 +200,13 @@ side instead of one being labelled as the other.
 
 ```json
 {
-  "sharpe_backtest_scale": 0.38434756317328844,
+  "sharpe_backtest_scale": 0.3828642682684244,
   "psr_target_backtest_scale": 1.4178,
   "baseline_tieback": {
     "recorded_baseline": 1.4178,
     "tolerance": "window/warmup/costs explain deviation (must be quantified)",
     "within_tolerance": false,
-    "delta": -1.0334524368267115
+    "delta": -1.0349357317315755
   }
 }
 ```
@@ -215,7 +215,7 @@ side instead of one being labelled as the other.
 
 ```json
 {
-  "psr_normal": 1.6549061233035153e-08,
+  "psr_normal": 2.7218117229036965e-08,
   "psr_empirical": 0.0,
   "psr_zone": "below_grey",
   "sharpe_ci_lower": NaN,
@@ -228,19 +228,19 @@ side instead of one being labelled as the other.
 ```json
 {
   "track_record_length": {
-    "value": 8488.0,
+    "value": 8491.0,
     "threshold": 126.0,
     "comparison": "gte",
     "pass": true
   },
   "full_period_sharpe": {
-    "value": 0.5657179297830458,
+    "value": 0.5643531603402314,
     "threshold": 0.9,
     "comparison": "gte",
     "pass": false
   },
   "rolling_63d_sharpe": {
-    "value": -0.03425220400791309,
+    "value": 0.3822172141588271,
     "threshold": 0.9,
     "comparison": "gte",
     "pass": false
@@ -252,7 +252,7 @@ side instead of one being labelled as the other.
     "pass": false
   },
   "rolling_63d_max_dd": {
-    "value": -0.061360722514321675,
+    "value": -0.061716508955863225,
     "threshold": -0.15,
     "comparison": "gte",
     "pass": true
@@ -264,7 +264,7 @@ side instead of one being labelled as the other.
     "pass": true
   },
   "psr": {
-    "value": 1.6549061233035153e-08,
+    "value": 2.7218117229036965e-08,
     "threshold": 0.95,
     "comparison": "gte",
     "pass": false
@@ -320,9 +320,9 @@ side instead of one being labelled as the other.
 ```json
 {
   "psr_reaches_095": false,
-  "required_observed_sharpe_for_psr095": 1.6715107757909746,
-  "sharpe_se_at_this_sample": 0.15424519947175822,
-  "sample_length": 8488,
+  "required_observed_sharpe_for_psr095": 1.676032104706651,
+  "sharpe_se_at_this_sample": 0.15699397227536388,
+  "sample_length": 8491,
   "note": "PSR>=0.95 when (sr_obs - sr_t)/se >= 1.64485 at same SE."
 }
 ```
