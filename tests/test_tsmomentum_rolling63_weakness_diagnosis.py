@@ -157,8 +157,8 @@ def test_block_bootstrap_indices_are_in_range():
 # ----------------------------------------------------------------------
 def test_anchor_is_reproduced(payload):
     record = payload["record"]
-    assert record["n_sessions"] == 450
-    assert record["trailing_63d_sharpe"] == pytest.approx(-0.4489181511478863, abs=1e-12)
+    assert record["n_sessions"] == 453
+    assert record["trailing_63d_sharpe"] == pytest.approx(-0.1429350026091491, abs=1e-12)
     assert float(record["stored_drift_flag"]) == pytest.approx(
         record["trailing_63d_sharpe"], abs=1e-12
     )
@@ -174,7 +174,7 @@ def test_all_internal_checks_pass(payload):
 
 def test_rolling_distribution_is_ordered(payload):
     dist = payload["distribution"]
-    assert dist["n_windows"] == 388
+    assert dist["n_windows"] == 391
     assert dist["min"] < dist["p10"] < dist["p25"] < dist["median"] < dist["p75"] < dist["max"]
     assert 0.0 < dist["base_rate"] < 1.0
     assert dist["n_pass"] + dist["n_fail"] == dist["n_windows"]

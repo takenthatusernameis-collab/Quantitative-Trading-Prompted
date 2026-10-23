@@ -9,7 +9,7 @@ on the corrected path in a **new** artifact.  These tests pin:
 * the switch is opt-in, defaults to off everywhere, and is not set by any
   config file;
 * the anchor (published 48-fold walk-forward mean OOS Sharpe 0.947307 and the
-  committed 450-session record) is reproduced and the run fails closed on a
+  committed 453-session record) is reproduced and the run fails closed on a
   mismatch;
 * the re-derivation is reported **side by side** and does not change the
   incumbent's verdict, its promotion decision or any committed artifact;
@@ -293,7 +293,7 @@ def test_anchor_reproduces_the_published_walk_forward(payload):
 
 def test_anchor_reproduces_the_committed_record(payload):
     anchor = payload["anchor"]
-    assert anchor["committed_sessions"] == 450
+    assert anchor["committed_sessions"] == 453
     assert anchor["record_max_abs_diff"] <= 1e-12
 
 

@@ -17,9 +17,9 @@ What it does, in order:
    committed record three ways -- from the committed state file, from the
    production ``evaluate_go_no_go`` gate table, and from an independent offline
    recomputation of the strategy path -- and require them to agree. The offline
-   path is also required to reproduce all 450 committed sessions bit-for-bit.
+   path is also required to reproduce all 453 committed sessions bit-for-bit.
 2. **Distribution.** Every trailing 63-session Sharpe on the committed record
-   (388 overlapping windows): min / p10 / p25 / median / p75 / max, the gate
+   (391 overlapping windows): min / p10 / p25 / median / p75 / max, the gate
    base rate, the failing runs, the recovery lags and the current percentile
    rank, with a moving-block bootstrap CI on the base rate.
 3. **Overlap with the prior cycles' phase buckets.** Each rolling window is

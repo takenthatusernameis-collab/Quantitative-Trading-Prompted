@@ -119,7 +119,7 @@ PSR_BLOCK_SIZE = 22
 PSR_SEED = 20240101
 
 # The committed record's trailing 63-session Sharpe (Cycle 925 anchor).
-COMMITTED_TRAILING_SHARPE = -0.4489181511478863
+COMMITTED_TRAILING_SHARPE = -0.1429350026091491
 
 # The published backtest baseline of the incumbent on the 2018-2026 test period
 # (research/run_cycle7.py::DOCUMENTED), the fixed PSR reference 1.4178.  The
@@ -643,9 +643,9 @@ def run_correction(
     n_sessions = len(committed_returns)
     record_check(
         "committed_record_loaded",
-        n_sessions == 450,
+        n_sessions == 453,
         f"{n_sessions} sessions",
-        "450 sessions",
+        "453 sessions",
     )
 
     close = load_close_from_cache(list(SYMBOLS), raw_dir)
@@ -1119,7 +1119,7 @@ def run_correction(
                 "not overwrite the published one.",
                 "3. The SMA-window plateau table of the same published record: re-derive on "
                 "the corrected path in the same successor record.",
-                "4. data/processed/paper_trading_state.yaml: keep the committed 450-session "
+                "4. data/processed/paper_trading_state.yaml: keep the committed 453-session "
                 "record as published; if a corrected record is started, publish it as a new "
                 "state file with its own drift flags and gate table.",
                 "5. research/reports/paper_trading_validation_002.md, go_no_go_evaluation_002.md "

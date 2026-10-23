@@ -4,10 +4,10 @@
 
 - Candidate: `tsmomentum_spytrend_001` (the incumbent)
 - Sharpe convention: `arithmetic_annualized_rf0`
-- Anchor: the published 48-fold walk-forward mean OOS Sharpe **0.947307** is reproduced from the committed cache (published: 0.947307), and the committed record's 450 sessions are reproduced with max |diff| = 5.421e-20.
+- Anchor: the published 48-fold walk-forward mean OOS Sharpe **0.947307** is reproduced from the committed cache (published: 0.947307), and the committed record's 453 sessions are reproduced with max |diff| = 5.421e-20.
 - Default path: **bit-identical** to the pre-change implementation (max |diff| = 0.0e+00 research path, 0.0e+00 simulation path, 0.0e+00 risk overlays).
 - Switch: `lag_vol_estimate` (default **off**), available in the shared risk helpers, the simulation engine and the published research path.
-- Record on the corrected path: canonical Sharpe 1.771084 -> 1.635705, trailing 63-session Sharpe -0.448918 -> -0.515807, PSR vs 1.4178 0.695606 -> 0.623929.
+- Record on the corrected path: canonical Sharpe 1.731956 -> 1.597048, trailing 63-session Sharpe -0.142935 -> -0.222927, PSR vs 1.4178 0.678858 -> 0.604420.
 - Decision: **unchanged** -- NO-GO on the published path and NO-GO on the corrected path (failed gates: rolling_63d_sharpe, psr).
 - Read-only: `data/` and `config/` byte-identical before and after the run (**yes**); no committed artifact modified (**yes**); the published walk-forward record and the committed paper-trading state are **not** overwritten.
 - Data source: committed parquet cache in `data/raw/` and the committed paper-trading state; the fetcher is never called.
@@ -43,7 +43,7 @@ Nothing is published unless the default path reproduces the incumbent's publishe
 | 48-fold walk-forward mean OOS Sharpe | 0.947307 | 0.947307 |
 | Same, from the published machinery (`research/run_cycle6.py::run_walkforward`) | 0.947307 | 0.947307 |
 | Folds | 48 | 48 |
-| Committed record sessions | 450 | 450 (max abs diff = 5.421e-20) |
+| Committed record sessions | 453 | 453 (max abs diff = 5.421e-20) |
 
 The published record is resolved **by content** (the committed file that carries the published aggregate and fold tables), and all 48 published folds are reproduced: test windows exactly, OOS Sharpe to the published precision and trade counts exactly.
 
@@ -81,13 +81,13 @@ The default path's minimum fold is fold 12 (2008-01-22 .. 2009-01-07, OOS Sharpe
 
 | Statistic | Published (default path) | Corrected path |
 |---|---|---|
-| Sessions | 450 | 450 |
-| Canonical Sharpe | 1.771084 | 1.635705 |
-| Trailing 63-session Sharpe (`rolling_63d_sharpe` gate value) | -0.448918 | -0.515807 |
+| Sessions | 453 | 453 |
+| Canonical Sharpe | 1.731956 | 1.597048 |
+| Trailing 63-session Sharpe (`rolling_63d_sharpe` gate value) | -0.142935 | -0.222927 |
 | `rolling_63d_sharpe` gate (>= 0.9) | **FAIL** | **FAIL** |
-| PSR (normal) vs 1.4178 | 0.695606 | 0.623929 |
-| PSR (empirical) vs 1.4178 | 0.742000 | 0.676000 |
-| PSR Sharpe SE | 0.690271 | 0.689975 |
+| PSR (normal) vs 1.4178 | 0.678858 | 0.604420 |
+| PSR (empirical) vs 1.4178 | 0.740000 | 0.669000 |
+| PSR Sharpe SE | 0.676319 | 0.676904 |
 | Max drawdown | -4.985740% | -5.105675% |
 | `psr` gate (>= 0.95) | **FAIL** | **FAIL** |
 
@@ -97,13 +97,13 @@ PSR settings (the repository's own): `n_bootstrap=1000`, `block_size=22`, `seed=
 
 | Gate | Published record | Corrected record | Threshold |
 |---|---|---|---|
-| `track_record_length` | 450.000000 | 450.000000 | >= 126 |
-| `full_period_sharpe` | 1.771084 | 1.635705 | >= 0.9 |
-| `rolling_63d_sharpe` | -0.448918 | -0.515807 | >= 0.9 |
+| `track_record_length` | 453.000000 | 453.000000 | >= 126 |
+| `full_period_sharpe` | 1.731956 | 1.597048 | >= 0.9 |
+| `rolling_63d_sharpe` | -0.142935 | -0.222927 | >= 0.9 |
 | `max_drawdown` | -0.049857 | -0.051057 | >= -0.15 |
-| `rolling_63d_max_dd` | -0.038564 | -0.039642 | >= -0.15 |
+| `rolling_63d_max_dd` | -0.038634 | -0.040092 | >= -0.15 |
 | `regime_flips` | 6.000000 | 6.000000 | >= 1 |
-| `psr` | 0.695606 | 0.623929 | >= 0.95 |
+| `psr` | 0.678858 | 0.604420 | >= 0.95 |
 | **decision** | **NO-GO** | **NO-GO** | failed gates: rolling_63d_sharpe, psr |
 
 The corrected record's gate table is computed by the production code (`src/simulation/evaluation.py::evaluate_go_no_go`) on the corrected return series with the committed configuration; only the return series and the dates are substituted, because the promotion gates consume only the returns, the dates, the run-history turnover and the run-history regime exposure.
@@ -144,14 +144,14 @@ The published test-period reference **1.417752** is reproduced together with all
 
 ### 5.2 Committed artefacts that quote the affected statistics
 
-Measured by searching the committed tree for the published numeric markers, so the inventory cannot drift from the repository's content: 72 distinct committed files quote at least one of them.
+Measured by searching the committed tree for the published numeric markers, so the inventory cannot drift from the repository's content: 68 distinct committed files quote at least one of them.
 
 | Marker | Statistic | Committed files quoting it |
 |---|---|---|
 | `0.9473` | published 48-fold walk-forward mean OOS Sharpe | 62 |
-| `1.771084` | committed record's canonical Sharpe | 12 |
-| `0.448918` | committed record's trailing 63-session Sharpe (drift flag) | 18 |
-| `1.486941` | full-path Sharpe of the committed record's path | 7 |
+| `1.771084` | committed record's canonical Sharpe | 8 |
+| `0.448918` | committed record's trailing 63-session Sharpe (drift flag) | 12 |
+| `1.486941` | full-path Sharpe of the committed record's path | 5 |
 
 - `0.9473` (published 48-fold walk-forward mean OOS Sharpe):
   - `README.md`
@@ -218,42 +218,30 @@ Measured by searching the committed tree for the published numeric markers, so t
   - `research/tsmomentum_walkforward_mean_robustness_audit.py`
 - `1.771084` (committed record's canonical Sharpe):
   - `README.md`
-  - `research/experiments/tsmomentum_rolling63_weakness_diagnosis_001.md`
-  - `research/experiments/tsmomentum_same_session_vol_correction_001.md`
   - `research/reports/paper_trading_validation_535.md`
   - `research/reports/psr_continuation_horizon_001.md`
   - `research/reports/reference_sample_invariance_001.md`
   - `research/reports/sample_definition_hygiene_001.md`
-  - `research/reports/tsmomentum_rolling63_weakness_diagnosis_001.md`
   - `research/reports/tsmomentum_same_session_vol_correction_001.md`
-  - `research/reports/tsmomentum_vol_estimate_consolidation_001.md`
   - `research/reports/tsmomentum_vol_estimate_consolidation_001_rerun.md`
   - `research/tsmomentum_same_session_vol_correction.py`
 - `0.448918` (committed record's trailing 63-session Sharpe (drift flag)):
   - `README.md`
-  - `data/processed/paper_trading_state.yaml`
-  - `research/experiments/tsmomentum_rolling63_weakness_diagnosis_001.md`
-  - `research/experiments/tsmomentum_same_session_vol_correction_001.md`
-  - `research/experiments/tsmomentum_sma175_promotion_gate_eval_001.md`
   - `research/reports/long_sample_overlay_attribution_001.json`
   - `research/reports/long_sample_overlay_attribution_001.md`
   - `research/reports/opportunity_shortlist.md`
-  - `research/reports/paper_trading_rolling.md`
   - `research/reports/paper_trading_validation_535.md`
   - `research/reports/reference_sample_invariance_001.md`
   - `research/reports/sample_definition_hygiene_001.md`
   - `research/reports/tsmomentum_rolling63_weakness_diagnosis_001.md`
   - `research/reports/tsmomentum_same_session_vol_correction_001.md`
-  - `research/reports/tsmomentum_sma175_promotion_gate_eval_001.md`
   - `research/reports/tsmomentum_vol_estimate_consolidation_001.md`
   - `research/reports/tsmomentum_vol_estimate_consolidation_001_rerun.md`
   - `research/tsmomentum_same_session_vol_correction.py`
 - `1.486941` (full-path Sharpe of the committed record's path):
   - `README.md`
-  - `research/experiments/tsmomentum_rolling63_weakness_diagnosis_001.md`
   - `research/reports/long_sample_overlay_attribution_001.json`
   - `research/reports/long_sample_overlay_attribution_001.md`
-  - `research/reports/tsmomentum_rolling63_weakness_diagnosis_001.md`
   - `research/reports/tsmomentum_same_session_vol_correction_001.md`
   - `research/tsmomentum_same_session_vol_correction.py`
 
@@ -269,23 +257,23 @@ The same-session estimate is a point-in-time error in the live path, so a new li
 1. src/simulation/engine.py: keep the switch default-off until the live record is restarted, then set lag_vol_estimate: true in the (new) simulation config for records started from that point on; never rewrite a committed record.
 2. research/experiments/tsmomentum_regime_filter_wf_001.md: publish a labelled successor record (new file) with the corrected 48-fold table; do not overwrite the published one.
 3. The SMA-window plateau table of the same published record: re-derive on the corrected path in the same successor record.
-4. data/processed/paper_trading_state.yaml: keep the committed 450-session record as published; if a corrected record is started, publish it as a new state file with its own drift flags and gate table.
+4. data/processed/paper_trading_state.yaml: keep the committed 453-session record as published; if a corrected record is started, publish it as a new state file with its own drift flags and gate table.
 5. research/reports/paper_trading_validation_002.md, go_no_go_evaluation_002.md and deployment_dossier_001.md: add dated addenda with the corrected gate values; do not rewrite the published values.
 6. research/reports/opportunity_shortlist.md and the README cycle log: re-state the incumbent's score with the corrected statistics only after the successor record exists.
 7. A corrected live record must be started fresh, not appended to the committed one: a record that mixes the two paths measures neither. The track_record_length gate needs 126 sessions, and the corrected path's own 2018-2026 backtest reference is 1.335983, so the unchanged PSR reference 1.4178 is a stricter bar than that record's own backtest.
 
 ## 7. What this cycle does NOT change
 
-- It does **not** cause the `rolling_63d_sharpe` failure: the corrected failing window is *worse* (-0.515807 vs -0.448918).
-- It does **not** rescue the promotion decision: the PSR gate still fails on the corrected path (0.623929 < 0.95), and the decision stays NO-GO.
+- It does **not** cause the `rolling_63d_sharpe` failure: the corrected failing window is *worse* (-0.222927 vs -0.142935).
+- It does **not** rescue the promotion decision: the PSR gate still fails on the corrected path (0.604420 < 0.95), and the decision stays NO-GO.
 - It does **not** change the incumbent's published verdict: the candidate remains a **Credible Candidate** by its published verdict and **NO-GO** for promotion.
 - The corrected walk-forward mean is **not** an edge, a recovery or a promotion: on the comparable statistic it is lower than the published path.
 - The published walk-forward record, the committed paper-trading state, the gate table, the thresholds, the universe, the cost model, the Sharpe convention and the hypotheses are **untouched**.
 
 ## 8. Checks
 
-- [committed_record_loaded]: PASS (observed: 450 sessions, expected: 450 sessions)
-- [default_path_reproduces_every_committed_session]: PASS (observed: max |diff| = 5.421e-20 over 450 sessions, expected: <= 1e-12)
+- [committed_record_loaded]: PASS (observed: 453 sessions, expected: 453 sessions)
+- [default_path_reproduces_every_committed_session]: PASS (observed: max |diff| = 5.421e-20 over 453 sessions, expected: <= 1e-12)
 - [default_research_path_is_bit_identical_to_the_pre_change_implementation]: PASS (observed: net max |diff| = 0.000e+00, weights max |diff| = 0.000e+00, expected: 0.0 (bit-identical))
 - [default_simulation_path_is_bit_identical_to_the_pre_change_implementation]: PASS (observed: weights max |diff| = 0.000e+00, vol_scale max |diff| = 0.000e+00, expected: 0.0 (bit-identical))
 - [default_risk_overlay_helpers_are_bit_identical_to_the_pre_change_implementation]: PASS (observed: vol-target max |diff| = 0.000e+00, combined max |diff| = 0.000e+00, expected: 0.0 (bit-identical))
@@ -302,10 +290,10 @@ The same-session estimate is a point-in-time error in the live path, so a new li
 - [no_config_file_sets_the_switch]: PASS (observed: 0 non-corrected config file(s) mention the switch, expected: 0)
 - [corrected_config_is_specification_only_exception]: PASS (observed: config/simulation_candidate_001_corrected.yaml sets lag_vol_estimate: true (specification-only, not an activated record), expected: declared exception present)
 - [no_record_feeding_config_sets_the_switch]: PASS (observed: 0 record-feeding config(s) mention the switch, expected: 0)
-- [committed_record_gate_value_reproduced]: PASS (observed: -0.448918151148, expected: -0.448918151148 (committed drift flag))
+- [committed_record_gate_value_reproduced]: PASS (observed: -0.142935002609, expected: -0.142935002609 (committed drift flag))
 - [corrected_path_does_not_rescue_the_promotion_decision]: PASS (observed: default NO-GO, corrected NO-GO, expected: NO-GO on both paths (the decision is unchanged))
-- [corrected_path_does_not_clear_the_rolling_gate]: PASS (observed: corrected trailing 63d Sharpe -0.515807, expected: < 0.9 (the corrected window is worse))
-- [corrected_path_does_not_clear_the_psr_gate]: PASS (observed: corrected PSR 0.623929, expected: < 0.95)
+- [corrected_path_does_not_clear_the_rolling_gate]: PASS (observed: corrected trailing 63d Sharpe -0.222927, expected: < 0.9 (the corrected window is worse))
+- [corrected_path_does_not_clear_the_psr_gate]: PASS (observed: corrected PSR 0.604420, expected: < 0.95)
 - [published_numerical_artefact_fold_is_absent_on_the_corrected_path]: PASS (observed: fold 12: default -21.829879, corrected 0.000000, expected: the artefact disappears when the estimate is lagged)
 - [published_test_period_baseline_reproduced]: PASS (observed: Sharpe 1.417752, max DD -0.077940, trades 1196, expected: the 8 documented values of research/run_cycle7.py::DOCUMENTED on the 2026-10-09 vintage (mismatching: none))
 - [data_unchanged]: PASS
@@ -326,7 +314,7 @@ git status --porcelain data/ config/
 ```json
 {
   "anchor": {
-    "committed_sessions": 450,
+    "committed_sessions": 453,
     "lagged_shift_max_abs_diff": 0.0,
     "machinery_wf_mean": 0.9473074720246092,
     "n_folds": 48,
@@ -489,75 +477,63 @@ git status --porcelain data/ config/
         "description": "committed record's canonical Sharpe",
         "files": [
           "README.md",
-          "research/experiments/tsmomentum_rolling63_weakness_diagnosis_001.md",
-          "research/experiments/tsmomentum_same_session_vol_correction_001.md",
           "research/reports/paper_trading_validation_535.md",
           "research/reports/psr_continuation_horizon_001.md",
           "research/reports/reference_sample_invariance_001.md",
           "research/reports/sample_definition_hygiene_001.md",
-          "research/reports/tsmomentum_rolling63_weakness_diagnosis_001.md",
           "research/reports/tsmomentum_same_session_vol_correction_001.md",
-          "research/reports/tsmomentum_vol_estimate_consolidation_001.md",
           "research/reports/tsmomentum_vol_estimate_consolidation_001_rerun.md",
           "research/tsmomentum_same_session_vol_correction.py"
         ],
         "marker": "1.771084",
-        "n_files": 12
+        "n_files": 8
       },
       {
         "description": "committed record's trailing 63-session Sharpe (drift flag)",
         "files": [
           "README.md",
-          "data/processed/paper_trading_state.yaml",
-          "research/experiments/tsmomentum_rolling63_weakness_diagnosis_001.md",
-          "research/experiments/tsmomentum_same_session_vol_correction_001.md",
-          "research/experiments/tsmomentum_sma175_promotion_gate_eval_001.md",
           "research/reports/long_sample_overlay_attribution_001.json",
           "research/reports/long_sample_overlay_attribution_001.md",
           "research/reports/opportunity_shortlist.md",
-          "research/reports/paper_trading_rolling.md",
           "research/reports/paper_trading_validation_535.md",
           "research/reports/reference_sample_invariance_001.md",
           "research/reports/sample_definition_hygiene_001.md",
           "research/reports/tsmomentum_rolling63_weakness_diagnosis_001.md",
           "research/reports/tsmomentum_same_session_vol_correction_001.md",
-          "research/reports/tsmomentum_sma175_promotion_gate_eval_001.md",
           "research/reports/tsmomentum_vol_estimate_consolidation_001.md",
           "research/reports/tsmomentum_vol_estimate_consolidation_001_rerun.md",
           "research/tsmomentum_same_session_vol_correction.py"
         ],
         "marker": "0.448918",
-        "n_files": 18
+        "n_files": 12
       },
       {
         "description": "full-path Sharpe of the committed record's path",
         "files": [
           "README.md",
-          "research/experiments/tsmomentum_rolling63_weakness_diagnosis_001.md",
           "research/reports/long_sample_overlay_attribution_001.json",
           "research/reports/long_sample_overlay_attribution_001.md",
-          "research/reports/tsmomentum_rolling63_weakness_diagnosis_001.md",
           "research/reports/tsmomentum_same_session_vol_correction_001.md",
           "research/tsmomentum_same_session_vol_correction.py"
         ],
         "marker": "1.486941",
-        "n_files": 7
+        "n_files": 5
       }
     ],
-    "n_distinct_affected_files": 72
+    "n_distinct_affected_files": 68
   },
   "candidate": "tsmomentum_spytrend_001",
   "checks": [
     {
-      "expected": "450 sessions",
+      "expected": "453 sessions",
       "name": "committed_record_loaded",
-      "observed": "450 sessions",
+      "observed": "453 sessions",
       "pass": true
     },
     {
       "expected": "<= 1e-12",
       "name": "default_path_reproduces_every_committed_session",
-      "observed": "max |diff| = 5.421e-20 over 450 sessions",
+      "observed": "max |diff| = 5.421e-20 over 453 sessions",
       "pass": true
     },
     {
@@ -657,9 +633,9 @@ git status --porcelain data/ config/
       "pass": true
     },
     {
-      "expected": "-0.448918151148 (committed drift flag)",
+      "expected": "-0.142935002609 (committed drift flag)",
       "name": "committed_record_gate_value_reproduced",
-      "observed": "-0.448918151148",
+      "observed": "-0.142935002609",
       "pass": true
     },
     {
@@ -671,13 +647,13 @@ git status --porcelain data/ config/
     {
       "expected": "< 0.9 (the corrected window is worse)",
       "name": "corrected_path_does_not_clear_the_rolling_gate",
-      "observed": "corrected trailing 63d Sharpe -0.515807",
+      "observed": "corrected trailing 63d Sharpe -0.222927",
       "pass": true
     },
     {
       "expected": "< 0.95",
       "name": "corrected_path_does_not_clear_the_psr_gate",
-      "observed": "corrected PSR 0.623929",
+      "observed": "corrected PSR 0.604420",
       "pass": true
     },
     {
@@ -719,7 +695,7 @@ git status --porcelain data/ config/
       "1. src/simulation/engine.py: keep the switch default-off until the live record is restarted, then set lag_vol_estimate: true in the (new) simulation config for records started from that point on; never rewrite a committed record.",
       "2. research/experiments/tsmomentum_regime_filter_wf_001.md: publish a labelled successor record (new file) with the corrected 48-fold table; do not overwrite the published one.",
       "3. The SMA-window plateau table of the same published record: re-derive on the corrected path in the same successor record.",
-      "4. data/processed/paper_trading_state.yaml: keep the committed 450-session record as published; if a corrected record is started, publish it as a new state file with its own drift flags and gate table.",
+      "4. data/processed/paper_trading_state.yaml: keep the committed 453-session record as published; if a corrected record is started, publish it as a new state file with its own drift flags and gate table.",
       "5. research/reports/paper_trading_validation_002.md, go_no_go_evaluation_002.md and deployment_dossier_001.md: add dated addenda with the corrected gate values; do not rewrite the published values.",
       "6. research/reports/opportunity_shortlist.md and the README cycle log: re-state the incumbent's score with the corrected statistics only after the successor record exists.",
       "7. A corrected live record must be started fresh, not appended to the committed one: a record that mixes the two paths measures neither. The track_record_length gate needs 126 sessions, and the corrected path's own 2018-2026 backtest reference is 1.335983, so the unchanged PSR reference 1.4178 is a stricter bar than that record's own backtest."
@@ -736,20 +712,20 @@ git status --porcelain data/ config/
   },
   "record": {
     "corrected": {
-      "canonical_sharpe": 1.6357048500763227,
+      "canonical_sharpe": 1.5970478164948547,
       "max_drawdown": -0.051056745657613756,
-      "n_sessions": 450,
-      "psr_ci_lower": 0.4254386381069959,
-      "psr_ci_upper": 3.1200499506702983,
-      "psr_empirical": 0.676,
+      "n_sessions": 453,
+      "psr_ci_lower": 0.4481365483773333,
+      "psr_ci_upper": 3.037447743368517,
+      "psr_empirical": 0.669,
       "psr_gate_passes": false,
-      "psr_normal": 0.6239288012257087,
-      "psr_sharpe_se": 0.6899747138191692,
+      "psr_normal": 0.6044203491008063,
+      "psr_sharpe_se": 0.6769036833496476,
       "psr_target": 1.4178,
-      "return_sum": 0.2881624374604081,
+      "return_sum": 0.28356686519540386,
       "rolling_gate_passes": false,
-      "rolling_gate_value": -0.5158072079113799,
-      "trailing_63d_sharpe": -0.5158072079113799
+      "rolling_gate_value": -0.22292734641986442,
+      "trailing_63d_sharpe": -0.22292734641986442
     },
     "gate_threshold_psr": 0.95,
     "gate_threshold_rolling": 0.9,
@@ -760,15 +736,15 @@ git status --porcelain data/ config/
         "psr"
       ],
       "gates": {
-        "full_period_sharpe": 1.6357048500763227,
+        "full_period_sharpe": 1.5970478164948547,
         "max_drawdown": -0.051056745657613756,
-        "psr": 0.6239288012257087,
+        "psr": 0.6044203491008063,
         "regime_flips": 6.0,
-        "rolling_63d_max_dd": -0.039641816292728116,
-        "rolling_63d_sharpe": -0.5158072079113799,
-        "track_record_length": 450.0
+        "rolling_63d_max_dd": -0.04009172151672702,
+        "rolling_63d_sharpe": -0.22292734641986442,
+        "track_record_length": 453.0
       },
-      "psr_normal": 0.6239288012257087
+      "psr_normal": 0.6044203491008063
     },
     "production_gates_published": {
       "decision": "NO-GO",
@@ -777,15 +753,15 @@ git status --porcelain data/ config/
         "psr"
       ],
       "gates": {
-        "full_period_sharpe": 1.7710837711005303,
+        "full_period_sharpe": 1.7319557462421145,
         "max_drawdown": -0.04985740111232129,
-        "psr": 0.6956061412869707,
+        "psr": 0.6788582394031051,
         "regime_flips": 6.0,
-        "rolling_63d_max_dd": -0.038564371456788704,
-        "rolling_63d_sharpe": -0.4489181511478863,
-        "track_record_length": 450.0
+        "rolling_63d_max_dd": -0.038633989356510856,
+        "rolling_63d_sharpe": -0.1429350026091491,
+        "track_record_length": 453.0
       },
-      "psr_normal": 0.6956061412869707
+      "psr_normal": 0.6788582394031051
     },
     "psr_settings": {
       "block_size": 22,
@@ -794,20 +770,20 @@ git status --porcelain data/ config/
       "target": 1.4178
     },
     "published": {
-      "canonical_sharpe": 1.7710837711005303,
+      "canonical_sharpe": 1.7319557462421145,
       "max_drawdown": -0.04985740111232129,
-      "n_sessions": 450,
-      "psr_ci_lower": 0.5722123240010532,
-      "psr_ci_upper": 3.262801596197271,
-      "psr_empirical": 0.742,
+      "n_sessions": 453,
+      "psr_ci_lower": 0.5811016650383526,
+      "psr_ci_upper": 3.164423704241605,
+      "psr_empirical": 0.74,
       "psr_gate_passes": false,
-      "psr_normal": 0.6956061412869707,
-      "psr_sharpe_se": 0.690270698276111,
+      "psr_normal": 0.6788582394031051,
+      "psr_sharpe_se": 0.6763187187344437,
       "psr_target": 1.4178,
-      "return_sum": 0.3032746228175681,
+      "return_sum": 0.2989458797305054,
       "rolling_gate_passes": false,
-      "rolling_gate_value": -0.4489181511478863,
-      "trailing_63d_sharpe": -0.4489181511478863
+      "rolling_gate_value": -0.1429350026091491,
+      "trailing_63d_sharpe": -0.1429350026091491
     },
     "test_period_2018_2026": {
       "corrected": {
@@ -870,7 +846,7 @@ git status --porcelain data/ config/
     "name": "lag_vol_estimate",
     "semantics": "When True the realised-volatility estimate for session t is computed from sessions up to and including t-1 only (no same-session feedback). When False (the default) the trailing 63-session window includes session t, which is the committed behaviour."
   },
-  "verdict": "**1. The defect is real, quantified and now correctable, but it is not a cause of the gate failure and it does not rescue anything.** The same-session volatility estimate (session *t*'s own return moves session *t*'s exposure) is present in the published research path, in the shared simulation / live paper-trading path and in both overlay helpers of `src/evaluation/risk.py`. With the estimate lagged one session the committed record's canonical Sharpe moves from 1.771084 to 1.635705, its trailing 63-session Sharpe from -0.448918 to -0.515807 and its PSR against the fixed backtest baseline 1.4178 from 0.695606 to 0.623929. The corrected path is **worse on every record-level statistic** and the promotion decision stays **NO-GO** (failed gates: rolling_63d_sharpe, psr).\n\n**2. The corrected 48-fold walk-forward mean looks better only because a numerical artefact disappears.** On the default path the published mean OOS Sharpe is 0.947307 and it contains one pathological fold (fold 12, -21.829879: 242 of 244 flat sessions, so the backtest-scale estimator divides a near-zero numerator by a near-zero dispersion, Cycle 925 section 5). Excluding that fold the default path's mean is 1.431928. On the corrected path the same segment is entirely flat, so the estimator returns 0.000000 instead of a pathology, the mean over all 48 folds is 1.318605, and the strictest comparable statistic - both paths with fold 12 excluded - is **lower** on the corrected path (1.346660 vs 1.431928); excluding each path's own worst fold it is also lower (1.357135 vs 1.431928). The corrected path is not a recovery, and the higher headline mean must never be quoted without the fold-level table.\n\n**3. The default path is unchanged, bit-for-bit.** The opt-in switch (`lag_vol_estimate`, default off) is available in all three code paths; every default-path comparison in this report is a max |diff| of exactly 0.0 against a frozen copy of the pre-change implementation (research path, simulation path and both risk-overlay helpers). No gate, threshold, universe, cost model, Sharpe convention, parameter, hypothesis or drift flag was changed, the published walk-forward record and the committed paper-trading state were **not** overwritten, and `data/` and `config/` are byte-identical before and after the run.\n\n**4. Decision recommendation: adopt only for new live paper-trading records.** The defect is a genuine point-in-time error in the **live** path (the exposure for session *t* is set with information that is only fully observable after session *t*'s close, at the price the trade is executed at), so a **new** live record must not be produced with it. But the published backtest artefacts are frozen, are quoted by 72 committed files, and the correction **lowers** every record-level statistic of the only credible candidate in the repository while leaving the decision NO-GO: adopting it everywhere would invalidate a large body of published evidence in exchange for no decision-relevant gain. The published record therefore stays as it is, and a clearly labelled successor record is the right vehicle for the corrected backtest (plan in section 7, not executed here). Two consequences must be stated. (i) A corrected live record is measured on a different path from the published backtest baseline 1.4178, so its PSR comparison against that unchanged reference is **conservative**: the corrected path's own 2018-2026 test-period Sharpe is 1.335983 against the published 1.417752. (ii) A corrected live record must be **started fresh** rather than appended to the committed one, because a record that mixes the two paths measures neither; the `track_record_length` gate needs 126 sessions, so the promotion evidence would restart from zero while the committed record stays published and NO-GO.\n\n**5. The incumbent's published verdict is unchanged.** It remains a **Credible Candidate** by its published verdict and **NO-GO** for promotion, live deployment remains unsupported, and this cycle publishes a measurement and a plan - not an edge, not a recovery and not a promotion.",
+  "verdict": "**1. The defect is real, quantified and now correctable, but it is not a cause of the gate failure and it does not rescue anything.** The same-session volatility estimate (session *t*'s own return moves session *t*'s exposure) is present in the published research path, in the shared simulation / live paper-trading path and in both overlay helpers of `src/evaluation/risk.py`. With the estimate lagged one session the committed record's canonical Sharpe moves from 1.731956 to 1.597048, its trailing 63-session Sharpe from -0.142935 to -0.222927 and its PSR against the fixed backtest baseline 1.4178 from 0.678858 to 0.604420. The corrected path is **worse on every record-level statistic** and the promotion decision stays **NO-GO** (failed gates: rolling_63d_sharpe, psr).\n\n**2. The corrected 48-fold walk-forward mean looks better only because a numerical artefact disappears.** On the default path the published mean OOS Sharpe is 0.947307 and it contains one pathological fold (fold 12, -21.829879: 242 of 244 flat sessions, so the backtest-scale estimator divides a near-zero numerator by a near-zero dispersion, Cycle 925 section 5). Excluding that fold the default path's mean is 1.431928. On the corrected path the same segment is entirely flat, so the estimator returns 0.000000 instead of a pathology, the mean over all 48 folds is 1.318605, and the strictest comparable statistic - both paths with fold 12 excluded - is **lower** on the corrected path (1.346660 vs 1.431928); excluding each path's own worst fold it is also lower (1.357135 vs 1.431928). The corrected path is not a recovery, and the higher headline mean must never be quoted without the fold-level table.\n\n**3. The default path is unchanged, bit-for-bit.** The opt-in switch (`lag_vol_estimate`, default off) is available in all three code paths; every default-path comparison in this report is a max |diff| of exactly 0.0 against a frozen copy of the pre-change implementation (research path, simulation path and both risk-overlay helpers). No gate, threshold, universe, cost model, Sharpe convention, parameter, hypothesis or drift flag was changed, the published walk-forward record and the committed paper-trading state were **not** overwritten, and `data/` and `config/` are byte-identical before and after the run.\n\n**4. Decision recommendation: adopt only for new live paper-trading records.** The defect is a genuine point-in-time error in the **live** path (the exposure for session *t* is set with information that is only fully observable after session *t*'s close, at the price the trade is executed at), so a **new** live record must not be produced with it. But the published backtest artefacts are frozen, are quoted by 68 committed files, and the correction **lowers** every record-level statistic of the only credible candidate in the repository while leaving the decision NO-GO: adopting it everywhere would invalidate a large body of published evidence in exchange for no decision-relevant gain. The published record therefore stays as it is, and a clearly labelled successor record is the right vehicle for the corrected backtest (plan in section 7, not executed here). Two consequences must be stated. (i) A corrected live record is measured on a different path from the published backtest baseline 1.4178, so its PSR comparison against that unchanged reference is **conservative**: the corrected path's own 2018-2026 test-period Sharpe is 1.335983 against the published 1.417752. (ii) A corrected live record must be **started fresh** rather than appended to the committed one, because a record that mixes the two paths measures neither; the `track_record_length` gate needs 126 sessions, so the promotion evidence would restart from zero while the committed record stays published and NO-GO.\n\n**5. The incumbent's published verdict is unchanged.** It remains a **Credible Candidate** by its published verdict and **NO-GO** for promotion, live deployment remains unsupported, and this cycle publishes a measurement and a plan - not an edge, not a recovery and not a promotion.",
   "walk_forward": {
     "corrected": {
       "artefact_fold": 12,
