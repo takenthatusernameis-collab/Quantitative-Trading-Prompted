@@ -1,5 +1,4 @@
-# Next Agent Task — Session 14 (cycle) paper-trading extension check
-
+# Next Agent Task — Session 15 (cycle) paper-trading extension check (Monday 2026-10-26 candidate)
 Context: Paper-trading state at last_run_date 2026-10-23; drift report confirms persistence streak 10 days (2026-10-12 → 2026-10-23), rolling 63d Sharpe -0.25492616117205563, stored==recomputed True. Extension attempt via `python research/extend_paper_trading_state.py` returned no new completed session (sessions extended 0). git status --porcelain data/ empty. Tests: `tests/test_paper_trading_extend.py tests/test_drift_persistence.py` passed 24/24.
 
 Objective: Re-attempt to acquire market data beyond 2026-10-23 and extend the paper-trading state if a new US trading session is complete (candidate: Monday 2026-10-26 after close+1/slack). If no new completed session is available, document the blocker with concrete evidence (clock/market data) and re-verify integrity without mutating data/ or changing strategy/config.

@@ -1,16 +1,15 @@
-# Cycle 859 — Paper-Trading Extension Attempt Handoff
+# Cycle 859 — Corrective Invocation Handoff
 
-Date: 2026-10-23T21:47 UTC
+Date: 2026-10-23T23:53:11Z
 
-## Result: no new completed US trading session available
-- extend_paper_trading_state.py --dry-run: "no new completed session", sessions extended: 0
-- NAV before/after unchanged (133634.38193355838), state write count 0, raw cache untouched.
-- Monday 2026-10-26 not yet eligible (requires 17:00 ET on that date).
+## Blocker
+No new completed US trading session available; last_run_date remains 2026-10-23. Next candidate Monday 2026-10-26 after close+1/slack. The supervisor's parquet-engine blocker (recommendation 0008) is stale: pyarrow 26.0.0 present; dry-run exits cleanly.
 
-## Integrity verification
-- git status --porcelain data/: empty
-- drift_persistence_report: stored==recomputed True, streak 10, rolling 63d Sharpe -0.25492616117205563
-- pytest: 24 passed
+## Verification
+- `git status --porcelain data/` -> empty
+- `python research/extend_paper_trading_state.py --dry-run` -> "no new completed session", sessions extended 0, exit 0
+- `python research/drift_persistence_report.py` -> stored==recomputed True, persistence 10, exit 0
+- `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q` -> 24 passed
 
-## Next task
-Re-attempt after 2026-10-26 17:00 ET; document blocker otherwise.
+## Next
+Re-attempt extension on/after Monday 2026-10-26 close+1. No state/data changes this cycle.
