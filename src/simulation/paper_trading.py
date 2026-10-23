@@ -9,6 +9,8 @@ available without lookahead bias.
 
 from __future__ import annotations
 
+import os
+import tempfile
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -206,8 +208,27 @@ class PaperTradingState:
                 return [convert(v) for v in obj]
             return obj
 
-        with open(p, "w") as fh:
-            yaml.safe_dump(convert(asdict(self)), fh, sort_keys=False)
+        payload = yaml.safe_dump(convert(asdict(self)), sort_keys=False)
+        # Atomic write: build the new file next to the target, fsync it, then
+        # os.replace() it into place. A crash, OOM, or disk-full during the
+        # write therefore leaves the previous state file byte-for-byte
+        # intact instead of truncating it (Cycle 999 contract: the single
+        # state write must never corrupt the canonical paper-trading state).
+        fd, tmp_path = tempfile.mkstemp(
+            prefix=p.name + ".", suffix=".tmp", dir=str(p.parent)
+        )
+        try:
+            with os.fdopen(fd, "w") as fh:
+                fh.write(payload)
+                fh.flush()
+                os.fsync(fh.fileno())
+            os.replace(tmp_path, p)
+        except BaseException:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
 
 
 def run_daily_paper_update(
