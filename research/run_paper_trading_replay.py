@@ -43,7 +43,7 @@ def main() -> None:
     # NOTE: yfinance treats ``end`` as EXCLUSIVE, so to capture trading day
     # 2026-10-16 we must request end_date = 2026-10-17. Requesting
     # end_date = 2026-10-16 silently truncates the cache to 2026-10-15.
-    end_date = "2026-10-23"
+    end_date = "2026-11-30"
     print(f"Fetching market data from {config.history_start} to {end_date}...")
     all_market_data = fetch_universe(config.universe, config.history_start, end_date, force=True)
     print(f"Loaded market data: {len(all_market_data)} rows, {all_market_data.index.min().date()} to {all_market_data.index.max().date()}")

@@ -1,0 +1,303 @@
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:568: Pandas4Warning: The inplace keyword in DataFrame.sort_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  quotes.sort_index(inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:585: Pandas4Warning: The inplace keyword in DataFrame.set_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  dividends.set_index("date", inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:587: Pandas4Warning: The inplace keyword in DataFrame.sort_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  dividends.sort_index(inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/multi.py:220: Pandas4Warning: The inplace keyword in DataFrame.rename is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  data.rename(columns=ctx.isins, inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:568: Pandas4Warning: The inplace keyword in DataFrame.sort_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  quotes.sort_index(inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:585: Pandas4Warning: The inplace keyword in DataFrame.set_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  dividends.set_index("date", inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:587: Pandas4Warning: The inplace keyword in DataFrame.sort_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  dividends.sort_index(inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:604: Pandas4Warning: The inplace keyword in DataFrame.set_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  splits.set_index("date", inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:606: Pandas4Warning: The inplace keyword in DataFrame.sort_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  splits.sort_index(inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/multi.py:220: Pandas4Warning: The inplace keyword in DataFrame.rename is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  data.rename(columns=ctx.isins, inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:568: Pandas4Warning: The inplace keyword in DataFrame.sort_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  quotes.sort_index(inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:585: Pandas4Warning: The inplace keyword in DataFrame.set_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  dividends.set_index("date", inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:587: Pandas4Warning: The inplace keyword in DataFrame.sort_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  dividends.sort_index(inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:604: Pandas4Warning: The inplace keyword in DataFrame.set_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  splits.set_index("date", inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:606: Pandas4Warning: The inplace keyword in DataFrame.sort_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  splits.sort_index(inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/multi.py:220: Pandas4Warning: The inplace keyword in DataFrame.rename is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  data.rename(columns=ctx.isins, inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:568: Pandas4Warning: The inplace keyword in DataFrame.sort_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  quotes.sort_index(inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:585: Pandas4Warning: The inplace keyword in DataFrame.set_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  dividends.set_index("date", inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:587: Pandas4Warning: The inplace keyword in DataFrame.sort_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  dividends.sort_index(inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/multi.py:220: Pandas4Warning: The inplace keyword in DataFrame.rename is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  data.rename(columns=ctx.isins, inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:568: Pandas4Warning: The inplace keyword in DataFrame.sort_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  quotes.sort_index(inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/multi.py:220: Pandas4Warning: The inplace keyword in DataFrame.rename is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  data.rename(columns=ctx.isins, inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:568: Pandas4Warning: The inplace keyword in DataFrame.sort_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  quotes.sort_index(inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:585: Pandas4Warning: The inplace keyword in DataFrame.set_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  dividends.set_index("date", inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:587: Pandas4Warning: The inplace keyword in DataFrame.sort_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  dividends.sort_index(inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:604: Pandas4Warning: The inplace keyword in DataFrame.set_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  splits.set_index("date", inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:606: Pandas4Warning: The inplace keyword in DataFrame.sort_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  splits.sort_index(inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/multi.py:220: Pandas4Warning: The inplace keyword in DataFrame.rename is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  data.rename(columns=ctx.isins, inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:568: Pandas4Warning: The inplace keyword in DataFrame.sort_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  quotes.sort_index(inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:585: Pandas4Warning: The inplace keyword in DataFrame.set_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  dividends.set_index("date", inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:587: Pandas4Warning: The inplace keyword in DataFrame.sort_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  dividends.sort_index(inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:604: Pandas4Warning: The inplace keyword in DataFrame.set_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  splits.set_index("date", inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/utils.py:606: Pandas4Warning: The inplace keyword in DataFrame.sort_index is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  splits.sort_index(inplace=True)
+/home/runner/work/_temp/kilo-home/.local/lib/python3.12/site-packages/yfinance/multi.py:220: Pandas4Warning: The inplace keyword in DataFrame.rename is deprecated and will be removed in a future version (PDEP-8).
+See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+  data.rename(columns=ctx.isins, inplace=True)
+/home/runner/work/Quantitative-Trading-Prompted/Quantitative-Trading-Prompted/research/run_paper_trading_replay.py:54: Pandas4Warning: DatetimeIndex.weekday is deprecated and will be removed in a future version. Use DatetimeIndex.day_of_week instead.
+  replay_dates = replay_dates[replay_dates.weekday < 5]  # Ensure weekdays only
+=== Paper-Trading Historical Replay ===
+Config: /home/runner/work/Quantitative-Trading-Prompted/Quantitative-Trading-Prompted/config/paper_trading_config.yaml
+State: /home/runner/work/Quantitative-Trading-Prompted/Quantitative-Trading-Prompted/data/processed/paper_trading_state.yaml
+
+Fetching market data from 1993-01-01 to 2026-11-30...
+Loaded market data: 8491 rows, 1993-01-29 to 2026-10-22
+Replay period: 2025-01-01 to 2026-11-30 (453 trading days)
+Starting with fresh state (last_run_date: None)
+  Day 1/453: 2025-01-02 | NAV=$100,194.62 | Ret=0.1946% | DD=0.00% | Positions=4
+  Day 2/453: 2025-01-03 | NAV=$100,889.67 | Ret=0.6937% | DD=0.00% | Positions=4
+  Day 3/453: 2025-01-06 | NAV=$101,211.75 | Ret=0.3192% | DD=0.00% | Positions=4
+  Day 4/453: 2025-01-07 | NAV=$100,591.28 | Ret=-0.6130% | DD=-0.61% | Positions=4
+  Day 5/453: 2025-01-08 | NAV=$100,638.59 | Ret=0.0470% | DD=-0.61% | Positions=4
+  Day 6/453: 2025-01-10 | NAV=$99,799.84 | Ret=-0.8334% | DD=-1.39% | Positions=4
+  Day 7/453: 2025-01-13 | NAV=$99,614.59 | Ret=-0.1856% | DD=-1.58% | Positions=4
+  Day 8/453: 2025-01-14 | NAV=$99,942.95 | Ret=0.3296% | DD=-1.58% | Positions=4
+  Day 9/453: 2025-01-15 | NAV=$101,224.82 | Ret=1.2826% | DD=-1.58% | Positions=4
+  Day 10/453: 2025-01-16 | NAV=$101,224.59 | Ret=-0.0002% | DD=-1.58% | Positions=4
+  Day 11/453: 2025-01-17 | NAV=$101,718.65 | Ret=0.4881% | DD=-1.58% | Positions=4
+  Day 12/453: 2025-01-21 | NAV=$102,654.79 | Ret=0.9203% | DD=-1.58% | Positions=4
+  Day 13/453: 2025-01-22 | NAV=$102,978.43 | Ret=0.3153% | DD=-1.58% | Positions=4
+  Day 14/453: 2025-01-23 | NAV=$103,183.41 | Ret=0.1991% | DD=-1.58% | Positions=4
+  Day 15/453: 2025-01-24 | NAV=$103,084.92 | Ret=-0.0954% | DD=-1.58% | Positions=4
+  Day 16/453: 2025-01-27 | NAV=$101,891.33 | Ret=-1.1579% | DD=-1.58% | Positions=4
+  Day 17/453: 2025-01-28 | NAV=$102,506.53 | Ret=0.6038% | DD=-1.58% | Positions=4
+  Day 18/453: 2025-01-29 | NAV=$102,273.40 | Ret=-0.2274% | DD=-1.58% | Positions=4
+  Day 19/453: 2025-01-30 | NAV=$102,920.34 | Ret=0.6326% | DD=-1.58% | Positions=4
+  Day 20/453: 2025-01-31 | NAV=$102,663.72 | Ret=-0.2493% | DD=-1.58% | Positions=4
+  Day 21/453: 2025-02-03 | NAV=$102,272.63 | Ret=-0.3809% | DD=-1.58% | Positions=4
+  Day 22/453: 2025-02-04 | NAV=$103,085.99 | Ret=0.7953% | DD=-1.58% | Positions=4
+  Day 23/453: 2025-02-05 | NAV=$103,578.38 | Ret=0.4777% | DD=-1.58% | Positions=4
+  Day 24/453: 2025-02-06 | NAV=$103,631.85 | Ret=0.0516% | DD=-1.58% | Positions=4
+  Day 25/453: 2025-02-07 | NAV=$103,020.60 | Ret=-0.5898% | DD=-1.58% | Positions=4
+  Day 26/453: 2025-02-10 | NAV=$103,822.39 | Ret=0.7783% | DD=-1.58% | Positions=4
+  Day 27/453: 2025-02-11 | NAV=$103,598.23 | Ret=-0.2159% | DD=-1.58% | Positions=4
+  Day 28/453: 2025-02-12 | NAV=$103,380.62 | Ret=-0.2100% | DD=-1.58% | Positions=4
+  Day 29/453: 2025-02-13 | NAV=$104,293.07 | Ret=0.8826% | DD=-1.58% | Positions=4
+  Day 30/453: 2025-02-14 | NAV=$104,062.01 | Ret=-0.2216% | DD=-1.58% | Positions=4
+  Day 31/453: 2025-02-18 | NAV=$104,608.89 | Ret=0.5255% | DD=-1.58% | Positions=4
+  Day 32/453: 2025-02-19 | NAV=$104,603.70 | Ret=-0.0050% | DD=-1.58% | Positions=4
+  Day 33/453: 2025-02-20 | NAV=$104,239.96 | Ret=-0.3477% | DD=-1.58% | Positions=4
+  Day 34/453: 2025-02-21 | NAV=$102,883.71 | Ret=-1.3011% | DD=-1.65% | Positions=4
+  Day 35/453: 2025-02-24 | NAV=$102,524.16 | Ret=-0.3495% | DD=-1.99% | Positions=4
+  Day 36/453: 2025-02-25 | NAV=$101,847.67 | Ret=-0.6598% | DD=-2.64% | Positions=4
+  Day 37/453: 2025-02-26 | NAV=$101,959.14 | Ret=0.1094% | DD=-2.64% | Positions=4
+  Day 38/453: 2025-02-27 | NAV=$100,546.38 | Ret=-1.3856% | DD=-3.88% | Positions=4
+  Day 39/453: 2025-02-28 | NAV=$101,211.32 | Ret=0.6613% | DD=-3.88% | Positions=4
+  Day 40/453: 2025-03-03 | NAV=$100,226.79 | Ret=-0.9728% | DD=-4.19% | Positions=4
+  Day 41/453: 2025-03-04 | NAV=$99,909.57 | Ret=-0.3165% | DD=-4.49% | Positions=4
+  Day 42/453: 2025-03-05 | NAV=$100,555.31 | Ret=0.6463% | DD=-4.49% | Positions=4
+  Day 43/453: 2025-03-06 | NAV=$99,393.37 | Ret=-1.1555% | DD=-4.99% | Positions=4
+  Day 44/453: 2025-03-07 | NAV=$99,685.47 | Ret=0.2939% | DD=-4.99% | Positions=4
+  Day 45/453: 2025-03-10 | NAV=$99,664.47 | Ret=-0.0211% | DD=-4.99% | Positions=0
+  Day 46/453: 2025-03-11 | NAV=$99,664.47 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 47/453: 2025-03-12 | NAV=$99,664.47 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 48/453: 2025-03-13 | NAV=$99,664.47 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 49/453: 2025-03-14 | NAV=$99,664.47 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 50/453: 2025-03-17 | NAV=$99,664.47 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 51/453: 2025-03-18 | NAV=$99,664.47 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 52/453: 2025-03-19 | NAV=$99,664.47 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 53/453: 2025-03-20 | NAV=$99,664.47 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 54/453: 2025-03-21 | NAV=$99,664.47 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 55/453: 2025-03-24 | NAV=$100,422.66 | Ret=0.7607% | DD=-4.99% | Positions=4
+  Day 56/453: 2025-03-25 | NAV=$100,620.14 | Ret=0.1966% | DD=-4.99% | Positions=4
+  Day 57/453: 2025-03-26 | NAV=$100,595.43 | Ret=-0.0246% | DD=-4.99% | Positions=0
+  Day 58/453: 2025-03-27 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 59/453: 2025-03-28 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 60/453: 2025-03-31 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 61/453: 2025-04-01 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 62/453: 2025-04-02 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 63/453: 2025-04-03 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 64/453: 2025-04-04 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 65/453: 2025-04-07 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 66/453: 2025-04-08 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 67/453: 2025-04-09 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 68/453: 2025-04-10 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 69/453: 2025-04-11 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 70/453: 2025-04-14 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 71/453: 2025-04-15 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 72/453: 2025-04-16 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 73/453: 2025-04-17 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 74/453: 2025-04-21 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 75/453: 2025-04-22 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 76/453: 2025-04-23 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 77/453: 2025-04-24 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 78/453: 2025-04-25 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 79/453: 2025-04-28 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 80/453: 2025-04-29 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 81/453: 2025-04-30 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 82/453: 2025-05-01 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 83/453: 2025-05-02 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 84/453: 2025-05-05 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 85/453: 2025-05-06 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 86/453: 2025-05-07 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 87/453: 2025-05-08 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 88/453: 2025-05-09 | NAV=$100,595.43 | Ret=0.0000% | DD=-4.99% | Positions=0
+  Day 89/453: 2025-05-12 | NAV=$101,477.95 | Ret=0.8773% | DD=-4.99% | Positions=4
+  Day 90/453: 2025-05-13 | NAV=$102,157.26 | Ret=0.6694% | DD=-4.99% | Positions=4
+  Day 91/453: 2025-05-14 | NAV=$101,681.69 | Ret=-0.4655% | DD=-4.99% | Positions=4
+  Day 92/453: 2025-05-15 | NAV=$102,517.13 | Ret=0.8216% | DD=-4.99% | Positions=4
+  Day 93/453: 2025-05-16 | NAV=$102,540.12 | Ret=0.0224% | DD=-4.99% | Positions=4
+  Day 94/453: 2025-05-19 | NAV=$103,166.83 | Ret=0.6112% | DD=-4.99% | Positions=4
+  Day 95/453: 2025-05-20 | NAV=$103,597.44 | Ret=0.4174% | DD=-4.99% | Positions=4
+  Day 96/453: 2025-05-21 | NAV=$103,117.27 | Ret=-0.4635% | DD=-4.99% | Positions=4
+  Day 97/453: 2025-05-22 | NAV=$102,800.63 | Ret=-0.3071% | DD=-4.99% | Positions=4
+  Day 98/453: 2025-05-23 | NAV=$103,329.34 | Ret=0.5143% | DD=-4.99% | Positions=4
+  Day 99/453: 2025-05-27 | NAV=$103,742.68 | Ret=0.4000% | DD=-4.99% | Positions=4
+  Day 100/453: 2025-05-28 | NAV=$103,104.28 | Ret=-0.6154% | DD=-4.99% | Positions=4
+  Day 101/453: 2025-05-29 | NAV=$103,523.27 | Ret=0.4064% | DD=-4.99% | Positions=4
+  Day 102/453: 2025-05-30 | NAV=$103,321.23 | Ret=-0.1952% | DD=-4.99% | Positions=4
+  Day 103/453: 2025-06-02 | NAV=$104,529.10 | Ret=1.1690% | DD=-4.99% | Positions=4
+  Day 104/453: 2025-06-03 | NAV=$104,713.68 | Ret=0.1766% | DD=-4.99% | Positions=4
+  Day 105/453: 2025-06-04 | NAV=$105,272.94 | Ret=0.5341% | DD=-4.99% | Positions=4
+  Day 106/453: 2025-06-05 | NAV=$105,115.15 | Ret=-0.1499% | DD=-4.99% | Positions=4
+  Day 107/453: 2025-06-06 | NAV=$105,210.77 | Ret=0.0910% | DD=-4.99% | Positions=4
+  Day 108/453: 2025-06-09 | NAV=$105,579.89 | Ret=0.3508% | DD=-4.99% | Positions=4
+  Day 109/453: 2025-06-10 | NAV=$105,923.20 | Ret=0.3252% | DD=-4.99% | Positions=4
+  Day 110/453: 2025-06-11 | NAV=$106,058.07 | Ret=0.1273% | DD=-4.99% | Positions=4
+  Day 111/453: 2025-06-12 | NAV=$106,741.11 | Ret=0.6440% | DD=-4.99% | Positions=4
+  Day 112/453: 2025-06-13 | NAV=$106,026.23 | Ret=-0.6697% | DD=-4.99% | Positions=4
+  Day 113/453: 2025-06-16 | NAV=$105,614.48 | Ret=-0.3884% | DD=-4.99% | Positions=4
+  Day 114/453: 2025-06-17 | NAV=$104,731.90 | Ret=-0.8357% | DD=-4.99% | Positions=4
+  Day 115/453: 2025-06-18 | NAV=$104,611.95 | Ret=-0.1145% | DD=-4.99% | Positions=4
+  Day 116/453: 2025-06-20 | NAV=$104,121.69 | Ret=-0.4686% | DD=-4.99% | Positions=4
+  Day 117/453: 2025-06-23 | NAV=$104,852.42 | Ret=0.7018% | DD=-4.99% | Positions=4
+  Day 118/453: 2025-06-24 | NAV=$105,728.43 | Ret=0.8355% | DD=-4.99% | Positions=4
+  Day 119/453: 2025-06-25 | NAV=$105,738.38 | Ret=0.0094% | DD=-4.99% | Positions=4
+  Day 120/453: 2025-06-26 | NAV=$106,372.32 | Ret=0.5995% | DD=-4.99% | Positions=4
+  Day 121/453: 2025-06-27 | NAV=$106,337.85 | Ret=-0.0324% | DD=-4.99% | Positions=4
+  Day 122/453: 2025-06-30 | NAV=$106,865.41 | Ret=0.4961% | DD=-4.99% | Positions=4
+  Day 123/453: 2025-07-01 | NAV=$107,100.16 | Ret=0.2197% | DD=-4.99% | Positions=4
+  Day 124/453: 2025-07-02 | NAV=$107,617.99 | Ret=0.4835% | DD=-4.99% | Positions=4
+  Day 125/453: 2025-07-03 | NAV=$107,917.22 | Ret=0.2781% | DD=-4.99% | Positions=4
+  Day 126/453: 2025-07-07 | NAV=$107,240.81 | Ret=-0.6268% | DD=-4.99% | Positions=4
+  Day 127/453: 2025-07-08 | NAV=$107,294.16 | Ret=0.0498% | DD=-4.99% | Positions=4
+  Day 128/453: 2025-07-09 | NAV=$107,950.22 | Ret=0.6115% | DD=-4.99% | Positions=4
+  Day 129/453: 2025-07-10 | NAV=$108,029.57 | Ret=0.0735% | DD=-4.99% | Positions=4
+  Day 130/453: 2025-07-11 | NAV=$107,864.04 | Ret=-0.1532% | DD=-4.99% | Positions=4
+  Day 131/453: 2025-07-14 | NAV=$107,902.39 | Ret=0.0356% | DD=-4.99% | Positions=4
+  Day 132/453: 2025-07-15 | NAV=$107,728.33 | Ret=-0.1613% | DD=-4.99% | Positions=4
+  Day 133/453: 2025-07-16 | NAV=$108,127.64 | Ret=0.3707% | DD=-4.99% | Positions=4
+  Day 134/453: 2025-07-17 | NAV=$108,512.75 | Ret=0.3562% | DD=-4.99% | Positions=4
+  Day 135/453: 2025-07-18 | NAV=$108,420.03 | Ret=-0.0854% | DD=-4.99% | Positions=4
+  Day 136/453: 2025-07-21 | NAV=$109,298.07 | Ret=0.8098% | DD=-4.99% | Positions=4
+  Day 137/453: 2025-07-22 | NAV=$109,583.14 | Ret=0.2608% | DD=-4.99% | Positions=4
+  Day 138/453: 2025-07-23 | NAV=$109,862.10 | Ret=0.2546% | DD=-4.99% | Positions=4
+  Day 139/453: 2025-07-24 | NAV=$109,613.09 | Ret=-0.2267% | DD=-4.99% | Positions=4
+  Day 140/453: 2025-07-25 | NAV=$109,458.56 | Ret=-0.1410% | DD=-4.99% | Positions=4
+  Day 141/453: 2025-07-28 | NAV=$109,177.67 | Ret=-0.2566% | DD=-4.99% | Positions=4
+  Day 142/453: 2025-07-29 | NAV=$109,149.57 | Ret=-0.0257% | DD=-4.99% | Positions=4
+  Day 143/453: 2025-07-30 | NAV=$108,302.76 | Ret=-0.7758% | DD=-4.99% | Positions=4
+  Day 144/453: 2025-07-31 | NAV=$107,893.24 | Ret=-0.3781% | DD=-4.99% | Positions=4
+  Day 145/453: 2025-08-01 | NAV=$107,251.20 | Ret=-0.5951% | DD=-4.99% | Positions=4
+  Day 146/453: 2025-08-04 | NAV=$108,587.76 | Ret=1.2462% | DD=-4.99% | Positions=4
+  Day 147/453: 2025-08-05 | NAV=$108,365.68 | Ret=-0.2045% | DD=-4.99% | Positions=4
+  Day 148/453: 2025-08-06 | NAV=$108,984.21 | Ret=0.5708% | DD=-4.99% | Positions=4
+  Day 149/453: 2025-08-07 | NAV=$109,512.00 | Ret=0.4843% | DD=-4.99% | Positions=4
+  Day 150/453: 2025-08-08 | NAV=$110,142.40 | Ret=0.5756% | DD=-4.99% | Positions=4
+  Day 151/453: 2025-08-11 | NAV=$109,494.87 | Ret=-0.5879% | DD=-4.99% | Positions=4
+  Day 152/453: 2025-08-12 | NAV=$110,422.23 | Ret=0.8469% | DD=-4.99% | Positions=4
+  Day 153/453: 2025-08-13 | NAV=$110,946.64 | Ret=0.4749% | DD=-4.99% | Positions=4
+  Day 154/453: 2025-08-14 | NAV=$110,411.37 | Ret=-0.4825% | DD=-4.99% | Positions=4
+  Day 155/453: 2025-08-15 | NAV=$110,274.73 | Ret=-0.1237% | DD=-4.99% | Positions=4
+  Day 156/453: 2025-08-18 | NAV=$110,374.80 | Ret=0.0907% | DD=-4.99% | Positions=4
+  Day 157/453: 2025-08-19 | NAV=$109,474.46 | Ret=-0.8157% | DD=-4.99% | Positions=4
+  Day 158/453: 2025-08-20 | NAV=$109,477.82 | Ret=0.0031% | DD=-4.99% | Positions=4
+  Day 159/453: 2025-08-21 | NAV=$109,085.82 | Ret=-0.3581% | DD=-4.99% | Positions=4
+  Day 160/453: 2025-08-22 | NAV=$110,761.22 | Ret=1.5359% | DD=-4.99% | Positions=4
+  Day 161/453: 2025-08-25 | NAV=$110,334.00 | Ret=-0.3857% | DD=-4.99% | Positions=4
+  Day 162/453: 2025-08-26 | NAV=$110,689.33 | Ret=0.3220% | DD=-4.99% | Positions=4
+  Day 163/453: 2025-08-27 | NAV=$110,685.43 | Ret=-0.0035% | DD=-4.99% | Positions=4
+  Day 164/453: 2025-08-28 | NAV=$111,267.28 | Ret=0.5257% | DD=-4.99% | Positions=4
+  Day 165/453: 2025-08-29 | NAV=$110,914.57 | Ret=-0.3170% | DD=-4.99% | Positions=4
+  Day 166/453: 2025-09-02 | NAV=$111,110.06 | Ret=0.1762% | DD=-4.99% | Positions=4
+  Day 167/453: 2025-09-03 | NAV=$111,802.63 | Ret=0.6233% | DD=-4.99% | Positions=4
+  Day 168/453: 2025-09-04 | NAV=$112,076.28 | Ret=0.2448% | DD=-4.99% | Positions=4
+  Day 169/453: 2025-09-05 | NAV=$112,746.75 | Ret=0.5982% | DD=-4.99% | Positions=4
+  Day 170/453: 2025-09-08 | NAV=$113,531.48 | Ret=0.6960% | DD=-4.99% | Positions=4
+  Day 171/453: 2025-09-09 | NAV=$113,769.19 | Ret=0.2094% | DD=-4.99% | Positions=4
+  Day 172/453: 2025-09-10 | NAV=$114,157.36 | Ret=0.3412% | DD=-4.99% | Positions=4
+  Day 173/453: 2025-09-11 | NAV=$114,933.37 | Ret=0.6798% | DD=-4.99% | Positions=4
+  Day 174/453: 2025-09-12 | NAV=$115,090.84 | Ret=0.1370% | DD=-4.99% | Positions=4
+  Day 175/453: 2025-09-15 | NAV=$115,998.83 | Ret=0.7889% | DD=-4.99% | Positions=4
+  Day 176/453: 2025-09-16 | NAV=$116,207.43 | Ret=0.1798% | DD=-4.99% | Positions=4
+  Day 177/453: 2025-09-17 | NAV=$116,015.21 | Ret=-0.1654% | DD=-4.99% | Positions=4
+  Day 178/453: 2025-09-18 | NAV=$116,225.27 | Ret=0.1811% | DD=-4.99% | Positions=4
+  Day 179/453: 2025-09-19 | NAV=$116,727.72 | Ret=0.4323% | DD=-4.99% | Positions=4
+  Day 180/453: 2025-09-22 | NAV=$117,586.21 | Ret=0.7355% | DD=-4.99% | Positions=4
+  Day 181/453: 2025-09-23 | NAV=$117,294.34 | Ret=-0.2482% | DD=-4.99% | Positions=4
+  Day 182/453: 2025-09-24 | NAV=$116,662.29 | Ret=-0.5389% | DD=-4.99% | Positions=4
+  Day 183/453: 2025-09-25 | NAV=$116,315.55 | Ret=-0.2972% | DD=-4.99% | Positions=4
+  Day 184/453: 2025-09-26 | NAV=$116,994.15 | Ret=0.5834% | DD=-4.99% | Positions=4
+  Day 185/453: 2025-09-29 | NAV=$117,807.97 | Ret=0.6956% | DD=-4.99% | Positions=4
+  Day 186/453: 2025-09-30 | NAV=$118,371.46 | Ret=0.4783% | DD=-4.99% | Positions=4
+  Day 187/453: 2025-10-01 | NAV=$118,904.92 | Ret=0.4507% | DD=-4.99% | Positions=4
+  Day 188/453: 2025-10-02 | NAV=$119,005.20 | Ret=0.0843% | DD=-4.99% | Positions=4
+  Day 189/453: 2025-10-03 | NAV=$119,367.77 | Ret=0.3047% | DD=-4.99% | Positions=4
+  Day 190/453: 2025-10-06 | NAV=$120,330.36 | Ret=0.8064% | DD=-4.99% | Positions=4
+  Day 191/453: 2025-10-07 | NAV=$119,953.63 | Ret=-0.3131% | DD=-4.99% | Positions=4
