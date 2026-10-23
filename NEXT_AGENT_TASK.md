@@ -1,20 +1,16 @@
-# Cycle 959 — Execute Gate-Met Protocol (paper-trading data refresh)
+# Cycle 960 — Paper-trading replay network blocker
 
 ## Context
-- Gate 2026-10-18T20:00:00Z reached; paper-trading state last run 2026-10-19 (450 cumulative returns).
-- SMA-175 candidate remains NO-GO (Cycle 958); incumbent monitoring continues.
+Cycle 959 replay hung at day 191/453 (2025-10-07) after ~9 min; process Rl, no further progress. Likely yfinance fetch stall. Partial state written through day 191. No validation report produced.
 
 ## Objective
-Execute Cycle 486 gate-met protocol: refresh incumbent 7-ETF universe (SPY,QQQ,IWM,TLT,GLD,EFA,EEM) plus SPY,^VIX via Yahoo Finance (force=True, end_date 2026-11-30), verify per-symbol max dates and real (nonzero volume) data, run paper-trading replay, confirm state, write validation report.
+Resolve replay stall and complete Cycle 959 protocol: rerun with per-symbol timeout/retry or cached data; verify completion and state; write report.
 
 ## Acceptance criteria
-1. Yahoo fetch completed with verification of per-symbol max dates and nonzero volume (except ^VIX).
-2. `research/run_paper_trading_replay.py` executed with appropriate end_date.
-3. State confirmed: track length/dates, NAV, Sharpe, max DD, rolling 63d Sharpe, regime flips, drift flag status.
-4. Validation report written under research/reports/paper_trading_validation_*.md.
-5. Existing tests still pass.
+1. Replay completes all trading days without hang.
+2. State track length/dates, NAV, Sharpe, max DD, rolling 63d Sharpe, regime flips, drift flag recorded.
+3. Validation report written.
+4. Tests pass.
 
-## Scope boundaries
-- No strategy/parameter changes.
-- No promotion of SMA-175.
-- No commits unless explicitly requested.
+## Scope
+No strategy changes.
