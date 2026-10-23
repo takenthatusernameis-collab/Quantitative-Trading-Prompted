@@ -1,14 +1,14 @@
-# Cycle 961 — Paper-trading replay validation audit
+# Cycle 962 — Drift-flag persistence audit
 
 ## Context
-Cycle 960 replay completed all 453 trading days (2025-01-02 .. 2026-10-23); state saved to data/processed/paper_trading_state.yaml; report at research/reports/paper_trading_rolling.md. Track length 453, NAV $133,719.54, Sharpe 1.8292, max DD -4.99%.
+Cycle 961 audit passed: state track length 453, NAV $133,719.54, Sharpe 1.8292, max DD -4.99%, rolling 63d Sharpe -0.1429 flagged low_rolling_sharpe with persistence_days 9.
 
 ## Objective
-Audit saved state and report for consistency: track length/dates, NAV, Sharpe, max DD, rolling 63d Sharpe, regime flips, drift flag.
+Audit drift-flag persistence accounting against state: verify persistence_days matches consecutive sub-threshold days and threshold value.
 
 ## Acceptance criteria
-1. State track length matches replay days (453).
-2. Report metrics match state.
+1. persistence_days equals recomputed consecutive sub-threshold streak.
+2. Threshold and date match state.
 3. Tests pass.
 
 ## Scope
