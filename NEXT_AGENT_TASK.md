@@ -1,13 +1,12 @@
-# Next Agent Task — Post-extension verification (2026-10-23)
+# Next Agent Task — Attempt next trading-day extension (2026-10-23)
 
-Context: Paper-trading state advanced to 2026-10-23 (last_run_date 2026-10-23). Drift report confirms persistence streak 10 days, rolling 63d Sharpe -0.25492616117205563, stored==recomputed True.
+Context: Paper-trading state at last_run_date 2026-10-23; drift report confirms persistence streak 10 days, rolling 63d Sharpe -0.25492616117205563, stored==recomputed True. Integrity verified this cycle: git status --porcelain data/ empty, 24 tests passed.
 
-Objective: Verify canonical state integrity after extension; confirm raw cache untouched and tests green.
+Objective: Attempt to acquire market data beyond 2026-10-23 and extend the paper-trading state if a new trading day is available; otherwise document the blocker and re-verify integrity.
 
 Acceptance criteria:
-- `git status --porcelain data/` shows only expected state/report changes; raw cache untouched.
-- `python research/drift_persistence_report.py` runs and reports stored==recomputed True.
-- `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q` passes (24 tests).
+- If new trading day available: extend state, run drift report (stored==recomputed True), tests pass (24 tests), raw cache integrity confirmed.
+- If not available: document blocker with evidence; re-run drift report and tests; git status --porcelain data/ empty.
 
 Validation commands:
 - `git status --porcelain data/`
