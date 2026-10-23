@@ -1,7 +1,7 @@
-# Cycle 967 — Paper-trading monitoring: re-check for new completed session
+# Cycle 968 — Paper-trading monitoring: re-check for new completed session
 
 ## Context
-Cycle 966 dry-run: no new completed US trading session beyond 2026-10-22. Drift persistence report unchanged: persistence_days 9, threshold 0.5, rolling 63d Sharpe -0.1429350026091491, stored == recomputed True. State track length 434, last_run_date 2026-10-22, NAV $133,719.54, Sharpe 1.8292, max DD -4.99%. No state extension occurred (sessions extended: 0).
+Cycle 967 dry-run: no new completed US trading session beyond 2026-10-22. Drift persistence report unchanged: persistence_days 9, threshold 0.5, rolling 63d Sharpe -0.1429350026091491, stored == recomputed True. State track length 434, last_run_date 2026-10-22, NAV $133,719.54, Sharpe 1.8292, max DD -4.99%. No state extension occurred (sessions extended: 0).
 
 ## Objective
 Re-run dry-run data freshness check; if a new completed session exists, extend state and re-audit drift persistence; otherwise document blocker and advance.
