@@ -1,12 +1,12 @@
-last_run_date: '2026-10-19'
+last_run_date: '2026-10-22'
 current_positions:
-  SPY: 0.16262782590342945
-  QQQ: 0.16262782590342945
-  IWM: 0.16262782590342945
+  SPY: 0.16108512908100864
+  QQQ: 0.16108512908100864
+  IWM: 0.16108512908100864
   TLT: 0.0
   GLD: 0.0
   EFA: 0.0
-  EEM: 0.16262782590342945
+  EEM: 0.16108512908100864
 cumulative_returns:
 - 0.0019462434871237997
 - 0.006936972864723232
@@ -458,6 +458,9 @@ cumulative_returns:
 - 0.0013828791171308788
 - -0.011098684337182554
 - 0.0043391237791928225
+- 0.0030983793379417515
+- 0.003661008610218278
+- -0.011088131035222737
 cumulative_pnl:
 - 194.62434871237997
 - 695.0473902981554
@@ -909,6 +912,9 @@ cumulative_pnl:
 - 186.74863121864564
 - -1500.8761984308862
 - 580.2676571774474
+- 416.14175480120997
+- 493.2317050740503
+- -1499.3244982916494
 cumulative_dates:
 - '2025-01-02'
 - '2025-01-03'
@@ -1360,15 +1366,18 @@ cumulative_dates:
 - '2026-10-15'
 - '2026-10-16'
 - '2026-10-19'
+- '2026-10-20'
+- '2026-10-21'
+- '2026-10-22'
 peak_nav: 139120.07235486925
-current_nav: 134309.49196738843
+current_nav: 133719.54092897204
 max_drawdown: -0.049857401112321176
 drift_flags:
   low_rolling_sharpe:
-    value: -0.4489181511478863
+    value: -0.1429350026091491
     threshold: 0.5
-    date: '2026-10-19'
-    persistence_days: 6
+    date: '2026-10-22'
+    persistence_days: 9
 run_history:
 - date: '2025-01-02'
   nav: 100194.62434871239
@@ -5420,13 +5429,40 @@ run_history:
   dd_scale: 1.0
   regime_exposure: 1.0
   n_positions: 4
+- date: '2026-10-20'
+  nav: 134725.63372218964
+  daily_return: 0.0030983793379417515
+  daily_pnl: 416.14175480120997
+  turnover: 0.000988271324776746
+  vol_scale: 0.649523032288941
+  dd_scale: 1.0
+  regime_exposure: 1.0
+  n_positions: 4
+- date: '2026-10-21'
+  nav: 135218.8654272637
+  daily_return: 0.003661008610218278
+  daily_pnl: 493.2317050740503
+  turnover: 0.007928594116854315
+  vol_scale: 0.6574516264057954
+  dd_scale: 1.0
+  regime_exposure: 1.0
+  n_positions: 4
+- date: '2026-10-22'
+  nav: 133719.54092897204
+  daily_return: -0.011088131035222737
+  daily_pnl: -1499.3244982916494
+  turnover: 0.013111110081760802
+  vol_scale: 0.6443405163240346
+  dd_scale: 1.0
+  regime_exposure: 1.0
+  n_positions: 4
 previous_regime_exposure: 1.0
-rolling_sharpe_63d: -0.4489181511478863
+rolling_sharpe_63d: -0.1429350026091491
 rolling_max_dd_63d: -0.04985740111232129
-regime_persistence_days: 135
+regime_persistence_days: 138
 vol_scale_min: 0.43731674589035896
 vol_scale_max: 1.0
 dd_scale_min: 1.0
 dd_scale_max: 1.0
-turnover_median: 0.001325533221423203
+turnover_median: 0.0013769287729697988
 turnover_p95: 0.5

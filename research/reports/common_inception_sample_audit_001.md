@@ -29,19 +29,19 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
     "definition": "the union calendar of the raw cache (the sample the committed long-sample artifact computes)",
     "gates": {
       "track_record_length": {
-        "value": 8490.0,
+        "value": 8491.0,
         "threshold": 126.0,
         "comparison": "gte",
         "pass": true
       },
       "full_period_sharpe": {
-        "value": 0.5656512156422117,
+        "value": 0.5643531603402314,
         "threshold": 0.9,
         "comparison": "gte",
         "pass": false
       },
       "rolling_63d_sharpe": {
-        "value": 0.3551828888732751,
+        "value": 0.3822172141588271,
         "threshold": 0.9,
         "comparison": "gte",
         "pass": false
@@ -53,7 +53,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
         "pass": false
       },
       "rolling_63d_max_dd": {
-        "value": -0.0613607225143209,
+        "value": -0.061716508955863225,
         "threshold": -0.15,
         "comparison": "gte",
         "pass": true
@@ -65,7 +65,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
         "pass": true
       },
       "psr": {
-        "value": 3.2794594987962315e-08,
+        "value": 2.7218117229036965e-08,
         "threshold": 0.95,
         "comparison": "gte",
         "pass": false
@@ -82,13 +82,13 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
     "rationale": "4 promotion gate(s) failed: full_period_sharpe, rolling_63d_sharpe, max_drawdown, psr. A failing gate can never yield GO, regardless of the PSR.",
     "conditions_for_reevaluation": "Strategy fails go/no-go criteria. Do not promote to live trading without major revision.",
     "positions": {
-      "mean_positions_held": 3.143698468786808,
+      "mean_positions_held": 3.143799316923802,
       "median_positions_held": 4.0,
       "sessions_with_one_position": 1542,
       "sessions_with_no_position": 248
     },
     "cross_section": {
-      "sessions": 8490,
+      "sessions": 8491,
       "opening_date": "1993-01-29",
       "opening_width": 1,
       "price_width_min": 1,
@@ -161,19 +161,19 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
     "definition": "the aligned price frame truncated to the common inception 2004-11-18 before the signal, cost model, universe, lookback/skip/top_fraction and rebalance semantics are applied",
     "gates": {
       "track_record_length": {
-        "value": 5515.0,
+        "value": 5516.0,
         "threshold": 126.0,
         "comparison": "gte",
         "pass": true
       },
       "full_period_sharpe": {
-        "value": 0.7019536593979044,
+        "value": 0.6995440188544707,
         "threshold": 0.9,
         "comparison": "gte",
         "pass": false
       },
       "rolling_63d_sharpe": {
-        "value": 0.3551828888732751,
+        "value": 0.3822172141588271,
         "threshold": 0.9,
         "comparison": "gte",
         "pass": false
@@ -185,7 +185,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
         "pass": false
       },
       "rolling_63d_max_dd": {
-        "value": -0.0613607225143209,
+        "value": -0.061716508955863225,
         "threshold": -0.15,
         "comparison": "gte",
         "pass": true
@@ -197,7 +197,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
         "pass": true
       },
       "psr": {
-        "value": 0.00017742282878415821,
+        "value": 0.00016853369294219536,
         "threshold": 0.95,
         "comparison": "gte",
         "pass": false
@@ -214,13 +214,13 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
     "rationale": "4 promotion gate(s) failed: full_period_sharpe, rolling_63d_sharpe, max_drawdown, psr. A failing gate can never yield GO, regardless of the PSR.",
     "conditions_for_reevaluation": "Strategy fails go/no-go criteria. Do not promote to live trading without major revision.",
     "positions": {
-      "mean_positions_held": 3.8201269265639164,
+      "mean_positions_held": 3.8201595358955767,
       "median_positions_held": 4.0,
       "sessions_with_one_position": 0,
       "sessions_with_no_position": 248
     },
     "cross_section": {
-      "sessions": 5515,
+      "sessions": 5516,
       "opening_date": "2004-11-18",
       "opening_width": 7,
       "price_width_min": 7,
@@ -244,19 +244,19 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
     "definition": "the union path restricted to the sessions from the common inception 2004-11-18 onwards (warm-up preserved)",
     "gates": {
       "track_record_length": {
-        "value": 5515.0,
+        "value": 5516.0,
         "threshold": 126.0,
         "comparison": "gte",
         "pass": true
       },
       "full_period_sharpe": {
-        "value": 0.7127675924266851,
+        "value": 0.7103908284905173,
         "threshold": 0.9,
         "comparison": "gte",
         "pass": false
       },
       "rolling_63d_sharpe": {
-        "value": 0.3551828888732751,
+        "value": 0.3822172141588271,
         "threshold": 0.9,
         "comparison": "gte",
         "pass": false
@@ -268,7 +268,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
         "pass": false
       },
       "rolling_63d_max_dd": {
-        "value": -0.0613607225143209,
+        "value": -0.061716508955863225,
         "threshold": -0.15,
         "comparison": "gte",
         "pass": true
@@ -280,7 +280,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
         "pass": true
       },
       "psr": {
-        "value": 0.00021219345424039089,
+        "value": 0.00020336072967812202,
         "threshold": 0.95,
         "comparison": "gte",
         "pass": false
@@ -303,7 +303,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
       "sessions_with_no_position": 0
     },
     "cross_section": {
-      "sessions": 5515,
+      "sessions": 5516,
       "opening_date": "2004-11-18",
       "opening_width": 7,
       "price_width_min": 7,
@@ -330,58 +330,58 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
 ```json
 {
   "union_sample": {
-    "sessions": 8490,
+    "sessions": 8491,
     "start_date": "1993-01-29",
-    "end_date": "2026-10-21",
-    "paper_sharpe": 0.5656512156422117,
+    "end_date": "2026-10-22",
+    "paper_sharpe": 0.5643531603402314,
     "paper_max_dd": -0.6224126346564325,
-    "rolling_sharpe_63d": 0.3551828888732751,
-    "rolling_63d_max_dd": -0.0613607225143209,
-    "paper_days": 8490,
-    "sharpe_observed_canonical": 0.5656512156422117,
-    "sharpe_se": 0.1577219990651964,
-    "sharpe_backtest_scale": 0.38427025835768547,
-    "psr_normal": 3.2794594987962315e-08,
+    "rolling_sharpe_63d": 0.3822172141588271,
+    "rolling_63d_max_dd": -0.061716508955863225,
+    "paper_days": 8491,
+    "sharpe_observed_canonical": 0.5643531603402314,
+    "sharpe_se": 0.15699397227536388,
+    "sharpe_backtest_scale": 0.3828642682684244,
+    "psr_normal": 2.7218117229036965e-08,
     "psr_empirical": 0.0,
-    "psr_ci_lower": 0.2716210458932988,
-    "psr_ci_upper": 0.8848510500392951,
-    "zero_return_sessions": 277
+    "psr_ci_lower": 0.2804456440234213,
+    "psr_ci_upper": 0.890914210479557,
+    "zero_return_sessions": 275
   },
   "common_inception_slice": {
-    "sessions": 5515,
+    "sessions": 5516,
     "start_date": "2004-11-18",
-    "end_date": "2026-10-21",
-    "paper_sharpe": 0.7019536593979044,
+    "end_date": "2026-10-22",
+    "paper_sharpe": 0.6995440188544707,
     "paper_max_dd": -0.3669795914712545,
-    "rolling_sharpe_63d": 0.3551828888732751,
-    "rolling_63d_max_dd": -0.0613607225143209,
-    "paper_days": 5515,
-    "sharpe_observed_canonical": 0.7019536593979044,
-    "sharpe_se": 0.2004289547831815,
-    "sharpe_backtest_scale": 0.5237370495348158,
-    "psr_normal": 0.00017742282878415821,
+    "rolling_sharpe_63d": 0.3822172141588271,
+    "rolling_63d_max_dd": -0.061716508955863225,
+    "paper_days": 5516,
+    "sharpe_observed_canonical": 0.6995440188544707,
+    "sharpe_se": 0.20034987525855918,
+    "sharpe_backtest_scale": 0.5211135789733442,
+    "psr_normal": 0.00016853369294219536,
     "psr_empirical": 0.0,
-    "psr_ci_lower": 0.34213860305491467,
-    "psr_ci_upper": 1.1151911144399027,
-    "zero_return_sessions": 250
+    "psr_ci_lower": 0.3452026403809898,
+    "psr_ci_upper": 1.1037130618178435,
+    "zero_return_sessions": 248
   },
   "common_inception_window": {
-    "sessions": 5515,
+    "sessions": 5516,
     "start_date": "2004-11-18",
-    "end_date": "2026-10-21",
-    "paper_sharpe": 0.7127675924266851,
+    "end_date": "2026-10-22",
+    "paper_sharpe": 0.7103908284905173,
     "paper_max_dd": -0.3669795914712546,
-    "rolling_sharpe_63d": 0.3551828888732751,
-    "rolling_63d_max_dd": -0.0613607225143209,
-    "paper_days": 5515,
-    "sharpe_observed_canonical": 0.7127675924266851,
-    "sharpe_se": 0.20004125653114613,
-    "sharpe_backtest_scale": 0.5368215110931961,
-    "psr_normal": 0.00021219345424039089,
+    "rolling_sharpe_63d": 0.3822172141588271,
+    "rolling_63d_max_dd": -0.061716508955863225,
+    "paper_days": 5516,
+    "sharpe_observed_canonical": 0.7103908284905173,
+    "sharpe_se": 0.2000770558828852,
+    "sharpe_backtest_scale": 0.534225355146773,
+    "psr_normal": 0.00020336072967812202,
     "psr_empirical": 0.0,
-    "psr_ci_lower": 0.3516981075961909,
-    "psr_ci_upper": 1.1273761352607934,
-    "zero_return_sessions": 2
+    "psr_ci_lower": 0.3538255894279591,
+    "psr_ci_upper": 1.1172208369508374,
+    "zero_return_sessions": 0
   }
 }
 ```
@@ -398,10 +398,10 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
     "max_drawdown": -0.6224126346564325
   },
   "from_common_inception": {
-    "sessions": 5515,
+    "sessions": 5516,
     "start_date": "2004-11-18",
-    "end_date": "2026-10-21",
-    "sharpe": 0.7127675924266851,
+    "end_date": "2026-10-22",
+    "sharpe": 0.7103908284905173,
     "max_drawdown": -0.3669795914712546
   },
   "union_max_drawdown": {
@@ -418,7 +418,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
 
 ```json
 {
-  "flat_sessions_before_the_first_signal": 250,
+  "flat_sessions_before_the_first_signal": 248,
   "first_non_zero_return_date": "2005-11-11",
   "first_session_with_a_position": "2005-11-11",
   "sessions_differing_from_the_warmup_variant": 249,
@@ -434,19 +434,19 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
 {
   "union_sample": {
     "track_record_length": {
-      "value": 8490.0,
+      "value": 8491.0,
       "threshold": 126.0,
       "comparison": "gte",
       "pass": true
     },
     "full_period_sharpe": {
-      "value": 0.5656512156422117,
+      "value": 0.5643531603402314,
       "threshold": 0.9,
       "comparison": "gte",
       "pass": false
     },
     "rolling_63d_sharpe": {
-      "value": 0.3551828888732751,
+      "value": 0.3822172141588271,
       "threshold": 0.9,
       "comparison": "gte",
       "pass": false
@@ -458,7 +458,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
       "pass": false
     },
     "rolling_63d_max_dd": {
-      "value": -0.0613607225143209,
+      "value": -0.061716508955863225,
       "threshold": -0.15,
       "comparison": "gte",
       "pass": true
@@ -470,7 +470,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
       "pass": true
     },
     "psr": {
-      "value": 3.2794594987962315e-08,
+      "value": 2.7218117229036965e-08,
       "threshold": 0.95,
       "comparison": "gte",
       "pass": false
@@ -478,19 +478,19 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
   },
   "common_inception_slice": {
     "track_record_length": {
-      "value": 5515.0,
+      "value": 5516.0,
       "threshold": 126.0,
       "comparison": "gte",
       "pass": true
     },
     "full_period_sharpe": {
-      "value": 0.7019536593979044,
+      "value": 0.6995440188544707,
       "threshold": 0.9,
       "comparison": "gte",
       "pass": false
     },
     "rolling_63d_sharpe": {
-      "value": 0.3551828888732751,
+      "value": 0.3822172141588271,
       "threshold": 0.9,
       "comparison": "gte",
       "pass": false
@@ -502,7 +502,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
       "pass": false
     },
     "rolling_63d_max_dd": {
-      "value": -0.0613607225143209,
+      "value": -0.061716508955863225,
       "threshold": -0.15,
       "comparison": "gte",
       "pass": true
@@ -514,7 +514,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
       "pass": true
     },
     "psr": {
-      "value": 0.00017742282878415821,
+      "value": 0.00016853369294219536,
       "threshold": 0.95,
       "comparison": "gte",
       "pass": false
@@ -522,19 +522,19 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
   },
   "common_inception_window": {
     "track_record_length": {
-      "value": 5515.0,
+      "value": 5516.0,
       "threshold": 126.0,
       "comparison": "gte",
       "pass": true
     },
     "full_period_sharpe": {
-      "value": 0.7127675924266851,
+      "value": 0.7103908284905173,
       "threshold": 0.9,
       "comparison": "gte",
       "pass": false
     },
     "rolling_63d_sharpe": {
-      "value": 0.3551828888732751,
+      "value": 0.3822172141588271,
       "threshold": 0.9,
       "comparison": "gte",
       "pass": false
@@ -546,7 +546,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
       "pass": false
     },
     "rolling_63d_max_dd": {
-      "value": -0.0613607225143209,
+      "value": -0.061716508955863225,
       "threshold": -0.15,
       "comparison": "gte",
       "pass": true
@@ -558,7 +558,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
       "pass": true
     },
     "psr": {
-      "value": 0.00021219345424039089,
+      "value": 0.00020336072967812202,
       "threshold": 0.95,
       "comparison": "gte",
       "pass": false
@@ -638,14 +638,14 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
     "psr"
   ],
   "metric_deltas_common_inception_slice_minus_union": {
-    "paper_sharpe": 0.13630244375569278,
+    "paper_sharpe": 0.1351908585142393,
     "paper_max_dd": 0.255433043185178,
-    "psr_normal": 0.00017739003418917025
+    "psr_normal": 0.0001685064748249663
   },
   "metric_deltas_common_inception_window_minus_union": {
-    "paper_sharpe": 0.14711637678447342,
+    "paper_sharpe": 0.14603766815028585,
     "paper_max_dd": 0.2554330431851779,
-    "psr_normal": 0.00021216065964540292
+    "psr_normal": 0.00020333351156089297
   }
 }
 ```
@@ -663,8 +663,8 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
     },
     "observed": {
       "start_date": "1993-01-29",
-      "end_date": "2026-10-21",
-      "sessions": 8490
+      "end_date": "2026-10-22",
+      "sessions": 8491
     },
     "pass": false
   },
@@ -681,14 +681,14 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
       "sharpe_se": 0.15424519947175822
     },
     "observed": {
-      "paper_sharpe": 0.5656512156422117,
+      "paper_sharpe": 0.5643531603402314,
       "paper_max_dd": -0.6224126346564325,
-      "rolling_sharpe_63d": 0.3551828888732751,
-      "rolling_63d_max_dd": -0.0613607225143209,
+      "rolling_sharpe_63d": 0.3822172141588271,
+      "rolling_63d_max_dd": -0.061716508955863225,
       "regime_flips": 6,
-      "paper_days": 8490,
-      "sharpe_observed_canonical": 0.5656512156422117,
-      "sharpe_se": 0.1577219990651964
+      "paper_days": 8491,
+      "sharpe_observed_canonical": 0.5643531603402314,
+      "sharpe_se": 0.15699397227536388
     },
     "pass": false
   },
@@ -699,7 +699,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
       "psr_empirical": 0.0
     },
     "observed": {
-      "psr_normal": 3.2794594987962315e-08,
+      "psr_normal": 2.7218117229036965e-08,
       "psr_empirical": 0.0
     },
     "pass": false
@@ -752,19 +752,19 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
     },
     "observed": {
       "track_record_length": {
-        "value": 8490.0,
+        "value": 8491.0,
         "threshold": 126.0,
         "comparison": "gte",
         "pass": true
       },
       "full_period_sharpe": {
-        "value": 0.5656512156422117,
+        "value": 0.5643531603402314,
         "threshold": 0.9,
         "comparison": "gte",
         "pass": false
       },
       "rolling_63d_sharpe": {
-        "value": 0.3551828888732751,
+        "value": 0.3822172141588271,
         "threshold": 0.9,
         "comparison": "gte",
         "pass": false
@@ -776,7 +776,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
         "pass": false
       },
       "rolling_63d_max_dd": {
-        "value": -0.0613607225143209,
+        "value": -0.061716508955863225,
         "threshold": -0.15,
         "comparison": "gte",
         "pass": true
@@ -788,7 +788,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
         "pass": true
       },
       "psr": {
-        "value": 3.2794594987962315e-08,
+        "value": 2.7218117229036965e-08,
         "threshold": 0.95,
         "comparison": "gte",
         "pass": false
@@ -829,7 +829,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
     "name": "data_and_config_unchanged",
     "expected": "identical SHA-256 fingerprint of every file under data/ and config/",
     "observed": {
-      "data_files": 1856,
+      "data_files": 1868,
       "config_files": 19,
       "data_unchanged": true,
       "config_unchanged": true
@@ -848,13 +848,13 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
     "name": "union_sample_equals_raw_cache_union_index",
     "expected": {
       "first_date": "1993-01-29",
-      "last_date": "2026-10-21",
-      "count": 8490
+      "last_date": "2026-10-22",
+      "count": 8491
     },
     "observed": {
       "start_date": "1993-01-29",
-      "end_date": "2026-10-21",
-      "sessions": 8490,
+      "end_date": "2026-10-22",
+      "sessions": 8491,
       "equals_raw_cache_union": true
     },
     "pass": true
@@ -866,14 +866,14 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
       "price_width_max": 7,
       "momentum_breadth_min": 6,
       "start_date": "2004-11-18",
-      "end_date": "2026-10-21"
+      "end_date": "2026-10-22"
     },
     "observed": {
       "price_width_min": 7,
       "price_width_max": 7,
       "momentum_breadth_min": 6,
       "start_date": "2004-11-18",
-      "end_date": "2026-10-21"
+      "end_date": "2026-10-22"
     },
     "pass": true
   },
@@ -881,8 +881,8 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
     "name": "common_inception_sample_sessions_are_a_subset_of_the_union_sample",
     "expected": "every common-inception session exists in the union sample",
     "observed": {
-      "slice_sessions": 5515,
-      "window_sessions": 5515,
+      "slice_sessions": 5516,
+      "window_sessions": 5516,
       "subset": true
     },
     "pass": true
@@ -912,54 +912,54 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
     "EEM"
   ],
   "union_start_date": "1993-01-29",
-  "union_end_date": "2026-10-21",
-  "union_sessions": 8490,
+  "union_end_date": "2026-10-22",
+  "union_sessions": 8491,
   "common_inception": "2004-11-18",
   "per_symbol_stats": {
     "SPY": {
       "first_date": "1993-01-29",
-      "last_date": "2026-10-19",
-      "row_count": 8488
+      "last_date": "2026-10-22",
+      "row_count": 8491
     },
     "QQQ": {
       "first_date": "1999-03-10",
-      "last_date": "2026-10-19",
-      "row_count": 6946
+      "last_date": "2026-10-22",
+      "row_count": 6949
     },
     "IWM": {
       "first_date": "2000-05-26",
-      "last_date": "2026-10-19",
-      "row_count": 6638
+      "last_date": "2026-10-22",
+      "row_count": 6641
     },
     "TLT": {
       "first_date": "2002-07-30",
-      "last_date": "2026-10-19",
-      "row_count": 6095
+      "last_date": "2026-10-22",
+      "row_count": 6098
     },
     "GLD": {
       "first_date": "2004-11-18",
-      "last_date": "2026-10-21",
-      "row_count": 5515
+      "last_date": "2026-10-22",
+      "row_count": 5516
     },
     "EFA": {
       "first_date": "2001-08-27",
-      "last_date": "2026-10-19",
-      "row_count": 6323
+      "last_date": "2026-10-22",
+      "row_count": 6326
     },
     "EEM": {
       "first_date": "2003-04-14",
-      "last_date": "2026-10-19",
-      "row_count": 5917
+      "last_date": "2026-10-22",
+      "row_count": 5920
     }
   },
   "sha256_raw_files": {
-    "SPY": "971d02284b9790dfd282438b98f5a0c08cc409e379d1598a41c02d96eb00f47e",
-    "QQQ": "71215972c77f917d54da229ee445c16edc4f51fd997f878a2ae3888855fb08ad",
-    "IWM": "5bd3985f67dd47ad1ae75d1c23b7effa4d3bc7abd730cf7ac8c5c99887d91593",
-    "TLT": "f745d0921006c792dd1ad180cefea529bf049cda24e4dc9fc0a378208a8c36e7",
-    "GLD": "a50a33932759e90a5fb105cce54d02ecc387de198a33c6f7783c50d59d883057",
-    "EFA": "a77623de41bdf6d5c48810c54079dbaa15181a30113b1b317e67630851592f8b",
-    "EEM": "922f0181be3ed98ca4ad1ab844ed87dbda9afa562b44bde20b4dbf730f6693c8"
+    "SPY": "f307f910a62dc3e237afc7a4910f5b3508c75c3f83330735d55aead81e459375",
+    "QQQ": "3de8a01c4f0d6f77ddebd98295f5da5adb19ac6feade90d747cb7876a9faa872",
+    "IWM": "0e32b42393e5dad65ea810d099c88ed21eba890c1d0d5e521b473da92ad74cb4",
+    "TLT": "851db269e1622eb6684c075ce94a0a38f2e72b3f4a6f2202ab72b7a712f5c6ce",
+    "GLD": "6e681051e18253fa9487ca86aff096e6ea5f81dc1d44995eefa0380cef2166c7",
+    "EFA": "f72c519b0974467167e2f822eece66da6dbe1329dbd2981a86a373c5e303b101",
+    "EEM": "17ad1692de6eee0b4eb32862c9133eab4b851865c5c2a78f05a6cbf5dfeb9ed5"
   },
   "point_in_time_treatment": "signals use only data up to the formation session, positions are effective on the next session (build_weights shifts by one day); no forward-looking data is used",
   "missing_data_handling": "the engine forward-fills each symbol on the union calendar; the cross-section width published here counts the assets that have a price on each session"
