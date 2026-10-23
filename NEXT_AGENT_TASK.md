@@ -1,16 +1,16 @@
-# Cycle 957 — Diagnose SMA 175 rolling 63d Sharpe and PSR gate failures
+# Cycle 958 — Re-derive SMA-175 trailing 63d Sharpe/PSR on committed paper series
 
 ## Context
-- Cycle 956 promotion-gate evaluation recorded OVERALL: PASS (structural) but DECISION: NO-GO.
-- Failing gates: rolling_63d_sharpe (-0.119 < 0.9) and psr (0.8997 < 0.95).
-- Artifact: research/reports/tsmomentum_sma175_promotion_gate_eval_001.md.
+- Cycle 957 diagnostic note: research/reports/tsmomentum_sma175_rolling63_psr_diagnosis_001.md.
+- Failing gates: rolling_63d_sharpe (-0.118932 < 0.9) and psr (0.899699 < 0.95).
+- Need to determine whether the SMA-175 failing window is a tail state of its own rolling distribution (as with the incumbent, Cycle 925) or a structural shortfall, and whether the PSR gap is closable at current record length.
 
 ## Objective
-Identify the dominant contributors to the rolling 63-day Sharpe shortfall and PSR gap using existing cached artifacts and evaluation code; propose one bounded, testable next experiment or rejection.
+Re-derive the SMA-175 candidate's trailing 63d Sharpe and PSR on the committed paper-trading return series using existing machinery (Cycle 925 rolling63 diagnosis pattern), read-only over cached parquet and paper-trading state.
 
 ## Acceptance criteria
-1. A short diagnostic note added under research/reports/ citing specific dates/periods and metrics.
-2. No new backtest executed; no data fetched.
+1. A diagnostic note under research/reports/ citing specific dates/periods and metrics.
+2. No new backtest executed; no data fetched; no production code changed.
 3. Existing tests still pass.
 
 ## Scope boundaries
