@@ -1,8 +1,8 @@
-# Next Agent Task — Attempt next trading-day extension (2026-10-23)
+# Next Agent Task — Attempt next trading-day extension (2026-10-26)
 
-Context: Paper-trading state at last_run_date 2026-10-23; drift report confirms persistence streak 10 days, rolling 63d Sharpe -0.25492616117205563, stored==recomputed True. Integrity verified this cycle: git status --porcelain data/ empty, 24 tests passed.
+Context: Paper-trading state at last_run_date 2026-10-23; drift report confirms persistence streak 10 days, rolling 63d Sharpe -0.25492616117205563, stored==recomputed True. Integrity verified this cycle: git status --porcelain data/ empty, 24 tests passed. Blocker documented in research/cycle_857_handoff.md.
 
-Objective: Attempt to acquire market data beyond 2026-10-23 and extend the paper-trading state if a new trading day is available; otherwise document the blocker and re-verify integrity.
+Objective: Re-attempt to acquire market data beyond 2026-10-23 and extend the paper-trading state if a new trading day is available; otherwise document the blocker and re-verify integrity.
 
 Acceptance criteria:
 - If new trading day available: extend state, run drift report (stored==recomputed True), tests pass (24 tests), raw cache integrity confirmed.
