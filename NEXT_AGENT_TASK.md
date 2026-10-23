@@ -1,7 +1,7 @@
-# Cycle 997 — Paper-trading monitoring: blocker persists (pre-20:00 UTC run)
+# Cycle 998 — Paper-trading monitoring: blocker persists (pre-20:00 UTC run)
 
 ## Context
-Cycle 997 re-check at 2026-10-23 09:01 UTC: still before 20:00 UTC US close. Dry-run executed: "no new completed session" (sessions extended 0, state write count 0, canonical data/raw untouched). State unchanged: last_run_date 2026-10-22, NAV $133,719.54092897204. Drift persistence re-audited: 9 consecutive trading days below 0.5 threshold (streak 2026-10-12 -> 2026-10-22), rolling 63d Sharpe -0.1429350026091491 on 2026-10-22; stored == recomputed True. BLOCKER: 2026-10-23 session incomplete at run time (run before 20:00 UTC close). The post-20:00 UTC freshness check remains pending.
+Cycle 998 re-check at 2026-10-23 09:02 UTC: still before 20:00 UTC US close. Dry-run executed: "no new completed session" (sessions extended 0, state write count 0, canonical data/raw untouched). State unchanged: last_run_date 2026-10-22, NAV $133,719.54092897204. Drift persistence re-audited: 9 consecutive trading days below 0.5 threshold (streak 2026-10-12 -> 2026-10-22), rolling 63d Sharpe -0.1429350026091491 on 2026-10-22; stored == recomputed True. BLOCKER: 2026-10-23 session incomplete at run time (run before 20:00 UTC close). The post-20:00 UTC freshness check remains pending.
 
 ## Objective
 Re-run dry-run data freshness check after the 2026-10-23 session has closed (after 20:00 UTC); if a new completed session exists, extend state and re-audit drift persistence; otherwise document blocker and advance again.
