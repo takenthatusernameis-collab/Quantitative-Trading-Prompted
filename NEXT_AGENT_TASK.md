@@ -76,3 +76,12 @@ CORRECTIVE_VERIFICATION=PASS
 - Command: `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q` → 24 passed in 1.24s.
 - git status --porcelain data/ → empty; canonical state unchanged.
 - Blocker remains time-only. Next action unchanged: execute after 2026-10-23T20:00:00Z.
+
+## Corrective invocation 2 (2026-10-23T19:40:30Z)
+- Inspected logs: kilo-session-20.log, kilo-session-20-recovery-1.log, kilo-session-20-recovery-2.log, kilo-failure-logs/corrective-session-20.log (session ended with idle timeout / status 124 context). No durable code changes from session 20 visible.
+- Current UTC: 2026-10-23T19:40:30Z < 2026-10-23T20:00:00Z (gate). Dry-run: no new completed session; sessions extended 0; NAV unchanged 133719.54092897204; state write count 0.
+- Tests: `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q` → 24 passed.
+- Drift report: last_run_date 2026-10-22; persistence streak 9 days; rolling 63d Sharpe -0.1429350026091491; stored==recomputed True.
+- `git status --porcelain data/` empty; working tree only has prior committed changes.
+- Blocker: time-only. No safe code change can create completed 2026-10-23 session before close+slack. Next action unchanged: execute after 2026-10-23T20:00:00Z per prior handoff.
+CORRECTIVE_VERIFICATION=BLOCKED
