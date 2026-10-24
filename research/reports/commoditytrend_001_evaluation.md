@@ -16,7 +16,7 @@
 ## Benchmark-relative (net)
 
 - Mean excess (annualized approx): -0.033764
-- Bootstrap 95% CI (block 4, 2000 draws, seed 20240101): [nan, nan]
+- Bootstrap 95% CI (block 4, 2000 draws, seed 20240101): [-0.000552, 0.000295]
 
 ## Gross capture fraction
 

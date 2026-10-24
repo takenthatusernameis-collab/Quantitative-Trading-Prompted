@@ -8,21 +8,21 @@
 
 | Symbol | Source | Retrieved | Price field | Price convention | Rows | First | Last |
 |---|---|---|---|---|---|---|---|
-| `DBC` | yahoo_finance | 2026-10-22 | Close | raw (auto_adjust=False; the upstream close is split-adjusted but not dividend-adjusted -- the same convention as src/data/yfinance_fetcher.py) | 5210 | 2006-02-06 | 2026-10-21 |
-| `BNO` | yahoo_finance | 2026-10-22 | Close | raw (auto_adjust=False; the upstream close is split-adjusted but not dividend-adjusted -- the same convention as src/data/yfinance_fetcher.py) | 4123 | 2010-06-02 | 2026-10-21 |
-| `UNG` | yahoo_finance | 2026-10-22 | Close | raw (auto_adjust=False; the upstream close is split-adjusted but not dividend-adjusted -- the same convention as src/data/yfinance_fetcher.py) | 4910 | 2007-04-18 | 2026-10-21 |
-| `GLD` | yahoo_finance | 2026-10-22 | Close | raw (auto_adjust=False; the upstream close is split-adjusted but not dividend-adjusted -- the same convention as src/data/yfinance_fetcher.py) | 5515 | 2004-11-18 | 2026-10-21 |
+| `DBC` | yahoo_finance | 2026-10-24 | Close | raw (auto_adjust=False; the upstream close is split-adjusted but not dividend-adjusted -- the same convention as src/data/yfinance_fetcher.py) | 5212 | 2006-02-06 | 2026-10-23 |
+| `BNO` | yahoo_finance | 2026-10-24 | Close | raw (auto_adjust=False; the upstream close is split-adjusted but not dividend-adjusted -- the same convention as src/data/yfinance_fetcher.py) | 4125 | 2010-06-02 | 2026-10-23 |
+| `UNG` | yahoo_finance | 2026-10-24 | Close | raw (auto_adjust=False; the upstream close is split-adjusted but not dividend-adjusted -- the same convention as src/data/yfinance_fetcher.py) | 4912 | 2007-04-18 | 2026-10-23 |
+| `GLD` | yahoo_finance | 2026-10-24 | Close | raw (auto_adjust=False; the upstream close is split-adjusted but not dividend-adjusted -- the same convention as src/data/yfinance_fetcher.py) | 5517 | 2004-11-18 | 2026-10-23 |
 
-The request window was `2000-01-01 .. 2026-10-22`; the source is the same one the repository's own fetcher uses (the repository yfinance fetcher), with the same `auto_adjust=False` price convention, so the fetched panel is comparable with the committed cache.
+The request window was `2000-01-01 .. 2026-10-24`; the source is the same one the repository's own fetcher uses (the repository yfinance fetcher), with the same `auto_adjust=False` price convention, so the fetched panel is comparable with the committed cache.
 
 ## 2. Integrity counters
 
 | Symbol | Rows | Close rows | Missing | Duplicate timestamps | Non-positive | Largest 1-day move | First close | Last close |
 |---|---|---|---|---|---|---|---|---|
-| `DBC` | 5210 | 5210 | 0 | 0 | 0 | 0.0794 (2022-03-09) | 24.2000 | 33.5000 |
-| `BNO` | 4123 | 4123 | 0 | 0 | 0 | 0.2191 (2020-03-09) | 25.5900 | 67.0500 |
-| `UNG` | 4910 | 4910 | 0 | 0 | 0 | 0.2485 (2026-02-02) | 6498.5601 | 9.9700 |
-| `GLD` | 5515 | 5515 | 0 | 0 | 0 | 0.1129 (2008-09-17) | 44.3800 | 378.9500 |
+| `DBC` | 5212 | 5212 | 0 | 0 | 0 | 0.0794 (2022-03-09) | 24.2000 | 34.1000 |
+| `BNO` | 4125 | 4125 | 0 | 0 | 0 | 0.2191 (2020-03-09) | 25.5900 | 70.9900 |
+| `UNG` | 4912 | 4912 | 0 | 0 | 0 | 0.2485 (2026-02-02) | 6498.5601 | 9.5800 |
+| `GLD` | 5517 | 5517 | 0 | 0 | 0 | 0.1129 (2008-09-17) | 44.3800 | 366.6100 |
 
 No missing price, no duplicate timestamp and no non-positive close in any of the four files, and no one-day move above 25 % in any series: the upstream panel is **continuous** (a split discontinuity would appear as a ~90 % one-day move, and none is present).
 
@@ -30,10 +30,10 @@ No missing price, no duplicate timestamp and no non-positive close in any of the
 
 | Symbol | Cached range | Upstream range | Overlap sessions | Identical closes | Max abs. difference | Sessions before the cached start |
 |---|---|---|---|---|---|---|
-| `DBC` | 2006-02-06 .. 2026-10-08 | - .. - | 5201 | 5201 | 0.000000000 | 0 |
-| `BNO` | 2015-01-02 .. 2026-10-15 | 2010-06-02 .. 2014-12-31 | 2964 | 2964 | 0.000000000 | 1155 |
-| `UNG` | 2015-01-02 .. 2026-10-15 | 2007-04-18 .. 2014-12-31 | 2964 | 2964 | 0.000000000 | 1942 |
-| `GLD` | 2004-11-18 .. 2026-10-19 | - .. - | 5513 | 5513 | 0.000000000 | 0 |
+| `DBC` | 2006-02-06 .. 2026-10-21 | - .. - | 5210 | 5210 | 0.000000000 | 0 |
+| `BNO` | 2010-06-02 .. 2026-10-21 | - .. - | 4123 | 4123 | 0.000000000 | 0 |
+| `UNG` | 2007-04-18 .. 2026-10-21 | - .. - | 4910 | 4910 | 0.000000000 | 0 |
+| `GLD` | 2004-11-18 .. 2026-10-22 | - .. - | 5516 | 5516 | 0.000000000 | 0 |
 
 On every session the upstream history and the committed cache overlap, the closes are **identical** (maximum absolute difference 0). The upstream history therefore *extends* the committed cache rather than contradicting it, and the cached start of 2015-01-02 is confirmed to be a **fetch window** rather than instrument history: `BNO` incepts at 2010-06-02 and `UNG` at 2007-04-18 upstream, while `DBC` and `GLD` are already complete in the cache.
 
@@ -44,8 +44,8 @@ The pre-registered gate (`config/commoditytrend_001.yaml`, section `data_gate`):
 | Quantity | Value |
 |---|---|
 | Common inception | **2010-06-02** |
-| Common end | 2026-10-21 |
-| Business days available | **4276** |
+| Common end | 2026-10-23 |
+| Business days available | **4278** |
 | Business days required for 10 folds | 3906 |
 | Common-inception deadline | 2011-10-20 |
 | Folds on the business-day calendar | **12** |
@@ -90,12 +90,12 @@ The design yields **12 folds** on the business-day calendar and **11 folds** on 
 | `no_duplicate_timestamps` | PASS | total duplicate timestamps: 0 |
 | `no_non_positive_prices` | PASS | total non-positive prices: 0 |
 | `price_series_continuous` | PASS | largest one-day move per instrument: DBC 0.0794 (2022-03-09), BNO 0.2191 (2020-03-09), UNG 0.2485 (2026-02-02), GLD 0.1129 (2008-09-17) |
-| `overlap_identical_to_committed_cache` | PASS | DBC 5201/5201 identical; BNO 2964/2964 identical; UNG 2964/2964 identical; GLD 5513/5513 identical |
-| `upstream_extends_the_committed_cache` | PASS | DBC +0 sessions (-..-); BNO +1155 sessions (2010-06-02..2014-12-31); UNG +1942 sessions (2007-04-18..2014-12-31); GLD +0 sessions (-..-) |
+| `overlap_identical_to_committed_cache` | PASS | DBC 5210/5210 identical; BNO 4123/4123 identical; UNG 4910/4910 identical; GLD 5516/5516 identical |
+| `upstream_extends_the_committed_cache` | PASS | DBC +0 sessions (-..-); BNO +0 sessions (-..-); UNG +0 sessions (-..-); GLD +0 sessions (-..-) |
 | `gate_folds_business_day_calendar` | PASS | 12 folds on the business-day calendar (required 10) |
 | `gate_folds_session_calendar` | PASS | 11 folds on the traded-session calendar (required 10) |
 | `gate_common_inception` | PASS | common inception 2010-06-02 (deadline 2011-10-20) |
-| `gate_business_days` | PASS | 4276 business days available, 3906 required for 10 folds |
+| `gate_business_days` | PASS | 4278 business days available, 3906 required for 10 folds |
 | `data_unchanged` | PASS | every file under data/ is byte-identical after the run |
 | `config_unchanged` | PASS | every file under config/ is byte-identical after the run |
 

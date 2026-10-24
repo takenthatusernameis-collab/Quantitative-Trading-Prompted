@@ -497,12 +497,12 @@ def measure_costs() -> dict[str, Any]:
 # Point-in-time universe membership
 # ----------------------------------------------------------------------
 def moving_block_bootstrap_mean(
-    values: list[float], block: int, draws: int, seed: int
+    values: list[float] | np.ndarray, block: int, draws: int, seed: int
 ) -> dict[str, float]:
     """Moving-block bootstrap CI for the mean of a fold-level statistic."""
-    if not values:
-        return {"mean": float("nan"), "ci_low": float("nan"), "ci_high": float("nan")}
     arr = np.asarray(values, dtype=float)
+    if arr.size == 0:
+        return {"mean": float("nan"), "ci_low": float("nan"), "ci_high": float("nan")}
     n = len(arr)
     block = max(1, min(block, n))
     rng = np.random.default_rng(seed)

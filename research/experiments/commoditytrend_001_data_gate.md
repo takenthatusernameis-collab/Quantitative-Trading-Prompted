@@ -7,16 +7,16 @@
 ## Data used
 
 - **Source:** yahoo_finance (the repository's own source, the repository yfinance fetcher), price field `Close`, `auto_adjust=False` -- the same convention as the committed cache.
-- **Retrieval date:** 2026-10-22 (UTC). Request window `2000-01-01 .. 2026-10-22`.
+- **Retrieval date:** 2026-10-24 (UTC). Request window `2000-01-01 .. 2026-10-24`.
 - **Universe:** `DBC`, `BNO`, `UNG`, `GLD`.
 - **Frequency:** daily. **Location:** the scratch directory `/tmp/scratchpad/commodity_fetch` only; the committed cache is not rewritten.
 
 | Symbol | Rows | First | Last |
 |---|---|---|---|
-| `DBC` | 5210 | 2006-02-06 | 2026-10-21 |
-| `BNO` | 4123 | 2010-06-02 | 2026-10-21 |
-| `UNG` | 4910 | 2007-04-18 | 2026-10-21 |
-| `GLD` | 5515 | 2004-11-18 | 2026-10-21 |
+| `DBC` | 5212 | 2006-02-06 | 2026-10-23 |
+| `BNO` | 4125 | 2010-06-02 | 2026-10-23 |
+| `UNG` | 4912 | 2007-04-18 | 2026-10-23 |
+| `GLD` | 5517 | 2004-11-18 | 2026-10-23 |
 
 **Point-in-time treatment:** the panel is the instrument's own history as the source publishes it; no constituent membership is involved and no series is back-filled. The panel is only usable point-in-time once it is committed: until then it is a measurement of what the source holds.
 
@@ -32,8 +32,8 @@
 | Quantity | Value |
 |---|---|
 | Common inception | **2010-06-02** |
-| Common end | 2026-10-21 |
-| Business days available | 4276 |
+| Common end | 2026-10-23 |
+| Business days available | 4278 |
 | Business days required for 10 folds | 3906 |
 | Folds (business-day calendar) | **12** |
 | Folds (traded-session calendar) | **11** |

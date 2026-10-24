@@ -215,13 +215,14 @@ def compute_benchmark_relative(close: pd.DataFrame, strat_weights: pd.DataFrame)
     strat_bt = backtest(close, strat_weights)
     bench_bt = backtest(close, bench_w)
     excess = strat_bt["returns"] - bench_bt["returns"]
-    # bootstrap
-    try:
-        boot = moving_block_bootstrap_mean(excess.values, block_size=4, n_boot=2000, seed=20240101)
-        ci_low = float(boot.get("ci_low", np.nan))
-        ci_high = float(boot.get("ci_high", np.nan))
-    except Exception:
-        ci_low, ci_high = float(np.nan), float(np.nan)
+    # bootstrap -- the helper's signature is (values, block, draws, seed); the
+    # previous keyword call (block_size=, n_boot=) did not match and the bare
+    # except swallowed the TypeError, leaving a NaN CI that silently fired the
+    # benchmark_relative_excess_ci condition.  Call positionally and let a real
+    # failure raise instead of being absorbed into a NaN.
+    boot = moving_block_bootstrap_mean(excess.values, block=4, draws=2000, seed=20240101)
+    ci_low = float(boot.get("ci_low", np.nan))
+    ci_high = float(boot.get("ci_high", np.nan))
     mean_excess = float(excess.mean() * 252.0)  # annualized approx
     return {
         "excess_series": excess,
