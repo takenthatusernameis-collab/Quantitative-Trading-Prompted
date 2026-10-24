@@ -1,8 +1,8 @@
 # Next Agent Task — Monday 2026-10-26 extension
 ## Context
-- Last processed session: 2026-10-23 (Friday). Saturday 2026-10-24 run: no new completed session, clock gate NOT released (current ET 2026-10-24 00:54), data/ untouched.
-- Integrity as of 2026-10-24: drift `stored == recomputed: True` (rolling 63d Sharpe -0.25492616117205563); git status --porcelain data/ empty; tests 29 passed (test_paper_trading_extend + test_drift_persistence).
-- On/after Monday 2026-10-26 17:00 ET the clock gate should release and a completed Monday session may be available.
+- Last processed session: 2026-10-23 (Friday). Saturday 2026-10-24 run: no new completed session, clock gate NOT released (current ET 2026-10-24 01:40), data/ untouched.
+- Integrity as of 2026-10-24 (re-verified): drift `stored == recomputed: True` (rolling 63d Sharpe -0.25492616117205563); git status --porcelain data/ empty; tests 29 passed (test_paper_trading_extend + test_drift_persistence).
+- On/after Monday 2026-10-26 17:00 ET the clock gate should release and a completed Monday session may be available. Corrective verification confirms no safe change now; extension must wait for gate release.
 
 ## Objective
 On/after Monday 2026-10-26 17:00 ET, extend paper trading state by exactly one completed session if present. If still no completed session (holiday/market closure), follow criterion 4. Do not fabricate data; do not change strategy/gate/threshold/config.
