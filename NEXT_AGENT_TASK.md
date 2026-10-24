@@ -2,9 +2,9 @@
 
 ## Context
 - Last processed session: `2026-10-23` in `data/processed/paper_trading_state.yaml`
-- Gate NOT released as of 2026-10-24 08:39 UTC (current time 04:39 ET, Saturday). Next expected session `2026-10-26` (Monday); usable after 17:00 ET on 2026-10-26.
-- Drift persistence verified: `stored == recomputed: True`; tests 30 passed; data/ clean; full tree clean (no uncommitted changes).
-- Prior cycle (865) re-ran the same readiness check with identical outcome: no new completed session, 0 sessions extended, NAV unchanged at 133634.38193355838, 0 state writes, canonical data/raw untouched.
+- Gate NOT released as of 2026-10-24 08:40 UTC (current time 04:40 ET, Saturday). Next expected session `2026-10-26` (Monday); usable after 17:00 ET on 2026-10-26.
+- Drift persistence verified: `stored == recomputed: True`; persistence 10 days (`2026-10-12 -> 2026-10-23`); rolling 63d Sharpe `-0.25492616117205563`; tests 30 passed; data/ clean; full tree clean (no uncommitted changes).
+- Prior cycle (866) re-ran the same readiness check with identical outcome: no new completed session, 0 sessions extended, NAV unchanged at 133634.38193355838, 0 state writes, canonical data/raw untouched.
 
 ## Objective
 Re-run readiness check. If gate released and a new completed session is available, extend by >=1 session and verify. Otherwise report "not yet extended; awaiting gate" with no data changes.
@@ -26,3 +26,10 @@ git status --porcelain data/
 
 ## Scope boundaries
 - No strategy/gate/threshold/config changes. Do not commit unless explicitly requested. Raw cache untouched.
+
+## Handoff
+- Changed: none (no data changes; gate not released).
+- Verified: readiness check exit 0, `no new completed session`, `sessions extended: 0`, NAV unchanged, drift stored==recomputed True, 30 tests passed, `data/` clean, full tree clean.
+- Unresolved: gate not released; next candidate session `2026-10-26` (Monday), usable after 17:00 ET that day.
+- Failed approaches: none.
+- Next task: continue awaiting gate release; re-run this same readiness check at the next cycle.
