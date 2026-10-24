@@ -54,7 +54,7 @@ The counters marked *n/a* apply to the crypto funding-rate files: a funding rate
 |---|---|---|---|---|
 | `data/processed/(top level)` | 16 | 101640 | 1993-01-29 | 2026-10-09 |
 | `data/processed/crypto` | 2 | 4928 | 2020-01-02 | 2026-09-30 |
-| `data/processed/paper_trading` | 1812 | 4530 | 2025-01-02 | 2026-10-22 |
+| `data/processed/paper_trading` | 1816 | 4540 | 2025-01-02 | 2026-10-23 |
 
 ## 2. Drift audit against the committed Cycle-912 inventory
 

@@ -1,12 +1,11 @@
-# Next Agent Task — Session 19 (Monday 2026-10-26 after 17:00 ET)
-
+# Next Agent Task — Session 20 (post-Monday extension readiness)
 ## Context
-- Last processed session: 2026-10-23 (Friday). Today is 2026-10-24 (Saturday); no new completed US trading session exists yet.
-- All integrity checks pass: drift `stored == recomputed: True` (rolling 63d Sharpe -0.25492616117205563 as of 2026-10-23); `git status --porcelain data/` empty; tests 29 passed.
-- Real run on 2026-10-24 exited 0 with `no new completed session`, readiness block printed, `sessions extended: 0`, `state write count: 0`, `data/` untouched.
+- Last processed session: 2026-10-23 (Friday). Today is 2026-10-24 (Saturday); no new completed US trading session exists.
+- All integrity checks pass: drift `stored == recomputed: True` (rolling 63d Sharpe -0.25492616117205563 as of 2026-10-23); `git status --porcelain data/` empty; tests 29 passed (test_paper_trading_extend.py, test_drift_persistence.py).
+- Real invocation on 2026-10-24 exited 0 with `no new completed session`, readiness block printed, `sessions extended: 0`, `state write count: 0`, `data/` untouched.
 
 ## Objective
-On/after Monday 2026-10-26 17:00 ET, run the real (non-dry-run) extension path. If a completed session exists, extend by exactly one session, write state once, verify idempotency with a second invocation, verify drift integrity and tests. If no completed session exists yet, follow criterion 4. Do not fabricate data; do not change strategy/gate/threshold/config.
+On/after Monday 2026-10-26 17:00 ET, extend paper trading state by exactly one completed session if present. If still no completed session (holiday/market closure), follow criterion 4. Do not fabricate data; do not change strategy/gate/threshold/config.
 
 ## Acceptance criteria
 1. Run `python research/extend_paper_trading_state.py` (no `--dry-run`). If a new completed session exists, extend by exactly one session and write state once.
