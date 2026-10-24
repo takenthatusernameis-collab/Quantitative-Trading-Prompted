@@ -29,6 +29,6 @@ git status --porcelain data/
 
 ## Handoff
 - Changed: none to data/ or config/ (no strategy/gate/threshold changes).
-- Verified (session 15, 2026-10-24T11:45Z, exit 0): last run date `2026-10-23`; `extend_paper_trading_state.py` -> `no new completed session`, `sessions extended: 0`, NAV before == NAV after `133634.38193355838`, state write count 0, raw cache scratch (canonical data/raw untouched), clock gate NOT released, next expected session `2026-10-26` usable after 17:00 ET; `drift_persistence_report.py` -> `stored == recomputed: True`, rolling 63d Sharpe `-0.25492616117205563` at `2026-10-23`, persistence 10 days `2026-10-12 -> 2026-10-23`; 30 tests passed in 1.97s; `data/` clean; full tree clean.
+- Verified (session 16, 2026-10-24T11:47Z, exit 0): last run date `2026-10-23`; `extend_paper_trading_state.py` -> `no new completed session`, `sessions extended: 0`, NAV before == NAV after `133634.38193355838`, state write count 0, raw cache scratch (canonical data/raw untouched), clock gate NOT released, next expected session `2026-10-26` usable after 17:00 ET; `drift_persistence_report.py` -> `stored == recomputed: True`, rolling 63d Sharpe `-0.25492616117205563` at `2026-10-23`, persistence 10 days `2026-10-12 -> 2026-10-23`; 30 tests passed in 1.96s; `data/` clean; full tree clean.
 - Unresolved: gate not released; next candidate session `2026-10-26` (Monday), usable after 17:00 ET that day.
 - Next task: continue awaiting gate release; re-run this same readiness check at the next cycle.
