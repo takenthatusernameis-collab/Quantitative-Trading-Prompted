@@ -19,4 +19,16 @@ On/after Monday 2026-10-26 17:00 ET, extend paper trading state by exactly one c
 
 ## Scope boundaries
 - No strategy/gate/threshold/config changes. Do not commit unless explicitly requested. Raw cache (`data/raw`) untouched. Research/backtesting only.
+
+## Corrective handoff — 2026-10-24 (this session)
+- What changed: small, behavior-preserving import/style corrections in the two task-relevant scripts (no strategy/gate/threshold/config changes):
+  - `research/drift_persistence_report.py`: removed unused import `DEFAULT_CALENDAR_DAYS` (-1 line).
+  - `research/extend_paper_trading_state.py`: `typing.Callable` -> `collections.abc.Callable`; `datetime.now(timezone.utc)` -> `datetime.now(UTC)`; sorted import block; reordered `fetch_universe` import (+4/-4 lines).
+  - Deliberately left SIM103 untouched — ruff flags it "unsafe fix / may change runtime behavior."
+- Verification commands & outputs:
+  - `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q` -> 29 passed (exit 0).
+  - `python -m ruff check research/extend_paper_trading_state.py research/drift_persistence_report.py` -> 1 remaining error (SIM103, intentionally skipped); 4 of 5 original ruff errors resolved.
+  - `git status --porcelain` -> 2 files modified (durable); `git status --porcelain data/` empty.
+- Unresolved blocker: paper-trading extension remains gated — clock gate not released until Mon 2026-10-26 17:00 ET (today is Sat 2026-10-24). No state write attempted; `data/raw` untouched.
+- Next cycle: on/after Mon 2026-10-26 17:00 ET, run `python research/extend_paper_trading_state.py` (no `--dry-run`), then verify idempotency + integrity per acceptance criteria above.
 " filePath="/home/runner/work/Quantitative-Trading-Prompted/Quantitative-Trading-Prompted/NEXT_AGENT_TASK.md

@@ -28,7 +28,6 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.evaluation.drift import (
-    DEFAULT_CALENDAR_DAYS,
     DEFAULT_SHARPE_THRESHOLD,
     sharpe_persistence,
     subthreshold_calendar_window,

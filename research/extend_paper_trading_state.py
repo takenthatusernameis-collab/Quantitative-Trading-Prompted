@@ -21,9 +21,9 @@ import argparse
 import shutil
 import sys
 import tempfile
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -31,13 +31,13 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from src.data.yfinance_fetcher import fetch_universe
 from src.simulation.paper_trading import (
     PaperTradingConfig,
     PaperTradingState,
     generate_paper_report,
     run_daily_paper_update,
 )
-from src.data.yfinance_fetcher import fetch_universe
 
 FetchFn = Callable[[str], pd.DataFrame]
 
@@ -312,7 +312,7 @@ def main() -> int:
 
     tz = ZoneInfo(raw_cfg["data_refresh"]["timezone"])
     close_hour = raw_cfg["data_refresh"]["market_close_hour"]
-    now_et = datetime.now(timezone.utc)
+    now_et = datetime.now(UTC)
 
     # Scratch download dir: the canonical data/raw cache is never written by
     # this tool, so monitoring runs cannot mutate the committed dataset.
