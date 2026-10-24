@@ -252,6 +252,44 @@ def test_extension_aborts_when_update_does_not_reach_target(tmp_path, monkeypatc
     assert hashlib.sha256(state_path.read_bytes()).hexdigest() == before
 
 
+def test_extension_removes_backup_on_success_and_failure(tmp_path, monkeypatch):
+    """The pre-write ``.backup`` must not survive the extension (Cycle 868).
+
+    A leftover ``.backup`` under ``data/`` would surface in
+    ``git status --porcelain data/`` and break the acceptance criterion that
+    the data tree stays clean after an extension.
+    """
+    state_path = _write_state(tmp_path / "state.yaml")
+    frame = _market_frame(["2026-10-15", "2026-10-16", "2026-10-19"])
+    now = datetime(2026, 10, 19, 22, 30, tzinfo=timezone.utc)
+    backup = state_path.with_suffix(state_path.suffix + ".backup")
+
+    # --- success path ---
+    _stub_update(monkeypatch, "2026-10-19")
+    run_extension(
+        _config(tmp_path), state_path, now, _stub_fetch(frame),
+        close_hour=16, tz=TZ,
+    )
+    assert not backup.exists(), "backup file left behind after successful extension"
+
+    # --- failure path (update lands on the wrong date -> RuntimeError) ---
+    state_path2 = _write_state(tmp_path / "state2.yaml")
+    backup2 = state_path2.with_suffix(state_path2.suffix + ".backup")
+
+    def wrong_update(config, state, market_data=None):
+        state.last_run_date = "2026-10-20"
+        return state, {}
+
+    monkeypatch.setattr(ext, "run_daily_paper_update", wrong_update)
+    monkeypatch.setattr(ext, "generate_paper_report", lambda state, config: "")
+    with pytest.raises(RuntimeError):
+        run_extension(
+            _config(tmp_path), state_path2, now, _stub_fetch(frame),
+            close_hour=16, tz=TZ,
+        )
+    assert not backup2.exists(), "backup file left behind after failed extension"
+
+
 # ---------------------------------------------------------------------------
 # Canonical raw cache must never be written by the monitoring tool
 # ---------------------------------------------------------------------------

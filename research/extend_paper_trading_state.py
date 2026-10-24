@@ -264,32 +264,41 @@ def run_extension(
         result["dry_run"] = True
         return result
 
-    # Backup the state before the single write.
-    shutil.copy2(state_path, Path(str(state_path) + ".backup"))
+    # Backup the state before the single write. The backup is removed on both
+    # the success and the failure paths: a leftover ``.backup`` file under
+    # ``data/`` would show up in ``git status --porcelain data/`` and break the
+    # acceptance criterion that the data tree stays clean after an extension
+    # (Cycle 868).
+    backup_path = Path(str(state_path) + ".backup")
+    shutil.copy2(state_path, backup_path)
 
-    target_ts = pd.Timestamp(target)
-    fetch_end = (target_ts + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
-    all_data = fetch(fetch_end)
-    max_date = pd.Timestamp(all_data.index.max()).strftime("%Y-%m-%d")
-    if pd.Timestamp(max_date) < pd.Timestamp(target):
-        raise RuntimeError(
-            f"captured index max {max_date} < target session {target}"
+    try:
+        target_ts = pd.Timestamp(target)
+        fetch_end = (target_ts + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+        all_data = fetch(fetch_end)
+        max_date = pd.Timestamp(all_data.index.max()).strftime("%Y-%m-%d")
+        if pd.Timestamp(max_date) < pd.Timestamp(target):
+            raise RuntimeError(
+                f"captured index max {max_date} < target session {target}"
+            )
+
+        market_slice = all_data.loc[:target]
+        new_state, _artifacts = run_daily_paper_update(
+            config, state, market_data=market_slice
         )
 
-    market_slice = all_data.loc[:target]
-    new_state, _artifacts = run_daily_paper_update(
-        config, state, market_data=market_slice
-    )
+        if new_state.last_run_date != target:
+            raise RuntimeError(
+                f"state advanced to {new_state.last_run_date} instead of {target}; "
+                "no write performed"
+            )
 
-    if new_state.last_run_date != target:
-        raise RuntimeError(
-            f"state advanced to {new_state.last_run_date} instead of {target}; "
-            "no write performed"
-        )
-
-    # Single write.
-    new_state.to_yaml(state_path)
-    generate_paper_report(new_state, config)
+        # Single write.
+        new_state.to_yaml(state_path)
+        generate_paper_report(new_state, config)
+    finally:
+        if backup_path.exists():
+            backup_path.unlink()
 
     result["sessions_extended"] = 1
     result["nav_after"] = new_state.current_nav
