@@ -17,6 +17,7 @@ from research.extend_paper_trading_state import (
     run_extension,
     session_is_complete,
 )
+from src.simulation.paper_trading import PaperTradingState
 
 TZ = ZoneInfo("America/New_York")
 SYMBOLS = ["SPY", "QQQ", "IWM", "TLT", "GLD", "EFA", "EEM"]
@@ -321,4 +322,74 @@ def test_clock_gate_skips_fetch_when_session_not_complete(tmp_path, monkeypatch)
     assert result["sessions_extended"] == 0
     assert result["state_writes"] == 0
     assert called["fetch"] is False
+    assert hashlib.sha256(state_path.read_bytes()).hexdigest() == before
+
+
+# ---------------------------------------------------------------------------
+# Readiness diagnostic (acceptance criterion 2)
+# ---------------------------------------------------------------------------
+
+
+def test_next_trading_session_skips_weekends():
+    # Friday 2026-10-23 -> Monday 2026-10-26
+    assert ext.next_trading_session(pd.Timestamp("2026-10-23")).strftime(
+        "%Y-%m-%d"
+    ) == "2026-10-26"
+    # Saturday 2026-10-24 -> Monday 2026-10-26
+    assert ext.next_trading_session(pd.Timestamp("2026-10-24")).strftime(
+        "%Y-%m-%d"
+    ) == "2026-10-26"
+    # Sunday 2026-10-25 -> Monday 2026-10-26
+    assert ext.next_trading_session(pd.Timestamp("2026-10-25")).strftime(
+        "%Y-%m-%d"
+    ) == "2026-10-26"
+    # Thursday 2026-10-22 -> Friday 2026-10-23
+    assert ext.next_trading_session(pd.Timestamp("2026-10-22")).strftime(
+        "%Y-%m-%d"
+    ) == "2026-10-23"
+
+
+def test_readiness_reports_clock_gate_and_next_session():
+    state = PaperTradingState(last_run_date="2026-10-23")
+    # Friday 20:00 ET -> gate not released; next session Monday
+    now = datetime(2026, 10, 23, 20, 0, tzinfo=timezone.utc)
+    r = ext.build_readiness(state, now, close_hour=16, tz=TZ)
+    assert r["last_run_date"] == "2026-10-23"
+    assert r["clock_gate_released"] is False
+    assert r["next_calendar_day"] == "2026-10-24"
+    assert r["next_expected_session"] == "2026-10-26"
+    assert r["next_session_weekday"] == "Monday"
+    assert r["next_session_already_complete"] is False
+    assert "17:00 ET on 2026-10-26" in r["next_session_complete_time"]
+
+
+def test_readiness_gate_releases_after_close_on_session_date():
+    state = PaperTradingState(last_run_date="2026-10-22")
+    # Thursday 17:30 ET -> the calendar day after last_run (Friday) has
+    # started, so the gate releases; the next session is Friday itself and it
+    # is already complete.
+    now = datetime(2026, 10, 23, 21, 30, tzinfo=timezone.utc)
+    r = ext.build_readiness(state, now, close_hour=16, tz=TZ)
+    assert r["clock_gate_released"] is True
+    assert r["next_expected_session"] == "2026-10-23"
+    assert r["next_session_already_complete"] is True
+
+
+def test_readiness_fresh_state_has_no_last_run():
+    state = PaperTradingState()  # last_run_date is None
+    now = datetime(2026, 10, 23, 20, 0, tzinfo=timezone.utc)
+    r = ext.build_readiness(state, now, close_hour=16, tz=TZ)
+    assert r["last_run_date"] is None
+    assert r["next_calendar_day"] is None
+    assert r["clock_gate_released"] is True
+    assert r["next_expected_session"] == "2026-10-23"
+
+
+def test_readiness_is_pure_and_untouched_by_extension(tmp_path, monkeypatch):
+    """build_readiness must not write state or touch the raw cache."""
+    state_path = _write_state(tmp_path / "state.yaml")
+    before = hashlib.sha256(state_path.read_bytes()).hexdigest()
+    state = PaperTradingState.from_yaml(state_path)
+    now = datetime(2026, 10, 23, 20, 0, tzinfo=timezone.utc)
+    ext.build_readiness(state, now, close_hour=16, tz=TZ)
     assert hashlib.sha256(state_path.read_bytes()).hexdigest() == before

@@ -65,6 +65,100 @@ def session_is_complete(
     return False
 
 
+def next_trading_session(
+    d: pd.Timestamp, tz: ZoneInfo | None = None
+) -> pd.Timestamp:
+    """Next Mon-Fri session strictly after ``d`` (weekends excluded).
+
+    Market holidays are NOT modelled: the returned date is the next business
+    day on the wall-clock calendar, which is the conservative upper bound on
+    when a new US equity session can exist.
+    """
+    tz = tz or ZoneInfo("America/New_York")
+    nxt = pd.Timestamp(d).normalize() + pd.Timedelta(days=1)
+    while nxt.weekday() >= 5:  # Saturday=5, Sunday=6
+        nxt += pd.Timedelta(days=1)
+    return nxt
+
+
+def build_readiness(
+    state: PaperTradingState,
+    now_et: datetime,
+    close_hour: int = 16,
+    tz: ZoneInfo | None = None,
+) -> dict:
+    """Explicit, testable readiness diagnostic for the extension path.
+
+    Reports the last processed session, the clock-gate state, and the next
+    expected US trading session together with the local time at which that
+    session becomes usable. Pure function: it touches no files, no network
+    state, and no configuration.
+    """
+    tz = tz or ZoneInfo("America/New_York")
+    local_now = now_et.astimezone(tz)
+    last_run = state.last_run_date
+
+    if last_run is None:
+        next_calendar = None
+        gate_released = True  # fresh state: fall through to the candidate scan
+    else:
+        next_calendar = (pd.Timestamp(last_run) + pd.Timedelta(days=1)).strftime(
+            "%Y-%m-%d"
+        )
+        gate_released = session_is_complete(
+            next_calendar, now_et, close_hour=close_hour, tz=tz
+        )
+
+    if last_run is None:
+        next_session = pd.Timestamp(local_now.date())
+    else:
+        next_session = next_trading_session(pd.Timestamp(last_run), tz=tz)
+
+    next_session_str = next_session.strftime("%Y-%m-%d")
+    complete_time = (
+        f"{close_hour + 1:02d}:00 ET on {next_session_str} "
+        "(or the start of the following local day)"
+    )
+    next_session_complete = session_is_complete(
+        next_session_str, now_et, close_hour=close_hour, tz=tz
+    )
+
+    return {
+        "last_run_date": last_run,
+        "now_et_iso": now_et.isoformat(),
+        "now_et_str": local_now.strftime("%Y-%m-%d %H:%M:%S %Z"),
+        "next_calendar_day": next_calendar,
+        "clock_gate_released": gate_released,
+        "next_expected_session": next_session_str,
+        "next_session_weekday": next_session.strftime("%A"),
+        "next_session_complete_time": complete_time,
+        "next_session_already_complete": next_session_complete,
+        "required_completeness": (
+            "the clock gate releases once the calendar day after last_run_date "
+            "has started, or the local clock passes "
+            f"{close_hour + 1:02d}:00 ET on a session date; a candidate session "
+            "is then usable only once it is itself complete"
+        ),
+        "holidays_note": "weekends are excluded; market holidays are not modelled",
+    }
+
+
+def print_readiness(report: dict) -> None:
+    print("=== paper-trading extension readiness ===")
+    print(f"last processed session:   {report['last_run_date']}")
+    print(f"current time (ET):       {report['now_et_str']}")
+    print(f"clock gate:              "
+          f"{'released' if report['clock_gate_released'] else 'NOT released'}")
+    if report["next_calendar_day"] is not None:
+        print(f"gate checks day after:   {report['next_calendar_day']}")
+    print(f"next expected session:    "
+          f"{report['next_expected_session']} ({report['next_session_weekday']})")
+    print(f"session usable after:     {report['next_session_complete_time']}")
+    print(f"session already complete: {report['next_session_already_complete']}")
+    print(f"completeness rule:       {report['required_completeness']}")
+    print(f"note:                    {report['holidays_note']}")
+
+
 def complete_session_view(
     data: pd.DataFrame,
     now_et: datetime,
@@ -244,6 +338,18 @@ def main() -> int:
             close_hour=close_hour,
             tz=tz,
         )
+
+    # Explicit readiness diagnostic (acceptance criterion 2): the same clock
+    # gate the extension logic uses, surfaced as a stable report. It is
+    # computed from the committed state and the live clock only; nothing under
+    # data/ or config/ is read or written by it.
+    readiness = build_readiness(
+        PaperTradingState.from_yaml(state_path),
+        now_et,
+        close_hour=close_hour,
+        tz=tz,
+    )
+    print_readiness(readiness)
 
     target = result["target"]
     if target is None:
