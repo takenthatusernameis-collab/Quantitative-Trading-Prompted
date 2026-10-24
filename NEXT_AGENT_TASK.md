@@ -30,15 +30,19 @@ Wait for the next completed US trading session (Monday 2026-10-26, after 17:00 E
 - `python research/extend_paper_trading_state.py` (real run; fall back to `--dry-run` if no session yet)
 - `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q`
 
-## Current verification (Session 292)
-- `python research/extend_paper_trading_state.py`: EXIT=0, readiness block printed, `clock gate: NOT released`, `no new completed session`, `sessions extended: 0`, `state write count: 0`, `raw cache: scratch (canonical data/raw untouched)`.
+## Current verification (Session 20, 2026-10-24)
+- `python research/extend_paper_trading_state.py` (real, no --dry-run): EXIT=0, readiness block printed, `clock gate: NOT released`, `no new completed session`, `sessions extended: 0`, `state write count: 0`, `raw cache: scratch (canonical data/raw untouched)`. Current time ET 2026-10-23 22:00 EDT; next expected session 2026-10-26 (Monday), usable after 17:00 ET on 2026-10-26.
 - `git status --porcelain data/`: empty.
 - `python research/drift_persistence_report.py`: `stored == recomputed: True` (rolling 63d Sharpe -0.25492616117205563 as of 2026-10-23).
-- `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q`: **29 passed** in 2.53s.
+- `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q`: **29 passed** in 2.61s.
 
 ## Unresolved blocker (timing, not a defect)
-- `state.last_run_date` = 2026-10-23 (Friday). The next trading session is Monday 2026-10-26; extension becomes eligible after 17:00 ET on 2026-10-26 (or once the calendar day after last_run_date has started and the session is complete). No defect to fix — timing condition only.
-- Acceptance criteria 1-3 cannot be exercised until a completed session exists. When ready, run real extension as specified above.
+- `state.last_run_date` = 2026-10-23 (Friday). The next trading session is Monday 2026-10-26; extension becomes eligible after 17:00 ET on 2026-10-26. No defect to fix — timing condition only.
+- Acceptance criteria 1-2 cannot be exercised until a completed session exists.
+
+## What was verified this session (criteria 3, 4)
+- Criterion 4: real run exits 0 with `no new completed session`, readiness block printed, `data/` untouched.
+- Criterion 3: drift integrity `stored == recomputed: True`, `git status --porcelain data/` empty, tests 29 passed.
 
 ## Next cycle task
-On/after Monday 2026-10-26 17:00 ET: run `python research/extend_paper_trading_state.py` (real). If it extends by exactly one session and writes state once (criteria 1-2), run a second invocation to confirm idempotent no-op (criterion 2), verify `stored == recomputed: True` and `git status --porcelain data/` empty (criterion 3), re-run the two test files (criterion 3). Report exact commands and results. If no new session exists yet, follow criterion 4 (exit 0, readiness printed, data untouched).
+On/after Monday 2026-10-26 17:00 ET: run `python research/extend_paper_trading_state.py` (real). If it extends by exactly one session and writes state once (criteria 1-2), run a second invocation to confirm idempotent no-op (`sessions extended: 0`, `state write count: 0`, `git status --porcelain data/` empty) (criterion 2), verify `stored == recomputed: True` and `git status --porcelain data/` empty (criterion 3), re-run `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q` (criterion 3). Report exact commands and results. If no new session exists yet, follow criterion 4 (exit 0, readiness printed, data untouched).
