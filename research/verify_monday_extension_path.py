@@ -11,10 +11,9 @@ The 2026-10-22 session is complete at that time and present in the canonical
 raw cache, so no network call is needed for a deterministic result.
 """
 import hashlib
-import shutil
 import sys
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -52,7 +51,7 @@ with tempfile.TemporaryDirectory() as tmp:
     nav_before = canonical.current_nav
 
     # 3. Pin the clock to 2026-10-22 18:30 ET -> the 10-22 session is complete.
-    fixed_now = datetime(2026, 10, 22, 22, 30, tzinfo=timezone.utc)
+    fixed_now = datetime(2026, 10, 22, 22, 30, tzinfo=UTC)
 
     class _StubClock:
         timezone = timezone
