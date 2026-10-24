@@ -384,15 +384,18 @@ def test_committed_record_is_not_promoted():
 # Cycle 861: one documented Sharpe convention
 # ----------------------------------------------------------------------
 
-# The rolling 63d Sharpe series quoted in
-# research/reports/paper_trading_validation_002.md and reproduced in the
-# monitoring artifacts for the last five sessions of the committed record.
+# The rolling 63d Sharpe series for the last five sessions of the committed
+# record (454 sessions, last_run_date 2026-10-23). Re-derived from
+# src.evaluation.drift.sharpe_persistence on the committed state; the values
+# quoted here are the ones the monitoring artifacts and the drift flag report
+# (research/drift_persistence_report.py) must keep reproducing. The prior
+# set ended at 2026-10-16/-0.2119 and was stale after the state advanced.
 ARTIFACT_ROLLING_SERIES_TAIL = {
-    "2026-10-13": 0.3669,
-    "2026-10-14": 0.1133,
-    "2026-10-15": 0.3249,
-    "2026-10-16": -0.2119,
     "2026-10-19": -0.4489,
+    "2026-10-20": -0.2483,
+    "2026-10-21": 0.2184,
+    "2026-10-22": -0.1429,
+    "2026-10-23": -0.2549,
 }
 
 
@@ -432,7 +435,11 @@ def test_gate_rolling_sharpe_equals_the_stored_drift_flag_value():
     gate = next(g for g in result.gates if g.name == "rolling_63d_sharpe")
     stored = float(state.drift_flags["low_rolling_sharpe"]["value"])
     assert gate.value == pytest.approx(stored, abs=1e-12)
-    assert gate.value == pytest.approx(-0.1429350026091491, abs=1e-12)
+    # Re-derived from the committed state at last_run_date 2026-10-23
+    # (454 sessions); the previously hardcoded value -0.1429350026091491
+    # was the rolling 63d Sharpe at 2026-10-22, stale after the state was
+    # extended to 2026-10-23. The gate and the stored drift flag agree.
+    assert gate.value == pytest.approx(-0.25492616117205563, abs=1e-12)
     # the gate value is on the canonical scale, not on the backtest scale
     assert gate.value != pytest.approx(
         backtest_sharpe_ratio(list(state.cumulative_returns)[-63:]), abs=1e-6
