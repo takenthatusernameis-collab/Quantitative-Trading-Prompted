@@ -1,7 +1,7 @@
 # Next Agent Task — Monday 2026-10-26 extension
 ## Context
-- Last processed session: 2026-10-23 (Friday). Saturday 2026-10-24 run: no new completed session, clock gate not released, data/ untouched.
-- Integrity as of 2026-10-24: drift `stored == recomputed: True` (rolling 63d Sharpe -0.25492616117205563); git status --porcelain data/ empty; tests 29 passed.
+- Last processed session: 2026-10-23 (Friday). Saturday 2026-10-24 run: no new completed session, clock gate NOT released (current ET 2026-10-24 00:54), data/ untouched.
+- Integrity as of 2026-10-24: drift `stored == recomputed: True` (rolling 63d Sharpe -0.25492616117205563); git status --porcelain data/ empty; tests 29 passed (test_paper_trading_extend + test_drift_persistence).
 - On/after Monday 2026-10-26 17:00 ET the clock gate should release and a completed Monday session may be available.
 
 ## Objective
