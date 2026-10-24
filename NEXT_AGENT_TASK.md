@@ -2,9 +2,9 @@
 
 ## Context
 - Last processed session: `2026-10-23` in `data/processed/paper_trading_state.yaml`
-- Gate NOT released as of 2026-10-24 11:00 UTC (07:00 ET, Saturday). Next expected session `2026-10-26` (Monday); usable after 17:00 ET on 2026-10-26.
+- Gate NOT released as of 2026-10-24 11:45 UTC (07:45 ET, Saturday). Next expected session `2026-10-26` (Monday); usable after 17:00 ET on 2026-10-26.
 - Drift persistence verified: `stored == recomputed: True`; persistence 10 days (`2026-10-12 -> 2026-10-23`); rolling 63d Sharpe `-0.25492616117205563`; tests 30 passed; data/ clean; full tree clean.
-- Prior cycle (session 12, 2026-10-24 11:00 UTC) ran the same bounded readiness check with identical outcome: no new completed session, 0 sessions extended, NAV unchanged at 133634.38193355838, 0 state writes, canonical data/raw untouched.
+- Prior cycles (session 11-14, 2026-10-24 07:00-11:00 UTC) ran the same bounded readiness check with identical outcome: no new completed session, 0 sessions extended, NAV unchanged at 133634.38193355838, 0 state writes, canonical data/raw untouched.
 
 ## Objective
 Re-run readiness check. If gate released and a new completed session is available, extend by >=1 session and verify. Otherwise report "not yet extended; awaiting gate" with no data changes.
@@ -28,8 +28,7 @@ git status --porcelain data/
 - No strategy/gate/threshold/config changes. Do not commit unless explicitly requested. Raw cache untouched.
 
 ## Handoff
-- Changed: none to data/ or config/ (no strategy/gate/threshold changes). Corrective invocation 290 (2026-10-24T11:40Z) superseded a stale, unverified draft report committed at e10a26f (`research/reports/paper_trading_validation_post_extend_20261024.md`, timestamped 2026-10-24T08:35Z) that claimed tests were "not re-run", quoted a drift tail ending at 2026-10-21, and recorded no verification. That draft contradicted the current state and was never produced by an actual run of the validation commands. The report was rewritten to reflect verified results.
-- Verified (corrective 290, 2026-10-24T11:40Z, exit 0): last run date `2026-10-23`; `extend_paper_trading_state.py` -> `no new completed session`, `sessions extended: 0`, NAV before == NAV after `133634.38193355838`, state write count 0, raw cache scratch (canonical data/raw untouched), clock gate NOT released, next expected session `2026-10-26` usable after 17:00 ET; `drift_persistence_report.py` -> `stored == recomputed: True`, stored flag `-0.25492616117205563` at `2026-10-23`, persistence 10 days `2026-10-12 -> 2026-10-23`, last-10 tail matches state; 30 tests passed in 1.92s; `data/` clean; full tree clean.
+- Changed: none to data/ or config/ (no strategy/gate/threshold changes).
+- Verified (session 15, 2026-10-24T11:45Z, exit 0): last run date `2026-10-23`; `extend_paper_trading_state.py` -> `no new completed session`, `sessions extended: 0`, NAV before == NAV after `133634.38193355838`, state write count 0, raw cache scratch (canonical data/raw untouched), clock gate NOT released, next expected session `2026-10-26` usable after 17:00 ET; `drift_persistence_report.py` -> `stored == recomputed: True`, rolling 63d Sharpe `-0.25492616117205563` at `2026-10-23`, persistence 10 days `2026-10-12 -> 2026-10-23`; 30 tests passed in 1.97s; `data/` clean; full tree clean.
 - Unresolved: gate not released; next candidate session `2026-10-26` (Monday), usable after 17:00 ET that day.
 - Next task: continue awaiting gate release; re-run this same readiness check at the next cycle.
-- Re-verified (corrective 290, 2026-10-24T11:45Z, exit 0): same results — 2026-10-23, 0 sessions extended, NAV unchanged, 0 writes, `stored == recomputed: True`, 30 passed in 1.88s, `data/` clean. Only working-tree changes are the two report/handoff edits above; nothing committed.
