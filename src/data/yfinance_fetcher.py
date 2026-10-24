@@ -65,10 +65,16 @@ class YFinanceFetcher:
         start_date: str,
         end_date: Optional[str] = None,
         raw_dir: Optional[str] = None,
+        append_only: bool = True,
     ) -> None:
         self.symbols: List[str] = list(symbols)
         self.start_date = start_date
         self.end_date = end_date or datetime.utcnow().strftime("%Y-%m-%d")
+        # append_only (Cycle 866): the canonical raw cache is append-only. A
+        # download window that ends before the committed history already ends
+        # would silently truncate committed rows (the SPY.parquet regression
+        # in Cycle 865). Fail closed instead of overwriting.
+        self.append_only = append_only
 
         settings = load_settings()
         data_cfg = settings.get("data", {})
@@ -167,7 +173,36 @@ class YFinanceFetcher:
         return df.sort_index()
 
     def _save_cached(self, symbol: str, df: pd.DataFrame) -> None:
-        df.to_parquet(self._cache_path(symbol))
+        path = self._cache_path(symbol)
+        if self.append_only and path.exists():
+            try:
+                committed = pd.read_parquet(path)
+                committed_idx = pd.to_datetime(committed.index)
+                if committed_idx.tz is None:
+                    committed_idx = committed_idx.tz_localize(
+                        "UTC", ambiguous="infer", nonexistent="shift_forward"
+                    )
+                else:
+                    committed_idx = committed_idx.tz_convert("UTC")
+                committed_max = pd.Timestamp(committed_idx.max())
+            except Exception:
+                committed_max = None
+            downloaded_idx = pd.to_datetime(df.index)
+            if downloaded_idx.tz is None:
+                downloaded_idx = downloaded_idx.tz_localize(
+                    "UTC", ambiguous="infer", nonexistent="shift_forward"
+                )
+            else:
+                downloaded_idx = downloaded_idx.tz_convert("UTC")
+            downloaded_max = pd.Timestamp(downloaded_idx.max())
+            if committed_max is not None and downloaded_max < committed_max:
+                raise RuntimeError(
+                    f"refusing to overwrite committed cache for {symbol}: "
+                    f"download ends {downloaded_max.date()} but committed "
+                    f"history ends {committed_max.date()}; use a scratch "
+                    f"raw_dir or refresh_raw_cache.py for safe appending"
+                )
+        df.to_parquet(path)
 
     @staticmethod
     def _align(frames: dict[str, pd.DataFrame]) -> pd.DataFrame:
