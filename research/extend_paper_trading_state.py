@@ -60,9 +60,7 @@ def session_is_complete(
     local_now = now_et.astimezone(tz)
     if local_now.date() > d:
         return True
-    if local_now.date() == d and local_now.hour >= close_hour + 1:
-        return True
-    return False
+    return bool(local_now.date() == d and local_now.hour >= close_hour + 1)
 
 
 def next_trading_session(
