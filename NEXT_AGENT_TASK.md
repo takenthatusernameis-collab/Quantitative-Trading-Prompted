@@ -1,40 +1,74 @@
-# Next Agent Task — Re-check paper trading gate at/after 17:00 ET on 2026-10-26 (carry-forward)
+# NEXT_AGENT_TASK — Corrective invocation 2 follow-on (2026-10-25T20:28Z)
 
 ## Context
-- Last processed session: `2026-10-23` in `data/processed/paper_trading_state.yaml`
-- Current time at handoff: 2026-10-25T18:28Z (2026-10-25 14:28 EDT Sunday)
-- Clock gate for calendar day 2026-10-24 RELEASED; verified via `python research/extend_paper_trading_state.py`: `clock gate: released`, `gate checks day after: 2026-10-24`.
-- Residual blocker: next expected session `2026-10-26` (Monday) is not complete until 17:00 ET Monday 2026-10-26 (`session already complete: False`, `candidate available: no`); extension extended 0 sessions, NAV unchanged at 133634.38193355838, 0 state writes, canonical data/raw untouched.
-- Lint state: `python -m ruff check research/extend_paper_trading_state.py tests/test_paper_trading_extend.py` -> **All checks passed!** (Cycle 873 resolved the only in-scope defect, a SIM103 in `session_is_complete`, by inlining the return; no UP017 errors exist in either file — the supervisor's count of 23 was not reproducible).
-- Supervisor recommendation 0006 (review cycle 6) independently verified this cycle: both files use `from datetime import UTC`; `python -m ruff check --select UP017` on both files reports "All checks passed!"; disposition recorded as `verified` in `.kilo-runtime/worker-disposition.json`.
+Corrective invocation 2 regenerated the scratch-only upstream commodity fetch
+(`/tmp/scratchpad/commodity_fetch/`, via `research/commodity_data_gate_fetch.py`,
+network, writes only outside the repository) that the Cycle-949 data-gate
+measurement depends on. It had been deleted, which was the direct cause of
+`tests/test_commodity_data_gate_001.py` failing. The repository tree is now
+byte-identical to HEAD (`git diff --quiet` exit 0). See
+`CORRECTIVE_HANDOFF_CORR2.md` for the full diagnosis.
 
 ## Objective
-Re-run readiness check at/after 17:00 ET on 2026-10-26 (Monday). If the gate released and a new completed session (2026-10-26) is available, extend by >=1 session and verify. Otherwise report "not yet extended; awaiting gate" with no data changes.
+Resolve the remaining blocker: a **committed repository inconsistency** between
+`data/raw/DBC.parquet` (extended to 2026-10-21 after the Cycle-13 csmomentum
+artifacts were frozen) and the frozen `data/processed/simulation_csmomentum_001.parquet`
+(ends 2026-10-09). This is what breaks:
+
+- `tests/test_cost_admissibility_screen.py::test_every_published_number_of_the_new_candidates_is_reproduced[csmomentum_001]`
+- `tests/test_cost_admissibility_screen.py::test_csmomentum_reproduces_its_test_window_numbers`
+- `tests/test_month_end_candidate_reaudit.py` (3 reproduction checks)
+- the full-suite hang at `test_the_incumbent_is_the_only_candidate_with_a_positive_gate_headroom`
+
+## Bounded task (pick exactly one, do not chain)
+Choose **one** of the following auditable resolutions and execute only it:
+
+1. **Truncate `data/raw/DBC.parquet` to 2026-10-08** (its freeze value) and
+   commit. Verified to reproduce the frozen artifacts bit-exactly (legacy net
+   max abs diff 1.4e-17 over 8482 sessions; faithful-path test Sharpe 0.663540
+   vs published 0.6635). Then re-run `python -m pytest -q` and confirm the
+   full suite passes.
+2. **Freeze the cache at the published window end** (2026-10-09) and regenerate
+   the csmomentum artifacts (`data/processed/simulation_csmomentum_001.parquet`,
+   `trades_csmomentum_001.parquet`, `weights_csmomentum_001.parquet`) plus the
+   affected `data/processed/*.parquet` that share the 8482-row window, then
+   commit. `run_cycle13.py` is too slow (>280s); a bounded re-implementation
+   of its `run_baseline` artifact-writing path is acceptable if it reproduces
+   the published numbers to the records' own tolerances.
+3. **Amend the published records** (`research/experiments/csmomentum_baseline_wf_001.md`,
+   `research/experiments/csmomentum_001_experiment_001.md`,
+   `research/reports/month_end_candidate_reaudit_001.md`,
+   `research/reports/cost_admissibility_screen_001.md`) with the numbers
+   recomputed from the current cache, plus an explicit staleness note naming
+   the DBC extension as the cause, then commit.
+
+Do **not** edit test tolerances, thresholds, or the published-number constants
+to make tests pass — that is out of scope and would violate the pre-registration
+and promotion-gate rules.
 
 ## Acceptance criteria
-1. `python3 -c "import yaml; d=yaml.safe_load(open('data/processed/paper_trading_state.yaml')); print(d['run_history'][-1]['date'])"`
-2. `python research/extend_paper_trading_state.py`
-3. If latest > 2026-10-23: run drift report (stored==recomputed True), tests pass, data/ clean, write report (include commands/results).
-4. If still 2026-10-23: report awaiting gate; no data changes.
+- Exactly one of the three resolutions above is committed (git commit required;
+  this agent does not commit).
+- `python -m pytest -q` passes in full (the full suite currently hangs at
+  `test_the_incumbent_is_the_only_candidate_with_a_positive_gate_headroom`,
+  ~55s in isolation, so allow adequate time).
+- `git status --porcelain data/ config/` empty after the work.
+- No strategy, gate, threshold, cost model, universe, candidate verdict, workflow,
+  or agent-count change. Raw cache for the four commodity instruments (DBC, BNO,
+  UNG, GLD) and the `/tmp/scratchpad/commodity_fetch/` scratch artifact untouched
+  by this task.
 
 ## Validation commands
-```bash
-python3 -c "import yaml; d=yaml.safe_load(open('data/processed/paper_trading_state.yaml')); print(d['run_history'][-1]['date'])"
-python research/extend_paper_trading_state.py
-python research/drift_persistence_report.py | tail -3
-python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q
-git status --porcelain data/
+```
+git status --porcelain
+python -m pytest -q
+git status --porcelain data/ config/
 ```
 
 ## Scope boundaries
-- No strategy/gate/threshold/config changes. Do not commit unless explicitly requested. Raw cache untouched.
-- If `.kilo-runtime/current-supervisor-recommendation.json` exists at session start, read it and write/replace `.kilo-runtime/worker-disposition.json` within the next two tool calls before unrelated exploration.
-- Do not alter or force the clock gate; the Monday session completeness condition is time-based and cannot be bypassed.
-- Re-verify any supervisor lint claim against `python -m ruff check --select <code> <files>` before acting; Cycle 873 showed a reported UP017 count that does not reproduce in this environment.
-
-## Handoff
-- What changed: No code/config/data changes. README.md prepended with Cycle 874 record; `.kilo-runtime/worker-disposition.json` updated to disposition `verified` for supervisor recommendation 0006 (UP017 lint claim independently re-verified as not reproducible). Working tree clean.
-- What was verified (this invocation, 2026-10-25 14:28 EDT): criterion 1 -> `2026-10-23`; criterion 2 -> exit 0, clock gate released, next expected session 2026-10-26 (Monday), session already complete False, candidate available no, sessions extended 0, NAV before == NAV after 133634.38193355838, state write count 0, raw cache scratch (canonical data/raw untouched); ruff -> All checks passed! (exit 0); `python -m ruff check --select UP017` on both files -> All checks passed!; tests -> 35 passed in 2.60s; drift report -> stored == recomputed True, persistence 10 days (2026-10-12 -> 2026-10-23), rolling 63d Sharpe -0.25492616117205563; `git status --porcelain data/ config/` -> empty; full `git status --porcelain` -> empty (working tree clean, lint fix already committed in Cycle 873).
-- What remains unresolved: session-completeness gate for 2026-10-26 not yet reached; no extension possible until 17:00 ET Monday 2026-10-26 (21:00 UTC).
-- Approaches already failed: repeated re-verifications before gate time all yield identical blocked outcome (time-based live-clock condition, not a code defect); altering gate or forcing writes prohibited.
-- Next task: at/after 17:00 ET on 2026-10-26, run `python research/extend_paper_trading_state.py`; extend by >=1 session and verify if released; otherwise report awaiting gate with no data changes.
+- No commits unless explicitly requested by the human (this task describes the
+  commit as the resolution, but the agent must not commit on its own).
+- Do not alter or force the 2026-10-26 17:00 ET session-completeness gate for
+  `extend_paper_trading_state.py`; that gate is still pending (last processed
+  session 2026-10-23) and `data/` is clean.
+- No new dependencies, services, paid data, scheduled jobs, or infrastructure.
