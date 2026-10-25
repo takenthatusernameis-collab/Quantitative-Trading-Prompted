@@ -1,6 +1,6 @@
 import hashlib
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -30,19 +30,19 @@ SYMBOLS = ["SPY", "QQQ", "IWM", "TLT", "GLD", "EFA", "EEM"]
 
 def test_session_guard():
     # completed: now next day
-    now = datetime(2026, 10, 18, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 18, 12, 0, tzinfo=UTC)
     assert session_is_complete("2026-10-17", now) is True
     # open session: same day before close+1
-    now2 = datetime(2026, 10, 17, 15, 0, tzinfo=timezone.utc)  # 11am ET
+    now2 = datetime(2026, 10, 17, 15, 0, tzinfo=UTC)  # 11am ET
     assert session_is_complete("2026-10-17", now2) is False
     # after close+1 same day
-    now3 = datetime(2026, 10, 17, 22, 0, tzinfo=timezone.utc)  # 6pm ET
+    now3 = datetime(2026, 10, 17, 22, 0, tzinfo=UTC)  # 6pm ET
     assert session_is_complete("2026-10-17", now3) is True
 
 
 def test_session_guard_uses_configured_close_hour():
     # 15:30 ET (19:30 UTC): complete under a 14:00 close, not under 16:00.
-    now = datetime(2026, 10, 17, 19, 30, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 17, 19, 30, tzinfo=UTC)
     assert session_is_complete("2026-10-17", now, close_hour=14) is True
     assert session_is_complete("2026-10-17", now, close_hour=16) is False
 
@@ -80,12 +80,12 @@ def _constant_rows(index, cols):
 def test_complete_session_view_drops_in_progress_bar():
     frame = _market_frame(["2026-10-16", "2026-10-19", "2026-10-20"])
     # 2026-10-19 10:30 ET -> the 10-19 session is still open.
-    now = datetime(2026, 10, 19, 14, 30, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 19, 14, 30, tzinfo=UTC)
     view = complete_session_view(frame, now, close_hour=16, tz=TZ)
     kept = [pd.Timestamp(t).strftime("%Y-%m-%d") for t in view.index.unique()]
     assert kept == ["2026-10-16"]
     # after the close, the 10-19 session becomes usable
-    now2 = datetime(2026, 10, 19, 22, 30, tzinfo=timezone.utc)
+    now2 = datetime(2026, 10, 19, 22, 30, tzinfo=UTC)
     view2 = complete_session_view(frame, now2, close_hour=16, tz=TZ)
     kept2 = [pd.Timestamp(t).strftime("%Y-%m-%d") for t in view2.index.unique()]
     assert kept2 == ["2026-10-16", "2026-10-19"]
@@ -169,7 +169,7 @@ def test_extension_is_noop_without_completed_session(tmp_path, monkeypatch):
     before = hashlib.sha256(state_path.read_bytes()).hexdigest()
     frame = _market_frame(["2026-10-15", "2026-10-16", "2026-10-19"])
     # 2026-10-19 10:30 ET -> the next session has not closed yet.
-    now = datetime(2026, 10, 19, 14, 30, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 19, 14, 30, tzinfo=UTC)
     calls = _stub_update(monkeypatch, "2026-10-19")
 
     result = run_extension(
@@ -188,7 +188,7 @@ def test_dry_run_reports_target_without_writing(tmp_path, monkeypatch):
     before = hashlib.sha256(state_path.read_bytes()).hexdigest()
     frame = _market_frame(["2026-10-15", "2026-10-16", "2026-10-19"])
     # 2026-10-19 18:30 ET -> the 10-19 session has closed.
-    now = datetime(2026, 10, 19, 22, 30, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 19, 22, 30, tzinfo=UTC)
     calls = _stub_update(monkeypatch, "2026-10-19")
 
     result = run_extension(
@@ -204,7 +204,7 @@ def test_dry_run_reports_target_without_writing(tmp_path, monkeypatch):
 def test_extension_writes_once_and_is_idempotent(tmp_path, monkeypatch):
     state_path = _write_state(tmp_path / "state.yaml")
     frame = _market_frame(["2026-10-15", "2026-10-16", "2026-10-19"])
-    now = datetime(2026, 10, 19, 22, 30, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 19, 22, 30, tzinfo=UTC)
     calls = _stub_update(monkeypatch, "2026-10-19")
     config = _config(tmp_path)
 
@@ -235,7 +235,7 @@ def test_extension_aborts_when_update_does_not_reach_target(tmp_path, monkeypatc
     state_path = _write_state(tmp_path / "state.yaml")
     before = hashlib.sha256(state_path.read_bytes()).hexdigest()
     frame = _market_frame(["2026-10-15", "2026-10-16", "2026-10-19"])
-    now = datetime(2026, 10, 19, 22, 30, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 19, 22, 30, tzinfo=UTC)
 
     def wrong_update(config, state, market_data=None):
         state.last_run_date = "2026-10-20"
@@ -261,7 +261,7 @@ def test_extension_removes_backup_on_success_and_failure(tmp_path, monkeypatch):
     """
     state_path = _write_state(tmp_path / "state.yaml")
     frame = _market_frame(["2026-10-15", "2026-10-16", "2026-10-19"])
-    now = datetime(2026, 10, 19, 22, 30, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 19, 22, 30, tzinfo=UTC)
     backup = state_path.with_suffix(state_path.suffix + ".backup")
 
     # --- success path ---
@@ -315,7 +315,7 @@ def test_main_uses_scratch_raw_dir_and_leaves_cache_untouched(tmp_path, monkeypa
     # only releases once the 2026-10-24 session is complete. Pin the clock to
     # 2026-10-25 00:00 UTC (20:00 ET the prior evening) so the gate releases
     # and the scratch/raw_dir contract is actually exercised.
-    fixed_now = datetime(2026, 10, 25, 0, 0, tzinfo=timezone.utc)
+    fixed_now = datetime(2026, 10, 25, 0, 0, tzinfo=UTC)
 
     class _StubClock:
         timezone = timezone
@@ -352,7 +352,7 @@ def test_clock_gate_skips_fetch_when_session_not_complete(tmp_path, monkeypatch)
 
     # 2026-10-17 10:30 ET -> the 10-17 session is still open, so the gate
     # releases only once the following day has started.
-    now = datetime(2026, 10, 17, 14, 30, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 17, 14, 30, tzinfo=UTC)
     result = run_extension(
         _config(tmp_path), state_path, now, fake_fetch, close_hour=16, tz=TZ,
     )
@@ -390,7 +390,7 @@ def test_next_trading_session_skips_weekends():
 def test_readiness_reports_clock_gate_and_next_session():
     state = PaperTradingState(last_run_date="2026-10-23")
     # Friday 20:00 ET -> gate not released; next session Monday
-    now = datetime(2026, 10, 23, 20, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 23, 20, 0, tzinfo=UTC)
     r = ext.build_readiness(state, now, close_hour=16, tz=TZ)
     assert r["last_run_date"] == "2026-10-23"
     assert r["clock_gate_released"] is False
@@ -406,7 +406,7 @@ def test_readiness_gate_releases_after_close_on_session_date():
     # Thursday 17:30 ET -> the calendar day after last_run (Friday) has
     # started, so the gate releases; the next session is Friday itself and it
     # is already complete.
-    now = datetime(2026, 10, 23, 21, 30, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 23, 21, 30, tzinfo=UTC)
     r = ext.build_readiness(state, now, close_hour=16, tz=TZ)
     assert r["clock_gate_released"] is True
     assert r["next_expected_session"] == "2026-10-23"
@@ -415,7 +415,7 @@ def test_readiness_gate_releases_after_close_on_session_date():
 
 def test_readiness_fresh_state_has_no_last_run():
     state = PaperTradingState()  # last_run_date is None
-    now = datetime(2026, 10, 23, 20, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 23, 20, 0, tzinfo=UTC)
     r = ext.build_readiness(state, now, close_hour=16, tz=TZ)
     assert r["last_run_date"] is None
     assert r["next_calendar_day"] is None
@@ -428,7 +428,7 @@ def test_readiness_is_pure_and_untouched_by_extension(tmp_path, monkeypatch):
     state_path = _write_state(tmp_path / "state.yaml")
     before = hashlib.sha256(state_path.read_bytes()).hexdigest()
     state = PaperTradingState.from_yaml(state_path)
-    now = datetime(2026, 10, 23, 20, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 23, 20, 0, tzinfo=UTC)
     ext.build_readiness(state, now, close_hour=16, tz=TZ)
     assert hashlib.sha256(state_path.read_bytes()).hexdigest() == before
 
@@ -449,7 +449,7 @@ def test_readiness_candidate_unavailable_when_next_session_future():
     """
     state = PaperTradingState(last_run_date="2026-10-23")
     # Sunday 2026-10-25 08:00 UTC (04:00 EDT): gate released, Monday pending.
-    now = datetime(2026, 10, 25, 8, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 25, 8, 0, tzinfo=UTC)
     r = ext.build_readiness(state, now, close_hour=16, tz=TZ)
     assert r["clock_gate_released"] is True
     assert r["next_expected_session"] == "2026-10-26"
@@ -469,7 +469,7 @@ def test_readiness_candidate_unavailable_across_weekend_bridge():
     """
     state = PaperTradingState(last_run_date="2026-10-23")  # Friday
     # Saturday 2026-10-24 22:00 UTC (18:00 EDT): gate released, Monday pending.
-    now = datetime(2026, 10, 24, 22, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 24, 22, 0, tzinfo=UTC)
     r = ext.build_readiness(state, now, close_hour=16, tz=TZ)
     assert r["clock_gate_released"] is True
     assert r["next_expected_session"] == "2026-10-26"
@@ -487,7 +487,7 @@ def test_readiness_candidate_unavailable_same_session_in_progress():
     """
     state = PaperTradingState(last_run_date="2026-10-23")  # Friday
     # Monday 2026-10-26 10:00 ET (14:00 UTC): gate released, session open.
-    now = datetime(2026, 10, 26, 14, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 26, 14, 0, tzinfo=UTC)
     r = ext.build_readiness(state, now, close_hour=16, tz=TZ)
     assert r["clock_gate_released"] is True
     assert r["next_expected_session"] == "2026-10-26"
@@ -499,7 +499,7 @@ def test_readiness_candidate_unavailable_same_session_in_progress():
 def test_readiness_candidate_available_when_session_complete():
     """Gate released AND next session closed -> candidate available."""
     state = PaperTradingState(last_run_date="2026-10-22")
-    now = datetime(2026, 10, 23, 21, 30, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 23, 21, 30, tzinfo=UTC)
     r = ext.build_readiness(state, now, close_hour=16, tz=TZ)
     assert r["clock_gate_released"] is True
     assert r["next_session_already_complete"] is True
@@ -509,7 +509,7 @@ def test_readiness_candidate_available_when_session_complete():
 
 def test_readiness_candidate_available_for_fresh_state():
     state = PaperTradingState()  # last_run_date is None
-    now = datetime(2026, 10, 23, 20, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 23, 20, 0, tzinfo=UTC)
     r = ext.build_readiness(state, now, close_hour=16, tz=TZ)
     assert r["candidate_available"] is True
     assert "fresh state" in r["candidate_reason"]
