@@ -431,3 +431,85 @@ def test_readiness_is_pure_and_untouched_by_extension(tmp_path, monkeypatch):
     now = datetime(2026, 10, 23, 20, 0, tzinfo=timezone.utc)
     ext.build_readiness(state, now, close_hour=16, tz=TZ)
     assert hashlib.sha256(state_path.read_bytes()).hexdigest() == before
+
+
+# ---------------------------------------------------------------------------
+# Candidate availability (Cycle 1032): "gate released" != "ready to extend"
+# ---------------------------------------------------------------------------
+
+
+def test_readiness_candidate_unavailable_when_next_session_future():
+    """Sunday after a Friday last_run: gate released but no candidate bar.
+
+    This is the live production blocker. The clock gate releases once the
+    calendar day after last_run_date has started, but the next expected
+    session (Monday) has not occurred yet, so no completed candidate bar
+    exists to extend into. The diagnostic must state that explicitly rather
+    than letting a released gate be misread as actionable.
+    """
+    state = PaperTradingState(last_run_date="2026-10-23")
+    # Sunday 2026-10-25 08:00 UTC (04:00 EDT): gate released, Monday pending.
+    now = datetime(2026, 10, 25, 8, 0, tzinfo=timezone.utc)
+    r = ext.build_readiness(state, now, close_hour=16, tz=TZ)
+    assert r["clock_gate_released"] is True
+    assert r["next_expected_session"] == "2026-10-26"
+    assert r["next_session_already_complete"] is False
+    assert r["candidate_available"] is False
+    assert "2026-10-26" in r["candidate_reason"]
+    assert "future" in r["candidate_reason"]
+
+
+def test_readiness_candidate_unavailable_across_weekend_bridge():
+    """Weekend bridge: gate released on Saturday, candidate is Monday.
+
+    last_run Friday -> next_calendar Saturday. The gate releases once the
+    clock passes 17:00 ET on Saturday (i.e. the calendar day after last_run
+    has started); next_trading_session skips the weekend and returns Monday,
+    which has not occurred yet.
+    """
+    state = PaperTradingState(last_run_date="2026-10-23")  # Friday
+    # Saturday 2026-10-24 22:00 UTC (18:00 EDT): gate released, Monday pending.
+    now = datetime(2026, 10, 24, 22, 0, tzinfo=timezone.utc)
+    r = ext.build_readiness(state, now, close_hour=16, tz=TZ)
+    assert r["clock_gate_released"] is True
+    assert r["next_expected_session"] == "2026-10-26"
+    assert r["next_session_already_complete"] is False
+    assert r["candidate_available"] is False
+    assert "2026-10-26" in r["candidate_reason"]
+    assert "future" in r["candidate_reason"]
+
+
+def test_readiness_candidate_unavailable_same_session_in_progress():
+    """Weekend bridge crossed: gate released on Monday before close.
+
+    last_run Friday -> next_calendar Saturday has started -> gate releases
+    Monday morning; the candidate session (Monday itself) is still open.
+    """
+    state = PaperTradingState(last_run_date="2026-10-23")  # Friday
+    # Monday 2026-10-26 10:00 ET (14:00 UTC): gate released, session open.
+    now = datetime(2026, 10, 26, 14, 0, tzinfo=timezone.utc)
+    r = ext.build_readiness(state, now, close_hour=16, tz=TZ)
+    assert r["clock_gate_released"] is True
+    assert r["next_expected_session"] == "2026-10-26"
+    assert r["next_session_already_complete"] is False
+    assert r["candidate_available"] is False
+    assert "still in progress" in r["candidate_reason"]
+
+
+def test_readiness_candidate_available_when_session_complete():
+    """Gate released AND next session closed -> candidate available."""
+    state = PaperTradingState(last_run_date="2026-10-22")
+    now = datetime(2026, 10, 23, 21, 30, tzinfo=timezone.utc)
+    r = ext.build_readiness(state, now, close_hour=16, tz=TZ)
+    assert r["clock_gate_released"] is True
+    assert r["next_session_already_complete"] is True
+    assert r["candidate_available"] is True
+    assert "2026-10-23" in r["candidate_reason"]
+
+
+def test_readiness_candidate_available_for_fresh_state():
+    state = PaperTradingState()  # last_run_date is None
+    now = datetime(2026, 10, 23, 20, 0, tzinfo=timezone.utc)
+    r = ext.build_readiness(state, now, close_hour=16, tz=TZ)
+    assert r["candidate_available"] is True
+    assert "fresh state" in r["candidate_reason"]

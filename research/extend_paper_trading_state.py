@@ -123,6 +123,40 @@ def build_readiness(
         next_session_str, now_et, close_hour=close_hour, tz=tz
     )
 
+    # Candidate availability (Cycle 1032). The readiness diagnostic previously
+    # reported the clock gate and the next expected session but never stated
+    # whether a completed candidate session actually exists to extend into.
+    # "gate released" is NOT "ready to extend": the gate only guarantees that
+    # the calendar day after the last processed session has started; the
+    # candidate session itself must also have occurred and closed before its
+    # bar can enter a state extension. Making this explicit prevents a
+    # monitoring run whose gate has released from being misread as actionable
+    # when the next session is still in the future (the live production
+    # blocker: Sunday, last run Friday, next session Monday).
+    if last_run is None:
+        candidate_available = True
+        candidate_reason = "fresh state: no prior session to extend from"
+    elif next_session_complete:
+        candidate_available = True
+        candidate_reason = (
+            f"next session {next_session_str} has occurred and closed"
+        )
+    else:
+        candidate_available = False
+        next_date = pd.Timestamp(next_session_str).date()
+        if next_date > local_now.date():
+            detail = (
+                f"in the future (today is {local_now.strftime('%Y-%m-%d')})"
+            )
+        elif next_date == local_now.date():
+            detail = "today and still in progress"
+        else:
+            detail = "occurred but not yet closed"
+        candidate_reason = (
+            f"next session {next_session_str} has not closed yet ({detail}); "
+            "no completed candidate bar exists to extend into"
+        )
+
     return {
         "last_run_date": last_run,
         "now_et_iso": now_et.isoformat(),
@@ -133,6 +167,8 @@ def build_readiness(
         "next_session_weekday": next_session.strftime("%A"),
         "next_session_complete_time": complete_time,
         "next_session_already_complete": next_session_complete,
+        "candidate_available": candidate_available,
+        "candidate_reason": candidate_reason,
         "required_completeness": (
             "the clock gate releases once the calendar day after last_run_date "
             "has started, or the local clock passes "
@@ -155,6 +191,9 @@ def print_readiness(report: dict) -> None:
           f"{report['next_expected_session']} ({report['next_session_weekday']})")
     print(f"session usable after:     {report['next_session_complete_time']}")
     print(f"session already complete: {report['next_session_already_complete']}")
+    print(f"candidate available:     "
+          f"{'yes' if report['candidate_available'] else 'no'}")
+    print(f"candidate reason:        {report['candidate_reason']}")
     print(f"completeness rule:       {report['required_completeness']}")
     print(f"note:                    {report['holidays_note']}")
 
