@@ -9,8 +9,18 @@ data/raw cache untouched.
 Target: last_run_date 2026-10-21, pinned clock 2026-10-22 18:30 ET.
 The 2026-10-22 session is complete at that time and present in the canonical
 raw cache, so no network call is needed for a deterministic result.
+
+Cycle 1034: the default is now OFFLINE (force=False, cache-backed). The
+previous default forced a live yfinance download (force=True), which held an
+open TCP connection to the provider and was terminated by the 600 s idle
+watchdog (exit 124) before the assertion phase ran. The canonical cache is
+the authoritative, committed dataset; exercising the active path against it
+is the deterministic, watchdog-safe equivalent. Pass --online to re-enable
+the live download.
 """
+import argparse
 import hashlib
+import shutil
 import sys
 import tempfile
 from datetime import UTC, datetime, timezone
@@ -30,6 +40,13 @@ from src.simulation.paper_trading import PaperTradingState
 TZ = ZoneInfo("America/New_York")
 STATE_PATH = ROOT / "data" / "processed" / "paper_trading_state.yaml"
 CANONICAL_HASH = hashlib.sha256(STATE_PATH.read_bytes()).hexdigest()
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--online", action="store_true",
+                    help="force a live yfinance download (force=True); "
+                         "default is cache-backed offline (force=False)")
+ARGS = parser.parse_args()
+FORCE = ARGS.online
 
 # 1. Snapshot canonical state hash (must not change).
 before_canonical = hashlib.sha256(STATE_PATH.read_bytes()).hexdigest()
@@ -77,14 +94,22 @@ with tempfile.TemporaryDirectory() as tmp:
     }
 
     def real_fetch(end_date: str) -> pd.DataFrame:
-        with tempfile.TemporaryDirectory(prefix="verify-raw-") as scratch:
-            raw = ext.fetch_universe(
-                config.universe,
-                config.history_start,
-                end_date,
-                raw_dir=scratch,
-                force=True,
-            )
+        # Seed the scratch dir with byte-identical copies of the canonical
+        # cache so fetch_universe(force=False) resolves from the offline
+        # cache instead of opening a live yfinance connection. The canonical
+        # data/raw is never written by this tool (Cycle 854).
+        scratch = tempfile.mkdtemp(prefix="verify-raw-")
+        canonical_raw = ROOT / "data" / "raw"
+        for parquet in sorted(canonical_raw.glob("*.parquet")):
+            shutil.copy2(parquet, Path(scratch) / parquet.name)
+        raw = ext.fetch_universe(
+            config.universe,
+            config.history_start,
+            end_date,
+            raw_dir=scratch,
+            force=FORCE,
+        )
+        shutil.rmtree(scratch, ignore_errors=True)
         return ext.complete_session_view(raw, fixed_now, close_hour=16, tz=TZ)
 
     # 5. Run the real extension path.
