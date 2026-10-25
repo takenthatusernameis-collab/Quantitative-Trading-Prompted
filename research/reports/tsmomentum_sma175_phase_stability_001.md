@@ -13,7 +13,7 @@
 
 ## Read-only / integrity checks
 
-- [PASS] cache_only_path_built: observed=8491 sessions, 7 symbols; expected=non-empty path
+- [PASS] cache_only_path_built: observed=8492 sessions, 7 symbols; expected=non-empty path
 - [PASS] independence_evaluated_published_design: observed=mean_overlap_days=175.0, max_disjoint=24; expected=evaluated
 - [PASS] reproduces_published_fold_count: observed=n_folds=48; expected=48
 - [PASS] phase_a_test_windows_pairwise_disjoint: observed=overlap=0.0, disjoint=24, folds=24; expected=overlap==0 and disjoint==folds

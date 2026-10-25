@@ -9,8 +9,8 @@ which no committed record measures.
 
 ## Data used
 
-- **Source:** committed parquet cache `data/raw/` (35 files, 180184 rows); the fetcher is never called.
-- **Date range:** the cache spans 1993-01-04 .. 2026-10-22; the incumbent's published walk-forward spans 1993-01-01 .. 2026-10-09.
+- **Source:** committed parquet cache `data/raw/` (35 files, 180192 rows); the fetcher is never called.
+- **Date range:** the cache spans 1993-01-04 .. 2026-10-23; the incumbent's published walk-forward spans 1993-01-01 .. 2026-10-09.
 - **Frequency:** daily for every equity/futures file; 8-hourly for the crypto funding files.
 - **Point-in-time treatment:** the price panel is read from the cache exactly as the committed fetcher aligns it (union calendar, each symbol forward filled); the momentum, the selection rule and the overlay are the committed ones (`src/features/momentum.py`, `research/run_cycle6.py`).
 - **Cost model:** 1.0 bps commission + 2.0 bps slippage = 3.0 bps per unit of weight change; risk-free 2.00%.

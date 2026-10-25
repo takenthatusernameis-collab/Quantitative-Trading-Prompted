@@ -11,7 +11,7 @@ Consolidate the same-session volatility estimate onto one shared implementation 
 
 ## Data
 
-- Committed paper-trading record: 453 sessions (2025-01-02 .. 2026-10-19)
+- Committed paper-trading record: 454 sessions (2025-01-02 .. 2026-10-19)
 - Price panel: committed parquet cache `data/raw/*.parquet` (cache-only; the fetcher is never called)
 - Universe: SPY, QQQ, IWM, TLT, GLD, EFA, EEM
 - Cost model: 1.0 bps commission + 2.0 bps slippage = 3.0 bps round-trip
@@ -40,9 +40,9 @@ Consolidate the same-session volatility estimate onto one shared implementation 
 ### Successor record (supersedes nothing)
 
 - Corrected walk-forward mean OOS Sharpe: 1.318605 (all folds); excluding each path's own worst fold: 1.357135
-- Corrected record canonical Sharpe: 1.597048
-- Corrected trailing 63-session Sharpe (`rolling_63d_sharpe`): -0.222927
-- Corrected PSR vs 1.4178: 0.604420
+- Corrected record canonical Sharpe: 1.591618
+- Corrected trailing 63-session Sharpe (`rolling_63d_sharpe`): -0.333802
+- Corrected PSR vs 1.4178: 0.599720
 - Corrected 2018-2026 test-period Sharpe (own-path reference): 1.335983
 - Promotion decision: NO-GO on both paths (failed gates: rolling_63d_sharpe, psr)
 

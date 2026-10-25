@@ -10,7 +10,7 @@ Produce a bounded, evidence-based inventory of the real data and the real cost m
 
 ## Data used
 
-* Source: the committed cache `data/raw/` — 35 parquet files, 180184 rows (27 equity/futures files from the Yahoo Finance cache, 8 crypto files from the Binance public archive and the OKX funding cross-check). The fetcher is never called; nothing is downloaded.
+* Source: the committed cache `data/raw/` — 35 parquet files, 180192 rows (27 equity/futures files from the Yahoo Finance cache, 8 crypto files from the Binance public archive and the OKX funding cross-check). The fetcher is never called; nothing is downloaded.
 * Point-in-time treatment: the Yahoo Finance cache carries session-dated UTC bars and is consumed with a 1-session signal lag; the Binance funding series carries settlement timestamps (a same-day funding rule is a look-ahead — the committed rule decides on the previous day's funding); the OKX series is a cross-check only.
 * Provenance verification: the committed digests in `research/reports/binance_crypto_manifest.json` were re-verified against the cached bytes — **8/8 match**.
 * Frequency: every file's frequency is derived from its own median inter-observation spacing; measured sub-daily files in the cache: **4**.
@@ -28,7 +28,7 @@ Produce a bounded, evidence-based inventory of the real data and the real cost m
 | Item | Value |
 |---|---|
 | Raw files inventoried | 35 |
-| Raw rows inventoried | 180184 |
+| Raw rows inventoried | 180192 |
 | Missing prices (whole cache) | 0 |
 | Duplicate timestamps (whole cache) | 0 |
 | Repeat (unchanged) prices (whole cache) | 5329 |
@@ -40,8 +40,8 @@ Produce a bounded, evidence-based inventory of the real data and the real cost m
 | Measured rank | Candidate | (a) | (b) | (c) | (d) | (e) | (f) | (g) | Total | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
 | 1 | TSMOM incumbent | 5 | 4 | 4 | 3 | 5 | 5 | 5 | **31/35** | Credible candidate -- published PASS survives the non-overlapping fold design (Cycle 910) but is NOT phase-stable (Cycle 911) |
-| 2 | Long-only cross-sectional momentum, broad 18-ETF universe | 5 | 5 | 2 | 2 | 5 | 4 | 4 | **27/35** | Rejected/Failed -- gate 1 fails on every pre-registered sample and under the non-overlapping fold design |
-| 3 | Sector rotation | 5 | 4 | 2 | 2 | 5 | 4 | 4 | **26/35** | Rejected -- the candidate's own pre-registered falsification condition is met |
+| 2 | Long-only cross-sectional momentum, broad 18-ETF universe | 4 | 5 | 2 | 2 | 5 | 4 | 4 | **26/35** | Rejected/Failed -- gate 1 fails on every pre-registered sample and under the non-overlapping fold design |
+| 3 | Sector rotation | 4 | 4 | 2 | 2 | 5 | 4 | 4 | **25/35** | Rejected -- the candidate's own pre-registered falsification condition is met |
 | 4 | Calendar / rebalancing effects | 5 | 3 | 2 | 2 | 5 | 4 | 4 | **25/35** | Rejected -- gate 1 fails (walk-forward mean OOS Sharpe -0.0254); cost-admissible but with no edge |
 | 5 | TSMOM parameter variants | 5 | 4 | 2 | 2 | 5 | 5 | 2 | **25/35** | Rejected -- 0 of 100 configurations beat the baseline on identical data; the committed parameters sit on a peak, not a plateau |
 | 6 | Macro regime overlay extension | 4 | 4 | 2 | 2 | 3 | 4 | 3 | **22/35** | Rejected -- the pre-registered falsification condition is met |

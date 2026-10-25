@@ -76,15 +76,15 @@ Per-symbol cache fingerprint (derived at run time, never a frozen literal):
 
 | Symbol | First date | Last date | Rows | SHA-256 (first 16) |
 |---|---|---|---|---|
-| SPY | 1993-01-29 | 2026-10-22 | 8491 | `f307f910a62dc3e2` |
-| QQQ | 1999-03-10 | 2026-10-22 | 6949 | `3de8a01c4f0d6f77` |
-| IWM | 2000-05-26 | 2026-10-22 | 6641 | `0e32b42393e5dad6` |
-| TLT | 2002-07-30 | 2026-10-22 | 6098 | `851db269e1622eb6` |
-| GLD | 2004-11-18 | 2026-10-22 | 5516 | `6e681051e18253fa` |
+| SPY | 1993-01-29 | 2026-10-23 | 8492 | `23a0fb14324c3220` |
+| QQQ | 1999-03-10 | 2026-10-23 | 6950 | `9533c5c922c4787e` |
+| IWM | 2000-05-26 | 2026-10-23 | 6642 | `3c0e1a712f512ad2` |
+| TLT | 2002-07-30 | 2026-10-23 | 6099 | `54070c10163d86b0` |
+| GLD | 2004-11-18 | 2026-10-23 | 5517 | `a0f88f7f8c15fecc` |
 | DBC | 2006-02-06 | 2026-10-21 | 5210 | `a04e11a54bb3710f` |
 | VNQ | 2004-09-29 | 2026-10-08 | 5542 | `8714f6b1bf45d1b0` |
-| EFA | 2001-08-27 | 2026-10-22 | 6326 | `f72c519b09744671` |
-| EEM | 2003-04-14 | 2026-10-22 | 5920 | `17ad1692de6eee0b` |
+| EFA | 2001-08-27 | 2026-10-23 | 6327 | `9663723537ee2122` |
+| EEM | 2003-04-14 | 2026-10-23 | 5921 | `82bbe68da28e67e6` |
 | XLB | 1998-12-22 | 2026-10-08 | 6991 | `465b9a7b6c784869` |
 | XLE | 1998-12-22 | 2026-10-08 | 6991 | `408b2806f7dbde65` |
 | XLF | 1998-12-22 | 2026-10-08 | 6991 | `2f8eeb83b2024b69` |
@@ -612,13 +612,13 @@ samples).
 |---|---|---|---|
 | `policy_universe_matches_candidate_config` | PASS | 18 | 18 |
 | `common_inception_rederived_from_raw_cache` | PASS | 2006-02-06 | max of per-symbol first dates in data/raw |
-| `aligned_index_matches_the_raw_cache_union` | PASS | 8491 | 8491 |
+| `aligned_index_matches_the_raw_cache_union` | PASS | 8492 | 8492 |
 | `union_sample_reproduces_the_committed_config_faithful_record` | PASS | {'n_folds': 48.0, 'mean_test_sharpe': 0.6975243375140185, 'mean_test_sharpe_canonical': 0.8403888341999609, 'median_test_sharpe': 0.6178806353181572, 'pct_positive_sharpe': 0.7916666666666666, 'total_test_trades': 400.0} | {'n_folds': '48', 'mean_test_sharpe': '0.6975', 'mean_test_sharpe_canonical': '0.8404', 'median_test_sharpe': '0.6179', 'pct_positive_sharpe': '0.7917', 'total_test_trades': '400'} |
 | `union_sample_does_not_reproduce_the_legacy_or_daily_values` | PASS | ['legacy_calendar_path', 'daily_rerank_path'] | no legacy (0.6868) or daily re-rank (0.6928) value produced |
 | `config_faithful_path_equals_the_shared_month_end_module` | PASS | {'union': True, 'slice': True} | True |
 | `config_faithful_path_is_point_in_time` | PASS | {'union_segments': 392, 'slice_segments': 235} | every segment equals the selection at its own signal date and becomes effective strictly after it |
 | `evaluation_window_ends_at_the_frozen_test_end` | PASS | {'union_sample': '2026-10-09', 'common_inception_slice': '2026-10-09', 'common_inception_window': '2026-10-09'} | 2026-10-09 |
-| `cached_sessions_after_the_test_end_are_excluded` | FAIL | ['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22'] | the six cached sessions 2026-10-12..2026-10-19 are outside the window |
+| `cached_sessions_after_the_test_end_are_excluded` | FAIL | ['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23'] | the six cached sessions 2026-10-12..2026-10-19 are outside the window |
 | `common_inception_sample_is_fully_populated` | PASS | {'min': 18, 'max': 18} | 18 |
 | `union_sample_is_ragged` | PASS | 1 | < 18 |
 | `plateau_gate_is_reported_as_not_evaluated` | PASS | NOT EVALUATED on every sample | NOT EVALUATED on every sample |
@@ -3526,33 +3526,33 @@ git status --porcelain data/                          # empty
     "per_symbol": {
       "SPY": {
         "first_date": "1993-01-29",
-        "last_date": "2026-10-22",
-        "row_count": 8491,
-        "sha256": "f307f910a62dc3e237afc7a4910f5b3508c75c3f83330735d55aead81e459375"
+        "last_date": "2026-10-23",
+        "row_count": 8492,
+        "sha256": "23a0fb14324c3220ed7d296da09fd417867bf9c6072dd97fce3465303653c641"
       },
       "QQQ": {
         "first_date": "1999-03-10",
-        "last_date": "2026-10-22",
-        "row_count": 6949,
-        "sha256": "3de8a01c4f0d6f77ddebd98295f5da5adb19ac6feade90d747cb7876a9faa872"
+        "last_date": "2026-10-23",
+        "row_count": 6950,
+        "sha256": "9533c5c922c4787eb9b83ad8ac56ef358259e0c7e67384dbd29c20b3e1085321"
       },
       "IWM": {
         "first_date": "2000-05-26",
-        "last_date": "2026-10-22",
-        "row_count": 6641,
-        "sha256": "0e32b42393e5dad65ea810d099c88ed21eba890c1d0d5e521b473da92ad74cb4"
+        "last_date": "2026-10-23",
+        "row_count": 6642,
+        "sha256": "3c0e1a712f512ad22d4407ed7b40b987aa8952d4222aa3262dd13410a5663263"
       },
       "TLT": {
         "first_date": "2002-07-30",
-        "last_date": "2026-10-22",
-        "row_count": 6098,
-        "sha256": "851db269e1622eb6684c075ce94a0a38f2e72b3f4a6f2202ab72b7a712f5c6ce"
+        "last_date": "2026-10-23",
+        "row_count": 6099,
+        "sha256": "54070c10163d86b0333e6a815a126c4255b3e1bcb0a6f8dbbc97d632ed65abfa"
       },
       "GLD": {
         "first_date": "2004-11-18",
-        "last_date": "2026-10-22",
-        "row_count": 5516,
-        "sha256": "6e681051e18253fa9487ca86aff096e6ea5f81dc1d44995eefa0380cef2166c7"
+        "last_date": "2026-10-23",
+        "row_count": 5517,
+        "sha256": "a0f88f7f8c15fecc3931264695bb83bf4a5ebde9f533e123a6a4982339340631"
       },
       "DBC": {
         "first_date": "2006-02-06",
@@ -3568,15 +3568,15 @@ git status --porcelain data/                          # empty
       },
       "EFA": {
         "first_date": "2001-08-27",
-        "last_date": "2026-10-22",
-        "row_count": 6326,
-        "sha256": "f72c519b0974467167e2f822eece66da6dbe1329dbd2981a86a373c5e303b101"
+        "last_date": "2026-10-23",
+        "row_count": 6327,
+        "sha256": "9663723537ee21222b67c93dd9c97445e1272f527b47602831aa12117202319d"
       },
       "EEM": {
         "first_date": "2003-04-14",
-        "last_date": "2026-10-22",
-        "row_count": 5920,
-        "sha256": "17ad1692de6eee0b4eb32862c9133eab4b851865c5c2a78f05a6cbf5dfeb9ed5"
+        "last_date": "2026-10-23",
+        "row_count": 5921,
+        "sha256": "82bbe68da28e67e6c64eceada45df6f573d660d6bc1d81369dafdcdd3c65456b"
       },
       "XLB": {
         "first_date": "1998-12-22",
@@ -3649,8 +3649,8 @@ git status --porcelain data/                          # empty
     },
     {
       "name": "aligned_index_matches_the_raw_cache_union",
-      "expected": 8491,
-      "observed": 8491,
+      "expected": 8492,
+      "observed": 8492,
       "pass": true
     },
     {
@@ -3722,7 +3722,8 @@ git status --porcelain data/                          # empty
         "2026-10-19",
         "2026-10-20",
         "2026-10-21",
-        "2026-10-22"
+        "2026-10-22",
+        "2026-10-23"
       ],
       "pass": false
     },

@@ -112,7 +112,7 @@ The generator steps the folds by 6 months over a 12-month test window, so consec
 ## 5. Checks
 
 - [published_record_resolved_by_content]: PASS (observed: research/experiments/tsmomentum_regime_filter_wf_001.md, expected: exactly one published walk-forward record carrying the published anchor)
-- [cache_only_path_built]: PASS (observed: 8491 sessions, 7 symbols, expected: non-empty path)
+- [cache_only_path_built]: PASS (observed: 8492 sessions, 7 symbols, expected: non-empty path)
 - [reproduces_published_walk_forward_aggregate]: PASS (observed: n_folds=48 (published 48); mean_test_sharpe=0.9473074720246092 (published 0.9473); std_test_sharpe=3.4797702418403893 (published 3.4798); median_test_sharpe=1.29329878363231 (published 1.2933); min_test_sharpe=-21.829879416796786 (published -21.8299); max_test_sharpe=3.9121052879675915 (published 3.9121); pct_positive_sharpe=0.9166666666666666 (published 91.7%); mean_test_ann_return=0.1471459015552229 (published 14.71%); mean_test_max_dd=-0.05407695492453209 (published -5.41%); mean_test_trades=125.27083333333333 (published 125.3); total_test_trades=6013 (published 6013), expected: published aggregate statistics)
 - [reproduces_published_walk_forward_fold_table]: PASS (observed: 48 folds compared, expected: every published fold reproduced)
 - [phase_a_test_windows_pairwise_disjoint]: PASS (observed: overlap=0.0, disjoint=24, folds=24, expected: overlap == 0 and disjoint == folds)
@@ -745,7 +745,7 @@ git diff --stat src/ config/ research/experiments/ research/reports/
     {
       "expected": "non-empty path",
       "name": "cache_only_path_built",
-      "observed": "8491 sessions, 7 symbols",
+      "observed": "8492 sessions, 7 symbols",
       "pass": true
     },
     {

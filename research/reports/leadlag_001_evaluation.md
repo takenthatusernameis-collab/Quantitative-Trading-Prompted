@@ -15,7 +15,7 @@ byte-identical.
 | Item | Value |
 |---|---|
 | Universe | CL-F, GC-F, NG-F, ZB-F, USO, BNO, UNG, GSG, GLD, TLT |
-| Panel | 2960 complete-cross-section sessions, 2015-01-02 .. 2026-10-15 (union calendar 6101 sessions, churn 51.48%) |
+| Panel | 2960 complete-cross-section sessions, 2015-01-02 .. 2026-10-15 (union calendar 6102 sessions, churn 51.49%) |
 | Signal | sign of the futures leg's trailing 5-session return; long the ETF leg when positive, cash otherwise |
 | Pairs | CL-F/USO, CL-F/BNO, GC-F/GLD, NG-F/UNG, ZB-F/TLT |
 | Construction | long-only, 0.2 of the book per pair, cash otherwise, gross exposure <= 1.0 |

@@ -11,7 +11,7 @@ Make the same-session volatility estimate correctable behind a default-off, opt-
 
 ## Data
 
-- Committed paper-trading record: 453 sessions (2025-01-02 .. 2026-10-19)
+- Committed paper-trading record: 454 sessions (2025-01-02 .. 2026-10-19)
 - Price panel: committed parquet cache `data/raw/*.parquet` (cache-only; the fetcher is never called)
 - Universe: SPY, QQQ, IWM, TLT, GLD, EFA, EEM
 - Cost model: 1.0 bps commission + 2.0 bps slippage = 3.0 bps round-trip
@@ -30,15 +30,15 @@ Make the same-session volatility estimate correctable behind a default-off, opt-
 ### Anchor (fail closed)
 
 - Published 48-fold walk-forward mean OOS Sharpe reproduced: **0.947307** (published 0.947307); the published machinery reproduces **0.947307**
-- Committed record's 453 sessions reproduced with max |diff| = 5.421e-20
+- Committed record's 454 sessions reproduced with max |diff| = 5.421e-20
 - Default path bit-identical to the pre-change implementation: research path 0.0e+00, simulation path 0.0e+00, risk overlays 0.0e+00
 
 ### Side by side
 
 - Walk-forward mean OOS Sharpe: 0.947307 -> 1.318605 (all folds); excluding each path's own worst fold: 1.431928 -> 1.357135
-- Record canonical Sharpe: 1.731956 -> 1.597048
-- Trailing 63-session Sharpe (`rolling_63d_sharpe`): -0.142935 -> -0.222927
-- PSR vs 1.4178: 0.678858 -> 0.604420
+- Record canonical Sharpe: 1.726278 -> 1.591618
+- Trailing 63-session Sharpe (`rolling_63d_sharpe`): -0.254926 -> -0.333802
+- PSR vs 1.4178: 0.673221 -> 0.599720
 - Promotion decision: NO-GO -> NO-GO (failed gates: rolling_63d_sharpe, psr)
 
 ## Trial count
@@ -47,7 +47,7 @@ Make the same-session volatility estimate correctable behind a default-off, opt-
 
 ## Verdict
 
-**1. The defect is real, quantified and now correctable, but it is not a cause of the gate failure and it does not rescue anything.** The same-session volatility estimate (session *t*'s own return moves session *t*'s exposure) is present in the published research path, in the shared simulation / live paper-trading path and in both overlay helpers of `src/evaluation/risk.py`. With the estimate lagged one session the committed record's canonical Sharpe moves from 1.731956 to 1.597048, its trailing 63-session Sharpe from -0.142935 to -0.222927 and its PSR against the fixed backtest baseline 1.4178 from 0.678858 to 0.604420. The corrected path is **worse on every record-level statistic** and the promotion decision stays **NO-GO** (failed gates: rolling_63d_sharpe, psr).
+**1. The defect is real, quantified and now correctable, but it is not a cause of the gate failure and it does not rescue anything.** The same-session volatility estimate (session *t*'s own return moves session *t*'s exposure) is present in the published research path, in the shared simulation / live paper-trading path and in both overlay helpers of `src/evaluation/risk.py`. With the estimate lagged one session the committed record's canonical Sharpe moves from 1.726278 to 1.591618, its trailing 63-session Sharpe from -0.254926 to -0.333802 and its PSR against the fixed backtest baseline 1.4178 from 0.673221 to 0.599720. The corrected path is **worse on every record-level statistic** and the promotion decision stays **NO-GO** (failed gates: rolling_63d_sharpe, psr).
 
 **2. The corrected 48-fold walk-forward mean looks better only because a numerical artefact disappears.** On the default path the published mean OOS Sharpe is 0.947307 and it contains one pathological fold (fold 12, -21.829879: 242 of 244 flat sessions, so the backtest-scale estimator divides a near-zero numerator by a near-zero dispersion, Cycle 925 section 5). Excluding that fold the default path's mean is 1.431928. On the corrected path the same segment is entirely flat, so the estimator returns 0.000000 instead of a pathology, the mean over all 48 folds is 1.318605, and the strictest comparable statistic - both paths with fold 12 excluded - is **lower** on the corrected path (1.346660 vs 1.431928); excluding each path's own worst fold it is also lower (1.357135 vs 1.431928). The corrected path is not a recovery, and the higher headline mean must never be quoted without the fold-level table.
 
