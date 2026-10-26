@@ -6,7 +6,7 @@
 
 ## 1. Data inventory — `data/raw/`
 
-**35 parquet files, 180192 rows** (22 ETF, 4 futures, 8 crypto, 1 index). **0 missing prices**, **0 duplicate timestamps**, **1 (n/a for the 4 funding-rate files) non-positive prices**, **8600 (n/a for the 4 funding-rate files) zero-volume rows**.
+**35 parquet files, 180155 rows** (22 ETF, 4 futures, 8 crypto, 1 index). **0 missing prices**, **0 duplicate timestamps**, **1 (n/a for the 4 funding-rate files) non-positive prices**, **8600 (n/a for the 4 funding-rate files) zero-volume rows**.
 
 The counters marked *n/a* apply to the crypto funding-rate files: a funding rate is a signed rate (a negative value is ordinary, not an anomaly) and the series carries no volume column.
 
@@ -14,17 +14,17 @@ The counters marked *n/a* apply to the crypto funding-rate files: a funding rate
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | 1 | `data/raw/BNO.parquet` | etf | 4123 | 2010-06-02 | 2026-10-21 | daily | 0 | 0 | 77 | 0 | 27 | `f9f85c5844ba3884` |
 | 2 | `data/raw/CL-F.parquet` | futures | 2964 | 2015-01-02 | 2026-10-15 | daily | 0 | 0 | 12 | 1 | 7 | `5d7ec126885110fc` |
-| 3 | `data/raw/DBC.parquet` | etf | 5210 | 2006-02-06 | 2026-10-21 | daily | 0 | 0 | 85 | 0 | 0 | `a04e11a54bb3710f` |
-| 4 | `data/raw/EEM.parquet` | etf | 5921 | 2003-04-14 | 2026-10-23 | daily | 0 | 0 | 40 | 0 | 0 | `82bbe68da28e67e6` |
-| 5 | `data/raw/EFA.parquet` | etf | 6327 | 2001-08-27 | 2026-10-23 | daily | 0 | 0 | 49 | 0 | 0 | `9663723537ee2122` |
+| 3 | `data/raw/DBC.parquet` | etf | 5201 | 2006-02-06 | 2026-10-08 | daily | 0 | 0 | 85 | 0 | 0 | `3218ecb019945226` |
+| 4 | `data/raw/EEM.parquet` | etf | 5917 | 2003-04-14 | 2026-10-19 | daily | 0 | 0 | 40 | 0 | 0 | `ab4505066d58105e` |
+| 5 | `data/raw/EFA.parquet` | etf | 6323 | 2001-08-27 | 2026-10-19 | daily | 0 | 0 | 49 | 0 | 0 | `9d05acb9324a945e` |
 | 6 | `data/raw/GC-F.parquet` | futures | 2964 | 2015-01-02 | 2026-10-15 | daily | 0 | 0 | 15 | 0 | 36 | `2dc89075a6bfe3a9` |
-| 7 | `data/raw/GLD.parquet` | etf | 5517 | 2004-11-18 | 2026-10-23 | daily | 0 | 0 | 20 | 0 | 0 | `a0f88f7f8c15fecc` |
+| 7 | `data/raw/GLD.parquet` | etf | 5513 | 2004-11-18 | 2026-10-19 | daily | 0 | 0 | 20 | 0 | 0 | `7a08ffc5cd1a2f57` |
 | 8 | `data/raw/GSG.parquet` | etf | 2964 | 2015-01-02 | 2026-10-15 | daily | 0 | 0 | 59 | 0 | 0 | `d38c0d9bed4894da` |
-| 9 | `data/raw/IWM.parquet` | etf | 6642 | 2000-05-26 | 2026-10-23 | daily | 0 | 0 | 20 | 0 | 0 | `3c0e1a712f512ad2` |
+| 9 | `data/raw/IWM.parquet` | etf | 6638 | 2000-05-26 | 2026-10-19 | daily | 0 | 0 | 20 | 0 | 0 | `5cad4c4607c9161b` |
 | 10 | `data/raw/NG-F.parquet` | futures | 2965 | 2015-01-02 | 2026-10-15 | daily | 0 | 0 | 11 | 0 | 7 | `6d480ef7769f42eb` |
-| 11 | `data/raw/QQQ.parquet` | etf | 6950 | 1999-03-10 | 2026-10-23 | daily | 0 | 0 | 38 | 0 | 0 | `9533c5c922c4787e` |
-| 12 | `data/raw/SPY.parquet` | etf | 8492 | 1993-01-29 | 2026-10-23 | daily | 0 | 0 | 62 | 0 | 0 | `23a0fb14324c3220` |
-| 13 | `data/raw/TLT.parquet` | etf | 6099 | 2002-07-30 | 2026-10-23 | daily | 0 | 0 | 31 | 0 | 0 | `54070c10163d86b0` |
+| 11 | `data/raw/QQQ.parquet` | etf | 6946 | 1999-03-10 | 2026-10-19 | daily | 0 | 0 | 38 | 0 | 0 | `1413859e34344f75` |
+| 12 | `data/raw/SPY.parquet` | etf | 8488 | 1993-01-29 | 2026-10-19 | daily | 0 | 0 | 62 | 0 | 0 | `04c944eccca30627` |
+| 13 | `data/raw/TLT.parquet` | etf | 6095 | 2002-07-30 | 2026-10-19 | daily | 0 | 0 | 31 | 0 | 0 | `9bf0ede4dd4917b2` |
 | 14 | `data/raw/UNG.parquet` | etf | 4910 | 2007-04-18 | 2026-10-21 | daily | 0 | 0 | 63 | 0 | 0 | `0ce2a5b25a2e8e6b` |
 | 15 | `data/raw/USO.parquet` | etf | 2964 | 2015-01-02 | 2026-10-15 | daily | 0 | 0 | 23 | 0 | 0 | `fa22094f98b4e826` |
 | 16 | `data/raw/VNQ.parquet` | etf | 5542 | 2004-09-29 | 2026-10-08 | daily | 0 | 0 | 30 | 0 | 0 | `8714f6b1bf45d1b0` |
@@ -114,7 +114,7 @@ A member can only be ranked once it has a valid 226-session momentum that skips 
 | 4 | 228 | 2002-08-26 | 2003-07-22 |
 | 5 | 178 | 2003-07-23 | 2004-04-05 |
 | 6 | 404 | 2004-04-06 | 2005-11-09 |
-| 7 | 5270 | 2005-11-10 | 2026-10-23 |
+| 7 | 5266 | 2005-11-10 | 2026-10-19 |
 
 **The selection rule degenerates as the cross-section shrinks.** The repository's shared rule (`src/features/momentum.py:select_top_decile`) selects every asset whose cross-sectional rank is at least `max_rank x (1 - 0.5)`, which is a *rank* rule, not a count rule: with `k` assets that carry a valid momentum it holds
 
