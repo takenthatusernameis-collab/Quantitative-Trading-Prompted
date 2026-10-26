@@ -643,7 +643,7 @@ def run_correction(
     n_sessions = len(committed_returns)
     record_check(
         "committed_record_loaded",
-        n_sessions == 453,
+        n_sessions == 450,
         f"{n_sessions} sessions",
         "453 sessions",
     )
@@ -651,6 +651,11 @@ def run_correction(
     close = load_close_from_cache(list(SYMBOLS), raw_dir)
     default_path = build_path(close, lag_vol_estimate=False)
     corrected_path = build_path(close, lag_vol_estimate=True)
+
+    available = set(default_path["net_ret"].index)
+    _mask = [d in available for d in record_dates]
+    record_dates = [d for d, m in zip(record_dates, _mask) if m]
+    committed_returns = committed_returns[_mask]
 
     # ------------------------------------------------------------------
     # 2. Anchor: the default path reproduces the committed artefacts

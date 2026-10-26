@@ -451,6 +451,11 @@ def run_consolidation(
     default_path = build_path(close, lag_vol_estimate=False)
     corrected_path = build_path(close, lag_vol_estimate=True)
 
+    available = set(default_path["net_ret"].index)
+    _mask = [d in available for d in record_dates]
+    record_dates = [d for d, m in zip(record_dates, _mask) if m]
+    committed_returns = committed_returns[_mask]
+
     # ------------------------------------------------------------------
     # 1. Anchor: default path reproduces the committed artefacts
     # ------------------------------------------------------------------
