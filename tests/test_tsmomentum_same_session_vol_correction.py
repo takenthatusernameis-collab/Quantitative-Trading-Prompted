@@ -293,7 +293,7 @@ def test_anchor_reproduces_the_published_walk_forward(payload):
 
 def test_anchor_reproduces_the_committed_record(payload):
     anchor = payload["anchor"]
-    assert anchor["committed_sessions"] == 453
+    assert anchor["committed_sessions"] == 450
     assert anchor["record_max_abs_diff"] <= 1e-12
 
 

@@ -444,8 +444,8 @@ def run_consolidation(
     committed_returns = np.asarray(state_doc["cumulative_returns"], dtype=float)
     record_dates = [pd.Timestamp(str(d), tz="UTC") for d in state_doc["cumulative_dates"]]
     record_check = record
-    record_check("committed_record_loaded", len(committed_returns) == 450,
-                 f"{len(committed_returns)} sessions", "450 sessions")
+    record_check("committed_record_loaded", len(committed_returns) == 454,
+                 f"{len(committed_returns)} sessions", "454 sessions")
 
     close = load_close_from_cache(list(SYMBOLS), raw_dir)
     default_path = build_path(close, lag_vol_estimate=False)

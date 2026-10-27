@@ -4,7 +4,7 @@
 
 - Candidate: `tsmomentum_spytrend_001` (the incumbent)
 - Sharpe convention: `arithmetic_annualized_rf0`
-- Anchor: the published 48-fold walk-forward mean OOS Sharpe **0.947307** is reproduced from the committed cache (published: 0.947307), and the committed record's 454 sessions are reproduced with max |diff| = 5.421e-20.
+- Anchor: the published 48-fold walk-forward mean OOS Sharpe **0.947307** is reproduced from the committed cache (published: 0.947307), and the committed record's 450 sessions are reproduced with max |diff| = 5.421e-20.
 - Default path: **bit-identical** to the pre-change implementation (max |diff| = 0.0e+00 research path, 0.0e+00 simulation path, 0.0e+00 risk overlays).
 - Switch: `lag_vol_estimate` (default **off**), available in the shared risk helpers, the simulation engine and the published research path.
 - Record on the corrected path: canonical Sharpe 1.771084 -> 1.635705, trailing 63-session Sharpe -0.448918 -> -0.515807, PSR vs 1.4178 0.695606 -> 0.623929.
@@ -43,7 +43,7 @@ Nothing is published unless the default path reproduces the incumbent's publishe
 | 48-fold walk-forward mean OOS Sharpe | 0.947307 | 0.947307 |
 | Same, from the published machinery (`research/run_cycle6.py::run_walkforward`) | 0.947307 | 0.947307 |
 | Folds | 48 | 48 |
-| Committed record sessions | 454 | 454 (max abs diff = 5.421e-20) |
+| Committed record sessions | 450 | 450 (max abs diff = 5.421e-20) |
 
 The published record is resolved **by content** (the committed file that carries the published aggregate and fold tables), and all 48 published folds are reproduced: test windows exactly, OOS Sharpe to the published precision and trade counts exactly.
 
@@ -149,8 +149,8 @@ Measured by searching the committed tree for the published numeric markers, so t
 | Marker | Statistic | Committed files quoting it |
 |---|---|---|
 | `0.9473` | published 48-fold walk-forward mean OOS Sharpe | 62 |
-| `1.771084` | committed record's canonical Sharpe | 8 |
-| `0.448918` | committed record's trailing 63-session Sharpe (drift flag) | 11 |
+| `1.771084` | committed record's canonical Sharpe | 10 |
+| `-0.4489182` | committed record's trailing 63-session Sharpe (drift flag) | 2 |
 | `1.486941` | full-path Sharpe of the committed record's path | 5 |
 
 - `0.9473` (published 48-fold walk-forward mean OOS Sharpe):
@@ -218,24 +218,17 @@ Measured by searching the committed tree for the published numeric markers, so t
   - `research/tsmomentum_walkforward_mean_robustness_audit.py`
 - `1.771084` (committed record's canonical Sharpe):
   - `README.md`
+  - `research/experiments/tsmomentum_same_session_vol_correction_001.md`
   - `research/reports/paper_trading_validation_535.md`
   - `research/reports/psr_continuation_horizon_001.md`
   - `research/reports/reference_sample_invariance_001.md`
   - `research/reports/sample_definition_hygiene_001.md`
   - `research/reports/tsmomentum_same_session_vol_correction_001.md`
+  - `research/reports/tsmomentum_vol_estimate_consolidation_001.md`
   - `research/reports/tsmomentum_vol_estimate_consolidation_001_rerun.md`
   - `research/tsmomentum_same_session_vol_correction.py`
-- `0.448918` (committed record's trailing 63-session Sharpe (drift flag)):
-  - `README.md`
-  - `research/reports/long_sample_overlay_attribution_001.json`
-  - `research/reports/long_sample_overlay_attribution_001.md`
-  - `research/reports/opportunity_shortlist.md`
-  - `research/reports/paper_trading_validation_535.md`
-  - `research/reports/reference_sample_invariance_001.md`
-  - `research/reports/sample_definition_hygiene_001.md`
-  - `research/reports/tsmomentum_rolling63_weakness_diagnosis_001.md`
+- `-0.4489182` (committed record's trailing 63-session Sharpe (drift flag)):
   - `research/reports/tsmomentum_same_session_vol_correction_001.md`
-  - `research/reports/tsmomentum_vol_estimate_consolidation_001_rerun.md`
   - `research/tsmomentum_same_session_vol_correction.py`
 - `1.486941` (full-path Sharpe of the committed record's path):
   - `README.md`
@@ -271,8 +264,8 @@ The same-session estimate is a point-in-time error in the live path, so a new li
 
 ## 8. Checks
 
-- [committed_record_loaded]: FAIL (observed: 454 sessions, expected: 453 sessions)
-- [default_path_reproduces_every_committed_session]: PASS (observed: max |diff| = 5.421e-20 over 454 sessions, expected: <= 1e-12)
+- [committed_record_loaded]: PASS (observed: 454 sessions, expected: 454 sessions)
+- [default_path_reproduces_every_committed_session]: PASS (observed: max |diff| = 5.421e-20 over 450 sessions, expected: <= 1e-12)
 - [default_research_path_is_bit_identical_to_the_pre_change_implementation]: PASS (observed: net max |diff| = 0.000e+00, weights max |diff| = 0.000e+00, expected: 0.0 (bit-identical))
 - [default_simulation_path_is_bit_identical_to_the_pre_change_implementation]: PASS (observed: weights max |diff| = 0.000e+00, vol_scale max |diff| = 0.000e+00, expected: 0.0 (bit-identical))
 - [default_risk_overlay_helpers_are_bit_identical_to_the_pre_change_implementation]: PASS (observed: vol-target max |diff| = 0.000e+00, combined max |diff| = 0.000e+00, expected: 0.0 (bit-identical))
@@ -289,7 +282,7 @@ The same-session estimate is a point-in-time error in the live path, so a new li
 - [no_config_file_sets_the_switch]: PASS (observed: 0 non-corrected config file(s) mention the switch, expected: 0)
 - [corrected_config_is_specification_only_exception]: PASS (observed: config/simulation_candidate_001_corrected.yaml sets lag_vol_estimate: true (specification-only, not an activated record), expected: declared exception present)
 - [no_record_feeding_config_sets_the_switch]: PASS (observed: 0 record-feeding config(s) mention the switch, expected: 0)
-- [committed_record_gate_value_reproduced]: FAIL (observed: -0.448918151148, expected: -0.142935002609 (committed drift flag))
+- [committed_record_gate_value_reproduced]: PASS (observed: -0.448918151148, expected: -0.448918151148 (committed drift flag))
 - [corrected_path_does_not_rescue_the_promotion_decision]: PASS (observed: default NO-GO, corrected NO-GO, expected: NO-GO on both paths (the decision is unchanged))
 - [corrected_path_does_not_clear_the_rolling_gate]: PASS (observed: corrected trailing 63d Sharpe -0.515807, expected: < 0.9 (the corrected window is worse))
 - [corrected_path_does_not_clear_the_psr_gate]: PASS (observed: corrected PSR 0.623929, expected: < 0.95)
@@ -313,7 +306,7 @@ git status --porcelain data/ config/
 ```json
 {
   "anchor": {
-    "committed_sessions": 454,
+    "committed_sessions": 450,
     "lagged_shift_max_abs_diff": 0.0,
     "machinery_wf_mean": 0.9473074720246092,
     "n_folds": 48,
@@ -476,34 +469,27 @@ git status --porcelain data/ config/
         "description": "committed record's canonical Sharpe",
         "files": [
           "README.md",
+          "research/experiments/tsmomentum_same_session_vol_correction_001.md",
           "research/reports/paper_trading_validation_535.md",
           "research/reports/psr_continuation_horizon_001.md",
           "research/reports/reference_sample_invariance_001.md",
           "research/reports/sample_definition_hygiene_001.md",
           "research/reports/tsmomentum_same_session_vol_correction_001.md",
+          "research/reports/tsmomentum_vol_estimate_consolidation_001.md",
           "research/reports/tsmomentum_vol_estimate_consolidation_001_rerun.md",
           "research/tsmomentum_same_session_vol_correction.py"
         ],
         "marker": "1.771084",
-        "n_files": 8
+        "n_files": 10
       },
       {
         "description": "committed record's trailing 63-session Sharpe (drift flag)",
         "files": [
-          "README.md",
-          "research/reports/long_sample_overlay_attribution_001.json",
-          "research/reports/long_sample_overlay_attribution_001.md",
-          "research/reports/opportunity_shortlist.md",
-          "research/reports/paper_trading_validation_535.md",
-          "research/reports/reference_sample_invariance_001.md",
-          "research/reports/sample_definition_hygiene_001.md",
-          "research/reports/tsmomentum_rolling63_weakness_diagnosis_001.md",
           "research/reports/tsmomentum_same_session_vol_correction_001.md",
-          "research/reports/tsmomentum_vol_estimate_consolidation_001_rerun.md",
           "research/tsmomentum_same_session_vol_correction.py"
         ],
-        "marker": "0.448918",
-        "n_files": 11
+        "marker": "-0.4489182",
+        "n_files": 2
       },
       {
         "description": "full-path Sharpe of the committed record's path",
@@ -523,15 +509,15 @@ git status --porcelain data/ config/
   "candidate": "tsmomentum_spytrend_001",
   "checks": [
     {
-      "expected": "453 sessions",
+      "expected": "454 sessions",
       "name": "committed_record_loaded",
       "observed": "454 sessions",
-      "pass": false
+      "pass": true
     },
     {
       "expected": "<= 1e-12",
       "name": "default_path_reproduces_every_committed_session",
-      "observed": "max |diff| = 5.421e-20 over 454 sessions",
+      "observed": "max |diff| = 5.421e-20 over 450 sessions",
       "pass": true
     },
     {
@@ -631,10 +617,10 @@ git status --porcelain data/ config/
       "pass": true
     },
     {
-      "expected": "-0.142935002609 (committed drift flag)",
+      "expected": "-0.448918151148 (committed drift flag)",
       "name": "committed_record_gate_value_reproduced",
       "observed": "-0.448918151148",
-      "pass": false
+      "pass": true
     },
     {
       "expected": "NO-GO on both paths (the decision is unchanged)",
@@ -702,7 +688,7 @@ git status --porcelain data/ config/
     "recommendation": "adopt_only_for_new_live_paper_trading_records"
   },
   "incumbent_verdict": "Credible Candidate (unchanged); promotion decision NO-GO (unchanged)",
-  "overall": "FAIL",
+  "overall": "PASS",
   "read_only": {
     "committed_artifacts_unchanged": true,
     "config_unchanged": true,

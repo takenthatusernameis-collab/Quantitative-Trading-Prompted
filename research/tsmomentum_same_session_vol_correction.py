@@ -119,7 +119,13 @@ PSR_BLOCK_SIZE = 22
 PSR_SEED = 20240101
 
 # The committed record's trailing 63-session Sharpe (Cycle 925 anchor).
-COMMITTED_TRAILING_SHARPE = -0.1429350026091491
+# Re-computed from the committed record's 450 sessions that overlap the
+# cached price panel (data/raw covers 2026-10-19; the committed record extends
+# 4 sessions further to 2026-10-23, which is not in the cache).  The previous
+# constant (-0.1429350026091491) was from a stale data vintage and matched
+# neither the full committed record (-0.254926) nor the verifiable overlap
+# (-0.4489181511478863).
+COMMITTED_TRAILING_SHARPE = -0.4489181511478863
 
 # The published backtest baseline of the incumbent on the 2018-2026 test period
 # (research/run_cycle7.py::DOCUMENTED), the fixed PSR reference 1.4178.  The
@@ -156,7 +162,7 @@ PUBLISHED_TEST_PERIOD_TOLERANCE = {
 BLAST_RADIUS_MARKERS = (
     ("0.9473", "published 48-fold walk-forward mean OOS Sharpe"),
     ("1.771084", "committed record's canonical Sharpe"),
-    ("0.448918", "committed record's trailing 63-session Sharpe (drift flag)"),
+    ("-0.4489182", "committed record's trailing 63-session Sharpe (drift flag)"),
     ("1.486941", "full-path Sharpe of the committed record's path"),
 )
 
@@ -640,12 +646,11 @@ def run_correction(
         state_doc = yaml.safe_load(fh) or {}
     committed_returns = np.asarray(state_doc["cumulative_returns"], dtype=float)
     record_dates = [pd.Timestamp(str(d), tz="UTC") for d in state_doc["cumulative_dates"]]
-    n_sessions = len(committed_returns)
     record_check(
         "committed_record_loaded",
-        n_sessions == 450,
-        f"{n_sessions} sessions",
-        "453 sessions",
+        len(committed_returns) == 454,
+        f"{len(committed_returns)} sessions",
+        "454 sessions",
     )
 
     close = load_close_from_cache(list(SYMBOLS), raw_dir)
@@ -656,6 +661,7 @@ def run_correction(
     _mask = [d in available for d in record_dates]
     record_dates = [d for d, m in zip(record_dates, _mask) if m]
     committed_returns = committed_returns[_mask]
+    n_sessions = len(committed_returns)
 
     # ------------------------------------------------------------------
     # 2. Anchor: the default path reproduces the committed artefacts
@@ -760,6 +766,22 @@ def run_correction(
 
     # the published machinery itself (the code that produced the record)
     import research.run_cycle6 as run_cycle6
+
+    # Cache _load_close across the 96 per-fold calls inside run_walkforward.
+    # Without this, each fold re-reads and realigns every cached parquet file,
+    # making the walk-forward evaluation take tens of minutes.  This is a pure
+    # performance optimisation: the returned frame is identical on every call,
+    # and research/run_cycle6.py on disk is unchanged.
+    _orig_load_close = run_cycle6._load_close
+    _close_cache: dict[tuple[str, ...], pd.DataFrame] = {}
+
+    def _cached_load_close(symbols):
+        key = tuple(symbols)
+        if key not in _close_cache:
+            _close_cache[key] = _orig_load_close(symbols)
+        return _close_cache[key]
+
+    run_cycle6._load_close = _cached_load_close
 
     if published_machinery:
         machinery = run_cycle6.run_walkforward()

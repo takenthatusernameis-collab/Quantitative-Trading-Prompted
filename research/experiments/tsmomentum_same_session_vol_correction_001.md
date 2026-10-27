@@ -30,7 +30,7 @@ Make the same-session volatility estimate correctable behind a default-off, opt-
 ### Anchor (fail closed)
 
 - Published 48-fold walk-forward mean OOS Sharpe reproduced: **0.947307** (published 0.947307); the published machinery reproduces **0.947307**
-- Committed record's 454 sessions reproduced with max |diff| = 5.421e-20
+- Committed record's 450 sessions reproduced with max |diff| = 5.421e-20
 - Default path bit-identical to the pre-change implementation: research path 0.0e+00, simulation path 0.0e+00, risk overlays 0.0e+00
 
 ### Side by side

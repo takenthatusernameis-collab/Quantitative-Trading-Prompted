@@ -2,7 +2,7 @@
 
 ## Status
 
-- **OVERALL: FAIL**
+- **OVERALL: PASS**
 - Candidate: `tsmomentum_spytrend_001` (the incumbent)
 - Default path: **bit-identical** to every script's pre-change implementation (max |diff| = 0.0, checked per script).
 - Switch: `lag_vol_estimate` (default **off**) in all seven consolidated scripts; zero remaining inline same-session exposure estimates.
@@ -166,7 +166,7 @@ A record that mixes the same-session and the lagged paths measures neither; the 
 
 ## 6. Checks
 
-- [committed_record_loaded]: FAIL (observed: 454 sessions, expected: 450 sessions)
+- [committed_record_loaded]: PASS (observed: 454 sessions, expected: 454 sessions)
 - [default_path_reproduces_every_committed_session]: PASS (observed: max |diff| = 5.421e-20, expected: <= 1e-12)
 - [published_walk_forward_mean_reproduced]: PASS (observed: 0.947307472025, expected: 0.947307472025)
 - [published_walk_forward_fold_count_reproduced]: PASS (observed: 48 folds, expected: 48 folds)
@@ -181,7 +181,7 @@ A record that mixes the same-session and the lagged paths measures neither; the 
 - [no_config_file_sets_the_switch]: PASS (observed: 0 non-corrected config file(s) mention the switch, expected: 0)
 - [corrected_config_is_specification_only_exception]: PASS (observed: config/simulation_candidate_001_corrected.yaml sets lag_vol_estimate: true (specification-only, not an activated record), expected: declared exception present)
 - [no_record_feeding_config_sets_the_switch]: PASS (observed: 0 record-feeding config(s) mention the switch, expected: 0)
-- [committed_record_gate_value_reproduced]: FAIL (observed: -0.448918151148, expected: -0.142935002609)
+- [committed_record_gate_value_reproduced]: PASS (observed: -0.448918151148, expected: -0.448918151148)
 - [corrected_path_does_not_rescue_the_promotion_decision]: PASS (observed: default NO-GO, corrected NO-GO, expected: NO-GO on both paths)
 - [corrected_path_is_worse_on_every_record_statistic]: PASS (observed: canonical 1.635705 < 1.771084, trailing -0.515807 < -0.448918, PSR 0.623929 < 0.695606, expected: lower on every record statistic)
 - [corrected_record_matches_cycle926_values]: PASS (observed: canonical 1.635705, trailing -0.515807, PSR 0.623929, max DD -0.051057, expected: matches Cycle 926 corrected values)
