@@ -149,9 +149,9 @@ Measured by searching the committed tree for the published numeric markers, so t
 | Marker | Statistic | Committed files quoting it |
 |---|---|---|
 | `0.9473` | published 48-fold walk-forward mean OOS Sharpe | 62 |
-| `1.771084` | committed record's canonical Sharpe | 10 |
+| `1.771084` | committed record's canonical Sharpe | 12 |
 | `-0.4489182` | committed record's trailing 63-session Sharpe (drift flag) | 2 |
-| `1.486941` | full-path Sharpe of the committed record's path | 5 |
+| `1.486941` | full-path Sharpe of the committed record's path | 7 |
 
 - `0.9473` (published 48-fold walk-forward mean OOS Sharpe):
   - `README.md`
@@ -218,11 +218,13 @@ Measured by searching the committed tree for the published numeric markers, so t
   - `research/tsmomentum_walkforward_mean_robustness_audit.py`
 - `1.771084` (committed record's canonical Sharpe):
   - `README.md`
+  - `research/experiments/tsmomentum_rolling63_weakness_diagnosis_001.md`
   - `research/experiments/tsmomentum_same_session_vol_correction_001.md`
   - `research/reports/paper_trading_validation_535.md`
   - `research/reports/psr_continuation_horizon_001.md`
   - `research/reports/reference_sample_invariance_001.md`
   - `research/reports/sample_definition_hygiene_001.md`
+  - `research/reports/tsmomentum_rolling63_weakness_diagnosis_001.md`
   - `research/reports/tsmomentum_same_session_vol_correction_001.md`
   - `research/reports/tsmomentum_vol_estimate_consolidation_001.md`
   - `research/reports/tsmomentum_vol_estimate_consolidation_001_rerun.md`
@@ -232,8 +234,10 @@ Measured by searching the committed tree for the published numeric markers, so t
   - `research/tsmomentum_same_session_vol_correction.py`
 - `1.486941` (full-path Sharpe of the committed record's path):
   - `README.md`
+  - `research/experiments/tsmomentum_rolling63_weakness_diagnosis_001.md`
   - `research/reports/long_sample_overlay_attribution_001.json`
   - `research/reports/long_sample_overlay_attribution_001.md`
+  - `research/reports/tsmomentum_rolling63_weakness_diagnosis_001.md`
   - `research/reports/tsmomentum_same_session_vol_correction_001.md`
   - `research/tsmomentum_same_session_vol_correction.py`
 
@@ -469,18 +473,20 @@ git status --porcelain data/ config/
         "description": "committed record's canonical Sharpe",
         "files": [
           "README.md",
+          "research/experiments/tsmomentum_rolling63_weakness_diagnosis_001.md",
           "research/experiments/tsmomentum_same_session_vol_correction_001.md",
           "research/reports/paper_trading_validation_535.md",
           "research/reports/psr_continuation_horizon_001.md",
           "research/reports/reference_sample_invariance_001.md",
           "research/reports/sample_definition_hygiene_001.md",
+          "research/reports/tsmomentum_rolling63_weakness_diagnosis_001.md",
           "research/reports/tsmomentum_same_session_vol_correction_001.md",
           "research/reports/tsmomentum_vol_estimate_consolidation_001.md",
           "research/reports/tsmomentum_vol_estimate_consolidation_001_rerun.md",
           "research/tsmomentum_same_session_vol_correction.py"
         ],
         "marker": "1.771084",
-        "n_files": 10
+        "n_files": 12
       },
       {
         "description": "committed record's trailing 63-session Sharpe (drift flag)",
@@ -495,13 +501,15 @@ git status --porcelain data/ config/
         "description": "full-path Sharpe of the committed record's path",
         "files": [
           "README.md",
+          "research/experiments/tsmomentum_rolling63_weakness_diagnosis_001.md",
           "research/reports/long_sample_overlay_attribution_001.json",
           "research/reports/long_sample_overlay_attribution_001.md",
+          "research/reports/tsmomentum_rolling63_weakness_diagnosis_001.md",
           "research/reports/tsmomentum_same_session_vol_correction_001.md",
           "research/tsmomentum_same_session_vol_correction.py"
         ],
         "marker": "1.486941",
-        "n_files": 5
+        "n_files": 7
       }
     ],
     "n_distinct_affected_files": 68
