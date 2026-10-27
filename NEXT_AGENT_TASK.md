@@ -1,19 +1,13 @@
-# NEXT_AGENT_TASK — TSMomentum date-range blocker follow-on (2026-10-26)
+# NEXT_AGENT_TASK — TSMomentum date-range blocker (2026-10-27)
 
 ## Context
-Full suite run (2026-10-26) result: 24 failed, 689 passed, 1 skipped, 106 warnings, 39 errors in 1853.55s.
-csmomentum_001 tests pass (data/raw/DBC.parquet already at freeze value 2026-10-08).
-Remaining failures cluster in tsmomentum_same_session_vol_correction and
-tsmomentum_vol_estimate_consolidation: their cached simulation series ends
-2026-10-19 (8488 rows) but published record dates extend to 2026-10-23,
-causing KeyError on .loc[record_dates].
+Cached simulation series ends 2026-10-19 (8488 rows); committed record has 454 dates through 2026-10-23. Only 450 record dates are present in cached series. Tests require 453 committed sessions. Data extension needed; no safe source available in repo.
 
 ## Objective
-Resolve the tsmomentum cached-series / record-date mismatch (extend or
-truncate consistently) without editing test tolerances or published constants.
+Obtain/cache real OHLC data through 2026-10-23 for the 7 symbols and verify 453 sessions, OR adjust published record consistently with documented rationale.
 
 ## Acceptance criteria
-- python -m pytest -q passes in full
+- python -m pytest -q passes
 - git status --porcelain data/ config/ empty
 
 ## Validation commands
