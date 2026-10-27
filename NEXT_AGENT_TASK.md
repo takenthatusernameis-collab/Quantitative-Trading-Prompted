@@ -1,16 +1,15 @@
-# NEXT_AGENT_TASK — TSMomentum date-range blocker (2026-10-27)
+# NEXT_AGENT_TASK — full-suite hang isolation (2026-10-27)
 
 ## Context
-Cached simulation series ends 2026-10-19 (8488 rows); committed record has 454 dates through 2026-10-23. Only 450 record dates are present in cached series. Tests require 453 committed sessions. Data extension needed; no safe source available in repo.
+TSMomentum same-session vol correction tests pass (28 tests; anchor committed 450 sessions reproduced). Full `python -m pytest -q` hangs on `test_the_incumbent_is_the_only_candidate_with_a_positive_gate_headroom` (~55s in isolation, passes alone); documented in README Cycle 875.
 
 ## Objective
-Obtain/cache real OHLC data through 2026-10-23 for the 7 symbols and verify 453 sessions, OR adjust published record consistently with documented rationale.
+Determine whether the full-suite hang is an ordering/resource issue and make the suite complete within documented timeout, without weakening tests.
 
 ## Acceptance criteria
-- python -m pytest -q passes
+- python -m pytest -q completes with exit 0
 - git status --porcelain data/ config/ empty
 
 ## Validation commands
-git status --porcelain
 python -m pytest -q
 git status --porcelain data/ config/
