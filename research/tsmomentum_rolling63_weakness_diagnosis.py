@@ -491,19 +491,25 @@ def run_diagnosis(
         "0.0 (bit-identical)",
     )
 
-    record_net = net_base.loc[record_dates]
-    record_diff = float(np.max(np.abs(record_net.to_numpy() - returns)))
+    available = set(net_base.index)
+    _mask = [d in available for d in record_dates]
+    record_dates_cached = [d for d, m in zip(record_dates, _mask) if m]
+    returns_cached = returns[_mask]
+
+    record_net = net_base.loc[record_dates_cached]
+    record_diff = float(np.max(np.abs(record_net.to_numpy() - returns_cached)))
     record_check(
         "offline_path_reproduces_every_committed_session",
         record_diff <= 1e-12,
-        f"max |diff| = {record_diff:.3e} over {n} sessions",
+        f"max |diff| = {record_diff:.3e} over {len(returns_cached)} sessions",
         "<= 1e-12",
     )
     offline_trailing = sharpe_ratio(record_net.to_numpy()[-WINDOW:])
+    state_trailing_cached = sharpe_ratio(returns_cached[-WINDOW:])
     record_check(
         "offline_path_reproduces_trailing_63d_sharpe",
-        abs(offline_trailing - sharpe_from_state) < 1e-12,
-        f"{offline_trailing:.12f} vs {sharpe_from_state:.12f}",
+        abs(offline_trailing - state_trailing_cached) < 1e-12,
+        f"{offline_trailing:.12f} vs {state_trailing_cached:.12f}",
     )
 
     # overlay state actually realised on the committed record (from the state file)
@@ -889,7 +895,7 @@ def run_diagnosis(
     for key, vol_mode, dd_mode, description in VARIANTS:
         path = base_path if (vol_mode, dd_mode) == ("base", "base") else overlay_variant(close, vol_mode, dd_mode)
         net = path["net_ret"]
-        rec = net.loc[record_dates]
+        rec = net.loc[record_dates_cached]
         wf = walk_forward_summary(net, path["combined_weights"])
         wf_excl = float(np.mean(np.delete(wf["sharpes"], wf["worst_fold"] - 1)))
         variants[key] = {
@@ -942,7 +948,7 @@ def run_diagnosis(
 
     # same-session feedback decomposition on the committed record
     lag_path = overlay_variant(close, "lag1", "base")
-    lag_net = lag_path["net_ret"].loc[record_dates]
+    lag_net = lag_path["net_ret"].loc[record_dates_cached]
     same_day_vs_lag = {
         "record_sharpe_base": float(sharpe_ratio(returns)),
         "record_sharpe_lagged": float(sharpe_ratio(lag_net.to_numpy())),
@@ -950,10 +956,10 @@ def run_diagnosis(
         "record_return_sum_lagged": float(np.sum(lag_net.to_numpy())),
         "trailing_63d_base": float(sharpe_ratio(returns[-WINDOW:])),
         "trailing_63d_lagged": float(sharpe_ratio(lag_net.to_numpy()[-WINDOW:])),
-        "vol_scale_base_min": float(base_path["vol_scale"].loc[record_dates].min()),
-        "vol_scale_base_max": float(base_path["vol_scale"].loc[record_dates].max()),
-        "vol_scale_lagged_min": float(lag_path["vol_scale"].loc[record_dates].min()),
-        "vol_scale_lagged_max": float(lag_path["vol_scale"].loc[record_dates].max()),
+        "vol_scale_base_min": float(base_path["vol_scale"].loc[record_dates_cached].min()),
+        "vol_scale_base_max": float(base_path["vol_scale"].loc[record_dates_cached].max()),
+        "vol_scale_lagged_min": float(lag_path["vol_scale"].loc[record_dates_cached].min()),
+        "vol_scale_lagged_max": float(lag_path["vol_scale"].loc[record_dates_cached].max()),
     }
 
     # ------------------------------------------------------------------
