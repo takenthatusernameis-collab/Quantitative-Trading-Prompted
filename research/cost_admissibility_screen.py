@@ -333,8 +333,8 @@ def solve_break_even_cost_bps(
     objective: Callable[[float], float],
     lo: float = -100.0,
     hi: float = 1000.0,
-    tolerance: float = 1e-9,
-    max_iterations: int = 200,
+    tolerance: float = 1e-6,
+    max_iterations: int = 40,
 ) -> dict[str, Any]:
     """Bisect a monotone-decreasing objective for its zero crossing.
 
@@ -1390,6 +1390,49 @@ def screen_candidate(cand: Candidate) -> dict[str, Any]:
     gross_ann = annualized_return(gross)
     gross_ann_arith = float(gross.mean() * 252.0)
 
+    _wf_cache = {}
+    _wf_canon_cache = {}
+    _net_cache = {}
+    _sr_cache = {}
+
+    def _get_net(c: float):
+        key = (id(gross), id(turnover), float(c))
+        if key not in _net_cache:
+            _net_cache[key] = net_return_series(gross, turnover, c)
+        return _net_cache[key]
+
+    def _get_wf(c: float):
+        key = (id(gross), id(turnover), id(cand.weights), id(tuple(cand.splits)), float(c), bool(cand.explicit_turnover))
+        if key not in _wf_cache:
+            _wf_cache[key] = wf_mean_sharpe(
+                cand.gross,
+                cand.turnover,
+                cand.weights,
+                cand.splits,
+                c,
+                cand.explicit_turnover,
+            )
+        return _wf_cache[key]
+
+    def _get_wf_canon(c: float):
+        key = (id(gross), id(turnover), id(cand.weights), id(tuple(cand.splits)), float(c), bool(cand.explicit_turnover))
+        if key not in _wf_canon_cache:
+            _wf_canon_cache[key] = wf_mean_canonical_sharpe(
+                cand.gross,
+                cand.turnover,
+                cand.weights,
+                cand.splits,
+                c,
+                cand.explicit_turnover,
+            )
+        return _wf_canon_cache[key]
+
+    def _get_sr(s):
+        key = id(s)
+        if key not in _sr_cache:
+            _sr_cache[key] = float(sharpe_ratio(s))
+        return _sr_cache[key]
+
     cost_drag: dict[float, float] = {}
     net_ann: dict[float, float] = {}
     net_canonical: dict[float, float] = {}
@@ -1397,25 +1440,11 @@ def screen_candidate(cand: Candidate) -> dict[str, Any]:
     net_wf_canonical: dict[float, float] = {}
     for bps in COST_ROWS_BPS:
         cost_drag[bps] = annualized_cost_drag(turnover, bps)
-        net = net_return_series(gross, turnover, bps)
+        net = _get_net(bps)
         net_ann[bps] = annualized_return(net)
-        net_canonical[bps] = float(sharpe_ratio(net))
-        net_wf[bps] = wf_mean_sharpe(
-            cand.gross,
-            cand.turnover,
-            cand.weights,
-            cand.splits,
-            bps,
-            cand.explicit_turnover,
-        )
-        net_wf_canonical[bps] = wf_mean_canonical_sharpe(
-            cand.gross,
-            cand.turnover,
-            cand.weights,
-            cand.splits,
-            bps,
-            cand.explicit_turnover,
-        )
+        net_canonical[bps] = _get_sr(net)
+        net_wf[bps] = _get_wf(bps)
+        net_wf_canonical[bps] = _get_wf_canon(bps)
 
     min_gross_signal = cost_drag[DECISION_BPS]
     surplus = gross_ann - min_gross_signal
@@ -1423,7 +1452,7 @@ def screen_candidate(cand: Candidate) -> dict[str, Any]:
 
     # Break-even cost per unit: net annualized return = 0.
     be = solve_break_even_cost_bps(
-        lambda c: annualized_return(net_return_series(gross, turnover, c))
+        lambda c: annualized_return(_get_net(c))
     )
 
     # Cost per unit at which the candidate's net walk-forward Sharpe falls to
@@ -1442,19 +1471,15 @@ def screen_candidate(cand: Candidate) -> dict[str, Any]:
     )
 
     def parity_gap(c: float) -> float:
-        cand_sharpe = wf_mean_sharpe(
-            cand.gross, cand.turnover, cand.weights, cand.splits, c, cand.explicit_turnover
-        )
+        cand_sharpe = _get_wf(c)
         return cand_sharpe - bench_wf_sharpe
 
     parity = solve_break_even_cost_bps(parity_gap)
 
     # The same question on the full-window canonical Sharpe.
     def parity_gap_full(c: float) -> float:
-        cand_sharpe = float(sharpe_ratio(net_return_series(gross, turnover, c)))
-        bench_sharpe = float(
-            sharpe_ratio(net_return_series(cand.benchmark_gross, cand.benchmark_turnover, c))
-        )
+        cand_sharpe = _get_sr(_get_net(c))
+        bench_sharpe = _get_sr(net_return_series(cand.benchmark_gross, cand.benchmark_turnover, c))
         return cand_sharpe - bench_sharpe
 
     parity_full = solve_break_even_cost_bps(parity_gap_full)
@@ -1467,14 +1492,10 @@ def screen_candidate(cand: Candidate) -> dict[str, Any]:
     # which the candidate records quote their walk-forward means, is
     # published next to it.
     def gate_gap(c: float) -> float:
-        return wf_mean_canonical_sharpe(
-            cand.gross, cand.turnover, cand.weights, cand.splits, c, cand.explicit_turnover
-        ) - PROMOTION_WF_SHARPE_MIN
+        return _get_wf_canon(c) - PROMOTION_WF_SHARPE_MIN
 
     def gate_gap_backtest(c: float) -> float:
-        return wf_mean_sharpe(
-            cand.gross, cand.turnover, cand.weights, cand.splits, c, cand.explicit_turnover
-        ) - PROMOTION_WF_SHARPE_MIN
+        return _get_wf(c) - PROMOTION_WF_SHARPE_MIN
 
     gate_headroom = solve_break_even_cost_bps(gate_gap)
     gate_headroom_backtest = solve_break_even_cost_bps(gate_gap_backtest)
@@ -1483,12 +1504,8 @@ def screen_candidate(cand: Candidate) -> dict[str, Any]:
     # a candidate that is already below the gate at zero cost has no cost
     # headroom at all, and a negative gate headroom means it would have to be
     # *paid* to trade to reach the gate.
-    wf_sharpe_at_zero_cost = wf_mean_canonical_sharpe(
-        cand.gross, cand.turnover, cand.weights, cand.splits, 0.0, cand.explicit_turnover
-    )
-    wf_sharpe_at_zero_cost_backtest = wf_mean_sharpe(
-        cand.gross, cand.turnover, cand.weights, cand.splits, 0.0, cand.explicit_turnover
-    )
+    wf_sharpe_at_zero_cost = _get_wf_canon(0.0)
+    wf_sharpe_at_zero_cost_backtest = _get_wf(0.0)
 
     df, pooled = walkforward_table(
         cand.gross,
