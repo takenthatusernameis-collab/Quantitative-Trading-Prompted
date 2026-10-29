@@ -1,15 +1,19 @@
-# NEXT_AGENT_TASK — full-suite hang isolation (2026-10-27)
+# NEXT_AGENT_TASK — regenerate scratch provenance report (2026-10-29)
 
 ## Context
-TSMomentum same-session vol correction tests pass (28 tests; anchor committed 450 sessions reproduced). Full `python -m pytest -q` hangs on `test_the_incumbent_is_the_only_candidate_with_a_positive_gate_headroom` (~55s in isolation, passes alone); documented in README Cycle 875.
+Full `python -m pytest -q` fails at `tests/test_commodity_data_gate_001.py::test_tool_runs_read_only_and_passes_its_own_checks` because `/tmp/scratchpad/commodity_fetch/commodity_fetch_report.json` is missing in this environment. The suite otherwise progresses (targeted cost-admissibility test passes in ~21s).
 
 ## Objective
-Determine whether the full-suite hang is an ordering/resource issue and make the suite complete within documented timeout, without weakening tests.
+Restore the scratch provenance report (or the test's prerequisite) so `python -m pytest -q` exits 0, without weakening tests.
 
 ## Acceptance criteria
-- python -m pytest -q completes with exit 0
-- git status --porcelain data/ config/ empty
+- `python -m pytest -q` exits 0
+- `git status --porcelain data/ config/` empty
 
 ## Validation commands
 python -m pytest -q
 git status --porcelain data/ config/
+
+## Scope boundaries
+- Do not edit test thresholds or weaken checks.
+- Investigate `research/commodity_data_gate_001.py` provenance report generation and the expected scratchpad location.
