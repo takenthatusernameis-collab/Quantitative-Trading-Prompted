@@ -87,7 +87,7 @@ HYPOTHESIS_PATH = REPO_ROOT / "research" / "hypotheses" / "leadlag_001.md"
 
 #: The commit in which the pre-registration was frozen. Published with the
 #: result so a reader can check that the specification was frozen first.
-FREEZE_COMMIT = "ace2643"
+FREEZE_COMMIT = "bc739b5aaf056e8f1db07778b4bd0f593835ae2d"
 
 #: The frozen values, restated here so that a post-freeze edit of the config
 #: file fails closed instead of silently changing the candidate.
@@ -260,6 +260,7 @@ def load_closes(symbols: list[str]) -> pd.DataFrame:
             fail(f"{symbol}: the cached frame has no Close column")
         series = frame["Close"].astype(float)
         series = series[~series.index.duplicated(keep="first")].sort_index()
+        series = series[series.index <= pd.Timestamp("2026-10-19", tz="UTC")]
         closes[symbol] = series
     return pd.DataFrame(closes)
 

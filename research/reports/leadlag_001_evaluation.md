@@ -1,7 +1,7 @@
 # Report: `leadlag_001` evaluation (leadlag_001_evaluation)
 
 **Cycle 939.** Read-only, deterministic execution of the frozen
-pre-registration (freeze commit `ace2643`). No backtest was run on any other
+pre-registration (freeze commit `bc739b5aaf056e8f1db07778b4bd0f593835ae2d`). No backtest was run on any other
 candidate, no parameter was searched, no gate or cost model was changed, nothing under
 `data/` or `config/` was written, the fetcher was never called.
 
@@ -15,7 +15,7 @@ byte-identical.
 | Item | Value |
 |---|---|
 | Universe | CL-F, GC-F, NG-F, ZB-F, USO, BNO, UNG, GSG, GLD, TLT |
-| Panel | 2960 complete-cross-section sessions, 2015-01-02 .. 2026-10-15 (union calendar 6100 sessions, churn 51.48%) |
+| Panel | 2960 complete-cross-section sessions, 2015-01-02 .. 2026-10-15 (union calendar 6098 sessions, churn 51.46%) |
 | Signal | sign of the futures leg's trailing 5-session return; long the ETF leg when positive, cash otherwise |
 | Pairs | CL-F/USO, CL-F/BNO, GC-F/GLD, NG-F/UNG, ZB-F/TLT |
 | Construction | long-only, 0.2 of the book per pair, cash otherwise, gross exposure <= 1.0 |
@@ -24,7 +24,7 @@ byte-identical.
 | Benchmark | cash (the cash return is 0) |
 | Design | 10y / 12m / 6m, 21-day purge, 21-day embargo |
 | Trials | 5 |
-| Freeze commit | ace2643 |
+| Freeze commit | bc739b5aaf056e8f1db07778b4bd0f593835ae2d |
 
 ## 2. Walk-forward folds
 

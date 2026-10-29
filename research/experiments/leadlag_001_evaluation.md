@@ -2,7 +2,7 @@
 
 **Cycle 939.** Execution of the **frozen** pre-registration
 (`research/hypotheses/leadlag_001.md` + `config/leadlag_candidate_001.yaml`, freeze commit
-**ace2643**). The frozen values are re-asserted by the tool before the run; a
+**bc739b5aaf056e8f1db07778b4bd0f593835ae2d**). The frozen values are re-asserted by the tool before the run; a
 post-freeze edit of the config fails closed. No threshold, gate, cost model, universe or
 Sharpe convention was changed after the result was known; nothing under `data/` or
 `config/` was written; the fetcher was never called; no other candidate was executed,
@@ -10,7 +10,7 @@ re-tuned or re-ranked.
 
 ## Hypothesis reference
 
-`research/hypotheses/leadlag_001.md` (frozen at `ace2643`).
+`research/hypotheses/leadlag_001.md` (frozen at `bc739b5aaf056e8f1db07778b4bd0f593835ae2d`).
 
 ## Data used
 
@@ -19,8 +19,8 @@ re-tuned or re-ranked.
 - **Date range**: 2015-01-02 .. 2026-10-15
 - **Frequency**: daily, session hours
 - **Universe**: CL-F, GC-F, NG-F, ZB-F, USO, BNO, UNG, GSG, GLD, TLT; the **complete cross-section** of the ten
-  instruments is the panel: 2960 sessions out of a 6100-session
-  union calendar (calendar churn 51.48%, because the futures and the ETF legs
+  instruments is the panel: 2960 sessions out of a 6098-session
+  union calendar (calendar churn 51.46%, because the futures and the ETF legs
   have different trading calendars).
 - **Point-in-time treatment**: the futures signal at session `t` uses only closes up to
   and including `t`; the weights formed at `t` become effective at `t+1` (one-session lag)
