@@ -1,3 +1,21 @@
+# DELAY-ELIMINATION OVERRIDE — 2026-10-30
+
+The full-suite green criterion is currently blocked by two different classes of issue:
+1. The committed DBC/csmomentum cache inconsistency needs an explicit governance decision before any change under data/, config/, frozen simulation artifacts, or published records. Do not rerun the full suite expecting it to become green while this decision is pending.
+2. Several provider/TSMomentum and incumbent-headroom tests have documented long-running or hanging behavior. Re-running the complete suite repeatedly does not identify the slow node and wastes time.
+
+**Bounded execution plan:**
+- Do not run python -m pytest -q again until the DBC/csmomentum governance decision is made and the documented leadlag freeze references are repaired through an auditable path.
+- Use pytest --collect-only first; then run only the named hanging test nodes/files under an OS-level timeout with -vv to identify the last test reached. Limit each isolate to one attempt per unchanged code/input state.
+- If a test file has no output or exceeds its time budget, capture the exact last node and process state; do not rerun the same unchanged isolate repeatedly.
+- Work only on network-independent tests or code paths that do not read/write data/, config/, frozen artifacts, strategy thresholds, or research verdicts.
+- Run focused tests after any permitted test/diagnostic change. Reserve full-suite execution for after the governance blocker is resolved and a concrete fix exists.
+- If the next productive action is the governance choice between (a) restoring historical DBC to the frozen cut-off, (b) recreating the csmomentum artifacts from a separately frozen historical cache, or (c) amending the published results with an explicit supersession record, stop and ask the repository owner. Do not choose unilaterally.
+
+Keep thresholds and checks strict. Never fabricate the missing freeze commit, alter published results, or weaken assertions to obtain a green suite. The task remains open; this override changes only the diagnostic order and repeated-run cadence.
+
+---
+
 # NEXT_AGENT_TASK — restore full pytest green (2026-10-29)
 
 ## Context
