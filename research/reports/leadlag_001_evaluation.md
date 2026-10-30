@@ -1,7 +1,7 @@
 # Report: `leadlag_001` evaluation (leadlag_001_evaluation)
 
 **Cycle 939.** Read-only, deterministic execution of the frozen
-pre-registration (freeze commit `bc739b5aaf056e8f1db07778b4bd0f593835ae2d`). No backtest was run on any other
+pre-registration (freeze commit `b0b54e8fd207b8c8030ed943784e1955adaa95ae`). No backtest was run on any other
 candidate, no parameter was searched, no gate or cost model was changed, nothing under
 `data/` or `config/` was written, the fetcher was never called.
 
@@ -24,7 +24,7 @@ byte-identical.
 | Benchmark | cash (the cash return is 0) |
 | Design | 10y / 12m / 6m, 21-day purge, 21-day embargo |
 | Trials | 5 |
-| Freeze commit | bc739b5aaf056e8f1db07778b4bd0f593835ae2d |
+| Freeze commit | b0b54e8fd207b8c8030ed943784e1955adaa95ae |
 
 ## 2. Walk-forward folds
 
