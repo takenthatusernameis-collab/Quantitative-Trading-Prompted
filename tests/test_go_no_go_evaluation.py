@@ -75,7 +75,15 @@ DOCUMENTED_PSR_GREY_ZONE = {"lower": 0.5, "upper": 0.95}
 
 
 def _hashes() -> dict[str, str]:
-    paths = [STATE, ROOT / "data" / "processed" / "paper_trading_state.yaml.backup"]
+    # The pre-extension backup was a transient artifact of the state-extension
+    # workflow (research/extend_paper_trading_state.py creates and unlinks it
+    # around the single write) and was removed from the repository in commit
+    # 7b3c6b1. It is not a committed artifact, so hash it only when present
+    # rather than assuming it exists on disk (Cycle 949).
+    paths = [STATE]
+    backup = ROOT / "data" / "processed" / "paper_trading_state.yaml.backup"
+    if backup.exists():
+        paths.append(backup)
     paths += sorted(RAW_DIR.rglob("*.parquet"))
     out = {}
     for path in paths:
