@@ -87,7 +87,7 @@ HYPOTHESIS_PATH = REPO_ROOT / "research" / "hypotheses" / "leadlag_001.md"
 
 #: The commit in which the pre-registration was frozen. Published with the
 #: result so a reader can check that the specification was frozen first.
-FREEZE_COMMIT = "b0b54e8fd207b8c8030ed943784e1955adaa95ae"
+FREEZE_COMMIT = "24bcad0dc9fef95316c62dd2193e62566c04087a"
 
 #: The frozen values, restated here so that a post-freeze edit of the config
 #: file fails closed instead of silently changing the candidate.
