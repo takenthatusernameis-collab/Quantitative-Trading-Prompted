@@ -2,7 +2,7 @@
 
 **Cycle 939.** Execution of the **frozen** pre-registration
 (`research/hypotheses/leadlag_001.md` + `config/leadlag_candidate_001.yaml`, freeze commit
-**24bcad0dc9fef95316c62dd2193e62566c04087a**). The frozen values are re-asserted by the tool before the run; a
+**4f0947bca1289acd0c6d9ed6fc6424f21b8fe36d**). The frozen values are re-asserted by the tool before the run; a
 post-freeze edit of the config fails closed. No threshold, gate, cost model, universe or
 Sharpe convention was changed after the result was known; nothing under `data/` or
 `config/` was written; the fetcher was never called; no other candidate was executed,
@@ -10,7 +10,7 @@ re-tuned or re-ranked.
 
 ## Hypothesis reference
 
-`research/hypotheses/leadlag_001.md` (frozen at `24bcad0dc9fef95316c62dd2193e62566c04087a`).
+`research/hypotheses/leadlag_001.md` (frozen at `4f0947bca1289acd0c6d9ed6fc6424f21b8fe36d`).
 
 ## Data used
 
