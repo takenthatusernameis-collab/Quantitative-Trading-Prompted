@@ -105,7 +105,7 @@ Measured equity-session lag behind the newest equity bar (2026-10-23): 2026-10-0
 
 | Group | Files | Parquet files | Rows | First | Last |
 |---|---|---|---|---|---|
-| `data/processed/(top level)` | 19 | 16 | 101640 | 1993-01-29 | 2026-10-09 |
+| `data/processed/(top level)` | 18 | 16 | 101640 | 1993-01-29 | 2026-10-09 |
 | `data/processed/crypto` | 2 | 2 | 4928 | 2020-01-02 | 2026-09-30 |
 | `data/processed/paper_trading` | 1816 | 1816 | 4540 | 2025-01-02 | 2026-10-23 |
 
