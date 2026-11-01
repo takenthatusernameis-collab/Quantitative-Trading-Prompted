@@ -1,8 +1,8 @@
-# NEXT_AGENT_TASK — Extend paper-trading state to 2026-11-02 (after close)
+# NEXT_AGENT_TASK — Extend paper-trading state to 2026-11-03 (after close)
 
 ## Context
 The paper-trading state (`data/processed/paper_trading_state.yaml`) currently
-ends at **2026-10-30** (459 cumulative sessions). The extension tool was run
+ends at **2026-10-30** (460 cumulative sessions). The extension tool was run
 on 2026-11-01 and confirmed:
 - clock gate: released
 - next expected session: **2026-11-02 (Monday)**
