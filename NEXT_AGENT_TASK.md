@@ -1,31 +1,25 @@
-# NEXT_AGENT_TASK — commit paper_trading_record_status_001.md consistency fixes
+# NEXT_AGENT_TASK — reconcile paper_trading_record_status_001.md with committed paper-trading state
 
 ## Context
-Cycle 875 restored `data/processed/paper_trading_state.yaml` to `last_run_date: 2026-10-23` (454 sessions) via commit baddfe0, but two companion status files at HEAD still carry the stale values (`sessions: 459`, `last_run_date: 2026-10-30`). The working tree has already been edited to match the committed state (`sessions: 454`, `last_run_date: 2026-10-23`) but the changes are not committed:
-- `research/experiments/paper_trading_record_status_001.md` (modified: sessions 459 -> 454)
-- `research/reports/paper_trading_record_status_001.md` (modified: sessions 459 -> 454, last_run_date 2026-10-30 -> 2026-10-23)
-
-`git status --porcelain` shows exactly these two modified files; nothing under `data/` or `config/` is dirty.
+The committed `data/processed/paper_trading_state.yaml` now has `last_run_date: 2026-10-26` and `run_history` length 455, while both status files still read `sessions: 454` and `last_run_date: 2026-10-23`. The working tree is clean.
 
 ## Objective
-Commit the two `paper_trading_record_status_001.md` consistency fixes so the working tree is clean and the status files match the committed paper-trading state. Do not change any other file, do not edit tests/thresholds, do not reopen the leadlag freeze-commit blocker.
+Update both `research/experiments/paper_trading_record_status_001.md` and `research/reports/paper_trading_record_status_001.md` to `sessions: 455` and `last_run_date: 2026-10-26`, verify against the yaml, and commit only those two files.
 
 ## Acceptance criteria
-- `git status --porcelain` is empty (working tree clean)
-- `git status --porcelain data/ config/` is empty
-- Both `paper_trading_record_status_001.md` files read `sessions: 454` and `last_run_date: 2026-10-23`
-- The commit contains only the two `paper_trading_record_status_001.md` files
+- `git status --porcelain` empty
+- Both status files read `sessions: 455` and `last_run_date: 2026-10-26`
+- Commit contains only the two status files
+- `git status --porcelain data/ config/` empty
 
 ## Validation commands
 ```bash
 git status --porcelain
-git diff --cached --stat
-git log --oneline -3
-python3 -c "import yaml; d=yaml.safe_load(open('data/processed/paper_trading_state.yaml')); print(d['run_history'][-1]['date'], len(d.get('sessions',[])))"
+python3 -c "import yaml; d=yaml.safe_load(open('data/processed/paper_trading_state.yaml')); print(d['last_run_date'], len(d['run_history']))"
+grep -n "sessions\|last_run_date" research/experiments/paper_trading_record_status_001.md research/reports/paper_trading_record_status_001.md
 ```
 
 ## Scope boundaries
-- Commit only the two `paper_trading_record_status_001.md` files
-- Do not modify `data/`, `config/`, `tests/`, `src/`, or any research code
-- Do not reopen the leadlag freeze-commit blocker (separate environment issue)
-- Do not change gates, thresholds, cost models, or universe
+- Modify only the two `paper_trading_record_status_001.md` files
+- Do not modify `data/`, `config/`, `tests/`, `src/`, or research code
+" filePath="/home/runner/work/Quantitative-Trading-Prompted/Quantitative-Trading-Prompted/NEXT_AGENT_TASK.md
