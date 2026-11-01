@@ -1,7 +1,7 @@
 # NEXT_AGENT_TASK — Re-check paper-trading extension after 17:00 ET on 2026-11-02
 
 ## Context
-Session UTC 2026-11-01T21:03Z ran `python research/extend_paper_trading_state.py`. Current time ET 2026-11-01 16:03:30 EST; next expected session 2026-11-02 (Monday) not closed yet (`sessions extended: 0`, `candidate_available: no`). `python research/drift_persistence_report.py` shows `stored == recomputed: True` (git_sha 160bfaf). Tests `tests/test_paper_trading_extend.py tests/test_drift_persistence.py` all passed (39 passed in 3.34s). `git status --porcelain data/ config/` empty. Working tree has only `research/reports/paper_trading_rolling.md` modified (generated artifact).
+UTC 2026-11-01T22:58:27Z: ran `python research/extend_paper_trading_state.py`. Current time ET 2026-11-01 17:58:53 EST; next expected session 2026-11-02 (Monday) not closed yet (`sessions extended: 0`, `candidate_available: no`). `python research/drift_persistence_report.py` shows `stored == recomputed: True`. Tests `tests/test_paper_trading_extend.py tests/test_drift_persistence.py` all passed (39 passed in 3.28s). `git status --porcelain data/ config/` empty. Wakeup scheduled (wku_19956c484001ukb9C5opWwWhOw) for 2026-11-02T22:00:00Z (after 17:00 ET 2026-11-02).
 
 ## Objective
 Run `python research/extend_paper_trading_state.py` at or after 17:00 ET on 2026-11-02 to extend paper-trading state by one session if available (2026-11-02 session may have closed by then; also check 2026-11-03). Record exact commands and outputs.
