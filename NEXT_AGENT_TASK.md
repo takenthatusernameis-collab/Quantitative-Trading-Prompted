@@ -1,25 +1,25 @@
-# NEXT_AGENT_TASK — reconcile paper_trading_record_status_001.md with committed paper-trading state
+# NEXT_AGENT_TASK — attempt paper-trading extension after 2026-10-26
 
 ## Context
-The committed `data/processed/paper_trading_state.yaml` now has `last_run_date: 2026-10-26` and `run_history` length 455, while both status files still read `sessions: 454` and `last_run_date: 2026-10-23`. The working tree is clean.
+`data/processed/paper_trading_state.yaml` has `last_run_date: 2026-10-26` and 455 sessions. Status files reconciled. Next candidate session is 2026-10-27 (Tuesday), usable after 17:00 ET.
 
 ## Objective
-Update both `research/experiments/paper_trading_record_status_001.md` and `research/reports/paper_trading_record_status_001.md` to `sessions: 455` and `last_run_date: 2026-10-26`, verify against the yaml, and commit only those two files.
+Run `python research/extend_paper_trading_state.py` (no --dry-run), record output, run drift report and tests, and if a session is extended, update status files accordingly.
 
 ## Acceptance criteria
-- `git status --porcelain` empty
-- Both status files read `sessions: 455` and `last_run_date: 2026-10-26`
-- Commit contains only the two status files
-- `git status --porcelain data/ config/` empty
+- `git status --porcelain data/ config/` empty unless a legitimate state extension occurred
+- Extension output recorded (sessions extended count, NAV before/after)
+- `python research/drift_persistence_report.py` passes (stored == recomputed)
+- `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q` passes
 
 ## Validation commands
 ```bash
+python research/extend_paper_trading_state.py
+python research/drift_persistence_report.py
+python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q
 git status --porcelain
-python3 -c "import yaml; d=yaml.safe_load(open('data/processed/paper_trading_state.yaml')); print(d['last_run_date'], len(d['run_history']))"
-grep -n "sessions\|last_run_date" research/experiments/paper_trading_record_status_001.md research/reports/paper_trading_record_status_001.md
 ```
 
 ## Scope boundaries
-- Modify only the two `paper_trading_record_status_001.md` files
-- Do not modify `data/`, `config/`, `tests/`, `src/`, or research code
-" filePath="/home/runner/work/Quantitative-Trading-Prompted/Quantitative-Trading-Prompted/NEXT_AGENT_TASK.md
+- Do not modify data/, config/, tests/, src/ except via the extension tool's normal state write
+- Do not change gates, thresholds, or strategy parameters
