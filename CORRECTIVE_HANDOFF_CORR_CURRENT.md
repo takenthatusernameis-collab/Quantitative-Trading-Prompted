@@ -1,29 +1,26 @@
-# CORRECTIVE_HANDOFF — Invocation 8 (2026-10-31)
+# CORRECTIVE_HANDOFF — Invocation 98 (2026-11-01)
 
 ## Status
-Verified durable progress. All 19 go/no-go evaluation tests pass.
+Durable project progress produced. CORRECTIVE_VERIFICATION=PASS on focused verification.
 
 ## Correction applied
-Three unstaged modifications in the worktree:
-
-1. `tests/test_go_no_go_evaluation.py` — `_hashes()` now treats `data/processed/paper_trading_state.yaml.backup` as optional (`if backup.exists()`), since the file was removed from the repository in commit `7b3c6b1` and is a transient artifact of `research/extend_paper_trading_state.py`. This fixes `test_script_is_side_effect_free`, which previously failed with `FileNotFoundError` on the missing backup.
-
-2. `research/reports/sectorrotation_long_sample_feasibility_001.md` — Code revision `f9828fa` → `2ec0575` (HEAD). The prior edit left a trailing blank line at EOF (byte 33580 → 33579 after stripping to a single trailing newline); this was the root cause of the `git diff --check` failure reported as the latest blocker.
-
-3. `research/reports/tsmomentum_sma175_candidate_eval_001.md` — Git rev `248a04a` → `2ec0575` (HEAD).
+Smallest justified, in-scope correction: removed the trailing blank line at EOF from `research/reports/sectorrotation_long_sample_feasibility_001.md` (line 875), which was the root cause of the `git diff --check` failure (`new blank line at EOF`). The accompanying legitimate change — code revision `a188737` → `3cb31a3` (HEAD) — is preserved. No data/config/tests were touched.
 
 ## Verification
-Command: `python -m pytest tests/test_go_no_go_evaluation.py -v`
-Output: `19 passed in 9.06s` — all tests pass, including `test_script_is_side_effect_free`.
-
 Command: `git diff --check && git diff --cached --check`
-Output: both exit 0 (no whitespace/EOF errors). This was the previously failing gate.
+Output: exit 0 (no whitespace/EOF errors). Previously failing gate now passes.
 
-Command: `git status --porcelain`
-Output: 3 modified files (unstaged), no untracked files.
+Command: `git status --porcelain data/ config/`
+Output: empty (commodity gate clean-tree invariant holds).
 
-## Previous blocker (resolved, not re-investigated)
-The prior invocation declared BLOCKED on a "DBC/csmomentum cache inconsistency" and timed out (exit 124). Diagnostic logs confirm this inconsistency no longer exists: the working DBC and `simulation_csmomentum_001.parquet` match committed HEAD, and all csmomentum tests pass. Full suite was 751 passed, 1 failed (the backup FileNotFoundError, now fixed), 1 skipped.
+Command: `python -m pytest tests/test_go_no_go_evaluation.py -q`
+Output: `19 passed in 8.45s` — all go/no-go evaluation tests pass.
 
-## Unresolved blockers
-None. Changes are unstaged; commit requires explicit user request.
+## Unresolved blockers (out of scope for this agent, not blocking focused verification)
+The DBC/csmomentum cache inconsistency requires an owner decision among (a) truncate DBC to 2026-10-08, (b) recreate csmomentum artifacts from frozen cache, (c) amend published results with supersession record. No explicit owner decision exists in recent commits/governance records. Per NEXT_AGENT_TASK.md scope, this agent must not guess or unilaterally edit data/config/tests. This is a governance blocker, not a code defect, and is preserved for the repository owner.
+
+## Files changed (unstaged)
+- `research/reports/sectorrotation_long_sample_feasibility_001.md` — removed trailing blank line at EOF; code revision bumped to HEAD.
+- `CORRECTIVE_HANDOFF_CORR_CURRENT.md` — this record.
+
+Commit requires explicit user request.
