@@ -1,12 +1,12 @@
 # NEXT_AGENT_TASK — Re-check paper-trading state extension for 2026-11-02 (after close)
 
 ## Context
-This session (UTC 2026-11-01T15:10Z, 10:10 EST, Sunday) verified the assigned extension task. The clock gate is released but the 2026-11-02 (Monday) US trading session has not closed yet — `session already complete: False`, `candidate available: no`. The session becomes usable only after 17:00 ET on Monday 2026-11-02.
+This session (UTC 2026-11-01T15:13Z, 10:13 EST, Sunday) verified the assigned extension task. The clock gate is released but the 2026-11-02 (Monday) US trading session has not closed yet — `session already complete: False`, `candidate available: no`. The session becomes usable only after 17:00 ET on Monday 2026-11-02.
 
 Verification completed this session:
 - `python research/extend_paper_trading_state.py` -> exit 0, `sessions extended: 0`, NAV before == NAV after == 133019.54382525434, state write count: 0, raw cache scratch (canonical data/raw untouched)
 - `python research/drift_persistence_report.py` -> `stored == recomputed: True`, provenance block present (git_sha, state sha256, config hash)
-- `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q` -> 39 passed in 2.17s
+- `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q` -> 39 passed in 2.05s
 - `git status --porcelain data/ config/` -> empty
 
 Current state:
@@ -39,8 +39,8 @@ git status --porcelain data/ config/
 - Do not modify `data/raw/`; the fetcher uses scratch cache only.
 
 ## Supervisor disposition
-- `.kilo-runtime/current-supervisor-recommendation.json` (recommendation_id `41287846582-attempt-1-review-0006-d2c561880272`, review cycle 6) claimed `get_provenance` is defined but never called and has no test coverage. **Premise is false**: `get_provenance` is defined at line 83, called at line 126, and emitted by `print_report` at lines 221-236. Disposition recorded as `superseded` in `.kilo-runtime/worker-disposition.json` with grep and CLI evidence. No code change required.
+- `.kilo-runtime/current-supervisor-recommendation.json` (recommendation_id `41287846582-attempt-1-review-0006-d2c561880272`, review cycle 6) claimed `get_provenance` is defined but never called and has no test coverage. **Premise is false**: `get_provenance` is defined at line 83, called at line 126 inside `build_report`, and emitted by `print_report` at lines 221-236. Disposition recorded as `verified` in `.kilo-runtime/worker-disposition.json` with grep and CLI evidence. No code change required.
 
 ## Notes
 - This is a time-gated blocker, not a code defect. Do not attempt to force the extension before 17:00 ET on 2026-11-02.
-- `research/reports/paper_trading_rolling.md` may show as modified (generated `git_sha` artifact rewritten to match HEAD); this is not data/config and should be left as-is.
+- `research/reports/paper_trading_rolling.md` shows as modified (generated `git_sha` artifact rewritten to match HEAD); this is not data/config and should be left as-is.
