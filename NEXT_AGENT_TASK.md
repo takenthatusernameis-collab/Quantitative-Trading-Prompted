@@ -3,12 +3,15 @@
 ## Context
 The paper-trading state (`data/processed/paper_trading_state.yaml`) currently
 ends at **2026-10-30** (460 cumulative sessions). The extension tool was run
-on 2026-11-01 and confirmed:
+on 2026-11-01 (UTC 2026-11-01T15:03:10Z, 10:03 EST, Sunday) and confirmed:
 - clock gate: released
 - next expected session: **2026-11-02 (Monday)**
 - session usable after: **17:00 ET on 2026-11-02**
 - candidate available: no (session not yet closed)
 - drift report: `stored == recomputed: True`
+- `python research/extend_paper_trading_state.py` -> exit 0, `sessions extended: 0`, `NAV before == NAV after: 133019.54382525434`, `state write count: 0`
+- `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q` -> 39 passed
+- `git status --porcelain data/ config/` -> empty
 
 ## Objective
 Run `python research/extend_paper_trading_state.py` at or after 17:00 ET on
