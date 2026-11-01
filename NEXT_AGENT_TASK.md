@@ -1,7 +1,7 @@
 # NEXT_AGENT_TASK — Extend paper-trading state when 2026-11-02 (or later) session completes
 
 ## Context
-Session UTC 2026-11-01T18:09Z re-verified current state. `last_run_date` is 2026-10-30 (460 cumulative sessions), NAV 133019.54382525434, rolling 63d Sharpe -0.7689729823169228. Extension on 2026-11-01 produced `sessions extended: 0` because 2026-11-02 bar not yet complete (current ET ~13:09 EST, Sunday; next session is 2026-11-02 Monday). Drift report `stored == recomputed: True`. Tests 39 passed for paper trading/drift tests. `data/` and `config/` clean. Supervisor recommendation 0006 re-verified as `verified` (premise false: `get_provenance` is called at `research/drift_persistence_report.py:126` and emitted in CLI output).
+Session UTC 2026-11-01T18:11Z re-verified current state. `last_run_date` is 2026-10-30 (460 cumulative sessions), NAV 133019.54382525434, rolling 63d Sharpe -0.7689729823169228. Extension on 2026-11-01 produced `sessions extended: 0` because 2026-11-02 bar not yet complete (current ET ~13:11 EST, Sunday; next session is 2026-11-02 Monday). Drift report `stored == recomputed: True`. Tests 39 passed for paper trading/drift tests. `data/` and `config/` clean. Supervisor recommendation 0006 re-verified as `verified` (premise false: `get_provenance` is defined at `research/drift_persistence_report.py:83`, called at line 126, and emitted in CLI provenance block).
 
 ## Objective
 Run `python research/extend_paper_trading_state.py` at or after 17:00 ET on 2026-11-02 (or next local day when complete) to extend paper-trading state by one session if a completed 2026-11-02 bar is available. Record exact commands and outputs.
