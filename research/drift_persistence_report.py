@@ -19,7 +19,10 @@ Contract (Cycle 857):
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -35,6 +38,7 @@ from src.evaluation.drift import (
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = REPO_ROOT / "config" / "paper_trading_config.yaml"
+ROLLING_REPORT_PATH = REPO_ROOT / "research" / "reports" / "paper_trading_rolling.md"
 
 
 def state_path(config_path: Path = CONFIG_PATH) -> Path:
@@ -49,7 +53,52 @@ def load_state(path: Path) -> dict:
         return yaml.safe_load(fh) or {}
 
 
-def build_report(state: dict, threshold: float = DEFAULT_SHARPE_THRESHOLD) -> dict:
+def _sha256_file(path: Path) -> str | None:
+    try:
+        if not path.exists():
+            return None
+        h = hashlib.sha256()
+        h.update(path.read_bytes())
+        return h.hexdigest()
+    except Exception:
+        return None
+
+
+def _get_git_sha() -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0:
+            sha = result.stdout.strip()
+            return sha if sha else None
+    except Exception:
+        pass
+    return None
+
+
+def get_provenance(state_path: Path) -> dict:
+    git_sha = _get_git_sha()
+    paper_trading_state_sha256 = _sha256_file(state_path)
+    config_hashes = {}
+    for name, p in [
+        ("paper_trading_config", CONFIG_PATH),
+    ]:
+        h = _sha256_file(p)
+        if h is not None:
+            config_hashes[name] = h
+    provenance = {
+        "git_sha": git_sha,
+        "paper_trading_state_sha256": paper_trading_state_sha256,
+        "config": config_hashes or None,
+    }
+    return provenance
+
+
+def build_report(state: dict, threshold: float = DEFAULT_SHARPE_THRESHOLD, state_path: Path | None = None) -> dict:
     """Compute the persistence report from a paper-trading state dictionary."""
     dates = [str(d) for d in (state.get("cumulative_dates") or [])]
     returns = [float(r) for r in (state.get("cumulative_returns") or [])]
@@ -74,6 +123,8 @@ def build_report(state: dict, threshold: float = DEFAULT_SHARPE_THRESHOLD) -> di
     else:
         stored_matches = abs(float(stored_value) - float(recomputed)) <= 1e-12
 
+    provenance = get_provenance(state_path) if state_path is not None else get_provenance(REPO_ROOT / "data" / "processed" / "paper_trading_state.yaml")
+
     report = {
         "last_run_date": state.get("last_run_date"),
         "threshold": threshold,
@@ -92,8 +143,50 @@ def build_report(state: dict, threshold: float = DEFAULT_SHARPE_THRESHOLD) -> di
         "series_tail": [
             {"date": d, "sharpe": v} for d, v in series[-10:] if v is not None
         ],
+        "provenance": provenance,
     }
     return report
+
+
+def update_rolling_report(report: dict, report_path: Path = ROLLING_REPORT_PATH) -> bool:
+    try:
+        if not report_path.exists():
+            return False
+        content = report_path.read_text()
+        prov = report.get("provenance") or {}
+        lines = []
+        lines.append("## Drift Persistence Provenance")
+        lines.append("")
+        if prov.get("git_sha"):
+            lines.append(f"- **git_sha:** {prov['git_sha']}")
+        if prov.get("paper_trading_state_sha256"):
+            lines.append(f"- **paper_trading_state_sha256:** {prov['paper_trading_state_sha256']}")
+        cfg = prov.get("config")
+        if cfg and isinstance(cfg, dict):
+            for k, v in cfg.items():
+                lines.append(f"- **{k}_sha256:** {v}")
+        lines.append("")
+        block = "\n".join(lines)
+        start_marker = "## Drift Persistence Provenance"
+        if start_marker in content:
+            idx = content.find(start_marker)
+            rest = content[idx:]
+            m = re.search(r"\n## [^#]", rest)
+            if m:
+                end = idx + m.start() + 1
+                new_content = content[:idx] + block + "\n" + content[end:]
+            else:
+                new_content = content[:idx] + block
+        else:
+            if not content.endswith("\n"):
+                content += "\n"
+            new_content = content + "\n" + block
+        if new_content != content:
+            report_path.write_text(new_content)
+            return True
+        return False
+    except Exception:
+        return False
 
 
 def print_report(report: dict) -> None:
@@ -125,13 +218,29 @@ def print_report(report: dict) -> None:
         f"({report['stored_flag_date']})"
     )
     print(f"stored == recomputed:     {report['stored_matches_recomputed']}")
+    prov = report.get("provenance") or {}
+    if prov:
+        print()
+        print("provenance:")
+        if prov.get("git_sha"):
+            print(f"  git_sha: {prov['git_sha']}")
+        if prov.get("paper_trading_state_sha256"):
+            print(f"  paper_trading_state_sha256: {prov['paper_trading_state_sha256']}")
+        cfg = prov.get("config")
+        if cfg:
+            print("  config:")
+            if isinstance(cfg, dict):
+                for k, v in cfg.items():
+                    print(f"    {k}: {v}")
+            else:
+                print(f"    {cfg}")
     print()
     print("last 10 evaluated sessions (date, rolling 63d Sharpe):")
     for entry in report["series_tail"]:
         print(f"  {entry['date']}  {entry['sharpe']:.4f}")
 
 
-def main() -> int:
+def main():
     parser = argparse.ArgumentParser(
         description="Read-only report of the low-Sharpe drift-flag persistence."
     )
@@ -140,12 +249,17 @@ def main() -> int:
     args = parser.parse_args()
 
     path = Path(args.state_path) if args.state_path else state_path()
-    report = build_report(load_state(path))
+    report = build_report(load_state(path), state_path=path)
 
     if args.json:
         print(json.dumps(report, indent=2, sort_keys=True))
     else:
         print_report(report)
+
+    try:
+        update_rolling_report(report)
+    except Exception:
+        pass
 
     if report["stored_matches_recomputed"] is False:
         print()

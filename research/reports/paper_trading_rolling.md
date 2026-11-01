@@ -49,3 +49,9 @@
 - 2026-10-27: NAV=$134,964.32, Ret=0.67%, Turnover=0.55%
 - 2026-10-28: NAV=$135,651.64, Ret=0.51%, Turnover=3.76%
 - 2026-10-29: NAV=$135,161.06, Ret=-0.36%, Turnover=0.12%
+
+## Drift Persistence Provenance
+
+- **git_sha:** 8b743eb43272dfa049c82c2e5b4e34ee13a4292f
+- **paper_trading_state_sha256:** bd0867338224e78aaf916c2399b4cb4e475eeb37fc528d92b9a7e4aa7d4fbb17
+- **paper_trading_config_sha256:** 37a2a654c7f6f41924aba13d986d5aa2dd4072770d1142485d76a92c5e92bd8d
