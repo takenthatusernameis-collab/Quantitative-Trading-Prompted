@@ -1,39 +1,29 @@
-# Corrective Handoff — CORR_CURRENT (invocation 177)
+# Corrective Handoff — CORR_CURRENT (invocation 338)
 
 ## Invocation context
-- Invocation: 177 (corrective). Previous invocation exited with status 1 and polluted working tree.
-- Latest diagnostic log inspected: /home/runner/work/_temp/kilo-session-5-recovery-176.log (status 1, auth/signup message from model provider)
-- Previous corrective logs/handoffs inspected: CORRECTIVE_HANDOFF_CORR_CURRENT.md (prior state), git history.
+- Invocation: 338 (corrective). Prior invocation exited status 1; diagnostic log at /home/runner/work/_temp/kilo-session-8-recovery-337.log shows only a provider auth/signup gate ("Sign up for free to continue..."), an environmental blocker unrelated to this repo's code.
+- Previous corrective handoff (invocation 177) already reverted unrelated pollution and confirmed the DBC/csmomentum governance blocker was resolved.
 
-## Root cause analysis (materially different from prior failed approaches)
-- Prior failed approach in invocation context likely hit provider auth/signup gate (diagnostic shows "Sign up for free to continue..." from kilo-auto/free). This is an environmental/infrastructure blocker, not a code defect.
-- Additionally, the previous invocation had modified 5 research report/experiment files (unrelated to DBC/csmomentum governance). These were pollution; reverted to restore clean state.
-- Governance blocker described in NEXT_AGENT_TASK is already resolved: committed governance record (research/reports/dbc_csmomentum_governance_001.md) shows DBC.parquet ends at 2026-10-08 (option a already satisfied), false positive from forward-fill behavior. No owner decision needed - already recorded.
+## Root cause / approach difference
+- No prior code approach to repeat: the task is time-gated, not a code defect. The smallest justified action is to re-run the existing validation suite now and record results, rather than invent changes.
+- Did not modify thresholds/gates, cost model, universe, clock-gate logic, data/raw, or tests.
 
 ## What changed
-1. Reverted unrelated modifications introduced by previous invocation:
-   - research/experiments/tsmomentum_rolling63_weakness_diagnosis_001.md
-   - research/reports/tsmomentum_rolling63_weakness_diagnosis_001.md
-   - research/reports/tsmomentum_same_session_vol_correction_001.md
-   - research/reports/tsmomentum_sma175_candidate_eval_001.md
-   - research/reports/tsmomentum_vol_estimate_consolidation_001.md
-2. Working tree restored to clean state. No data/config/tests/source code modified.
+- Nothing in source/data/config/tests. Re-ran the acceptance validation commands to produce fresh, verifiable evidence.
 
 ## Verification (exact commands and outputs)
 - `git status --porcelain` → (empty) [exit 0]
 - `git status --porcelain data/ config/` → (empty) [acceptance criterion met]
-- `PYTHONPATH=/home/runner/work/_temp/kilo-tmp/pylibs python3 -c "import pandas as pd; d=pd.read_parquet('data/raw/DBC.parquet'); print(d.index.max())"` → `2026-10-08 00:00:00+00:00` [confirms option (a) already satisfied]
-- `PYTHONPATH=/home/runner/work/_temp/kilo-tmp/pylibs python3 -m pytest tests/test_cost_admissibility_screen.py -q` → `40 passed, 21 warnings in 49.94s` [exit 0]
+- `date -u` → `Sun Nov 1 19:57:31 UTC 2026` (14:57 ET)
+- `python research/extend_paper_trading_state.py` → exit 0; `sessions extended: 0`; `candidate available: no` (reason: next session 2026-11-02 has not closed yet); NAV before == NAV after == 133019.54382525434; `state write count: 0`; `raw cache: scratch (canonical data/raw untouched)`
+- `python research/drift_persistence_report.py` → `stored == recomputed: True`
+- `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q` → `39 passed in 3.32s` [exit 0]
 
-## Unresolved blockers
-- Provider auth gate encountered in diagnostic log (environmental) - not fixable by code changes; outside scope of this task.
-- Full suite (`python -m pytest -q`) has pre-existing failures unrelated to DBC/csmomentum blocker (commodity gate missing scratch files, leadlag git object missing, paper trading state drift) as documented in governance record. Not caused by this blocker.
-- NEXT_AGENT_TASK governance blocker is resolved; remaining acceptance criterion (full suite exit 0) blocked by pre-existing unrelated failures.
+## Unresolved blocker
+- Time gate: 2026-11-02 session bar is not complete until after 17:00 ET on 2026-11-02 (21:00 UTC). Extension cannot occur before then without violating scope boundaries. This is expected behavior, not a failure.
+- Provider auth gate in diagnostic log is environmental and outside repo scope.
 
 ## Safety
-- Research/backtesting only, no live trades
-- No deps/services added, no secrets accessed
-- No workflow/agent changes
-- No test threshold edits
-- Clean-tree invariant for data/ config/ respected
-- All pre-registrations and promotion gates preserved
+- Research/backtesting only, no live trades. No deps/services added, no secrets accessed, no workflow/agent changes, no test threshold edits, no commits. Clean-tree invariant for data/ config/ respected. All pre-registrations and promotion gates preserved.
+
+CORRECTIVE_VERIFICATION=BLOCKED
