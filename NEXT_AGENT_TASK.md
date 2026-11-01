@@ -1,7 +1,7 @@
-# NEXT_AGENT_TASK — Extend paper-trading state for 2026-11-02 after close
+# NEXT_AGENT_TASK — Extend paper-trading state when 2026-11-02 (or later) session completes
 
 ## Context
-Session UTC 2026-11-01T17:05Z verified current state. `last_run_date` is 2026-10-30 (460 cumulative sessions), NAV 133019.54382525434, rolling 63d Sharpe -0.7689729823169228. Extension on 2026-11-01 produced `sessions extended: 0` because 2026-11-02 bar not yet complete (current ET ~12:05 EST, Sunday; next session is 2026-11-02 Monday). Drift report `stored == recomputed: True`. Tests 39 passed for paper trading/drift tests. `data/` and `config/` clean.
+Session UTC 2026-11-01T17:20Z verified current state. `last_run_date` is 2026-10-30 (460 cumulative sessions), NAV 133019.54382525434, rolling 63d Sharpe -0.7689729823169228. Extension on 2026-11-01 produced `sessions extended: 0` because 2026-11-02 bar not yet complete (current ET ~12:20 EST, Sunday; next session is 2026-11-02 Monday). Drift report `stored == recomputed: True`. Tests 39 passed for paper trading/drift tests. `data/` and `config/` clean.
 
 ## Objective
 Run `python research/extend_paper_trading_state.py` at or after 17:00 ET on 2026-11-02 (or next local day when complete) to extend paper-trading state by one session if a completed 2026-11-02 bar is available. Record exact commands and outputs.
