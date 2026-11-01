@@ -2,7 +2,7 @@
 
 ## Status
 
-- **OVERALL: PASS**
+- **OVERALL: FAIL**
 - Candidate: `tsmomentum_spytrend_001` (the incumbent)
 - Default path: **bit-identical** to every script's pre-change implementation (max |diff| = 0.0, checked per script).
 - Switch: `lag_vol_estimate` (default **off**) in all seven consolidated scripts; zero remaining inline same-session exposure estimates.
@@ -118,13 +118,13 @@ The corrected path's own backtest reference is 1.335983, below the unchanged fix
 
 | Gate | Published record | Corrected record | Threshold |
 |---|---|---|---|
-| `track_record_length` | 454.000000 | 450.000000 | >= 126 |
-| `full_period_sharpe` | 1.726278 | 1.635705 | >= 0.9 |
-| `rolling_63d_sharpe` | -0.254926 | -0.515807 | >= 0.9 |
+| `track_record_length` | 455.000000 | 450.000000 | >= 126 |
+| `full_period_sharpe` | 1.742467 | 1.635705 | >= 0.9 |
+| `rolling_63d_sharpe` | 0.128390 | -0.515807 | >= 0.9 |
 | `max_drawdown` | -0.049857 | -0.051057 | >= -0.15 |
 | `rolling_63d_max_dd` | -0.039246 | -0.039642 | >= -0.15 |
 | `regime_flips` | 6.000000 | 6.000000 | >= 1 |
-| `psr` | 0.673221 | 0.623929 | >= 0.95 |
+| `psr` | 0.682493 | 0.623929 | >= 0.95 |
 | **decision** | **NO-GO** | **NO-GO** | failed gates: rolling_63d_sharpe, psr |
 
 The corrected gate table is computed by the production code `src.simulation.evaluation.evaluate_go_no_go` on the corrected return series with the committed configuration. It is **NO-GO** with the same failed gates as the published path; the correction is not the cause of the gate failure and it does not rescue anything.
@@ -166,7 +166,7 @@ A record that mixes the same-session and the lagged paths measures neither; the 
 
 ## 6. Checks
 
-- [committed_record_loaded]: PASS (observed: 454 sessions, expected: 454 sessions)
+- [committed_record_loaded]: FAIL (observed: 455 sessions, expected: 454 sessions)
 - [default_path_reproduces_every_committed_session]: PASS (observed: max |diff| = 5.421e-20, expected: <= 1e-12)
 - [published_walk_forward_mean_reproduced]: PASS (observed: 0.947307472025, expected: 0.947307472025)
 - [published_walk_forward_fold_count_reproduced]: PASS (observed: 48 folds, expected: 48 folds)
