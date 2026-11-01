@@ -35,5 +35,5 @@
 - total_bps: 3.0000000000000004
 - rf_annual: 0.02
 
-Git rev: a188737
-Date: 2026-10-31
+Git rev: 152ee07
+Date: 2026-11-01

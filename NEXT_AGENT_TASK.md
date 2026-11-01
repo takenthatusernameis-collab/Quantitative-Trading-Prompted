@@ -1,5 +1,6 @@
 # NEXT_AGENT_TASK — resolve DBC/csmomentum governance blocker (owner decision required)
 ## Context
+Verified working interpreter: `PYTHONPATH=/home/runner/work/_temp/kilo-tmp/pylibs /usr/bin/python3` (pandas/pytest available there; system python lacks them). Do not install packages.
 As documented in README and previous corrective handoffs, `data/raw/DBC.parquet` was extended from 2026-10-08 to 2026-10-21 after `csmomentum_001` artifacts were frozen. Frozen `data/processed/simulation_csmomentum_001.parquet` no longer matches recomputation from current DBC cache. This requires a governance decision among (a),(b),(c). Working tree clean. `tests/test_cost_admissibility_screen.py` passes (40/40). No explicit owner decision is recorded in recent commits/governance records.
 
 ## Objective
@@ -17,7 +18,7 @@ Record the decision in a commit message/dedicated governance record, then apply 
 
 ## Validation commands
 ```bash
-python -m pytest -q  # may take long
+PYTHONPATH=/home/runner/work/_temp/kilo-tmp/pylibs python3 -m pytest -q  # may take long (~minutes)
 git status --porcelain data/ config/
 ```
 
