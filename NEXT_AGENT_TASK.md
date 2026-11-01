@@ -1,10 +1,10 @@
 # NEXT_AGENT_TASK — Extend paper-trading state when 2026-11-02 (or later) session completes
 
 ## Context
-Session UTC 2026-11-01T19:04Z verified current state. `last_run_date` is 2026-10-30 (460 cumulative sessions), NAV 133019.54382525434, rolling 63d Sharpe -0.7689729823169228. Previous extension attempts on 2026-11-01 produced `sessions extended: 0` because 2026-11-02 bar not yet complete (current ET ~14:04 EST, Sunday; next session is 2026-11-02 Monday). Drift report `stored == recomputed: True`. Tests 39 passed for paper trading/drift tests. `data/` and `config/` clean. Supervisor recommendation 0002 re-verified as `rejected_with_reason` (premise false: pandas 3.1.0 and numpy 2.5.4 are installed in the active Python 3.12.3 interpreter; the claimed ModuleNotFoundError is not reproducible; the script ran to exit 0).
+Session UTC 2026-11-01T19:07Z verified current state. `last_run_date` is 2026-10-30 (460 cumulative sessions), NAV 133019.54382525434, rolling 63d Sharpe -0.7689729823169228. `python research/extend_paper_trading_state.py` currently exits 0 with `sessions extended: 0` because 2026-11-02 bar not yet complete (clock-gated). Drift report `stored == recomputed: True`. Tests 39 passed for paper trading/drift tests. Working tree has unstaged change to `research/reports/paper_trading_rolling.md` (git_sha metadata update). Supervisor recommendation 0005 reviewed and verified.
 
 ## Objective
-Run `python research/extend_paper_trading_state.py` at or after 17:00 ET on 2026-11-02 (or next local day when complete) to extend paper-trading state by one session if a completed 2026-11-02 bar is available. Record exact commands and outputs.
+Run `python research/extend_paper_trading_state.py` at or after 17:00 ET on 2026-11-02 (or next local trading day when a completed session bar exists) to extend paper-trading state by one session if available. Record exact commands and outputs.
 
 ## Acceptance criteria
 - `python research/extend_paper_trading_state.py` exits 0
@@ -29,4 +29,4 @@ git status --porcelain data/ config/
 
 ## Notes
 - Time-gated blocker, not a code defect. Do not force extension before session complete.
-- `research/reports/paper_trading_rolling.md` may show modified git_sha artifact; leave as-is if only generated metadata.
+- `research/reports/paper_trading_rolling.md` has unstaged git_sha update; leave as-is if only generated metadata.
