@@ -1,7 +1,13 @@
 # NEXT_AGENT_TASK — Re-check paper-trading state extension for 2026-11-02 (after close)
 
 ## Context
-This session (UTC 2026-11-01T15:08Z, 10:08 EST, Sunday) ran the assigned extension task. The clock gate is released but the 2026-11-02 (Monday) US trading session has not closed yet — `session already complete: False`, `candidate available: no`. The session becomes usable only after 17:00 ET on Monday 2026-11-02.
+This session (UTC 2026-11-01T15:10Z, 10:10 EST, Sunday) verified the assigned extension task. The clock gate is released but the 2026-11-02 (Monday) US trading session has not closed yet — `session already complete: False`, `candidate available: no`. The session becomes usable only after 17:00 ET on Monday 2026-11-02.
+
+Verification completed this session:
+- `python research/extend_paper_trading_state.py` -> exit 0, `sessions extended: 0`, NAV before == NAV after == 133019.54382525434, state write count: 0, raw cache scratch (canonical data/raw untouched)
+- `python research/drift_persistence_report.py` -> `stored == recomputed: True`, provenance block present (git_sha, state sha256, config hash)
+- `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q` -> 39 passed in 2.17s
+- `git status --porcelain data/ config/` -> empty
 
 Current state:
 - `data/processed/paper_trading_state.yaml` `last_run_date`: 2026-10-30 (460 cumulative sessions)
