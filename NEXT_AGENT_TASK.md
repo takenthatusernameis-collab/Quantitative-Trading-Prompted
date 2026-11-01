@@ -1,10 +1,10 @@
-# NEXT_AGENT_TASK — attempt paper-trading extension after 2026-10-26
+# NEXT_AGENT_TASK — extend paper-trading state to next completed session
 
 ## Context
-`data/processed/paper_trading_state.yaml` has `last_run_date: 2026-10-26` and 455 sessions. Status files reconciled. Next candidate session is 2026-10-27 (Tuesday), usable after 17:00 ET.
+`data/processed/paper_trading_state.yaml` now has `last_run_date: 2026-10-27` (455+1=456 sessions). The extension tool ran successfully and updated state/report. Next trading session after 2026-10-27 is 2026-10-28 (Wed); it's closed as of current time (ET), so a candidate exists.
 
 ## Objective
-Run `python research/extend_paper_trading_state.py` (no --dry-run), record output, run drift report and tests, and if a session is extended, update status files accordingly.
+Run `python research/extend_paper_trading_state.py` (no --dry-run), record output, run drift report and tests, and if extended update status files as needed.
 
 ## Acceptance criteria
 - `git status --porcelain data/ config/` empty unless a legitimate state extension occurred
