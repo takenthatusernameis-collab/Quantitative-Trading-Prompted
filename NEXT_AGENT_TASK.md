@@ -1,15 +1,17 @@
-# NEXT_AGENT_TASK — Extend paper-trading state to 2026-11-03 (after close)
+# NEXT_AGENT_TASK — Extend paper-trading state to 2026-11-02 (after close)
 
 ## Context
 The paper-trading state (`data/processed/paper_trading_state.yaml`) currently
-ends at **2026-10-30** (460 cumulative sessions). The extension tool was run
-on 2026-11-01 (UTC 2026-11-01T15:05Z, 10:05 EST, Sunday) and confirmed:
+ends at **2026-10-30** (460 cumulative sessions). On 2026-11-01 UTC
+(2026-11-01T15:07Z, 10:07 EST, Sunday) the extension tool was run and
+confirmed:
 - clock gate: released
 - next expected session: **2026-11-02 (Monday)**
 - session usable after: **17:00 ET on 2026-11-02**
 - candidate available: no (session not yet closed)
 - drift report: `stored == recomputed: True`
 - `python research/extend_paper_trading_state.py` -> exit 0, `sessions extended: 0`, `NAV before == NAV after: 133019.54382525434`, `state write count: 0`
+- `python research/drift_persistence_report.py` -> `stored == recomputed: True`
 - `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q` -> 39 passed
 - `git status --porcelain data/ config/` -> empty
 
