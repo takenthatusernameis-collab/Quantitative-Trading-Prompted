@@ -1,25 +1,29 @@
-# NEXT_AGENT_TASK — Add explicit provenance for drift persistence report
+# NEXT_AGENT_TASK — Add provenance coverage to drift persistence tests
 
 ## Context
-`research/drift_persistence_report.py` prints `stored flag value` and `stored == recomputed` but does not record the data source hash or config snapshot used for the recomputation. To make the drift persistence check independently reproducible and auditable, add provenance fields to its output and to `research/reports/paper_trading_rolling.md` when generated/updated.
+`research/drift_persistence_report.py` already emits a `provenance:` section
+(`git_sha`, `paper_trading_state_sha256`, `config`) and updates
+`research/reports/paper_trading_rolling.md`. Existing tests do not assert these
+fields, so regressions could pass silently.
 
 ## Objective
-Modify `research/drift_persistence_report.py` to emit provenance (git SHA, config hash or names, data file hashes for `data/processed/paper_trading_state.yaml` and any inputs used to compute rolling Sharpe) and update the rolling report to include a short provenance block. Keep changes minimal and deterministic.
+Add focused tests to `tests/test_drift_persistence.py` asserting that
+`build_report` includes non-null provenance fields and that `main()` prints a
+`provenance:` block. Keep changes minimal and deterministic.
 
 ## Acceptance criteria
-- Running `python research/drift_persistence_report.py` prints a `provenance:` section with at least `git_sha`, `paper_trading_state_sha256`, and `config` (or equivalent).
-- `research/reports/paper_trading_rolling.md` updated to include the same provenance (if the script writes it; if not, add a small update path consistent with existing behavior).
-- `python -m pytest tests/test_drift_persistence.py -q` still passes.
-- `git status --porcelain` shows only expected files modified (no unrelated changes).
+- `python -m pytest tests/test_drift_persistence.py -q` passes.
+- New tests fail if provenance fields are removed.
+- `git status --porcelain` shows only expected files modified.
 
 ## Validation commands
 ```bash
-python research/drift_persistence_report.py
 python -m pytest tests/test_drift_persistence.py -q
+python research/drift_persistence_report.py
 git status --porcelain
 ```
 
 ## Scope boundaries
 - Do not change thresholds/gates or recomputation logic.
 - Do not add new dependencies.
-- Keep output format readable and backward compatible where reasonable.
+"""
