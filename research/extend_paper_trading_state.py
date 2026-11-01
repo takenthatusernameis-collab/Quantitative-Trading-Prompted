@@ -371,6 +371,7 @@ def main() -> int:
                 end_date,
                 raw_dir=scratch,
                 force=True,
+                append_only=False,
             )
             return complete_session_view(raw, now_et, close_hour=close_hour, tz=tz)
 

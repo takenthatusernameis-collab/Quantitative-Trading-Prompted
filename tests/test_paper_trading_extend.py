@@ -303,19 +303,38 @@ def test_main_uses_scratch_raw_dir_and_leaves_cache_untouched(tmp_path, monkeypa
     }
     assert before, "expected canonical raw cache files"
 
+    # Drive main() against a controlled state written to tmp, so the test
+    # does not depend on whatever the *committed* last_run_date happens to be
+    # (which advances every real extension run). last_run 2026-10-16 (Friday)
+    # -> next calendar day Saturday 2026-10-17 -> gate releases from
+    # 2026-10-18 00:00 UTC onward.
+    state_path = _write_state(tmp_path / "state.yaml", last_run_date="2026-10-16")
+    real_safe_load = yaml.safe_load
+
+    def fake_safe_load(stream):
+        d = real_safe_load(stream)
+        if isinstance(d, dict) and "state_path" in d:
+            d = dict(d)
+            d["state_path"] = str(state_path)
+        return d
+
+    monkeypatch.setattr(ext.yaml, "safe_load", fake_safe_load)
+    monkeypatch.setattr(ext, "generate_paper_report", lambda state, config: "")
+
     recorded = {}
 
-    def fake_fetch_universe(symbols, start, end, raw_dir=None, force=False):
+    def fake_fetch_universe(symbols, start, end, raw_dir=None, force=False,
+                            append_only=True):
         recorded["raw_dir"] = Path(raw_dir) if raw_dir else None
         recorded["force"] = force
-        return _market_frame(["2026-10-15", "2026-10-16"])
+        recorded["append_only"] = append_only
+        return _market_frame(["2026-10-15", "2026-10-16", "2026-10-19"])
 
     monkeypatch.setattr(ext, "fetch_universe", fake_fetch_universe)
-    # The committed state's last_run_date is now 2026-10-23, so the clock gate
-    # only releases once the 2026-10-24 session is complete. Pin the clock to
-    # 2026-10-25 00:00 UTC (20:00 ET the prior evening) so the gate releases
-    # and the scratch/raw_dir contract is actually exercised.
-    fixed_now = datetime(2026, 10, 25, 0, 0, tzinfo=UTC)
+    # Sunday 2026-10-18 00:00 UTC (Saturday 20:00 ET): gate released, but the
+    # next session (Monday 2026-10-19) has not closed yet, so no write happens
+    # to the tmp state and the canonical cache is untouched either way.
+    fixed_now = datetime(2026, 10, 18, 0, 0, tzinfo=UTC)
 
     class _StubClock:
         timezone = timezone
@@ -331,12 +350,22 @@ def test_main_uses_scratch_raw_dir_and_leaves_cache_untouched(tmp_path, monkeypa
     assert recorded["raw_dir"] is not None
     assert recorded["raw_dir"].resolve() != raw_dir.resolve()
     assert recorded["force"] is True
+    # The scratch dir is a throwaway TemporaryDirectory, so the closure must
+    # opt out of the append-only guard that protects the canonical cache.
+    # Without this the second fetch() into the same scratch dir (a shorter
+    # window for the target session) trips the guard and the extension
+    # crashes (Cycle 1036).
+    assert recorded["append_only"] is False
 
     after = {
         p.name: hashlib.sha256(p.read_bytes()).hexdigest()
         for p in sorted(raw_dir.glob("*.parquet"))
     }
     assert after == before
+    # The state write (had one occurred) would go to the tmp path, not the
+    # canonical one, because main() reads state_path from the config and we
+    # redirected that config value to tmp.
+    assert state_path.exists()
 
 
 def test_clock_gate_skips_fetch_when_session_not_complete(tmp_path, monkeypatch):

@@ -231,12 +231,21 @@ def fetch_universe(
     end_date: Optional[str] = None,
     raw_dir: Optional[str] = None,
     force: bool = False,
+    append_only: bool = True,
 ) -> pd.DataFrame:
-    """Convenience wrapper used by the backtest engine."""
+    """Convenience wrapper used by the backtest engine.
+
+    ``append_only`` is forwarded to the fetcher. It defaults to ``True`` so the
+    canonical raw cache (``data/raw``) is protected from truncating overwrites;
+    callers that download into a disposable scratch directory may pass
+    ``append_only=False`` so repeated shorter windows into the same scratch
+    directory do not trip the guard.
+    """
     fetcher = YFinanceFetcher(
         symbols=symbols,
         start_date=start_date,
         end_date=end_date,
         raw_dir=raw_dir,
+        append_only=append_only,
     )
     return fetcher.fetch(force=force)
