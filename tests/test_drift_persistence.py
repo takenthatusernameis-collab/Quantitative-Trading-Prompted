@@ -5,6 +5,7 @@ the committed paper-trading state read-only.
 """
 
 import hashlib
+import json
 import sys
 from pathlib import Path
 
@@ -261,3 +262,42 @@ def test_report_tool_flags_state_inconsistency():
         report_tool.build_report(
             {"cumulative_dates": ["2026-01-01"], "cumulative_returns": []}
         )
+
+
+def test_build_report_includes_non_null_provenance_fields():
+    state = _load_state()
+    report = report_tool.build_report(state, state_path=STATE_PATH)
+    prov = report.get("provenance") or {}
+    assert prov.get("git_sha"), "git_sha must be non-null in the provenance block"
+    assert prov.get("paper_trading_state_sha256"), (
+        "paper_trading_state_sha256 must be non-null in the provenance block"
+    )
+    assert prov.get("config"), "config hash block must be non-null"
+
+
+def test_provenance_state_sha_matches_file_hash():
+    state = _load_state()
+    report = report_tool.build_report(state, state_path=STATE_PATH)
+    prov = report.get("provenance") or {}
+    expected = hashlib.sha256(STATE_PATH.read_bytes()).hexdigest()
+    assert prov.get("paper_trading_state_sha256") == expected
+
+
+def test_main_prints_provenance_block(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(sys, "argv", ["drift_persistence_report.py"])
+    assert report_tool.main() == 0
+    out = capsys.readouterr().out
+    assert "provenance:" in out
+    assert "git_sha:" in out
+    assert "paper_trading_state_sha256:" in out
+
+
+def test_main_json_includes_provenance(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(sys, "argv", ["drift_persistence_report.py", "--json"])
+    assert report_tool.main() == 0
+    out = capsys.readouterr().out
+    payload = json.loads(out)
+    prov = payload.get("provenance") or {}
+    assert prov.get("git_sha")
+    assert prov.get("paper_trading_state_sha256")
+    assert prov.get("config")
