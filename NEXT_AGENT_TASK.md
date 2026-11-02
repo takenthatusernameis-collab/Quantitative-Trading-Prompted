@@ -1,7 +1,7 @@
 # NEXT_AGENT_TASK — Re-run paper-trading extension after 2026-11-02 session closes
 
 ## Context
-Last check: 2026-11-02T15:00Z (cycle 1074). State last_run_date 2026-10-30, NAV 133019.54382525434. Current time (ET) at last run: 2026-11-02 10:00 EST; clock gate released (checks day after 2026-10-31), but next expected session 2026-11-02 (Monday) not yet closed (session already complete: False, usable after 17:00 ET). sessions extended: 0, NAV unchanged, state writes: 0, raw cache scratch. drift stored==recomputed: True (rolling 63d Sharpe -0.7690 at 2026-10-30; daily: 10-28 +0.4459, 10-29 +0.1752, 10-30 -0.7690). tests: 44 passed. data/config clean.
+Last check: 2026-11-02T15:01 UTC (10:01 AM ET, cycle 1074). State last_run_date 2026-10-30, NAV 133019.54382525434. Clock gate released; next expected session 2026-11-02 (Monday) not yet closed (session already complete: False, usable after 17:00 ET / 22:00 UTC). sessions extended: 0, NAV unchanged, state writes: 0, raw cache scratch. drift stored==recomputed: True. tests: 44 passed. data/config clean. Wakeup scheduled at 2026-11-02T22:02 UTC to re-run after market close.
 
 Blocker reason: next session 2026-11-02 has not closed yet (today and still in progress); no completed candidate bar exists to extend into. Re-run required after ~17:00 ET / ~22:00 UTC on 2026-11-02.
 
