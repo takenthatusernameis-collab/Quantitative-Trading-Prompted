@@ -1,9 +1,9 @@
 # NEXT_AGENT_TASK — Re-run paper-trading extension after 2026-11-02 session closes
 
 ## Context
-Last check: 2026-11-02T19:55 UTC (14:55 ET, cycle 1075). State last_run_date 2026-10-30, NAV 133019.54382525434. Clock gate released; next expected session 2026-11-02 (Monday) not yet closed (session already complete: False, usable after 17:00 ET / 22:00 UTC). `python3 research/extend_paper_trading_state.py` exit 0 -> candidate available: no, sessions extended: 0, NAV before/after 133019.54382525434, state write count: 0, raw cache scratch. `python3 research/drift_persistence_report.py` -> stored == recomputed: True. `pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` -> 44 passed. `git status --porcelain data/ config/` -> empty. Supervisor recommendation 41513267715-attempt-1-review-0003-1b2ca9306261 disposition written as verified.
+Last check: 2026-11-02T20:49 UTC (15:49 ET). State last_run_date 2026-10-30, NAV 133019.54382525434. Session 2026-11-02 is in progress (not closed yet; closes ~17:00 ET). `python3 research/extend_paper_trading_state.py` exited 0 with no extension (sessions extended: 0) because candidate not available. `python3 research/drift_persistence_report.py` would need to be checked; tests for extension path all passed previously (44 passed). Git status clean.
 
-Blocker reason: next session 2026-11-02 has not closed yet (today and still in progress); no completed candidate bar exists to extend into. Re-run required after ~17:00 ET / ~22:00 UTC on 2026-11-02.
+Blocker: 2026-11-02 session not closed yet. Re-run required after ~17:00 ET / ~22:00 UTC on 2026-11-02.
 
 ## Objective
 Re-run `python research/extend_paper_trading_state.py` after the 2026-11-02 (Monday) session closes (~17:00 ET / ~22:00 UTC). Extend by at most one session to 2026-11-02 if completed bar exists.
@@ -18,7 +18,7 @@ Re-run `python research/extend_paper_trading_state.py` after the 2026-11-02 (Mon
 
 ## Validation commands
 ```bash
-python research/extend_paper_trading_state.py 2>&1 | tail -25
+python research/extend_paper_trading_state.py 2>&1 | tail -30
 python research/drift_persistence_report.py 2>&1 | tail -3
 python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q
 git status --porcelain data/ config/
