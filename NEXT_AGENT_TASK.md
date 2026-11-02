@@ -1,7 +1,7 @@
 # NEXT_AGENT_TASK — Re-run paper-trading extension after 2026-11-03 session closes
 
 ## Context
-Last check: 2026-11-02T22:55 UTC (17:55 ET, cycle 1077). State last_run_date 2026-11-02, NAV 132606.795692673. Clock gate: NOT released (gate checks day after: 2026-11-03 — calendar day after last_run_date hasn't started). Next expected session: 2026-11-03 (Tuesday), usable after 17:00 ET on 2026-11-03 (~22:00 UTC). session already complete: False, candidate available: no. drift stored==recomputed: True, rolling 63d Sharpe -1.3784 at 2026-11-02. tests: 44 passed. Extension run this cycle: sessions extended: 0, state unchanged (gate not released), script exit 0.
+Last check: 2026-11-02T22:55 UTC (cycle 1077, worker 10). Gate NOT released: next session 2026-11-03 has not closed yet. Script exit 0, sessions extended: 0, state unchanged. drift stored==recomputed: True, rolling 63d Sharpe -1.3784 at 2026-11-02. tests: 44 passed. git status data/config empty.
 
 ## Objective
 Re-run `python3 research/extend_paper_trading_state.py` after the 2026-11-03 (Tuesday) session closes (~17:00 ET / ~22:00 UTC). Extend by at most one session to 2026-11-03 if completed bar exists.
@@ -12,7 +12,7 @@ Re-run `python3 research/extend_paper_trading_state.py` after the 2026-11-03 (Tu
 - If no completed bar: sessions extended: 0, state unchanged (document reason)
 - `python3 research/drift_persistence_report.py` -> stored == recomputed: True
 - `python3 -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` passes
-- `git status --porcelain data/ config/` empty (note: data/processed/paper_trading_state.yaml is pre-existing modified from prior session's extension; not caused by this session)
+- `git status --porcelain data/ config/` empty
 
 ## Validation commands
 ```bash
