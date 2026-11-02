@@ -1,7 +1,7 @@
 # NEXT_AGENT_TASK — Re-run paper-trading extension after 2026-11-03 session closes
 
 ## Context
-Last check: 2026-11-02T22:57 UTC (cycle 1078, worker 12). Gate NOT released: next session 2026-11-03 has not closed yet. Script exit 0, sessions extended: 0, state unchanged. drift stored==recomputed: True, rolling 63d Sharpe -1.3784 at 2026-11-02. tests: 44 passed. git status data/config empty.
+Last check: 2026-11-02T22:57 UTC (cycle 1079, worker 13). State already extended to 2026-11-02 by a prior cycle (last_run_date: 2026-11-02, NAV 132606.795692673). This run at 17:57 EST: clock gate NOT released (day after last_run_date 2026-11-03 has not started), next expected session 2026-11-03 (Tuesday), candidate available: no (session not closed), sessions extended: 0. drift stored==recomputed: True, rolling 63d Sharpe -1.3784 at 2026-11-02, persistence 4 days (2026-10-28 -> 2026-11-02). tests: 44 passed. git status data/config empty.
 
 ## Objective
 Re-run `python3 research/extend_paper_trading_state.py` after the 2026-11-03 (Tuesday) session closes (~17:00 ET / ~22:00 UTC). Extend by at most one session to 2026-11-03 if completed bar exists.
