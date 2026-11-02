@@ -84,19 +84,39 @@ def _real_fetch(real_cfg):
     return fetch, cleanup
 
 
+def _tmp_cfg(real_cfg, tmp_path):
+    """A copy of real_cfg whose output/report/state paths live under tmp_path.
+
+    run_daily_paper_update writes per-date parquet artifacts to
+    config.output_dir and generate_paper_report writes to config.report_path.
+    Pointing those at a throwaway dir keeps the committed data/ tree clean
+    during tests (the acceptance criterion ``git status --porcelain data/``
+    must stay empty).
+    """
+    return PaperTradingConfig(
+        **{
+            **real_cfg.__dict__,
+            "output_dir": str(tmp_path / "paper_trading"),
+            "report_path": str(tmp_path / "report.md"),
+            "state_path": str(tmp_path / "state.yaml"),
+        }
+    )
+
+
 def test_real_daily_update_reproduces_committed_state(
     tmp_path, real_cfg, committed_state
 ):
     """The real write path reproduces the committed state for 2026-10-30."""
     from src.simulation.paper_trading import run_daily_paper_update
 
+    cfg = _tmp_cfg(real_cfg, tmp_path)
     state_path = tmp_path / "state.yaml"
     state_path.write_text(COMMITTED_STATE_PATH.read_text())
     state = PaperTradingState.from_yaml(state_path)
     before = hashlib.sha256(state_path.read_bytes()).hexdigest()
 
     target = "2026-10-30"
-    fetch, cleanup = _real_fetch(real_cfg)
+    fetch, cleanup = _real_fetch(cfg)
     try:
         # Slice the market data exactly to the target session, as
         # run_extension does (market_slice = all_data.loc[:target]).
@@ -104,7 +124,7 @@ def test_real_daily_update_reproduces_committed_state(
         market_slice = all_data.loc[:target]
 
         new_state, artifacts = run_daily_paper_update(
-            real_cfg, state, market_data=market_slice
+            cfg, state, market_data=market_slice
         )
     finally:
         cleanup()
@@ -120,31 +140,64 @@ def test_real_daily_update_reproduces_committed_state(
 
 
 def test_real_extension_path_is_idempotent(tmp_path, real_cfg, committed_state):
-    """A second invocation against the same target must be a no-op."""
+    """The real extension path advances the state to the completed session.
+
+    The committed cache serves a completed 2026-11-02 bar (the session closes
+    at 16:00 ET and NOW is 23:00 UTC / 18:00 ET, so the completeness gate is
+    satisfied). The extension must select 2026-11-02 as the target, advance
+    the state, and write exactly once.
+    """
+    cfg = _tmp_cfg(real_cfg, tmp_path)
     state_path = tmp_path / "state.yaml"
     state_path.write_text(COMMITTED_STATE_PATH.read_text())
 
-    target = "2026-10-30"
-    fetch, cleanup = _real_fetch(real_cfg)
+    fetch, cleanup = _real_fetch(cfg)
     try:
         result = ext.run_extension(
-            real_cfg, state_path, NOW, fetch,
-            close_hour=real_cfg.data_refresh_market_close_hour,
-            tz=ZoneInfo(real_cfg.data_refresh_timezone),
+            cfg, state_path, NOW, fetch,
+            close_hour=cfg.data_refresh_market_close_hour,
+            tz=ZoneInfo(cfg.data_refresh_timezone),
         )
     finally:
         cleanup()
 
-    # With no provider bar beyond 2026-10-30, the extension correctly reports
-    # no candidate session (data gate). This is the documented no-op branch,
-    # not a failure -- the state is untouched.
+    assert result["target"] == "2026-11-02"
+    assert result["sessions_extended"] == 1
+    assert result["state_writes"] == 1
+    assert result["nav_after"] > result["nav_before"]
+    assert PaperTradingState.from_yaml(state_path).last_run_date == "2026-11-02"
+
+
+def test_real_extension_path_is_idempotent(tmp_path, real_cfg, committed_state):
+    """A second invocation against the same target must be a no-op."""
+    cfg = _tmp_cfg(real_cfg, tmp_path)
+    state_path = tmp_path / "state.yaml"
+    state_path.write_text(COMMITTED_STATE_PATH.read_text())
+
+    fetch, cleanup = _real_fetch(cfg)
+    try:
+        ext.run_extension(
+            cfg, state_path, NOW, fetch,
+            close_hour=cfg.data_refresh_market_close_hour,
+            tz=ZoneInfo(cfg.data_refresh_timezone),
+        )
+        before = hashlib.sha256(state_path.read_bytes()).hexdigest()
+        result = ext.run_extension(
+            cfg, state_path, NOW, fetch,
+            close_hour=cfg.data_refresh_market_close_hour,
+            tz=ZoneInfo(cfg.data_refresh_timezone),
+        )
+    finally:
+        cleanup()
+
+    # Second invocation: last_run_date is now 2026-11-02, so the next calendar
+    # day is 2026-11-03, whose bar is not present in the provider window and
+    # is not complete at NOW. The extension correctly reports no candidate.
     assert result["target"] is None
     assert result["sessions_extended"] == 0
     assert result["state_writes"] == 0
-    assert result["nav_before"] == result["nav_after"] == pytest.approx(
-        committed_state.current_nav, rel=1e-12
-    )
-    assert PaperTradingState.from_yaml(state_path).last_run_date == committed_state.last_run_date
+    assert PaperTradingState.from_yaml(state_path).last_run_date == "2026-11-02"
+    assert hashlib.sha256(state_path.read_bytes()).hexdigest() == before
 
 
 def test_real_path_leaves_canonical_cache_untouched(real_cfg, committed_state):
