@@ -1,4 +1,4 @@
-# NEXT_AGENT_TASK — Re-run paper-trading extension after 2026-11-02 session closes
+# NEXT_AGENT_TASK — Re-run paper-trading extension after 2026-11-02 session closes (retry)
 
 ## Context
 Last check: 2026-11-02T12:52Z (cycle 895). State last_run_date 2026-10-30, NAV 133019.54382525434. Current time (ET): 2026-11-02 07:52 EST; clock gate released (checks day after 2026-10-31), next expected session 2026-11-02 (Monday) not yet closed (session already complete: False, candidate available: no, reason: today and still in progress). `python research/extend_paper_trading_state.py` -> exit 0, sessions extended: 0, NAV unchanged 133019.54382525434, state write count: 0, canonical data/raw untouched. `python research/drift_persistence_report.py` -> stored == recomputed: True, rolling 63d Sharpe -0.7689729823169228 at 2026-10-30 (streak 3 days: 10-28 -> 10-30). `python -m pytest ... -q` -> 44 passed. `git status --porcelain data/ config/` -> empty. Wakeup scheduled at 2026-11-02T21:53:18Z (wku_19c524154001ZNLjcDWaZM1M5g) for the post-close run.
