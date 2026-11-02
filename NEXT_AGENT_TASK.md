@@ -1,7 +1,7 @@
 # NEXT_AGENT_TASK — Re-run paper-trading extension after 2026-11-02 session closes
 
 ## Context
-Last check: 2026-11-02T20:49 UTC (15:49 ET). State last_run_date 2026-10-30, NAV 133019.54382525434. Session 2026-11-02 is in progress (not closed yet; closes ~17:00 ET). `python3 research/extend_paper_trading_state.py` exited 0 with no extension (sessions extended: 0) because candidate not available. `python3 research/drift_persistence_report.py` would need to be checked; tests for extension path all passed previously (44 passed). Git status clean.
+Last check: 2026-11-02T20:51 UTC (15:51 ET). State last_run_date 2026-10-30, NAV 133019.54382525434. Session 2026-11-02 is in progress (not closed yet; closes ~17:00 ET). `python research/extend_paper_trading_state.py` exited 0 with no extension (sessions extended: 0) because candidate not available. Drift report: `stored == recomputed: True`, rolling 63d Sharpe `-0.7690` at 2026-10-30. Tests: 44 passed. Git status clean.
 
 Blocker: 2026-11-02 session not closed yet. Re-run required after ~17:00 ET / ~22:00 UTC on 2026-11-02.
 
