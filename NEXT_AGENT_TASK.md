@@ -28,5 +28,4 @@ git status --porcelain data/ config/
 - Do not change thresholds/gates, cost model, universe, or clock-gate logic
 - Do not commit unless explicitly asked
 - Do not modify `data/raw/`
-" filePath">
-NEXT_AGENT_TASK.md
+" filePath="/home/runner/work/Quantitative-Trading-Prompted/Quantitative-Trading-Prompted/NEXT_AGENT_TASK.md
