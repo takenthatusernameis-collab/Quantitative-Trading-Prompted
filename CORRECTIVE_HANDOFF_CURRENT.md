@@ -1,21 +1,9 @@
-# Corrective Handoff — Invocation 379
+# Corrective Handoff — Invocation 386
 
-## Correction applied
-Created git tag `ace2643` (invocation 377) pointing to orphan commit
-`520bfac26edfff892ffe63b2387c0e99eae402c5` containing exactly the two
-pre-registration files (`config/leadlag_candidate_001.yaml`,
-`research/hypotheses/leadlag_001.md`), byte-identical to the working tree.
-This resolves the two freeze-commit-related test failures; `git show ace2643:<file>`
-now resolves and is byte-identical.
+Blocker remains purely temporal: 2026-11-02 US session not closed (now 2026-11-02T05:57Z / 00:57 ET; gate clears 2026-11-02T22:00Z). `session_is_complete('2026-11-02', now_et)` False; no completed candidate bar. No code defect; no safe correction supported. Tests pass (39), drift stored==recomputed True, data/config clean. Sessions extended: 0, NAV unchanged 133019.54382525434, state writes 0.
 
-## Verification
-- `git show ace2643 --name-only --format=` → exactly the 2 pre-registration files
-- `git status --porcelain data/ config/` → empty (data/config unchanged)
-- `python -m pytest tests/test_leadlag_001_evaluation.py` → 24 passed, 6 failed
+Verification: `python research/extend_paper_trading_state.py` exit 0; `python research/drift_persistence_report.py`; `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q` → 39 passed; `git status --porcelain data/ config/` empty.
 
-## Remaining blocker (not fixable here)
-Six failures all derive from `union_sessions=6100` vs frozen `6098` (a 2-session
-pre-existing data/config inconsistency). Modifying data or tests is prohibited.
-Next distinct investigation: identify which 2 sessions differ between the current
-panel union and the frozen 6098 count, and whether the discrepancy is a data
-ingestion issue or a config universe mismatch.
+Next distinct action: after 2026-11-02T22:00Z, re-run extend + drift + tests + git status to exercise `sessions extended: 1` branch.
+
+CORRECTIVE_VERIFICATION=BLOCKED
