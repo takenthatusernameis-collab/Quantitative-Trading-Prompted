@@ -1,15 +1,20 @@
-# NEXT_AGENT_TASK — Re-check paper-trading extension at/after 22:00 UTC 2026-11-02
+# NEXT_AGENT_TASK — Execute paper-trading extension at/after 22:00 UTC 2026-11-02
 
 ## Context
-UTC 2026-11-02T02:58Z / ET 2026-11-01 21:58 EST. Ran `python research/extend_paper_trading_state.py`: clock gate released but candidate session 2026-11-02 (Monday) not closed yet → `sessions extended: 0`, NAV unchanged (133019.54382525434), last_run_date 2026-10-30. `python research/drift_persistence_report.py` -> `stored == recomputed: True`. Tests 39/39 passed. `git status --porcelain data/ config/` empty. At/after 2026-11-02T22:00 UTC (17:00 ET) the candidate session may be complete.
+Current time: 2026-11-02T02:59Z UTC / 2026-11-01 21:59 EST.
+Last processed: 2026-10-30, NAV: 133019.54382525434 (unchanged).
+Ran `python research/extend_paper_trading_state.py` now: clock gate released but next expected session 2026-11-02 (Monday) not complete yet (`candidate available: no`, `sessions extended: 0`).
+Drift/persistence: `python research/drift_persistence_report.py` showed `stored == recomputed: True` (last 10 sessions reported).
+Tests: `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q` passed 39/39.
+Working tree clean for `data/ config/` (`git status --porcelain data/ config/` empty).
 
 ## Objective
-Execute at or after 2026-11-02T22:00 UTC: run `python research/extend_paper_trading_state.py` to extend paper-trading state by at most one session if 2026-11-02 has closed. Record exact commands and outputs. If still not closed, next candidate could be 2026-11-03.
+At or after 2026-11-02T22:00 UTC (17:00 ET), run `python research/extend_paper_trading_state.py` to extend paper-trading state by at most one session if 2026-11-02 has closed. Record exact commands and outputs. If still not closed, check again later or note next candidate is 2026-11-03.
 
 ## Acceptance criteria
 - `python research/extend_paper_trading_state.py` exits 0
 - If a completed session exists beyond last_run_date (2026-10-30): extend by at most one session; `sessions extended: 1` and `last_run_date` advances
-- If no completed bar available: `sessions extended: 0`, state unchanged, NAV unchanged
+- If no completed bar available: `sessions extended: 0`, state unchanged, NAV unchanged (document reason)
 - `python research/drift_persistence_report.py` -> `stored == recomputed: True`
 - `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q` passes
 - `git status --porcelain data/ config/` empty
