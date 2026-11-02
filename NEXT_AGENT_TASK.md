@@ -1,7 +1,9 @@
 # NEXT_AGENT_TASK — Re-run paper-trading extension after 2026-11-02 session closes
 
 ## Context
-Last check: 2026-11-02T08:57Z (session 26). State last_run_date 2026-10-30, NAV 133019.54382525434. Current time (ET): 2026-11-02 03:57:45 EST; clock gate released (checks day after 2026-10-31), but next expected session 2026-11-02 (Monday) not yet closed (session already complete: False, usable after 17:00 ET). sessions extended: 0, NAV unchanged, state writes: 0, raw cache scratch. drift stored==recomputed: True (rolling 63d Sharpe -0.7690 at 2026-10-30). tests: 39 passed (test_paper_trading_extend.py, test_drift_persistence.py). data/config clean.
+Last check: 2026-11-02T10:55Z (corrective invocation 2). State last_run_date 2026-10-30, NAV 133019.54382525434. Current time (ET): 2026-11-02 05:55 EST; clock gate released (checks day after 2026-10-31), but next expected session 2026-11-02 (Monday) not yet closed (session already complete: False, usable after 17:00 ET). sessions extended: 0, NAV unchanged, state writes: 0, raw cache scratch. drift stored==recomputed: True (rolling 63d Sharpe -0.7690 at 2026-10-30). tests: 44 passed (test_verify_monday_extension_path.py x2 new + test_paper_trading_extend.py + test_drift_persistence.py + test_real_extension_path.py). data/config clean.
+
+**New this cycle (durable):** the active extension write path is now verified end-to-end against the committed cache. `python research/verify_monday_extension_path.py` -> RESULT: PASS, target 2026-10-19, sessions_extended: 1, state_writes: 1, nav 133019.54 -> 133596.73, canonical state hash and data/raw byte-identical before/after. The script previously pinned a stale hard-coded 2026-10-22 target that the cache had receded past; it now derives its target from `data/raw/SPY.parquet` at run time. Regression coverage added in `tests/test_verify_monday_extension_path.py`.
 
 ## Objective
 Re-run `python research/extend_paper_trading_state.py` after the 2026-11-02 (Monday) session closes (~17:00 ET / ~22:00 UTC). Extend by at most one session to 2026-11-02 if completed bar exists.
@@ -11,14 +13,14 @@ Re-run `python research/extend_paper_trading_state.py` after the 2026-11-02 (Mon
 - If completed session exists beyond 2026-10-30: sessions extended: 1 and last_run_date advances to 2026-11-02
 - If no completed bar: sessions extended: 0, state unchanged (document reason)
 - `python research/drift_persistence_report.py` -> stored == recomputed: True
-- `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q` passes
+- `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` passes
 - `git status --porcelain data/ config/` empty
 
 ## Validation commands
 ```bash
 python research/extend_paper_trading_state.py 2>&1 | tail -25
 python research/drift_persistence_report.py 2>&1 | tail -3
-python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q
+python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q
 git status --porcelain data/ config/
 ```
 

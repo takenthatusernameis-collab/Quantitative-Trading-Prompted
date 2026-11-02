@@ -1,4 +1,4 @@
-"""Sandbox verification of the Monday extension path with the REAL provider.
+"""Sandbox verification of the active extension path against the committed cache.
 
 Prior corrective invocations only exercised the criterion-4 no-op path
 (gate not released). This script verifies the *active* extension path
@@ -6,9 +6,14 @@ Prior corrective invocations only exercised the criterion-4 no-op path
 using a pinned clock and a throwaway state, leaving the canonical state and
 data/raw cache untouched.
 
-Target: last_run_date 2026-10-21, pinned clock 2026-10-22 18:30 ET.
-The 2026-10-22 session is complete at that time and present in the canonical
-raw cache, so no network call is needed for a deterministic result.
+The target session is chosen from the COMMITTED raw cache at run time, not
+hard-coded: the tool reads the max date of the canonical SPY frame and pins
+the clock to that session's 22:30 UTC (18:30 ET), so the session is complete
+and its bar is guaranteed present. The throwaway state's last_run_date is set
+to the prior trading session. This keeps the script correct across cache
+extensions (Cycle 1034 pinned it to 2026-10-22, which the cache had since
+receded past, so the script asserted a no-op and reported FAIL on a path it
+could no longer exercise).
 
 Cycle 1034: the default is now OFFLINE (force=False, cache-backed). The
 previous default forced a live yfinance download (force=True), which held an
@@ -51,24 +56,35 @@ FORCE = ARGS.online
 # 1. Snapshot canonical state hash (must not change).
 before_canonical = hashlib.sha256(STATE_PATH.read_bytes()).hexdigest()
 
-# 2. Build a throwaway state whose last_run_date is 2026-10-21 (cache has 10-22).
+# 2. Derive the target session from the COMMITTED raw cache at run time.
+#    The tool reads the max date of the canonical SPY frame and pins the
+#    clock to that session's 22:30 UTC (18:30 ET), so the session is complete
+#    and its bar is guaranteed present. The throwaway state's last_run_date is
+#    set to the prior trading session. Deriving (not hard-coding) keeps the
+#    script correct across cache extensions.
+spy_frame = pd.read_parquet(ROOT / "data" / "raw" / "SPY.parquet")
+target_date = pd.Timestamp(spy_frame.index.max()).strftime("%Y-%m-%d")
+prior_dates = [d for d in spy_frame.index.unique() if pd.Timestamp(d).strftime("%Y-%m-%d") < target_date]
+prior_date = pd.Timestamp(prior_dates[-1]).strftime("%Y-%m-%d")
+fixed_now = datetime.strptime(target_date, "%Y-%m-%d").replace(
+    hour=22, minute=30, tzinfo=UTC
+)
+
+# 3. Build a throwaway state whose last_run_date is the session BEFORE the
+#    target, so the update is a real one-session advance rather than a replay
+#    of hundreds of sessions.
 with tempfile.TemporaryDirectory() as tmp:
     tmp_state = Path(tmp) / "state.yaml"
     canonical = PaperTradingState.from_yaml(STATE_PATH)
-    canonical.last_run_date = "2026-10-21"
-    # Truncate history to match the new last_run_date so the update is a real
-    # one-session advance rather than a replay of hundreds of sessions.
-    canonical.cumulative_dates = [d for d in canonical.cumulative_dates if d <= "2026-10-21"]
+    canonical.last_run_date = prior_date
+    canonical.cumulative_dates = [d for d in canonical.cumulative_dates if d <= prior_date]
     canonical.cumulative_returns = canonical.cumulative_returns[: len(canonical.cumulative_dates)]
     canonical.cumulative_pnl = canonical.cumulative_pnl[: len(canonical.cumulative_dates)]
-    canonical.run_history = [r for r in canonical.run_history if r["date"] <= "2026-10-21"]
+    canonical.run_history = [r for r in canonical.run_history if r["date"] <= prior_date]
     canonical.to_yaml(tmp_state)
 
     state_before_hash = hashlib.sha256(tmp_state.read_bytes()).hexdigest()
     nav_before = canonical.current_nav
-
-    # 3. Pin the clock to 2026-10-22 18:30 ET -> the 10-22 session is complete.
-    fixed_now = datetime(2026, 10, 22, 22, 30, tzinfo=UTC)
 
     class _StubClock:
         timezone = timezone
@@ -138,16 +154,16 @@ with tempfile.TemporaryDirectory() as tmp:
 
 # 6. Assertions.
 ok = True
-if result["target"] != "2026-10-22":
-    print("FAIL: target != 2026-10-22"); ok = False
+if result["target"] != target_date:
+    print(f"FAIL: target != {target_date}"); ok = False
 if result["sessions_extended"] != 1:
     print("FAIL: sessions_extended != 1"); ok = False
 if result["state_writes"] != 1:
     print("FAIL: state_writes != 1"); ok = False
 if result["nav_after"] == result["nav_before"]:
     print("FAIL: NAV unchanged"); ok = False
-if written["last_run_date"] != "2026-10-22":
-    print("FAIL: written last_run_date != 2026-10-22"); ok = False
+if written["last_run_date"] != target_date:
+    print(f"FAIL: written last_run_date != {target_date}"); ok = False
 if state_after_hash == state_before_hash:
     print("FAIL: state file unchanged after extension"); ok = False
 if raw_hashes_before != raw_hashes_after:
@@ -155,6 +171,7 @@ if raw_hashes_before != raw_hashes_after:
 if hashlib.sha256(STATE_PATH.read_bytes()).hexdigest() != before_canonical:
     print("FAIL: canonical paper_trading_state.yaml was modified"); ok = False
 
+print(f"target session: {target_date} (prior {prior_date}, pinned clock {fixed_now.isoformat()})")
 print("canonical state hash unchanged:", hashlib.sha256(STATE_PATH.read_bytes()).hexdigest() == before_canonical)
 print("canonical data/raw unchanged:", raw_hashes_before == raw_hashes_after)
 print("RESULT:", "PASS" if ok else "FAIL")

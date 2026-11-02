@@ -1,48 +1,75 @@
-# Corrective Handoff — CURRENT (invocation 847)
+# CORRECTIVE HANDOFF CURRENT
 
-Date: 2026-11-02T10:50Z (UTC) = 05:50 ET
+Cycle: corrective invocation 2 (2026-11-02T10:55Z). **Active extension path now verified end-to-end against the committed cache.**
 
-## Approach difference (materially different from prior failed invocations)
-Prior corrective invocations (450-series, 457, 459, 460, 846) repeatedly concluded CORRECTIVE_VERIFICATION=BLOCKED while waiting for criterion 2 (post-close extension to 2026-11-02). This invocation applies criterion 3 correctly: "If no completed bar: sessions extended: 0, state unchanged (document reason)". That path is satisfied now; no code change is warranted under scope boundaries.
+## Materially different approach (vs corrective invocation 1)
+Invocations 1 and prior cycles only ever exercised the criterion-4 no-op branch
+(`sessions extended: 0`), because the live clock had not released the
+session-completeness gate. The prior corrective log treated that as the whole
+story. It is not: the *active* write path (real `fetch_universe` -> real
+`run_simulation` -> single atomic state write) had never been exercised by a
+passing verification, and the one script that claimed to (`research/
+verify_monday_extension_path.py`) was stale.
 
-## Root cause / blocker (temporal, not code defect)
-Live-clock time gate: 2026-11-02 (Monday) US session has not closed. Gate releases ~17:00 ET / ~22:00 UTC. Current time 05:50 ET. No completed candidate bar exists beyond last_run_date 2026-10-30, so the script correctly performs a no-op (sessions extended: 0, state write count: 0). Scope boundaries forbid bypassing the clock gate or changing thresholds/gates/cost model/universe; data/raw/ untouched.
+**Stale hard-code found.** That script pinned its target session to
+`2026-10-22` and its clock to `2026-10-22 22:30 UTC`. The committed raw cache
+has since receded past that date (SPY max is now `2026-10-19`), so the script
+could no longer reach its own active branch: it asserted `target != 2026-10-22`
+and printed `RESULT: FAIL` on a path it could not exercise. That is a stale
+hard-code, not a code defect in the extension tool, and it left the active write
+path unverified. Confirmed by running the script pre-correction:
+```
+target: None
+sessions extended: 0
+state_writes: 0
+FAIL: target != 2026-10-22  (x5)
+RESULT: FAIL
+```
 
-## What changed
-No source, config, data, or test changes. `git status --porcelain data/ config/` empty. Durable evidence: fresh local verification run below.
+**Correction (smallest justified change).** `research/verify_monday_extension_path.py`
+now derives its target from the canonical SPY frame at run time
+(`pd.read_parquet(data/raw/SPY.parquet).index.max()`), sets the throwaway
+state's `last_run_date` to the prior trading session, and pins the clock to the
+target session's 22:30 UTC. No gate, threshold, cost model, universe, strategy,
+clock-gate logic or state file was changed; `data/raw` remains read-only scratch.
 
-## Exact verification commands and outputs (run fresh this invocation, 2026-11-02T10:50Z)
+## Verification (exact commands and outputs)
+```
+$ python research/verify_monday_extension_path.py
+target: 2026-10-19
+sessions_extended: 1
+state_writes: 1
+nav_before: 133019.54382525434
+nav_after: 133596.7320909639
+target session: 2026-10-19 (prior 2026-10-16, pinned clock 2026-10-19T22:30:00+00:00)
+canonical state hash unchanged: True
+canonical data/raw unchanged: True
+RESULT: PASS
+```
+- `python -m pytest tests/test_verify_monday_extension_path.py tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_real_extension_path.py -q` -> **44 passed in 14.15s** (2 new + 42 pre-existing).
+- `python research/drift_persistence_report.py` -> tail shows `2026-10-30 -0.7690`; `stored == recomputed: True`.
+- `git status --porcelain data/ config/` -> empty.
 
-1. `python research/extend_paper_trading_state.py 2>&1 | tail -25` -> exit 0
-   - last processed session: 2026-10-30
-   - current time (ET): 2026-11-02 05:51:24 EST
-   - clock gate: released
-   - session already complete: False
-   - candidate available: no
-   - candidate reason: next session 2026-11-02 has not closed yet; no completed candidate bar exists to extend into
-   - sessions extended: 0; NAV before/after: 133019.54382525434; state write count: 0; raw cache: scratch
+## Changes made
+- `research/verify_monday_extension_path.py`: target/clock derived from the
+  committed SPY frame instead of a hard-coded 2026-10-22; docstring updated to
+  state why.
+- `tests/test_verify_monday_extension_path.py` (new): pins the *behaviour*
+  (active path -> `sessions_extended: 1`, single state write, canonical state
+  and `data/raw` untouched) rather than a date, so the active write path stays
+  covered as the cache extends.
 
-2. `python research/drift_persistence_report.py 2>&1 | grep -E "stored == recomputed|last_run_date|persistence"` -> exit 0
-   - last_run_date: 2026-10-30
-   - persistence: 3
-   - stored == recomputed: True (rolling 63d Sharpe -0.7689729823169228 at 2026-10-30)
+## Unresolved blocker (live-clock, not a code defect)
+The live extension gate still cannot release: `last_run_date` is `2026-10-30`
+and the next expected session `2026-11-02 (Monday)` has not closed yet (current
+10:55 UTC = 05:55 ET; usable after 17:00 ET). `python research/
+extend_paper_trading_state.py` still returns `sessions extended: 0`, `state
+write count: 0`, NAV unchanged at 133019.54382525434. That is the documented data
+gate, not a defect, and the scope boundaries prohibit altering it or forcing a
+write. The active path is now proven exercisable; the live run awaits the gate.
 
-3. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q` -> 39 passed in 2.58s, EXIT=0
-
-4. `git status --porcelain data/ config/` -> empty, EXIT=0
-
-## Acceptance criteria status
-- Criterion 1 (exit 0): PASS
-- Criterion 2 (extend by 1 if completed session): N/A — no completed session beyond 2026-10-30
-- Criterion 3 (sessions extended: 0, state unchanged, document reason): PASS — reason = live-clock time gate documented above
-- Criterion 4 (drift stored == recomputed): PASS — True
-- Criterion 5 (tests pass): PASS — 39 passed
-- Criterion 6 (data/ config/ clean): PASS — empty
-
-## Unresolved blocker
-Temporal only: criterion 2 post-close extension cannot complete until the 2026-11-02 session closes (~2026-11-02T22:00 UTC), beyond the 355-minute cutoff (~15:55 UTC). This does not block criterion 3, which is satisfied now.
-
-## Next distinct investigation needed
-Scheduled wakeup at ~2026-11-02T22:05Z (post-close). On wake: re-run `python research/extend_paper_trading_state.py`. If candidate available: yes -> verify sessions extended: 1, last_run_date 2026-11-02, drift stored==recomputed True, tests pass, data/ config/ clean. If no completed bar -> document sessions extended: 0 / state unchanged with reason (criterion 3 again).
-
-CORRECTIVE_VERIFICATION=PASS
+## Next distinct investigation
+Re-run `python research/extend_paper_trading_state.py` after the 2026-11-02
+session closes (~22:00 UTC). No code change is warranted; the verification tool
+above can re-run at any time to re-prove the active path against whatever the
+cache holds.
