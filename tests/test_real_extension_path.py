@@ -106,7 +106,7 @@ def _tmp_cfg(real_cfg, tmp_path):
 def test_real_daily_update_reproduces_committed_state(
     tmp_path, real_cfg, committed_state
 ):
-    """The real write path reproduces the committed state for 2026-10-30."""
+    """The real write path reproduces the committed state for 2026-11-02."""
     from src.simulation.paper_trading import run_daily_paper_update
 
     cfg = _tmp_cfg(real_cfg, tmp_path)
@@ -115,7 +115,7 @@ def test_real_daily_update_reproduces_committed_state(
     state = PaperTradingState.from_yaml(state_path)
     before = hashlib.sha256(state_path.read_bytes()).hexdigest()
 
-    target = "2026-10-30"
+    target = "2026-11-02"
     fetch, cleanup = _real_fetch(cfg)
     try:
         # Slice the market data exactly to the target session, as
