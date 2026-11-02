@@ -1,9 +1,9 @@
 # NEXT_AGENT_TASK — Re-run paper-trading extension after 2026-11-02 session closes
 
 ## Context
-Current time: 2026-11-01T23:59 ET (2026-11-02T04:59 UTC). State last_run_date 2026-10-30, NAV 133019.54.
-sessions extended: 0 this run because 2026-11-02 (Monday) has not closed yet.
-Tests: 39 passed. stored == recomputed: True. git status data/config empty.
+Last check: 2026-11-02T05:01 UTC (2026-11-02 00:01 ET). State last_run_date 2026-10-30, NAV 133019.54.
+Sessions extended this run: 0 because 2026-11-02 (Monday) had not closed (candidate reason: next session 2026-11-02 has not closed yet).
+Drift report: stored == recomputed: True. Tests: 39 passed. git status data/config empty.
 
 ## Objective
 Re-run `python research/extend_paper_trading_state.py` after the 2026-11-02 (Monday) session closes (~17:00 ET / 22:00 UTC on 2026-11-02). Extend by at most one session to 2026-11-02 if completed bar exists.
@@ -19,7 +19,7 @@ Re-run `python research/extend_paper_trading_state.py` after the 2026-11-02 (Mon
 ## Validation commands
 ```bash
 python research/extend_paper_trading_state.py 2>&1 | tail -25
-python research/drift_persistence_report.py 2>&1 | tail -10
+python research/drift_persistence_report.py 2>&1 | tail -3
 python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py -q
 git status --porcelain data/ config/
 ```
