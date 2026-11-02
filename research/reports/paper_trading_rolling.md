@@ -52,6 +52,6 @@
 
 ## Drift Persistence Provenance
 
-- **git_sha:** 42b2d135d61899748226a3385e4d7950b054cc7d
+- **git_sha:** 53983c4188bd6c3d9d5bc412fa93b210b9626967
 - **paper_trading_state_sha256:** 46571f7ac64e203d7802ae13b1594edae82830f86468ff958b90b3e9117cd200
 - **paper_trading_config_sha256:** 37a2a654c7f6f41924aba13d986d5aa2dd4072770d1142485d76a92c5e92bd8d
