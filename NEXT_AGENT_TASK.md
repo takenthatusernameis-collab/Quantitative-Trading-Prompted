@@ -4,10 +4,11 @@
 Cycle 868 (2026-11-03T03:53Z, ET = Mon 2026-11-02 ~22:53) ran the full acceptance suite before the 2026-11-03 session close.
 - `python3 research/extend_paper_trading_state.py`: clock gate NOT released, candidate available: no, sessions extended: 0, reason "next session 2026-11-03 has not closed yet (in the future (today is 2026-11-02)); no completed candidate bar exists to extend into"; no state write, NAV unchanged 132606.795692673, canonical data/raw untouched.
 - `python3 research/drift_persistence_report.py`: stored == recomputed: True (drift flag -1.3784428809419644 at 2026-11-02, persistence 4 days).
-- `python3 -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q`: 45 passed in 21.10s.
+- `python3 -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q`: 45 passed.
 - `git status --porcelain data/ config/`: empty.
-- `python3 research/verify_monday_extension_path.py`: RESULT: PASS, exit 0 (active extension path proven feasible end-to-end; canonical state and data/raw untouched).
-Committed state last_run_date remains 2026-11-02 (no advance, as expected pre-close).
+- `python3 research/verify_monday_extension_path.py`: RESULT: PASS, exit 0.
+
+Current run (2026-11-03T03:54Z): all checks pass in pre-close state. last_run_date remains 2026-11-02, sessions_extended 0, idempotent.
 
 ## Objective
 After 2026-11-03 session closes (~17:00 ET / ~22:00 UTC), re-run the extension and persistence checks, documenting outcomes precisely. Expect the "then" branch: sessions extended == 1 and last_run_date advances to 2026-11-03 if a completed 2026-11-03 bar exists; otherwise sessions extended == 0 with explicit reason.
