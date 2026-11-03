@@ -1,11 +1,12 @@
-# NEXT_AGENT_TASK — Execute post-gate-release extension run (Cycle 1088)
+# NEXT_AGENT_TASK — Execute post-gate-release extension run (Cycle 1085)
 
-## Context (evidence from this session, 2026-11-03T06:04 UTC)
-- Current canonical state (verified by reading data/processed/paper_trading_state.yaml): last_run_date 2026-11-02, NAV 132606.795692673. The state is ALREADY at 2026-11-02, so it cannot "advance to 2026-11-02" — that expectation in the prior task text is stale.
-- Current time 2026-11-03 01:06 ET (06:06 UTC). The 2026-11-03 US session has not opened (market opens 09:30 ET) and has not closed.
-- Clock gate: NOT released. Next expected session 2026-11-03 (Tuesday), usable after 17:00 ET on 2026-11-03.
-- pytest 9.2.0 and pandas 3.1.0 are installed; the four target test files pass (45 passed).
-- Supervisor recommendation review-0002 disposition `rejected_with_reason` (pytest-not-installed premise stale); recorded in .kilo-runtime/worker-disposition.json.
+## Context (evidence from this session, 2026-11-03T06:09 UTC)
+- Current canonical state (verified by reading data/processed/paper_trading_state.yaml): last_run_date 2026-11-02, NAV 132606.795692673.
+- Current time 2026-11-03 01:09 ET (06:09 UTC). The 2026-11-03 US session has not yet opened (market opens 09:30 ET) and has not closed.
+- Clock gate: NOT released. Next expected session 2026-11-03 (Tuesday), usable after 17:00 ET on 2026-11-03 (~22:00 UTC).
+- pytest 9.2.0 and pandas 3.1.0 are installed; the four target test files pass (45 passed, 140 warnings in 18.14s).
+- Supervisor recommendation review-0002 disposition `superseded` (pytest-not-installed premise stale); recorded in .kilo-runtime/worker-disposition.json.
+- Prior cycle (1084) ran the same checks at 01:09 ET with identical results: sessions_extended == 0, NAV unchanged, 0 writes, drift stored == recomputed True, tests 45 passed, data/ and config/ clean.
 
 ## Objective
 After 17:00 ET on 2026-11-03 (~22:00 UTC), run the real extension and persistence checks. Expect the extension to target 2026-11-03 (the session after last_run_date 2026-11-02): sessions_extended == 1 and last_run_date advances to 2026-11-03 if a completed 2026-11-03 bar exists in live data; otherwise sessions_extended == 0 with explicit reason.
