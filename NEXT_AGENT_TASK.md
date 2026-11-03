@@ -1,11 +1,12 @@
-# NEXT_AGENT_TASK — Re-check post-gate-release extension (Cycle 1094)
+# NEXT_AGENT_TASK — Re-check post-gate-release extension (Cycle 1095)
 
 ## Context
 - State: last_run_date 2026-11-02, NAV 132606.795692673, sha256 43074f0e02629cdc2929c83c536a89be1982e39eb95ebfcb6b39ea7e90bcf41e.
-- Cycle 1094 ran at 2026-11-03T09:50 UTC: gate NOT released (current ET 04:50), sessions_extended 0, NAV unchanged, 0 writes, drift stored==recomputed True, tests 45 passed (136 warnings), data/config clean.
+- Cycle 1094 ran at 2026-11-03T09:51 UTC: gate NOT released (current ET 04:52), sessions_extended 0, NAV unchanged, 0 writes, drift stored==recomputed True, tests 45 passed (136 warnings), data/config clean. Only change: research/reports/paper_trading_rolling.md provenance block (expected, out of data/ config/ scope).
+- The 2026-11-03 (Tuesday) session is still in progress; market closes 17:00 ET (~22:00 UTC).
 
 ## Objective
-After 22:00 UTC on 2026-11-03, run the real extension and persistence checks.
+After 22:00 UTC on 2026-11-03, run the real extension and persistence checks. Extend by at most one session to 2026-11-03 if a completed bar exists; otherwise sessions_extended == 0 with explicit reason and state unchanged.
 
 ## Acceptance criteria
 - Run `python3 research/extend_paper_trading_state.py`; record gate/candidate/sessions_extended/last_run_date/NAV.
