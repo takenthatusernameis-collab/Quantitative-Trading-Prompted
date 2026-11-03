@@ -29,7 +29,7 @@ At/after 22:00 UTC on 2026-11-03 (after the US equity session close), run the re
 - If gate still not released or session not complete, record `sessions_extended == 0` with explicit reason and leave next task to re-check.
 
 ## Current status (updated)
-- Last checked: 2026-11-03 12:51:33 UTC (07:51:33 EST). Gate releases at 22:00 UTC 2026-11-03; not released. `extend_paper_trading_state.py` reports candidate unavailable, sessions_extended==0, NAV unchanged.
+- Last checked: 2026-11-03 16:34:43 UTC (11:34:43 EST). Gate releases at 22:00 UTC 2026-11-03; not released. `extend_paper_trading_state.py` reports candidate unavailable, sessions_extended==0, NAV unchanged (132606.795692673). Drift report stored==recomputed True. Tests 45 passed. `git status --porcelain data/ config/` empty.
 
 ## Verification commands (exact, in order)
 1. `date -u && TZ=America/New_York date`
