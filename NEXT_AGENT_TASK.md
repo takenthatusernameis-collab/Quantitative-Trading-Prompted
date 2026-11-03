@@ -2,7 +2,8 @@
 
 ## Context
 - State: last_run_date 2026-11-02, NAV 132606.795692673, sha256 43074f0e02629cdc2929c83c536a89be1982e39eb95ebfcb6b39ea7e90bcf41e.
-- Cycle 1095 ran at 2026-11-03T09:57 UTC: gate NOT released (current ET 04:57), sessions_extended 0, NAV unchanged, 0 writes, drift stored==recomputed True, tests 45 passed (136 warnings), data/config clean.
+- Cycle 1095 ran at 2026-11-03T09:57 UTC: gate NOT released, sessions_extended 0, NAV unchanged, 0 writes, drift stored==recomputed True, tests 45 passed, data/config clean.
+- Corrective invocation 1 ran at 2026-11-03T10:07 UTC: gate STILL NOT released (current ET 05:07). Pre-close verification now DURABLY recorded in .kilo-runtime/worker-disposition.json (verification field populated): extend_paper_trading_state.py exit 0, sessions_extended 0, NAV unchanged, 0 writes; drift stored==recomputed True; pytest 45 passed; git status data/ config/ empty. Second invocation idempotent.
 - The 2026-11-03 (Tuesday) session is still in progress; market closes 17:00 ET (~22:00 UTC).
 
 ## Objective
