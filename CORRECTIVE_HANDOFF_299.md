@@ -1,37 +1,30 @@
-CORRECTIVE_HANDOFF_299
-=====================
+# Corrective Handoff — Invocation 299
 
-Invocation: 299 (corrective)
-Task context: ongoing Kilo task / NEXT_AGENT_TASK.md (TSMomentum date-range / trailing Sharpe verification)
+## Status
+CORRECTIVE_VERIFICATION=BLOCKED
 
-Latest observed blocker (from log): "corrective invocation did not provide verified-success evidence"
-Previous corrective log inspected: /home/runner/work/_temp/kilo-session-1-recovery-298.log
+## Invocation context
+- Invocation: 299 (corrective). Diagnostic log inspected: `/home/runner/work/_temp/kilo-session-23-recovery-298.log` plus prior handoffs.
+- Working tree at start: modified `NEXT_AGENT_TASK.md`, `research/reports/paper_trading_rolling.md`; untracked `CORRECTIVE_HANDOFF_294.md`, `CORRECTIVE_HANDOFF_295.md`. No source changes.
+- Approach: ran fresh gate check at current time (materially different from prior attempts which only reported historical state) to confirm whether the temporal blocker had cleared.
 
-Approach (materially different from 298):
-- 298 fixed the diagnosis tool to be "offline-reproducible against cache gaps" but the tool still crashed in places and tests remained stale. I identified the root cause: the diagnosis tool had multiple `loc[record_dates]` calls that failed when cache ended before the committed record (SPY cache ends 2026-10-19, committed record has 4 extra sessions 2026-10-20..23). I also found the test constants were stale (expected 453 sessions / -0.142935... trailing Sharpe from when record ended earlier; now 454 sessions / -0.254926... full trailing Sharpe).
-- Fix: mask all record lookups to cache-available dates, compare cached subsets for offline reproducibility, update test expectations to match current 454-session record with correct cached trailing Sharpe values.
+## Fresh verification (exact commands + outputs)
+1. `date -u && TZ=America/New_York date` → `Tue Nov 3 11:52:55 UTC 2026` / `Tue Nov 3 06:52:55 EST 2026`
+2. `python3 research/extend_paper_trading_state.py 2>&1 | tail -25` → clock gate **NOT released**; `sessions extended: 0`; NAV before == NAV after 132606.795692673; state write count 0; raw cache scratch (canonical data/raw untouched); candidate reason: "next session 2026-11-03 has not closed yet (today and still in progress)".
 
-Changes made (durable):
-1. research/tsmomentum_rolling63_weakness_diagnosis.py
-- Offline comparison: only use sessions present in both committed record and cache (450 sessions). Compute `record_diff` against `returns_cached`, report count as `len(returns_cached)`. Compare trailing Sharpe against cached subset (`state_trailing_cached`).
-- Variants: use `record_dates_cached` instead of full `record_dates`.
-- Same-session feedback: use `record_dates_cached` for all `loc` calls.
+## What changed
+- No source/config/data/tests modified. No commits.
+- Created this handoff `CORRECTIVE_HANDOFF_299.md`.
 
-2. tests/test_tsmomentum_rolling63_weakness_diagnosis.py
-- test_anchor_is_reproduced: n_sessions 453->454, trailing_63d_sharpe -0.1429350026091491->-0.25492616117205563
-- test_rolling_distribution_is_ordered: n_windows 391->392
-- test_baseline_variant_reproduces_the_published_walk_forward: trailing Sharpe compared to cached value -0.4489181511478863 (not full record trailing Sharpe)
+## Root cause / blocker
+Purely temporal/safety-gate: US equity session 2026-11-03 closes at 17:00 ET / 22:00 UTC. Current time 06:52 ET is before close; `session_is_complete()` gate correctly prevents extension until after close/following day. This is a deliberate safety control (research/extend_paper_trading_state.py:45-63). Scope boundaries forbid altering gates/thresholds/cost model/universe/clock logic. No durable project change is possible before gate release.
 
-Verification (exact commands and outputs):
-- rm -rf research/__pycache__ .pytest_cache && timeout 90 python research/tsmomentum_rolling63_weakness_diagnosis.py --no-report
-  EXIT: 0, OVERALL: PASS (454 sessions, trailing 63d Sharpe -0.254926, all internal checks pass, variants computed on cached subset)
-- rm -rf research/__pycache__ .pytest_cache && timeout 280 python -m pytest tests/test_tsmomentum_rolling63_weakness_diagnosis.py -q
-  17 passed, 2 warnings in ~186s, EXIT: 0
-- rm -rf research/__pycache__ .pytest_cache && timeout 280 python -m pytest tests/test_tsmomentum_same_session_vol_correction.py -q
-  ..EXIT: 0
-- git status --porcelain data/ config/ => clean (DATA_CONFIG_CLEAN: 0)
-- git diff shows only the intended changes to diagnosis tool and its test
+## Next distinct action (bounded, restart-safe)
+At/after 22:00 UTC on 2026-11-03, run the exact verification sequence in `NEXT_AGENT_TASK.md`:
+1. `date -u && TZ=America/New_York date`
+2. `python3 research/extend_paper_trading_state.py 2>&1 | tail -25`
+3. `python3 research/drift_persistence_report.py 2>&1 | tail -4`
+4. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q`
+5. `git status --porcelain data/ config/`
 
-Unresolved blockers: None. All related tests pass. Data/config unchanged. No promotion gates, security controls, workflow boundaries, or safety requirements modified.
-
-Handoff: Diagnosis tool now handles cache gaps gracefully (masks to cache-available dates). Tests updated to match current committed record state. Next task should consider extending cache or handling trailing window computation for sessions beyond cache end if needed, but this is not blocking.
+CORRECTIVE_VERIFICATION=BLOCKED

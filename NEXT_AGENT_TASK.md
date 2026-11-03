@@ -1,21 +1,23 @@
-# NEXT_AGENT_TASK — Re-check post-gate-release extension (Cycle 1103)
+# NEXT_AGENT_TASK — Post-close extension for 2026-11-03 (Cycle 1104)
 
 ## Context
-- State: last_run_date 2026-11-02, NAV 132606.795692673, sha256 43074f0e02629cdc2929c83c536a89be1982e39eb95ebfcb6b39ea7e90bcf41e.
-- Cycle 1103 (2026-11-03T10:59 UTC / 05:59 ET): gate NOT released; 2026-11-03 session has not yet opened (market opens 09:30 ET / 14:30 UTC, closes 17:00 ET / 22:00 UTC). No extension, no writes. sessions_extended 0, NAV unchanged, state write count 0, raw cache scratch (canonical untouched). Reason: next session 2026-11-03 not closed yet (today and still in progress / not yet started).
-- drift_persistence_report.py: stored == recomputed True (rolling 63d Sharpe -1.3784428809419644 at 2026-11-02, persistence 4 days 2026-10-28 -> 2026-11-02).
-- Tests: 45 passed (tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py).
-- Supervisor recommendation 41605030040-attempt-1-review-0005-cd85aaa1838f disposition `accepted`: wait for gate release at ~22:00 UTC, then retry extend_paper_trading_state.py. Wakeup scheduled for 2026-11-03T22:00:00Z.
-- Verification at 2026-11-03T10:57-10:59 UTC: extend script exit 0, sessions extended 0 with explicit reason, NAV 132606.795692673 unchanged, 0 writes; second invocation idempotent (sessions extended 0, write count 0); drift stored == recomputed True; 45 tests passed; git status --porcelain data/ config/ empty.
+- State at last verified run (2026-11-03 11:44 UTC): `last_run_date` **2026-11-02**, `current_nav` **132606.795692673**, 460 sessions in `run_history` (last three: 2026-10-29, 2026-10-30, 2026-11-02). The 2026-11-02 Monday extension already landed in a prior cycle; the next target is **2026-11-03 (Tuesday)**.
+- `extend_paper_trading_state.py` at 11:44 UTC: exit 0; clock gate **NOT released** (checks day after last_run_date = 2026-11-03); next expected session 2026-11-03 (Tuesday); `candidate available: no` — "next session 2026-11-03 has not closed yet (today and still in progress)"; `sessions extended: 0`; NAV before == NAV after 132606.795692673; state write count 0; raw cache scratch (canonical data/raw untouched).
+- Gate release time: **17:00 ET on 2026-11-03 = 22:00 UTC** (or the start of the following local day, 2026-11-04 00:00 ET). This is a deliberate, documented safety control in `session_is_complete()` (research/extend_paper_trading_state.py:45) — it guarantees the provider bar is final before it enters state. Scope forbids altering the gate.
+- Active extension path pre-flight (run fresh this invocation): `python research/verify_monday_extension_path.py` → **RESULT: PASS**, exit 0. Exercises the real path (real `fetch_universe` → real `run_daily_paper_update` → single state write) against the committed cache with a pinned clock: target 2026-10-19, `sessions_extended: 1`, `state_writes: 1`, nav 132606.795692673 → 133182.19299314564, canonical state hash unchanged True, canonical data/raw unchanged True. This proves the extension logic itself is correct; the only thing missing is a completed 2026-11-03 bar after the close.
+- Drift report: `stored == recomputed: True` (rolling 63d Sharpe -1.3784428809419644 at 2026-11-02, persistence 4 days).
+- Tests: `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` → **45 passed** in 25.78s.
+- `git status --porcelain data/ config/` → empty [exit 0]. (Only non-data/config artifact: `research/reports/paper_trading_rolling.md` git_sha provenance line bumps from 4e90a17 → 0f0bd79 whenever `drift_persistence_report.py` runs — expected, self-generated report metadata, documented in README.md:177 and prior handoffs; left as-is.)
 
 ## Objective
-At/after ~22:00 UTC on 2026-11-03 (after US equity session close), run the real extension and persistence checks. Extend by at most one session to 2026-11-03 if a completed bar exists; otherwise sessions_extended == 0 with explicit reason and state unchanged.
+At/after 22:00 UTC on 2026-11-03 (after the US equity session close), run the real extension and persistence checks. Extend by at most one session to 2026-11-03 if a completed bar exists; otherwise `sessions_extended == 0` with explicit reason and state unchanged.
 
 ## Acceptance criteria
 - Run `python3 research/extend_paper_trading_state.py`; record gate/candidate/sessions_extended/last_run_date/NAV and reason if 0.
-- If completed 2026-11-03 session exists: sessions_extended == 1 and last_run_date advances to 2026-11-03; else sessions_extended == 0 with explicit reason, NAV unchanged, 0 writes.
-- Second invocation: sessions_extended == 0, write count 0, NAV unchanged.
-- `python3 research/drift_persistence_report.py` reports stored == recomputed: True.
+- If completed 2026-11-03 session exists: `sessions_extended == 1`, `last_run_date` advances to 2026-11-03, NAV changes, state write count 1, `data/processed/paper_trading_state.yaml` updated, raw cache scratch (canonical data/raw untouched).
+- If not: `sessions_extended == 0` with explicit reason, NAV unchanged, 0 writes.
+- Second invocation idempotent: `sessions_extended == 0`, write count 0, NAV unchanged.
+- `python3 research/drift_persistence_report.py` reports `stored == recomputed: True`.
 - `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` passes.
 - `git status --porcelain data/ config/` empty.
 
@@ -24,4 +26,11 @@ At/after ~22:00 UTC on 2026-11-03 (after US equity session close), run the real 
 - Do not commit unless asked.
 - Do not modify data/raw/.
 - Do not hand-edit canonical state.
-- If gate still not released or session not complete, record sessions_extended == 0 with explicit reason and leave next task to re-check.
+- If gate still not released or session not complete, record `sessions_extended == 0` with explicit reason and leave next task to re-check.
+
+## Verification commands (exact, in order)
+1. `date -u && TZ=America/New_York date`
+2. `python3 research/extend_paper_trading_state.py 2>&1 | tail -25`
+3. `python3 research/drift_persistence_report.py 2>&1 | tail -4`
+4. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q`
+5. `git status --porcelain data/ config/`

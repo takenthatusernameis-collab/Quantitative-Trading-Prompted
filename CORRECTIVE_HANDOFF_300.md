@@ -1,36 +1,33 @@
-CORRECTIVE_HANDOFF_300
-=====================
+# Corrective Handoff — Invocation 300
 
-Invocation: 300 (corrective)
-Task context: ongoing Kilo task / NEXT_AGENT_TASK.md (TSMomentum date-range / trailing Sharpe verification)
+## Status
+CORRECTIVE_VERIFICATION=BLOCKED
 
-Latest observed blocker (from log): "corrective invocation failed git diff checks"
-Previous corrective log inspected: /home/runner/work/_temp/kilo-session-1-recovery-299.log
+## Invocation context
+- Invocation: 300 (corrective). Diagnostic log: `/home/runner/work/_temp/kilo-session-23-recovery-300.log`.
+- Working tree at start: modified `CORRECTIVE_HANDOFF_299.md`, `NEXT_AGENT_TASK.md`, `research/reports/paper_trading_rolling.md`; untracked `CORRECTIVE_HANDOFF_294.md`, `CORRECTIVE_HANDOFF_295.md`. No source/config/data changes.
+- Approach materially different from prior: instead of only re-running the gate, also ran the real extension-path pre-flight (`verify_monday_extension_path.py`) to independently confirm extension logic correctness, and confirmed gate state at a fresh timestamp.
 
-Approach (materially different from 299):
-- 299 reported PASS but the controller's `git diff --check` failed. I did NOT repeat the same operation. I located the controller's own gate in `.github/scripts/kilo-controller.sh:659` (`elif ! git diff --check || ! git diff --cached --check`) and ran it directly. It failed on `research/reports/common_inception_sample_audit_001.md:1005: new blank line at EOF.`.
-- Root cause: the diagnosis tool (Cycle 925) writes its report with a trailing blank line appended after the last committed line, producing a file without a final newline. `git diff --check` flags a "new blank line at EOF" on that file. This is a spurious artifact change, not a research finding.
-- Fix (minimal, evidence-supported): restored `research/reports/common_inception_sample_audit_001.md` to HEAD with `git checkout --`, removing the spurious change. No code, test, data, config, gate, or safety control was altered.
+## Fresh verification (exact commands + outputs)
+1. `date -u && TZ=America/New_York date` → `Tue Nov 3 11:53:27 UTC 2026` / `Tue Nov 3 06:53:27 EST 2026`
+2. `python3 research/extend_paper_trading_state.py 2>&1 | tail -25` → clock gate **NOT released**; `sessions extended: 0`; NAV before == NAV after 132606.795692673; state write count 0; raw cache scratch (canonical data/raw untouched); candidate reason: "next session 2026-11-03 has not closed yet (today and still in progress)".
+3. `python research/verify_monday_extension_path.py` → `RESULT: PASS` (sessions_extended 1, state_writes 1, nav 132606.795692673 → 133182.19299314564, canonical state hash unchanged True, canonical data/raw unchanged True).
 
-Changes made (durable):
-- None to source, tests, data, config, gates, or safety controls.
-- Working tree now contains only the intended Cycle-925 diagnosis changes (tool + test) plus untracked handoff logs.
+## What changed
+- No source/config/data/tests modified. No commits.
+- Created this handoff `CORRECTIVE_HANDOFF_300.md`.
 
-Verification (exact commands and outputs):
-- `git diff --check` => exit 0 (no whitespace errors)
-- `git diff --cached --check` => exit 0
-- `git status --porcelain data/ config/` => empty (DATA_CONFIG_CLEAN: 0)
-- `rm -rf research/__pycache__ .pytest_cache && timeout 120 python research/tsmomentum_rolling63_weakness_diagnosis.py --no-report`
-  EXIT: 0, OVERALL: PASS (454 sessions, trailing 63d Sharpe -0.254926, all internal checks pass)
-- `rm -rf research/__pycache__ .pytest_cache && timeout 300 python -m pytest tests/test_tsmomentum_rolling63_weakness_diagnosis.py -q`
-  17 passed, 2 warnings in 186.73s, EXIT: 0
-- `git status --porcelain` => only the 4 intended modified files + 2 untracked handoff logs
+## Root cause / blocker
+Purely temporal/safety-gate: US equity session 2026-11-03 closes at 17:00 ET / 22:00 UTC. Current time 06:53 ET is before close; `session_is_complete()` gate correctly prevents extension until after close/following day. This is a deliberate safety control (research/extend_paper_trading_state.py:45-63). Scope boundaries forbid altering gates/thresholds/cost model/universe/clock logic. Extension logic itself verified PASS via pre-flight. No durable project change possible before gate release.
 
-Unresolved blockers: None. All acceptance criteria met:
-- git diff --check and git diff --cached --check pass
-- python -m pytest -q passes for the affected module (17/17)
-- git status --porcelain data/ config/ is empty
-- No promotion gates, security controls, workflow boundaries, user data, or safety requirements modified
-- Research pre-registrations and the incumbent NO-GO verdict preserved
+## Next distinct action (bounded, restart-safe)
+At/after 22:00 UTC on 2026-11-03, run the exact verification sequence in `NEXT_AGENT_TASK.md`:
+1. `date -u && TZ=America/New_York date`
+2. `python3 research/extend_paper_trading_state.py 2>&1 | tail -25`
+3. `python3 research/drift_persistence_report.py 2>&1 | tail -4`
+4. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q`
+5. `git status --porcelain data/ config/`
 
-Handoff: The git-diff-check blocker was a spurious trailing-newline artifact in an unrelated committed report, introduced by the diagnosis tool's report renderer. The report is restored to HEAD; the diagnosis tool and its tests remain correct and passing. Next task: none outstanding for this blocker.
+CORRECTIVE_VERIFICATION=BLOCKED
+EOF
+echo done
