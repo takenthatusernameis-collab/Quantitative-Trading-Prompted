@@ -1,11 +1,12 @@
-# NEXT_AGENT_TASK — Verify and report paper-trading state at next close window
+# NEXT_AGENT_TASK — Extend paper-trading state after the 2026-11-03 close window
 
 ## Context
-This cycle (2026-11-03T02:11Z, ET = Mon 2026-11-02 ~21:11): ran the full acceptance suite before the 2026-11-03 session close.
+Cycle 868 (2026-11-03T03:53Z, ET = Mon 2026-11-02 ~22:53) ran the full acceptance suite before the 2026-11-03 session close.
 - `python3 research/extend_paper_trading_state.py`: clock gate NOT released, candidate available: no, sessions extended: 0, reason "next session 2026-11-03 has not closed yet (in the future (today is 2026-11-02)); no completed candidate bar exists to extend into"; no state write, NAV unchanged 132606.795692673, canonical data/raw untouched.
 - `python3 research/drift_persistence_report.py`: stored == recomputed: True (drift flag -1.3784428809419644 at 2026-11-02, persistence 4 days).
-- `python3 -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q`: 44 passed in 13.74s.
+- `python3 -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q`: 45 passed in 21.10s.
 - `git status --porcelain data/ config/`: empty.
+- `python3 research/verify_monday_extension_path.py`: RESULT: PASS, exit 0 (active extension path proven feasible end-to-end; canonical state and data/raw untouched).
 Committed state last_run_date remains 2026-11-02 (no advance, as expected pre-close).
 
 ## Objective
@@ -14,6 +15,7 @@ After 2026-11-03 session closes (~17:00 ET / ~22:00 UTC), re-run the extension a
 ## Acceptance criteria
 - Run `python3 research/extend_paper_trading_state.py` and record observed gate/candidate/sessions_extended/last_run_date.
 - If a completed session exists: sessions extended == 1 and last_run_date advances to 2026-11-03; else sessions extended == 0 with explicit reason.
+- Run a second invocation to confirm idempotency: sessions extended == 0, state write count == 0, NAV unchanged.
 - `python3 research/drift_persistence_report.py` reports `stored == recomputed: True`.
 - `python3 -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` passes.
 - `git status --porcelain data/ config/` empty (no unintended writes).
@@ -21,7 +23,8 @@ After 2026-11-03 session closes (~17:00 ET / ~22:00 UTC), re-run the extension a
 ## Validation commands
 ```bash
 python3 research/extend_paper_trading_state.py 2>&1 | tail -40
-python3 research/drift_persistence_report.py 2>&1 | tail -3
+python3 research/extend_paper_trading_state.py 2>&1 | tail -8   # idempotency check
+python3 research/drift_persistence_report.py 2>&1 | grep -i "stored == recomputed"
 python3 -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q
 git status --porcelain data/ config/
 ```

@@ -24,6 +24,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -139,17 +140,46 @@ def test_real_daily_update_reproduces_committed_state(
         )
 
 
-def test_real_extension_path_is_idempotent(tmp_path, real_cfg, committed_state):
+def test_real_extension_path_advances_to_completed_session(
+    tmp_path, real_cfg, committed_state
+):
     """The real extension path advances the state to the completed session.
 
     The committed cache serves a completed 2026-11-02 bar (the session closes
     at 16:00 ET and NOW is 23:00 UTC / 18:00 ET, so the completeness gate is
     satisfied). The extension must select 2026-11-02 as the target, advance
     the state, and write exactly once.
+
+    Named distinctly from ``test_real_extension_path_is_idempotent`` below:
+    a duplicate definition silently shadows the earlier one under Python
+    semantics, leaving this branch unexercised by the suite (Cycle 1035).
     """
     cfg = _tmp_cfg(real_cfg, tmp_path)
     state_path = tmp_path / "state.yaml"
-    state_path.write_text(COMMITTED_STATE_PATH.read_text())
+    # Start from the session BEFORE the target (2026-11-01, the prior Friday),
+    # so the extension is a real one-session advance. Copying the committed
+    # state verbatim would leave last_run_date already at 2026-11-02, in which
+    # case the extension correctly reports no candidate (the next session
+    # 2026-11-03 is not complete at NOW) and the test would assert against a
+    # no-op it cannot distinguish from a real failure.
+    prior = "2026-11-01"
+    state = PaperTradingState.from_yaml(COMMITTED_STATE_PATH)
+    state.last_run_date = prior
+    state.cumulative_dates = [d for d in state.cumulative_dates if d <= prior]
+    state.cumulative_returns = state.cumulative_returns[: len(state.cumulative_dates)]
+    state.cumulative_pnl = state.cumulative_pnl[: len(state.cumulative_dates)]
+    state.run_history = [r for r in state.run_history if r["date"] <= prior]
+    # current_nav / peak_nav / max_drawdown must reflect the truncated history,
+    # not the committed 2026-11-02 values, or nav_before would already include
+    # the target session's return and the extension's nav_after would appear
+    # to have fallen (Cycle 1035).
+    last_hist = state.run_history[-1]
+    state.current_nav = float(last_hist["nav"])
+    state.peak_nav = max(r["nav"] for r in state.run_history)
+    state.max_drawdown = min(
+        (r["nav"] - state.peak_nav) / state.peak_nav for r in state.run_history
+    )
+    state_path.write_text(yaml.safe_dump(state.__dict__))
 
     fetch, cleanup = _real_fetch(cfg)
     try:
@@ -164,7 +194,13 @@ def test_real_extension_path_is_idempotent(tmp_path, real_cfg, committed_state):
     assert result["target"] == "2026-11-02"
     assert result["sessions_extended"] == 1
     assert result["state_writes"] == 1
-    assert result["nav_after"] > result["nav_before"]
+    # The extension must reproduce the committed 2026-11-02 NAV bit-for-bit.
+    # (Not "nav_after > nav_before": the committed state shows 2026-11-02 was a
+    # down day, 133019.54 -> 132606.80, so the correct extension's NAV falls.
+    # Requiring a rise would assert against the real outcome.)
+    assert result["nav_after"] == pytest.approx(
+        committed_state.current_nav, rel=1e-12
+    )
     assert PaperTradingState.from_yaml(state_path).last_run_date == "2026-11-02"
 
 
