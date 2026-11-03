@@ -1,9 +1,9 @@
-# NEXT_AGENT_TASK — Re-check post-gate-release extension (Cycle 1089)
+# NEXT_AGENT_TASK — Re-check post-gate-release extension (Cycle 1091)
 
 ## Context
 - State: last_run_date 2026-11-02, NAV 132606.795692673, sha256 43074f0e02629cdc2929c83c536a89be1982e39eb95ebfcb6b39ea7e90bcf41e.
-- This cycle ran at 2026-11-03T08:44 UTC (03:44 ET): gate NOT released, sessions_extended 0, NAV unchanged, 0 writes, drift stored==recomputed True, tests 45 passed (0 weekday warnings), data/config clean.
-- Gate releases ~22:00 UTC on 2026-11-03.
+- This cycle ran at 2026-11-03T08:46 UTC (03:46 ET): gate NOT released, sessions_extended 0, NAV unchanged, 0 writes, drift stored==recomputed True, tests 45 passed (136 warnings), data/config clean.
+- Gate releases ~22:00 UTC on 2026-11-03 (after 17:00 ET close).
 
 ## Objective
 After 22:00 UTC on 2026-11-03, run the real extension and persistence checks.
@@ -13,7 +13,7 @@ After 22:00 UTC on 2026-11-03, run the real extension and persistence checks.
 - If completed 2026-11-03 session exists: sessions_extended == 1 and last_run_date advances; else 0 with explicit reason.
 - Second invocation: sessions_extended == 0, write count 0, NAV unchanged.
 - `python3 research/drift_persistence_report.py` reports stored == recomputed: True.
-- `python3 -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` passes, no DatetimeIndex.weekday warnings.
+- `python3 -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` passes.
 - `git status --porcelain data/ config/` empty.
 
 ## Scope boundaries
