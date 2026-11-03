@@ -1,13 +1,13 @@
-# NEXT_AGENT_TASK — Re-run paper-trading extension after Nov 3 session close (gate release)
+# NEXT_AGENT_TASK — Re-run paper-trading extension after Nov 3 17:00 ET gate release
 
-## Context (Cycle 1086, 2026-11-03T05:05:00Z / Tue 2026-11-03 00:05 EST)
-- Prior cycle: gate NOT released (00:03 ET Nov 3); sessions extended 0; NAV 132606.795692673; last_run_date 2026-11-02.
-- drift report: stored == recomputed True (rolling 63d Sharpe -1.3784428809419644 at 2026-11-02, persistence 4 days, streak 2026-10-28 -> 2026-11-02).
+## Context (Cycle 1087, 2026-11-03T05:06 UTC)
+- Gate NOT released at 00:06 ET Nov 3: sessions extended 0, last_run_date 2026-11-02, NAV 132606.795692673.
+- drift report: stored == recomputed True.
 - Tests: 45 passed, 140 warnings. git status data/ config/ empty.
 - Gate releases at 17:00 ET on 2026-11-03 (~22:00 UTC Tue 2026-11-03).
 
 ## Objective
-After 17:00 ET on 2026-11-03, re-run the extension and persistence checks, documenting outcomes precisely. Expect the "then" branch: sessions extended == 1 and last_run_date advances to 2026-11-03 if a completed 2026-11-03 bar exists; otherwise sessions extended == 0 with explicit reason.
+After 17:00 ET on 2026-11-03, re-run the extension and persistence checks. Expect sessions extended == 1 and last_run_date advances to 2026-11-03 if a completed 2026-11-03 bar exists; otherwise sessions extended == 0 with explicit reason.
 
 ## Acceptance criteria
 - Run `python3 research/extend_paper_trading_state.py` and record observed gate/candidate/sessions_extended/last_run_date.
