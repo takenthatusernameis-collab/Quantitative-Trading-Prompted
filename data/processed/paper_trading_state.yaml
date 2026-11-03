@@ -1,12 +1,12 @@
-last_run_date: '2026-11-02'
+last_run_date: '2026-11-03'
 current_positions:
-  SPY: 0.17251506122102386
-  QQQ: 0.17251506122102386
-  IWM: 0.17251506122102386
+  SPY: 0.17292464729105153
+  QQQ: 0.17292464729105153
+  IWM: 0.17292464729105153
   TLT: 0.0
   GLD: 0.0
   EFA: 0.0
-  EEM: 0.17251506122102386
+  EEM: 0.17292464729105153
 cumulative_returns:
 - 0.0019462434871237997
 - 0.006936972864723232
@@ -468,6 +468,7 @@ cumulative_returns:
 - -0.003616478795533814
 - -0.015844149915779544
 - -0.0031029134570145834
+- 0.001955012140589134
 cumulative_pnl:
 - 194.62434871237997
 - 695.0473902981554
@@ -929,6 +930,7 @@ cumulative_pnl:
 - -490.58126924662014
 - -2141.512031773807
 - -412.7481325813228
+- 259.2478955037986
 cumulative_dates:
 - '2025-01-02'
 - '2025-01-03'
@@ -1390,15 +1392,16 @@ cumulative_dates:
 - '2026-10-29'
 - '2026-10-30'
 - '2026-11-02'
+- '2026-11-03'
 peak_nav: 139120.07235486925
-current_nav: 132606.795692673
+current_nav: 132866.0435881768
 max_drawdown: -0.049857401112321176
 drift_flags:
   low_rolling_sharpe:
-    value: -1.3784428809419644
+    value: -1.399698929897785
     threshold: 0.5
-    date: '2026-11-02'
-    persistence_days: 4
+    date: '2026-11-03'
+    persistence_days: 5
 run_history:
 - date: '2025-01-02'
   nav: 100194.62434871239
@@ -5540,13 +5543,22 @@ run_history:
   dd_scale: 1.0
   regime_exposure: 1.0
   n_positions: 4
+- date: '2026-11-03'
+  nav: 132866.0435881768
+  daily_return: 0.001955012140589134
+  daily_pnl: 259.2478955037986
+  turnover: 0.0016383442801106707
+  vol_scale: 0.6916985891642061
+  dd_scale: 1.0
+  regime_exposure: 1.0
+  n_positions: 4
 previous_regime_exposure: 1.0
-rolling_sharpe_63d: -1.3784428809419644
+rolling_sharpe_63d: -1.399698929897785
 rolling_max_dd_63d: -0.04985740111232129
-regime_persistence_days: 145
+regime_persistence_days: 146
 vol_scale_min: 0.43731674589035896
 vol_scale_max: 1.0
 dd_scale_min: 1.0
 dd_scale_max: 1.0
-turnover_median: 0.0013871041808863338
+turnover_median: 0.0013968748001750297
 turnover_p95: 0.5

@@ -1,37 +1,37 @@
 # Paper-Trading Rolling Report
 
-**Generated:** 2026-11-03 06:59:28 UTC
-**Last Run Date:** 2026-11-02
-**Days Tracked:** 460
+**Generated:** 2026-11-03 22:00:15 UTC
+**Last Run Date:** 2026-11-03
+**Days Tracked:** 461
 
 ## Current State
 
 | Metric | Value |
 |---|---|
-| Current NAV | $132,606.80 |
+| Current NAV | $132,866.04 |
 | Peak NAV | $139,120.07 |
 | Paper Drawdown | -4.99% |
-| Total Return | 32.61% |
-| Annualized Return | 16.72% |
-| Volatility (ann.) | 9.62% |
-| Sharpe Ratio (ann.) | 1.7374 |
+| Total Return | 32.87% |
+| Annualized Return | 16.81% |
+| Volatility (ann.) | 9.61% |
+| Sharpe Ratio (ann.) | 1.7480 |
 
 ## Positions Table
 
-- SPY: 17.2515%
-- QQQ: 17.2515%
-- IWM: 17.2515%
-- EEM: 17.2515%
+- SPY: 17.2925%
+- QQQ: 17.2925%
+- IWM: 17.2925%
+- EEM: 17.2925%
 
 ## Drift Monitoring
 
-- **low_rolling_sharpe**: {'value': -1.3784428809419644, 'threshold': 0.5, 'date': '2026-11-02', 'persistence_days': 4}
+- **low_rolling_sharpe**: {'value': -1.399698929897785, 'threshold': 0.5, 'date': '2026-11-03', 'persistence_days': 5}
 
 ## Enhanced Drift Monitoring
 
-- **Rolling 63-day Sharpe:** -1.3784
+- **Rolling 63-day Sharpe:** -1.3997
 - **Rolling 63-day Max DD:** -4.99%
-- **Regime Persistence:** 145 days in current regime
+- **Regime Persistence:** 146 days in current regime
 - **vol_scale range:** [0.437, 1.000]
 - **dd_scale range:** [1.000, 1.000]
 - **Turnover (median/p95):** 0.14% / 50.00%
@@ -44,14 +44,14 @@
 
 ## Run History (Recent)
 
-- 2026-10-27: NAV=$134,964.32, Ret=0.67%, Turnover=0.55%
 - 2026-10-28: NAV=$135,651.64, Ret=0.51%, Turnover=3.76%
 - 2026-10-29: NAV=$135,161.06, Ret=-0.36%, Turnover=0.12%
 - 2026-10-30: NAV=$133,019.54, Ret=-1.58%, Turnover=3.05%
 - 2026-11-02: NAV=$132,606.80, Ret=-0.31%, Turnover=2.84%
+- 2026-11-03: NAV=$132,866.04, Ret=0.20%, Turnover=0.16%
 
 ## Drift Persistence Provenance
 
-- **git_sha:** 093c9b0917ef182ce317af3f483f97e0799b30f7
-- **paper_trading_state_sha256:** 43074f0e02629cdc2929c83c536a89be1982e39eb95ebfcb6b39ea7e90bcf41e
+- **git_sha:** 85c527c9b4cddb876f13a1e03759c04e33546d84
+- **paper_trading_state_sha256:** 6f7b94ba81c802ee605c1fea7f257a19e52cd5c07ae87b06961d880de63d2886
 - **paper_trading_config_sha256:** 37a2a654c7f6f41924aba13d986d5aa2dd4072770d1142485d76a92c5e92bd8d

@@ -40,7 +40,7 @@ COMMITTED_STATE_PATH = ROOT / "data" / "processed" / "paper_trading_state.yaml"
 # (18:00 ET), i.e. after the 2026-11-02 session has closed. This is the moment
 # at which the extension's ``sessions extended: 1`` branch becomes exercisable
 # once the provider serves a completed bar beyond the last processed session.
-NOW = datetime(2026, 11, 2, 23, 0, tzinfo=UTC)
+NOW = datetime(2026, 11, 3, 23, 0, tzinfo=UTC)
 
 
 @pytest.fixture(scope="module")
@@ -107,7 +107,7 @@ def _tmp_cfg(real_cfg, tmp_path):
 def test_real_daily_update_reproduces_committed_state(
     tmp_path, real_cfg, committed_state
 ):
-    """The real write path reproduces the committed state for 2026-11-02."""
+    """The real write path reproduces the committed state for 2026-11-03."""
     from src.simulation.paper_trading import run_daily_paper_update
 
     cfg = _tmp_cfg(real_cfg, tmp_path)
@@ -116,7 +116,7 @@ def test_real_daily_update_reproduces_committed_state(
     state = PaperTradingState.from_yaml(state_path)
     before = hashlib.sha256(state_path.read_bytes()).hexdigest()
 
-    target = "2026-11-02"
+    target = "2026-11-03"
     fetch, cleanup = _real_fetch(cfg)
     try:
         # Slice the market data exactly to the target session, as
@@ -162,7 +162,7 @@ def test_real_extension_path_advances_to_completed_session(
     # case the extension correctly reports no candidate (the next session
     # 2026-11-03 is not complete at NOW) and the test would assert against a
     # no-op it cannot distinguish from a real failure.
-    prior = "2026-11-01"
+    prior = "2026-11-02"
     state = PaperTradingState.from_yaml(COMMITTED_STATE_PATH)
     state.last_run_date = prior
     state.cumulative_dates = [d for d in state.cumulative_dates if d <= prior]
@@ -191,7 +191,7 @@ def test_real_extension_path_advances_to_completed_session(
     finally:
         cleanup()
 
-    assert result["target"] == "2026-11-02"
+    assert result["target"] == "2026-11-03"
     assert result["sessions_extended"] == 1
     assert result["state_writes"] == 1
     # The extension must reproduce the committed 2026-11-02 NAV bit-for-bit.
@@ -201,7 +201,7 @@ def test_real_extension_path_advances_to_completed_session(
     assert result["nav_after"] == pytest.approx(
         committed_state.current_nav, rel=1e-12
     )
-    assert PaperTradingState.from_yaml(state_path).last_run_date == "2026-11-02"
+    assert PaperTradingState.from_yaml(state_path).last_run_date == "2026-11-03"
 
 
 def test_real_extension_path_is_idempotent(tmp_path, real_cfg, committed_state):
@@ -232,7 +232,7 @@ def test_real_extension_path_is_idempotent(tmp_path, real_cfg, committed_state):
     assert result["target"] is None
     assert result["sessions_extended"] == 0
     assert result["state_writes"] == 0
-    assert PaperTradingState.from_yaml(state_path).last_run_date == "2026-11-02"
+    assert PaperTradingState.from_yaml(state_path).last_run_date == "2026-11-03"
     assert hashlib.sha256(state_path.read_bytes()).hexdigest() == before
 
 
