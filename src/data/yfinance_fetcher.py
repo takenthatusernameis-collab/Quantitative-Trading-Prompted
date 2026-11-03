@@ -212,7 +212,7 @@ class YFinanceFetcher:
 
         all_index = sorted(set().union(*[f.index for f in frames.values()]))
         all_index = pd.DatetimeIndex(all_index)
-        all_index = all_index[(all_index.weekday < 5)]
+        all_index = all_index[(all_index.day_of_week < 5)]
 
         out = pd.DataFrame(index=all_index, columns=pd.MultiIndex.from_product(
             [["Open", "High", "Low", "Close", "Volume"], list(frames.keys())]
