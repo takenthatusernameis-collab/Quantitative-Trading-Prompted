@@ -28,6 +28,9 @@ At/after 22:00 UTC on 2026-11-03 (after the US equity session close), run the re
 - Do not hand-edit canonical state.
 - If gate still not released or session not complete, record `sessions_extended == 0` with explicit reason and leave next task to re-check.
 
+## Current status (updated)
+- Last checked: 2026-11-03 12:51:33 UTC (07:51:33 EST). Gate releases at 22:00 UTC 2026-11-03; not released. `extend_paper_trading_state.py` reports candidate unavailable, sessions_extended==0, NAV unchanged.
+
 ## Verification commands (exact, in order)
 1. `date -u && TZ=America/New_York date`
 2. `python3 research/extend_paper_trading_state.py 2>&1 | tail -25`
