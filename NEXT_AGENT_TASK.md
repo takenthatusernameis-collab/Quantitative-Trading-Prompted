@@ -2,8 +2,7 @@
 
 ## Context
 - State: last_run_date 2026-11-02, NAV 132606.795692673, sha256 43074f0e02629cdc2929c83c536a89be1982e39eb95ebfcb6b39ea7e90bcf41e.
-- Cycle 1093 ran at 2026-11-03T09:45 UTC: gate NOT released (current ET 04:48), sessions_extended 0, NAV unchanged, 0 writes, drift stored==recomputed True, tests 45 passed (136 warnings), data/config clean.
-- Gate releases ~22:00 UTC on 2026-11-03 (after 17:00 ET close).
+- Cycle 1094 ran at 2026-11-03T09:50 UTC: gate NOT released (current ET 04:50), sessions_extended 0, NAV unchanged, 0 writes, drift stored==recomputed True, tests 45 passed (136 warnings), data/config clean.
 
 ## Objective
 After 22:00 UTC on 2026-11-03, run the real extension and persistence checks.
