@@ -1,10 +1,11 @@
 # NEXT_AGENT_TASK — Pre-close readiness check for 2026-11-06 (Cycle 1113)
 
 ## Context
-- State verified this cycle (2026-11-04 02:39 UTC / 21:39 EST Tuesday): `last_run_date` **2026-11-03**, `current_nav` **132866.0435881768**, `sessions_extended == 0`, 0 writes, `data/` and `config/` clean, `stored == recomputed: True` (rolling 63d Sharpe -1.3997 at 2026-11-03).
+- State verified this cycle (2026-11-04 02:44 UTC / 21:44 EST Tuesday): `last_run_date` **2026-11-03**, `current_nav` **132866.0435881768**, `sessions_extended == 0`, 0 writes, `data/` and `config/` clean, `stored == recomputed: True` (rolling 63d Sharpe -1.3997 at 2026-11-03). `extend_paper_trading_state.py` correctly reports gate NOT released; 2026-11-04 session not yet closed; idempotent on 2nd invocation. 4/4 paper-trading test files: **45 passed in 18.56s**.
 - The real extension for 2026-11-04 (Wednesday) is executed by the wakeup at 22:00 UTC on 2026-11-04 (see README.md Cycle 1112). After that extension completes, state should advance to `last_run_date: 2026-11-04` if the 2026-11-04 session closed and a completed bar exists.
 - The real extension for 2026-11-05 (Thursday) is executed by the wakeup at 22:00 UTC on 2026-11-05.
 - Gate for 2026-11-06 (Friday) releases at 22:00 UTC on 2026-11-06 (17:00 ET). Do not alter gate.
+- CORRECTIVE_HANDOFF_CORR2 data-integrity blocker is resolved/stale: `test_cost_admissibility_screen.py` 40 passed; `test_month_end_candidate_reaudit.py` absent. No active blocker. No supervisor recommendation pending (`.kilo-runtime/` empty).
 
 ## Objective
 At/after 22:00 UTC on 2026-11-06, run the real extension and persistence checks. Extend by at most one session to 2026-11-06 if a completed bar exists; otherwise `sessions_extended == 0` with explicit reason and state unchanged.
