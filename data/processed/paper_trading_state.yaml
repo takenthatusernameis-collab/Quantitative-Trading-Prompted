@@ -1,12 +1,12 @@
-last_run_date: '2026-11-03'
+last_run_date: '2026-11-04'
 current_positions:
-  SPY: 0.17292464729105153
-  QQQ: 0.17292464729105153
-  IWM: 0.17292464729105153
+  SPY: 0.1704709760431015
+  QQQ: 0.1704709760431015
+  IWM: 0.1704709760431015
   TLT: 0.0
   GLD: 0.0
   EFA: 0.0
-  EEM: 0.17292464729105153
+  EEM: 0.1704709760431015
 cumulative_returns:
 - 0.0019462434871237997
 - 0.006936972864723232
@@ -469,6 +469,7 @@ cumulative_returns:
 - -0.015844149915779544
 - -0.0031029134570145834
 - 0.001955012140589134
+- 0.008500120797419275
 cumulative_pnl:
 - 194.62434871237997
 - 695.0473902981554
@@ -931,6 +932,7 @@ cumulative_pnl:
 - -2141.512031773807
 - -412.7481325813228
 - 259.2478955037986
+- 1129.3774203746775
 cumulative_dates:
 - '2025-01-02'
 - '2025-01-03'
@@ -1393,15 +1395,16 @@ cumulative_dates:
 - '2026-10-30'
 - '2026-11-02'
 - '2026-11-03'
+- '2026-11-04'
 peak_nav: 139120.07235486925
-current_nav: 132866.0435881768
+current_nav: 133995.4210085515
 max_drawdown: -0.049857401112321176
 drift_flags:
   low_rolling_sharpe:
-    value: -1.399698929897785
+    value: -0.872439579425076
     threshold: 0.5
-    date: '2026-11-03'
-    persistence_days: 5
+    date: '2026-11-04'
+    persistence_days: 6
 run_history:
 - date: '2025-01-02'
   nav: 100194.62434871239
@@ -5552,13 +5555,22 @@ run_history:
   dd_scale: 1.0
   regime_exposure: 1.0
   n_positions: 4
+- date: '2026-11-04'
+  nav: 133995.4210085515
+  daily_return: 0.008500120797419275
+  daily_pnl: 1129.3774203746775
+  turnover: 0.00981468499180016
+  vol_scale: 0.681883904172406
+  dd_scale: 1.0
+  regime_exposure: 1.0
+  n_positions: 4
 previous_regime_exposure: 1.0
-rolling_sharpe_63d: -1.399698929897785
+rolling_sharpe_63d: -0.872439579425076
 rolling_max_dd_63d: -0.04985740111232129
-regime_persistence_days: 146
+regime_persistence_days: 147
 vol_scale_min: 0.43731674589035896
 vol_scale_max: 1.0
 dd_scale_min: 1.0
 dd_scale_max: 1.0
-turnover_median: 0.0013968748001750297
+turnover_median: 0.0013996955146902967
 turnover_p95: 0.5
