@@ -1,9 +1,8 @@
-# NEXT_AGENT_TASK — Post-close extension for 2026-11-04 (Cycle 1107)
+# NEXT_AGENT_TASK — Post-close extension for 2026-11-04 (Cycle 1108)
 
 ## Context
-- State at last verified run (2026-11-04 00:40 UTC): `last_run_date` **2026-11-03**, `current_nav` **132866.0435881768**, sessions in `run_history` now include 2026-11-03.
-- Extension on 2026-11-03 22:00 UTC: `sessions extended: 1`, NAV 132606.795692673 → 132866.0435881768, state write count 1, raw cache scratch (canonical data/raw untouched).
-- Pre-close check on 2026-11-04 00:40 UTC: `sessions extended: 0`, `clock gate: NOT released`, NAV unchanged, 0 writes, drift `stored == recomputed: True` (rolling 63d Sharpe -1.399698929897785 at 2026-11-03, persistence 5 days), 45 tests passed, `data/` and `config/` clean.
+- State at last verified run (2026-11-04 00:44 UTC): `last_run_date` **2026-11-03**, `current_nav` **132866.0435881768**, sessions in `run_history` now include 2026-11-03.
+- Pre-close check on 2026-11-04 00:44 UTC: `sessions extended: 0`, `clock gate: NOT released`, NAV unchanged, 0 writes, drift `stored == recomputed: True` (rolling 63d Sharpe -1.399698929897785 at 2026-11-03, persistence 5 days), 45 tests passed, `data/` and `config/` clean.
 - Gate releases at **22:00 UTC on 2026-11-04** (17:00 ET). Do not alter gate.
 
 ## Objective
