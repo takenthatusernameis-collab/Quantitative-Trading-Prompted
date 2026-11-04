@@ -1,13 +1,13 @@
 # NEXT_AGENT_TASK — Paper-trading extension gate check (2026-11-04 post-close)
 
 ## Context
-- Verified 2026-11-04 ~04:35 UTC (Tue 2026-11-03 23:34 EST): last processed session 2026-11-03, NAV 132866.0435881768, sessions_extended 0, 0 writes.
+- Verified 2026-11-04 ~04:40 UTC (Tue 2026-11-03 23:40 EST): last processed session 2026-11-03, NAV 132866.0435881768, sessions_extended 0, 0 writes.
 - Clock gate NOT released at run time; candidate session 2026-11-04 has not closed.
   - Reason: `next session 2026-11-04 has not closed yet (in the future (today is 2026-11-03)); no completed candidate bar exists to extend into`
-- Gate releases at 17:00 ET / 22:00 UTC on 2026-11-04 (Wednesday) — i.e. once the local ET clock passes 17:00 on the 2026-11-04 session date. Current time is ~04:35 UTC, so the gate will not release until ~22:00 UTC today.
+- Gate releases at 17:00 ET / 22:00 UTC on 2026-11-04 (Wednesday) — i.e. once the local ET clock passes 17:00 on the 2026-11-04 session date. Current time is ~04:40 UTC, so the gate will not release until ~22:00 UTC today.
 - drift_persistence_report: stored == recomputed True (rolling 63d Sharpe -1.3997 at 2026-11-03).
 - Idempotency confirmed (2nd invocation: 0 writes, NAV unchanged).
-- `git status --porcelain data/ config/` -> empty (clean).
+- `git status --porcelain data/ config/` -> empty (clean). Only non-data/config artifact: `research/reports/paper_trading_rolling.md` git_sha provenance line bumps from d9a4045 -> 618fb91 whenever `drift_persistence_report.py` runs — expected, self-generated report metadata, documented in README.md; left as-is.
 - No supervisor recommendation pending (`.kilo-runtime/current-supervisor-recommendation.json` absent).
 
 ## Objective
