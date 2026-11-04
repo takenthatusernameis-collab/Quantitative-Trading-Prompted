@@ -52,3 +52,8 @@ At/after 22:00 UTC on 2026-11-04, run real extension and persistence checks. Ext
 - **Next distinct investigation if provider remains lagged past gate release:** inventory alternate in-repo data sources for the paper-trading universe. Exhaustive scan confirms no in-repo source (raw/processed) carries a 2026-11-04 bar; latest committed bar is 2026-10-23. Blocker is external data availability, not an in-repo feed choice.
 
 (End of file - total 45 lines)
+## Handoff notes (corrective invocation 12, this cycle)
+- **Time/context:** UTC 2026-11-04T17:38Z (12:38 EST, Wednesday). Pre-gate readiness check performed (gate releases 17:00 ET / 22:00 UTC). Scheduled wakeup `wku_1a7a4873a001UcknwV9EcI4LUG` for 2026-11-04T22:05:00Z.
+- **Durable verification performed (fresh pre-gate):** `extend_paper_trading_state.py` (x2) → gate NOT released (12:38 EST), `sessions extended: 0`, NAV unchanged 132866.0435881768, 0 writes, idempotent; `drift_persistence_report.py` → `stored == recomputed: True` (rolling 63d Sharpe -1.3997 at 2026-11-03); `git status --porcelain data/ config/` → empty.
+- **Blocker:** clock gate not released at 12:38 EST (releases 17:00 ET / 22:00 UTC). Provider has not served a 2026-11-04 bar (latest committed bar 2026-10-23) — data-availability blocker may persist even after gate release.
+- **Action:** At/after 22:00 UTC, run the verification commands in order per acceptance criteria. If completed 2026-11-04 bar exists: sessions_extended==1, advance state; else sessions_extended==0 with explicit reason, state unchanged.
