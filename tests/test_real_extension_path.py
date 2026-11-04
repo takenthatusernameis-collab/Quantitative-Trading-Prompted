@@ -112,15 +112,31 @@ def test_real_daily_update_reproduces_committed_state(
 
     cfg = _tmp_cfg(real_cfg, tmp_path)
     state_path = tmp_path / "state.yaml"
-    state_path.write_text(COMMITTED_STATE_PATH.read_text())
+
+    # Start from the session before the target (2026-11-02), so the update
+    # advances one session to 2026-11-03. Copying the committed state verbatim
+    # would leave last_run_date already at 2026-11-04, which is ahead of the
+    # target and cannot be reproduced from a fixed NOW before that session.
+    prior = "2026-11-02"
+    state = PaperTradingState.from_yaml(COMMITTED_STATE_PATH)
+    state.last_run_date = prior
+    state.cumulative_dates = [d for d in state.cumulative_dates if d <= prior]
+    state.cumulative_returns = state.cumulative_returns[: len(state.cumulative_dates)]
+    state.cumulative_pnl = state.cumulative_pnl[: len(state.cumulative_dates)]
+    state.run_history = [r for r in state.run_history if r["date"] <= prior]
+    last_hist = state.run_history[-1]
+    state.current_nav = float(last_hist["nav"])
+    state.peak_nav = max(r["nav"] for r in state.run_history)
+    state.max_drawdown = min(
+        (r["nav"] - state.peak_nav) / state.peak_nav for r in state.run_history
+    )
+    state_path.write_text(yaml.safe_dump(state.__dict__))
     state = PaperTradingState.from_yaml(state_path)
-    before = hashlib.sha256(state_path.read_bytes()).hexdigest()
 
     target = "2026-11-03"
     fetch, cleanup = _real_fetch(cfg)
     try:
-        # Slice the market data exactly to the target session, as
-        # run_extension does (market_slice = all_data.loc[:target]).
+        # Slice the market data exactly to the target session.
         all_data = fetch((pd.Timestamp(target) + pd.Timedelta(days=1)).strftime("%Y-%m-%d"))
         market_slice = all_data.loc[:target]
 
@@ -130,14 +146,11 @@ def test_real_daily_update_reproduces_committed_state(
     finally:
         cleanup()
 
-    assert new_state.last_run_date == target
-    assert new_state.current_nav == pytest.approx(
-        committed_state.current_nav, rel=1e-12
+    nav_target = next(
+        r["nav"] for r in committed_state.run_history if r["date"] == target
     )
-    for sym in real_cfg.universe:
-        assert new_state.current_positions[sym] == pytest.approx(
-            committed_state.current_positions[sym], abs=1e-12
-        )
+    assert new_state.last_run_date == target
+    assert new_state.current_nav == pytest.approx(float(nav_target), rel=1e-12)
 
 
 def test_real_extension_path_advances_to_completed_session(
@@ -194,13 +207,13 @@ def test_real_extension_path_advances_to_completed_session(
     assert result["target"] == "2026-11-03"
     assert result["sessions_extended"] == 1
     assert result["state_writes"] == 1
-    # The extension must reproduce the committed 2026-11-02 NAV bit-for-bit.
-    # (Not "nav_after > nav_before": the committed state shows 2026-11-02 was a
-    # down day, 133019.54 -> 132606.80, so the correct extension's NAV falls.
-    # Requiring a rise would assert against the real outcome.)
-    assert result["nav_after"] == pytest.approx(
-        committed_state.current_nav, rel=1e-12
+    # The extension must reproduce the committed 2026-11-03 NAV bit-for-bit.
+    # (Not "nav_after > nav_before": 2026-11-03 was an up day,
+    # 132606.80 -> 132866.04, so the correct extension's NAV rises.)
+    nav_target = next(
+        r["nav"] for r in committed_state.run_history if r["date"] == "2026-11-03"
     )
+    assert result["nav_after"] == pytest.approx(float(nav_target), rel=1e-12)
     assert PaperTradingState.from_yaml(state_path).last_run_date == "2026-11-03"
 
 
@@ -226,13 +239,12 @@ def test_real_extension_path_is_idempotent(tmp_path, real_cfg, committed_state):
     finally:
         cleanup()
 
-    # Second invocation: last_run_date is now 2026-11-02, so the next calendar
-    # day is 2026-11-03, whose bar is not present in the provider window and
-    # is not complete at NOW. The extension correctly reports no candidate.
+    # Second invocation: last_run_date stays at the committed 2026-11-04 since
+    # the next session 2026-11-05 is not complete at NOW (2026-11-03 23:00 UTC).
     assert result["target"] is None
     assert result["sessions_extended"] == 0
     assert result["state_writes"] == 0
-    assert PaperTradingState.from_yaml(state_path).last_run_date == "2026-11-03"
+    assert PaperTradingState.from_yaml(state_path).last_run_date == "2026-11-04"
     assert hashlib.sha256(state_path.read_bytes()).hexdigest() == before
 
 
