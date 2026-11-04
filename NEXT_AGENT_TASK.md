@@ -1,17 +1,17 @@
-# NEXT_AGENT_TASK — Post-close extension for 2026-11-05 (Cycle 1111)
+# NEXT_AGENT_TASK — Pre-close readiness check for 2026-11-06 (Cycle 1113)
+
 ## Context
-- Pre-close check run at 2026-11-04 02:35 UTC (21:35 EST): `clock gate: NOT released`, `sessions_extended: 0`, `candidate available: no` (2026-11-04 not closed yet), NAV unchanged `132866.0435881768`, 0 writes, `stored == recomputed: True` (rolling 63d Sharpe -1.3997 at 2026-11-03). `data/` and `config/` clean.
-- 45 tests passed: `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q`.
-- State verified: `last_run_date` **2026-11-03**, `current_nav` **132866.0435881768**, sessions in `run_history` include up to 2026-11-03.
-- The real extension for 2026-11-04 will be executed by the wakeup at 22:00 UTC on 2026-11-04 (see README.md Cycle 1109). After that extension completes, the state will advance to `last_run_date: 2026-11-04` (if the 2026-11-04 session closed and a completed bar exists).
-- Gate for 2026-11-05 releases at 22:00 UTC on 2026-11-05 (17:00 ET). Do not alter gate.
+- State verified this cycle (2026-11-04 02:39 UTC / 21:39 EST Tuesday): `last_run_date` **2026-11-03**, `current_nav` **132866.0435881768**, `sessions_extended == 0`, 0 writes, `data/` and `config/` clean, `stored == recomputed: True` (rolling 63d Sharpe -1.3997 at 2026-11-03).
+- The real extension for 2026-11-04 (Wednesday) is executed by the wakeup at 22:00 UTC on 2026-11-04 (see README.md Cycle 1112). After that extension completes, state should advance to `last_run_date: 2026-11-04` if the 2026-11-04 session closed and a completed bar exists.
+- The real extension for 2026-11-05 (Thursday) is executed by the wakeup at 22:00 UTC on 2026-11-05.
+- Gate for 2026-11-06 (Friday) releases at 22:00 UTC on 2026-11-06 (17:00 ET). Do not alter gate.
 
 ## Objective
-At/after 22:00 UTC on 2026-11-05, run the real extension and persistence checks. Extend by at most one session to 2026-11-05 if a completed bar exists; otherwise `sessions_extended == 0` with explicit reason and state unchanged.
+At/after 22:00 UTC on 2026-11-06, run the real extension and persistence checks. Extend by at most one session to 2026-11-06 if a completed bar exists; otherwise `sessions_extended == 0` with explicit reason and state unchanged.
 
 ## Acceptance criteria
 - Run `python3 research/extend_paper_trading_state.py`; record gate/candidate/sessions_extended/last_run_date/NAV and reason if 0.
-- If completed 2026-11-05 session exists: `sessions_extended == 1`, `last_run_date` advances to 2026-11-05, NAV changes, state write count 1, raw cache scratch.
+- If completed 2026-11-06 session exists: `sessions_extended == 1`, `last_run_date` advances to 2026-11-06, NAV changes, state write count 1, raw cache scratch.
 - If not: `sessions_extended == 0` with explicit reason, NAV unchanged, 0 writes.
 - Second invocation idempotent: `sessions_extended == 0`, write count 0, NAV unchanged.
 - `python3 research/drift_persistence_report.py` reports `stored == recomputed: True`.
