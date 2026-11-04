@@ -1,7 +1,7 @@
 # NEXT_AGENT_TASK — Paper-trading extension gate check (2026-11-05 pre-close)
 
 ## Context
-- Verified 2026-11-04T22:33Z (17:33 EST, Tuesday): last processed session 2026-11-04, NAV 133995.4210085515, sessions_extended 0, 0 writes (already extended in prior cycle).
+- Verified 2026-11-04T22:47Z (17:47 EST, Tuesday): gate NOT released; last processed session 2026-11-04, NAV 133995.4210085515, sessions_extended 0, 0 writes. Drift report refreshed (rolling 63d Sharpe -0.8724 at 2026-11-04).
 - Clock gate NOT released at run time; candidate session 2026-11-05 has not closed.
   - Reason: `next session 2026-11-05 has not closed yet (in the future (today is 2026-11-04)); no completed candidate bar exists to extend into`
 - Gate releases at 17:00 ET / 22:00 UTC on 2026-11-05 (Wednesday) once local clock passes 17:00 ET on 2026-11-05 session date (or following local day start logic).
