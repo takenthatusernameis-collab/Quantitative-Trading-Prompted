@@ -1,7 +1,8 @@
 # NEXT_AGENT_TASK — Post-close extension for 2026-11-04 (Cycle 1109)
 ## Context
-- State at verified run (2026-11-04 02:31 UTC): `last_run_date` **2026-11-03**, `current_nav` **132866.0435881768**, sessions in `run_history` include up to 2026-11-03.
-- Current check (2026-11-04 02:31 UTC): `clock gate: NOT released` (gate releases 22:00 UTC / 17:00 ET on 2026-11-04), `sessions_extended: 0`, `candidate available: no` (2026-11-04 not closed yet), NAV unchanged, 0 writes, `stored == recomputed: True` (rolling 63d Sharpe -1.3997 at 2026-11-03). `data/` and `config/` clean.
+- Pre-close check run at 2026-11-04 02:32 UTC (21:32 EST): `clock gate: NOT released` (gate releases 22:00 UTC / 17:00 ET on 2026-11-04), `sessions_extended: 0`, `candidate available: no` (2026-11-04 not closed yet), NAV unchanged `132866.0435881768`, 0 writes, `stored == recomputed: True` (rolling 63d Sharpe -1.3997 at 2026-11-03). `data/` and `config/` clean.
+- 45 tests passed: `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q`.
+- State verified: `last_run_date` **2026-11-03**, `current_nav` **132866.0435881768**, sessions in `run_history` include up to 2026-11-03.
 - Gate releases at **22:00 UTC on 2026-11-04**. Do not alter gate.
 
 ## Objective
