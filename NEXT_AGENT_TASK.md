@@ -1,12 +1,12 @@
-# NEXT_AGENT_TASK — Paper-trading extension gate check (2026-11-04)
+# NEXT_AGENT_TASK — Paper-trading extension gate check (2026-11-04 post-close)
 
 ## Context
-- Verified 2026-11-04 04:27 UTC: last_run_date 2026-11-03, NAV 132866.0435881768, sessions 461, sessions_extended 0, 0 writes.
-- Clock gate NOT released; candidate session 2026-11-04 has not closed (today is 2026-11-03 ET).
-- Gate releases at 17:00 ET / 22:00 UTC on 2026-11-04.
+- Verified 2026-11-04 04:29 UTC: last_run_date 2026-11-03, NAV 132866.0435881768, sessions 461, sessions_extended 0, 0 writes.
+- Clock gate NOT released at run time (23:29 EST Tuesday 2026-11-03); candidate session 2026-11-04 has not closed.
+- Gate releases at 17:00 ET / 22:00 UTC on 2026-11-04 (Wednesday).
 - drift_persistence_report: stored == recomputed True (rolling 63d Sharpe -1.3997).
 - Idempotency confirmed (2nd invocation: 0 writes, NAV unchanged).
-- Wakeup wku_1a49ef396001eK0lcPXkH4Fv4N scheduled 2026-11-04T22:05:00Z.
+- Wakeup wku_1a4d2454a0011tEq7bKvw7FYoQ scheduled 2026-11-04T22:05:00Z.
 
 ## Objective
 At/after 22:00 UTC on 2026-11-04, run real extension and persistence checks. Extend by at most one session to 2026-11-04 if a completed bar exists; otherwise sessions_extended==0 with explicit reason and state unchanged.
