@@ -1,9 +1,8 @@
-# NEXT_AGENT_TASK — Post-close extension for 2026-11-04 (Cycle 1108)
-
+# NEXT_AGENT_TASK — Post-close extension for 2026-11-04 (Cycle 1109)
 ## Context
-- State at last verified run (2026-11-04 00:47 UTC): `last_run_date` **2026-11-03**, `current_nav` **132866.0435881768**, sessions in `run_history` now include 2026-11-03.
-- Corrective check on 2026-11-04 00:47 UTC: `sessions extended: 0`, `clock gate: NOT released` (current time 00:47 UTC, gate releases 22:00 UTC), NAV unchanged, 0 writes, drift `stored == recomputed: True` (rolling 63d Sharpe -1.3997 at 2026-11-03), 45 tests passed, `data/` and `config/` clean. Wakeup wku_1a40855ea001WXCDVvpT4KppDf scheduled for 2026-11-04T22:54:02Z.
-- Gate releases at **22:00 UTC on 2026-11-04** (17:00 ET). Do not alter gate.
+- State at verified run (2026-11-04 02:31 UTC): `last_run_date` **2026-11-03**, `current_nav` **132866.0435881768**, sessions in `run_history` include up to 2026-11-03.
+- Current check (2026-11-04 02:31 UTC): `clock gate: NOT released` (gate releases 22:00 UTC / 17:00 ET on 2026-11-04), `sessions_extended: 0`, `candidate available: no` (2026-11-04 not closed yet), NAV unchanged, 0 writes, `stored == recomputed: True` (rolling 63d Sharpe -1.3997 at 2026-11-03). `data/` and `config/` clean.
+- Gate releases at **22:00 UTC on 2026-11-04**. Do not alter gate.
 
 ## Objective
 At/after 22:00 UTC on 2026-11-04, run the real extension and persistence checks. Extend by at most one session to 2026-11-04 if a completed bar exists; otherwise `sessions_extended == 0` with explicit reason and state unchanged.
