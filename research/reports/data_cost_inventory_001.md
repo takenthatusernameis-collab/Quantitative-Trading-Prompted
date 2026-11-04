@@ -107,7 +107,7 @@ Measured equity-session lag behind the newest equity bar (2026-10-23): 2026-10-0
 |---|---|---|---|---|---|
 | `data/processed/(top level)` | 18 | 16 | 101640 | 1993-01-29 | 2026-10-09 |
 | `data/processed/crypto` | 2 | 2 | 4928 | 2020-01-02 | 2026-09-30 |
-| `data/processed/paper_trading` | 1836 | 1836 | 4590 | 2025-01-02 | 2026-10-30 |
+| `data/processed/paper_trading` | 1840 | 1840 | 4600 | 2025-01-02 | 2026-11-03 |
 
 The processed tree is a research output, not an independent data source: it is derived from `data/raw/` plus the committed code. It is inventoried here for completeness and is not used as a scored candidate's evidence base.
 

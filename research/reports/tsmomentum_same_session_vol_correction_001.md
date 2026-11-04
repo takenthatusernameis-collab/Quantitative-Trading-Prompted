@@ -97,13 +97,13 @@ PSR settings (the repository's own): `n_bootstrap=1000`, `block_size=22`, `seed=
 
 | Gate | Published record | Corrected record | Threshold |
 |---|---|---|---|
-| `track_record_length` | 454.000000 | 450.000000 | >= 126 |
-| `full_period_sharpe` | 1.726278 | 1.635705 | >= 0.9 |
-| `rolling_63d_sharpe` | -0.254926 | -0.515807 | >= 0.9 |
+| `track_record_length` | 461.000000 | 450.000000 | >= 126 |
+| `full_period_sharpe` | 1.662616 | 1.635705 | >= 0.9 |
+| `rolling_63d_sharpe` | -1.399699 | -0.515807 | >= 0.9 |
 | `max_drawdown` | -0.049857 | -0.051057 | >= -0.15 |
-| `rolling_63d_max_dd` | -0.039246 | -0.039642 | >= -0.15 |
+| `rolling_63d_max_dd` | -0.046634 | -0.039642 | >= -0.15 |
 | `regime_flips` | 6.000000 | 6.000000 | >= 1 |
-| `psr` | 0.673221 | 0.623929 | >= 0.95 |
+| `psr` | 0.636188 | 0.623929 | >= 0.95 |
 | **decision** | **NO-GO** | **NO-GO** | failed gates: rolling_63d_sharpe, psr |
 
 The corrected record's gate table is computed by the production code (`src/simulation/evaluation.py::evaluate_go_no_go`) on the corrected return series with the committed configuration; only the return series and the dates are substituted, because the promotion gates consume only the returns, the dates, the run-history turnover and the run-history regime exposure.
@@ -268,7 +268,7 @@ The same-session estimate is a point-in-time error in the live path, so a new li
 
 ## 8. Checks
 
-- [committed_record_loaded]: PASS (observed: 454 sessions, expected: 454 sessions)
+- [committed_record_loaded]: FAIL (observed: 461 sessions, expected: 454 sessions)
 - [default_path_reproduces_every_committed_session]: PASS (observed: max |diff| = 5.421e-20 over 450 sessions, expected: <= 1e-12)
 - [default_research_path_is_bit_identical_to_the_pre_change_implementation]: PASS (observed: net max |diff| = 0.000e+00, weights max |diff| = 0.000e+00, expected: 0.0 (bit-identical))
 - [default_simulation_path_is_bit_identical_to_the_pre_change_implementation]: PASS (observed: weights max |diff| = 0.000e+00, vol_scale max |diff| = 0.000e+00, expected: 0.0 (bit-identical))
@@ -519,8 +519,8 @@ git status --porcelain data/ config/
     {
       "expected": "454 sessions",
       "name": "committed_record_loaded",
-      "observed": "454 sessions",
-      "pass": true
+      "observed": "461 sessions",
+      "pass": false
     },
     {
       "expected": "<= 1e-12",
@@ -696,7 +696,7 @@ git status --porcelain data/ config/
     "recommendation": "adopt_only_for_new_live_paper_trading_records"
   },
   "incumbent_verdict": "Credible Candidate (unchanged); promotion decision NO-GO (unchanged)",
-  "overall": "PASS",
+  "overall": "FAIL",
   "read_only": {
     "committed_artifacts_unchanged": true,
     "config_unchanged": true,
@@ -745,15 +745,15 @@ git status --porcelain data/ config/
         "psr"
       ],
       "gates": {
-        "full_period_sharpe": 1.7262783454514277,
+        "full_period_sharpe": 1.6626155437920944,
         "max_drawdown": -0.04985740111232129,
-        "psr": 0.6732214818305959,
+        "psr": 0.6361882846662459,
         "regime_flips": 6.0,
-        "rolling_63d_max_dd": -0.03924623318506759,
-        "rolling_63d_sharpe": -0.25492616117205563,
-        "track_record_length": 454.0
+        "rolling_63d_max_dd": -0.04663398278493214,
+        "rolling_63d_sharpe": -1.399698929897785,
+        "track_record_length": 461.0
       },
-      "psr_normal": 0.6732214818305959
+      "psr_normal": 0.6361882846662459
     },
     "psr_settings": {
       "block_size": 22,
