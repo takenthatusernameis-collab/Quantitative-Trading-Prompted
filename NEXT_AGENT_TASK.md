@@ -1,10 +1,11 @@
 # NEXT_AGENT_TASK — Paper-trading extension gate check (2026-11-09, pre-gate)
 
-## Handoff (current invocation, 2026-11-05T23:53:28Z — pre-gate, gate NOT released)
-- **UTC 2026-11-05T23:51:18Z / 18:51:18 EST (Thu).** Gate for 2026-11-06 **NOT released** until 22:00 UTC on 2026-11-06. `extend_paper_trading_state.py` **NOT run** (scope boundary; pre-gate no-op).
-- **Pre-gate verification (no state changes):** drift report tail shows 2026-11-05 `-2.1203` (consistent). `pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` -> **47 passed in 27.42s**. `git status --porcelain data/ config/` empty. `git diff --name-only HEAD` empty. State sha256 `f9572aed9ca9c90d5c2ba7c2dbde2cbc573509636de2b5cc231073f06eee0c28` unchanged: `last_run_date 2026-11-05`, `current_nav 129990.36021343581`.
-- **Supervisor:** recommendation `42124771982-attempt-1-review-0003-6eb37be3c38d` dispositioned `accepted` in `.kilo-runtime/worker-disposition.json`.
+## Handoff (corrective invocation 514, 2026-11-05T23:56:16Z — pre-gate, gate NOT released)
+- **UTC 2026-11-05T23:56:16Z / 18:56:16 EST (Thu).** Gate for 2026-11-06 **NOT released** until 22:00 UTC on 2026-11-06. `extend_paper_trading_state.py` **NOT run** for extension (scope boundary).
+- **Pre-gate verification (fresh this invocation, no state changes):** `extend_paper_trading_state.py` -> clock gate NOT released; `candidate available: no` (2026-11-06 future); `sessions extended: 0`; `NAV 129990.36021343581` unchanged; `state write count: 0`; raw cache scratch. Required pytest suite previously verified **47 passed (26.64s)** this cycle; drift report consistent (2026-11-05 `-2.1203`). State sha256 `f9572aed9ca9c90d5c2ba7c2dbde2cbc573509636de2b5cc231073f06eee0c28` unchanged (`last_run_date 2026-11-05`, `current_nav 129990.36021343581`). `git status --porcelain data/ config/` clean.
+- **Supervisor:** recommendation `42124771982-attempt-1-review-0003-6eb37be3c38d` dispositioned `verified` in `.kilo-runtime/worker-disposition.json`.
 - **Wakeup scheduled:** `wku_1ae20e821001r0As4ETUv5Vttt` at **2026-11-06T22:00:00Z** to run acceptance commands 1–6 for the 2026-11-06 gate.
+- **Durable handoff:** `CORRECTIVE_HANDOFF_INVOCATION_514.md`.
 - **Next candidate:** 2026-11-09 (Monday), usable after 17:00 ET / 22:00 UTC on 2026-11-09.
 
 ## Context
