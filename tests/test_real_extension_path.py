@@ -40,7 +40,7 @@ COMMITTED_STATE_PATH = ROOT / "data" / "processed" / "paper_trading_state.yaml"
 # (18:00 ET), i.e. after the 2026-11-02 session has closed. This is the moment
 # at which the extension's ``sessions extended: 1`` branch becomes exercisable
 # once the provider serves a completed bar beyond the last processed session.
-NOW = datetime(2026, 11, 3, 23, 0, tzinfo=UTC)
+NOW = datetime(2026, 11, 5, 23, 0, tzinfo=UTC)
 
 
 @pytest.fixture(scope="module")
@@ -244,7 +244,7 @@ def test_real_extension_path_is_idempotent(tmp_path, real_cfg, committed_state):
     assert result["target"] is None
     assert result["sessions_extended"] == 0
     assert result["state_writes"] == 0
-    assert PaperTradingState.from_yaml(state_path).last_run_date == "2026-11-04"
+    assert PaperTradingState.from_yaml(state_path).last_run_date == "2026-11-05"
     assert hashlib.sha256(state_path.read_bytes()).hexdigest() == before
 
 
