@@ -1,6 +1,14 @@
 # NEXT_AGENT_TASK — Paper-trading extension gate check (post-236 verification)
 
-## Handoff (latest verified baseline — 2026-11-05T11:34Z invocation 152)
+## Handoff (corrective invocation 478 — 2026-11-05T12:19Z, verified)
+- **UTC 2026-11-05T12:19:49Z / 07:19:49 EST (Thu). Gate NOT released** (~9.7h until 22:00 UTC 2026-11-05). `extend_paper_trading_state.py` **NOT run** (scope boundary). No source/data/config/test/gate/threshold/cost/universe/canonical-state changes.
+- **Fresh pre-gate verification (this invocation):** `python3 research/drift_persistence_report.py` → rolling 63d Sharpe `2026-10-29 0.1752, 2026-10-30 -0.7690, 2026-11-02 -1.3784, 2026-11-03 -1.3997, 2026-11-04 -0.8724`; `low_rolling_sharpe` persistence 6. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` → **45 passed in 17.27s**. `git status --porcelain data/ config/` → empty.
+- **State (unchanged):** `data/processed/paper_trading_state.yaml` last_run_date `2026-11-04`, NAV `133995.4210085515`. Raw max observed 2026-11-04 (no 2026-11-05 bar).
+- **Unresolved external blocker:** clock gate not released until 22:00 UTC; post-gate acceptance criteria (real extension / idempotency of a real extend) unverifiable pre-gate. No 2026-11-05 bar observed; `sessions_extended==0` likely after release unless completed bar appears.
+- **Decision:** no trading verdict, no extension, no canonical state write, no commit. `research/reports/paper_trading_rolling.md` may show expected self-generated `git_sha` provenance bump from drift report — do not commit unless asked.
+- **Next distinct action (at/after 22:00 UTC 2026-11-05):** run verification commands 1–6 in order; extend ≤1 session to 2026-11-05 only if completed bar exists; else record `sessions_extended==0` with explicit reason, keep state unchanged, confirm idempotent re-run, update drift report, run pytest, confirm `git status --porcelain data/ config/` shows only expected state update.
+
+## Handoff (prior — 2026-11-05T11:34Z invocation 152)
 - UTC 2026-11-05T11:34:33Z / 06:34:33 EST. Gate NOT released (~10.4h until 22:00 UTC 2026-11-05). `extend_paper_trading_state.py` NOT run (scope boundary).
 - Drift: rolling 63d Sharpe -0.8724 at 2026-11-04; `low_rolling_sharpe` persistence 6.
 - Tests: 45 passed in 15.38s.
