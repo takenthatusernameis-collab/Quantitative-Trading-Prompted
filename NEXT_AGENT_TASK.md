@@ -1,13 +1,16 @@
 # NEXT_AGENT_TASK — Paper-trading extension gate check (2026-11-06, post-gate)
 
-## Handoff (invocation 511, 2026-11-05T23:04:21Z — pre-gate re-verified; gate NOT released)
-- **UTC 2026-11-05T23:04:21Z / 18:04:21 EST (Thu).** Gate NOT released for 2026-11-06 (releases 17:00 ET / 22:00 UTC on 2026-11-06). No state extension performed.
-- **Observed:** `extend_paper_trading_state.py` -> `clock gate: NOT released`, `next expected session: 2026-11-06 (Friday)`, `candidate available: no` (session in future), `sessions extended: 0`, NAV before/after `129990.36021343581`, state write count 0. Idempotent second run identical (0 writes, NAV unchanged).
-- **Drift report:** rolling 63d Sharpe includes `2026-11-05 -2.1203` (consistent with state; `low_rolling_sharpe` persists).
-- **Tests:** 47 passed in 18.22s (`tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py`).
-- **Git:** `git status --porcelain data/ config/` clean.
-- **Supervisor (review-0006):** advisory to decompose negative 63d Sharpe into gross vs cost/turnover drag recorded as follow-up; superseded for this bounded gate-check invocation by scope boundaries. Disposition updated in `.kilo-runtime/worker-disposition.json`.
+## Handoff (corrective invocation 1, 2026-11-05T23:06:53Z — pre-gate re-verified; gate NOT released)
+- **UTC 2026-11-05T23:06:53Z / 18:06:53 EST (Thu).** Gate NOT released for 2026-11-06 (releases 17:00 ET / 22:00 UTC on 2026-11-06). No state extension performed (scope boundary: do not run extension before 22:00 UTC).
+- **Observed:** `extend_paper_trading_state.py` -> `candidate available: no` (next session 2026-11-06 not closed yet; today 2026-11-05), `sessions extended: 0`, NAV before/after `129990.36021343581`, state write count 0.
+- **Drift report:** rolling 63d Sharpe includes `2026-11-05 -2.1203` (consistent; `low_rolling_sharpe` persists).
+- **Tests:** 47 passed in 18.55s (`tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py`).
+- **Git:** `git status --porcelain data/ config/` clean. No commits made.
+- **Supervisor (review-0006, advisory):** decompose negative 63d Sharpe into gross vs cost/turnover drag — follow-up, out of scope for this bounded gate-check.
 - **Next candidate:** 2026-11-06 (Friday), usable after 17:00 ET / 22:00 UTC on 2026-11-06.
+
+## Prior handoff (invocation 511, 2026-11-05T23:04:21Z)
+- Gate NOT released; `sessions_extended: 0`, NAV unchanged `129990.36021343581`, 0 writes; 47 tests passed; `data/ config/` clean.
 
 ## Context
 - Last processed session: **2026-11-05** (NAV `129990.36021343581`).
