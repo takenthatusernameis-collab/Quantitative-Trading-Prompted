@@ -1,5 +1,13 @@
 # NEXT_AGENT_TASK — Paper-trading extension gate check (2026-11-06, post-gate)
 
+## Handoff (corrective invocation 513, 2026-11-05T23:46:36Z — pre-gate, gate NOT released, env deps RESOLVED)
+- **UTC 2026-11-05T23:46:36Z / 18:46:36 EST (Thu).** Gate **NOT released** for 2026-11-06 (releases 17:00 ET / 22:00 UTC on 2026-11-06). Extension not attempted (scope boundary).
+- **Invocation-512 environment blocker RESOLVED:** `requirements.txt` deps installed in-session (pandas, numpy, pytest, pyarrow, yfinance, scipy, statsmodels, arch, matplotlib, seaborn, python-dotenv). All acceptance commands now runnable.
+- **Pre-gate baseline verified (no state changes):** drift report exit 0 (Sharpe -2.1202794870108126, persistence 7, stored==recomputed True); 47 tests pass; state sha256 `f9572aed9ca9c90d5c2ba7c2dbde2cbc573509636de2b5cc231073f06eee0c28`; `git status --porcelain data/ config/` empty.
+- **Durable artifact:** `CORRECTIVE_HANDOFF_INVOCATION_513.md`.
+- **Wakeup scheduled:** `wku_1ae1d1fcb001LoF7s16uGiuoaj` for 2026-11-06T22:00:00Z.
+- **Next candidate:** 2026-11-06 (Friday), usable after 17:00 ET / 22:00 UTC on 2026-11-06.
+
 ## Handoff (corrective invocation 512, 2026-11-05T23:44:26Z — pre-gate, gate NOT released, env deps missing)
 - **UTC 2026-11-05T23:44:26Z / 18:44:26 EST (Thu).** Gate **NOT released** for 2026-11-06 (releases 17:00 ET / 22:00 UTC on 2026-11-06). No extension attempted (scope boundary).
 - **State (read directly, unchanged):** `last_run_date 2026-11-05`, `current_nav 129990.36021343581`, `low_rolling_sharpe` `-2.1202794870108126` (persistence 7, 2026-11-05).
