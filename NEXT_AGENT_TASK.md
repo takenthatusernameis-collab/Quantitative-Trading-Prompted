@@ -1,5 +1,12 @@
 # NEXT_AGENT_TASK — Paper-trading extension gate check (2026-11-06, post-gate)
 
+## Handoff (current invocation, 2026-11-05T23:49:25Z — pre-gate, gate NOT released)
+- **UTC 2026-11-05T23:49:25Z / 18:49:25 EST (Thu).** Gate **NOT released** for 2026-11-06 (releases 17:00 ET / 22:00 UTC on 2026-11-06). `extend_paper_trading_state.py` **NOT run** (scope boundary line 48).
+- **Fresh pre-gate verification (no state changes):** `drift_persistence_report.py` tail shows 2026-11-05 `-2.1203` (consistent). `pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` -> **47 passed in 27.77s**. `git status --porcelain data/ config/` empty. Canonical state unchanged: `last_run_date 2026-11-05`, `current_nav 129990.36021343581`, sha256 `f9572aed9ca9c90d5c2ba7c2dbde2cbc573509636de2b5cc231073f06eee0c28`.
+- **Supervisor:** recommendation `42124771982-attempt-1-review-0003-6eb37be3c38d` dispositioned `accepted` in `.kilo-runtime/worker-disposition.json`.
+- **Wakeup scheduled:** `wku_1ae1ede0f001XE2PfjvbsAxSqr` at **2026-11-06T22:00:00Z** to run NEXT_AGENT_TASK.md acceptance commands 1–6.
+- **Next candidate:** 2026-11-06 (Friday), usable after 17:00 ET / 22:00 UTC on 2026-11-06.
+
 ## Handoff (corrective invocation 513, 2026-11-05T23:46:36Z — pre-gate, gate NOT released, env deps RESOLVED)
 - **UTC 2026-11-05T23:46:36Z / 18:46:36 EST (Thu).** Gate **NOT released** for 2026-11-06 (releases 17:00 ET / 22:00 UTC on 2026-11-06). Extension not attempted (scope boundary).
 - **Invocation-512 environment blocker RESOLVED:** `requirements.txt` deps installed in-session (pandas, numpy, pytest, pyarrow, yfinance, scipy, statsmodels, arch, matplotlib, seaborn, python-dotenv). All acceptance commands now runnable.
