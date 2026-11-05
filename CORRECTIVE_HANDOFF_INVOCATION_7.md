@@ -1,22 +1,24 @@
-# Corrective Invocation 7 Handoff
+# CORRECTIVE_HANDOFF_INVOCATION_7 — Corrective invocation 7 (2026-11-05T15:34 UTC)
 
-## What was attempted
-Re-ran `python research/extend_paper_trading_state.py` at 2026-11-02T20:56 UTC (15:56 ET) to verify the paper-trading extension path while the 2026-11-02 session is still open, then ran the full focused verification suite from NEXT_AGENT_TASK.md.
+## Materially different action (vs prior invocations)
+Fresh re-verification of all pre-gate-safe checks in this invocation (not relying solely on recovery log) and creation of a distinct durable handoff artifact for invocation 7.
 
-## Result: focused verification PASSED (time-gate remains, not a code defect)
-- `python research/extend_paper_trading_state.py` -> exit 0; last processed session 2026-10-30; session already complete: False; candidate available: no (2026-11-02 not yet closed, close ~17:00 ET / ~22:00 UTC); sessions extended: 0; NAV unchanged 133019.54382525434; state write count: 0; raw cache scratch, data/raw untouched. Matches acceptance criteria "no completed bar" branch.
-- `python research/drift_persistence_report.py` -> stored == recomputed: True
-- `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` -> 44 passed
-- `git status --porcelain data/ config/` -> empty (exit 0)
+## Blocker (unchanged, external/temporal)
+Clock gate not released. Current UTC 2026-11-05T15:34:27Z; gate releases 22:00 UTC 2026-11-05 (17:00 ET). `research/extend_paper_trading_state.py` must not be run before 22:00 UTC (NEXT_AGENT_TASK.md scope boundary). No 2026-11-05 bar availability can be confirmed until post-gate.
 
-## No code/data change made
-The blocker is solely that the 2026-11-02 market session has not closed yet (current 20:56 UTC; close ~22:00 UTC). No completed candidate bar exists, so the script correctly extends 0 sessions and leaves state unchanged. This is expected, documented behavior per NEXT_AGENT_TASK.md acceptance criteria; no thresholds/gates/cost-model/universe/clock-gate changes were made.
+## Fresh pre-gate verification (observed, this invocation)
+| Check | Command | Result |
+|---|---|---|
+| Time | `date -u && TZ=America/New_York date` | `Thu Nov 5 15:34:27 UTC 2026 / 10:34:27 EST 2026` |
+| Drift | `python3 research/drift_persistence_report.py 2>&1 \| tail -8` | Last 8 include `2026-10-30 -0.7690, 2026-11-02 -1.3784, 2026-11-03 -1.3997, 2026-11-04 -0.8724`; `low_rolling_sharpe` persistence 6 consistent |
+| Tests | `pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` | **47 passed in 16.60s** |
+| Scope cleanliness | `git status --porcelain data/ config/` | empty |
 
-## Remaining step (after session close)
-Re-run `python research/extend_paper_trading_state.py` after ~22:00 UTC on 2026-11-02 (or later) to attempt extension by at most one session to 2026-11-02 if a completed bar exists. If no completed bar exists even after close, document reason and state unchanged (still a passing outcome per criteria).
+## State (unchanged)
+`data/processed/paper_trading_state.yaml`: `last_run_date 2026-11-04`, `current_nav 133995.4210085515`. No canonical state/source/data/config changes. No commit.
 
-## Verification commands (all ran, all passed)
-- python research/extend_paper_trading_state.py 2>&1 | tail -30
-- python research/drift_persistence_report.py 2>&1 | tail -3
-- python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q
-- git status --porcelain data/ config/
+## Unresolved blocker
+Temporal: cannot execute post-gate commands 1–6 until >=22:00 UTC. External: 2026-11-05 completed bar may or may not exist.
+
+## Next distinct action (post-gate)
+At/after 22:00 UTC 2026-11-05, run NEXT_AGENT_TASK.md verification commands 1–6 in order. Extend by <=1 session to 2026-11-05 only if a completed bar exists; otherwise `sessions_extended==0` with explicit reason, NAV unchanged, 0 writes. Confirm idempotency (2nd run: 0 extended, 0 writes). Record all observed outputs. If verification succeeds, emit `CORRECTIVE_VERIFICATION=PASS`; if blocked/fails, emit `CORRECTIVE_VERIFICATION=BLOCKED` with exact blocker.
