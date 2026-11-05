@@ -1,6 +1,19 @@
 # NEXT_AGENT_TASK — Paper-trading extension gate check (post-236 verification)
 
-## Handoff (latest verified baseline — 2026-11-05T10:30Z invocation 143)
+## Handoff (latest verified baseline — 2026-11-05T11:20Z corrective 528/recovery of 527)
+- **UTC 2026-11-05T11:20:27Z** (06:20:27 EST, Thu). Gate **NOT released** (~10.7h until 22:00 UTC 2026-11-05). Scope boundary respected: `extend_paper_trading_state.py` not run.
+- **Corrective context:** recovery-526 failed with runtime/model access error (not a project defect). Recovery-527 produced durable handoff and pre-gate verification but reported BLOCKED (correct: post-gate acceptance unverifiable pre-gate). This corrective 528 re-verified the same pre-gate-safe baseline to provide verified-success evidence for what is currently testable. `.kilo-runtime/` empty.
+- **Fresh verification (corrective 528, pre-gate safe):**
+  1. `date -u && TZ=America/New_York date` -> Thu Nov 5 11:20:27 UTC 2026 / Thu Nov 5 06:20:27 EST 2026.
+  2. `python3 research/drift_persistence_report.py 2>&1 | tail -4` -> exit 0; rolling 63d Sharpe `-0.8724` at 2026-11-04 (`2026-10-30 -0.7690, 2026-11-02 -1.3784, 2026-11-03 -1.3997, 2026-11-04 -0.8724`); `low_rolling_sharpe` persistence 6.
+  3. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` -> **45 passed in 15.19s**.
+  4. `git status --porcelain data/ config/` -> (empty). Canonical state unchanged: `data/processed/paper_trading_state.yaml` last_run_date `2026-11-04`, NAV `133995.4210085515`.
+- **Note:** `research/reports/paper_trading_rolling.md` has expected self-generated `git_sha` provenance bump (uncommitted); not a defect.
+- **Decision:** no trading verdict, no canonical state write, no commit, no gate/threshold/cost/universe/config/data changes.
+- **Unresolved blocker (external):** clock gate not released until 22:00 UTC 2026-11-05; post-gate acceptance criteria (real extension/idempotency of a real extend) unverifiable before gate. No completed 2026-11-05 bar observed in prior audits; `sessions_extended==0` likely after release unless a completed bar appears.
+- **Next agent task (at/after 22:00 UTC 2026-11-05):** run verification commands 1–6 in order (extend -> drift report -> idempotency re-run -> pytest -> `git status --porcelain data/ config/`). Extend by at most one session to 2026-11-05 only if a completed bar exists; otherwise record `sessions_extended==0` with explicit reason and keep state unchanged. Do not commit unless asked.
+
+## Handoff (prior verified baseline — 2026-11-05T10:30Z invocation 143)
 - **UTC 2026-11-05T10:30:18Z** (05:30:18 EST, Thu). Gate **NOT released** (~11.5h until 22:00 UTC 2026-11-05). Scope boundary respected: `extend_paper_trading_state.py` not run (pre-gate premature no-op forbidden by NEXT_AGENT_TASK.md line 28).
 - **Supervisor:** `.kilo-runtime/` empty (no `current-supervisor-recommendation.json`, no `worker-disposition.json`); no disposition update required.
 - **Fresh verification (this invocation, pre-gate safe, all commands ran):**
