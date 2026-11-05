@@ -38,9 +38,11 @@ At/after 22:00 UTC on 2026-11-05, run real extension and persistence checks. Ext
 5. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q`
 6. `git status --porcelain data/ config/`
 
-## Handoff notes (current cycle — invocation 2026-11-05T02:00Z)
+## Handoff notes (current cycle — invocation 2026-11-05T02:03Z)
 
-- UTC 2026-11-05T02:00Z (21:00 EST, Wed). Gate NOT released (22:00 UTC release). No extension run per scope boundary. Drift report updated: rolling 63d Sharpe -0.8724 at 2026-11-04. Tests: 45 passed. `git status --porcelain data/ config/` empty. State unchanged: last processed 2026-11-04, NAV 133995.4210085515.
+- UTC 2026-11-05T02:03Z (21:03 EST, Wed). Gate NOT released (release 22:00 UTC / 17:00 ET on 2026-11-05, ~20h away). No extension run per scope boundary (premature no-op, already verified idempotent). Wakeup scheduled `wku_1a972f63c001GfYT0cc9bSQF3a` at 2026-11-05T22:05:00Z to resume the post-gate verification sequence. Supervisor review-0004 disposition `in_progress` in `.kilo-runtime/worker-disposition.json`.
+- Baseline: last processed 2026-11-04, NAV 133995.4210085515, sessions_extended 0, 0 writes. Drift rolling 63d Sharpe -0.8724 at 2026-11-04. Tests: 45 passed (invocation 236). `git status --porcelain data/ config/` empty. `tests/test_real_extension_path.py` committed at HEAD (9aadb30); no uncommitted test edits.
+- Next task: at/after 22:00 UTC on 2026-11-05 run the NEXT_AGENT_TASK.md verification sequence (extend -> drift report -> idempotency re-run -> pytest -> git status). Extend by at most one session to 2026-11-05 if completed bar exists; otherwise sessions_extended==0 with explicit reason, state unchanged. Do not commit unless asked.
 
 ## Handoff notes (current cycle)
 - **Time/context:** UTC 2026-11-05T01:59Z (20:59 EST, Wednesday). Gate NOT released (gate 22:00 UTC). Verified baseline: 45 tests pass, git clean. No extension run performed (scope boundary).
