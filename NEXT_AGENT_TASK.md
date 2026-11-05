@@ -39,7 +39,7 @@ At/after 22:00 UTC on 2026-11-05, run real extension and persistence checks. Ext
 6. `git status --porcelain data/ config/`
 
 ## Handoff notes (current cycle)
-- **Time/context:** UTC 2026-11-04T23:28Z (18:28 EST, Tuesday). Dependencies installed. Verified state already at 2026-11-04; no extension needed today.
+- **Time/context:** UTC 2026-11-05T01:59Z (20:59 EST, Wednesday). Gate NOT released (gate 22:00 UTC). Verified baseline: 45 tests pass, git clean. No extension run performed (scope boundary).
 - **Durable verification performed (invocation 236):**
   1. `extend_paper_trading_state.py` (x2) -> gate NOT released, `sessions extended: 0`, NAV unchanged 133995.4210085515, 0 writes, idempotent.
   2. `drift_persistence_report.py` -> rolling Sharpe -0.8724 at 2026-11-04, drift flags present; report provenance line bumped to 48a2d18 (expected self-generated metadata).
