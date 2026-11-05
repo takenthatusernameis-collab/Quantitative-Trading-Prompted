@@ -185,6 +185,10 @@ At/after 22:00 UTC on 2026-11-05, run real extension and persistence checks. Ext
   1. `date -u && TZ=America/New_York date` -> Thu Nov 5 08:47:16 UTC 2026 / Thu Nov 5 03:47:16 EST 2026.
   2. `git status --porcelain` -> empty; `git status --porcelain data/ config/` -> empty; HEAD `94f964c`.
   3. No unstaged changes anywhere in the working tree.
-- **State:** `data/processed/paper_trading_state.yaml` last_run_date `2026-11-04`, current_nav `133995.4210085515`, drift_flags.low_rolling_sharpe present. Prior drift rolling 63d Sharpe `-0.8724` at 2026-11-04, persistence_days 6. Prior pytest: 45 passed.
-- **Decision:** no trading verdict published, no state written. Gate remains the sole blocker; post-gate verification sequence cannot execute until 22:00 UTC on 2026-11-05.
 - **Next task:** at/after 22:00 UTC on 2026-11-05 run the NEXT_AGENT_TASK.md verification sequence (extend -> drift report -> idempotency re-run -> pytest -> git status). Extend by at most one session to 2026-11-05 if a completed bar exists; otherwise sessions_extended==0 with explicit reason, state unchanged. Do not commit unless asked.
+
+## Handoff notes (current cycle — invocation 2026-11-05T08:48Z)
+- UTC 2026-11-05T08:48:14Z (03:48:14 EST, Thu). Gate NOT released (release 22:00 UTC on 2026-11-05, ~13.1h away). Per scope boundary line 31, `extend_paper_trading_state.py` NOT run (premature no-op). No source, data, config, test, gate, threshold, cost model, or state modified. No commit made. HEAD `94f964c`.
+- Baseline re-verified: drift report rolling 63d Sharpe -0.8724 at 2026-11-04; pytest 45 passed in 42.52s; `git status --porcelain data/ config/` empty.
+- State: last_run_date 2026-11-04, NAV 133995.4210085515, drift_flags.low_rolling_sharpe persistence_days 6. Raw cache latest 2026-11-04; no 2026-11-05 bar.
+- Next task unchanged: post-gate verification sequence at/after 22:00 UTC on 2026-11-05.
