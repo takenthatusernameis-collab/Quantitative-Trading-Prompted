@@ -34,6 +34,20 @@ At/after 22:00 UTC on 2026-11-05, run the real extension and persistence checks.
 5. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q`
 6. `git status --porcelain data/ config/`
 
+## Handoff (latest verified baseline — 2026-11-05T09:36Z invocation 137)
+- **UTC 2026-11-05T09:36:19Z** (04:36:19 EST, Thu). Gate **NOT released** (~12.4h until 22:00 UTC 2026-11-05). Scope boundary respected: `extend_paper_trading_state.py` not run (pre-gate premature no-op forbidden by line 27).
+- **Supervisor recommendation (41954503612-attempt-1-review-0005-3526c2dca1e4, CONTINUE):** disposition remains `in_progress` in `.kilo-runtime/worker-disposition.json` (updated this invocation). Accepted: run post-gate verification at/after 22:00 UTC; do not commit unless asked.
+- **Fresh verification (this invocation, pre-gate safe):**
+  1. `date -u && TZ=America/New_York date` -> Thu Nov 5 09:36:19 UTC 2026 / Thu Nov 5 04:36:19 EST 2026.
+  2. `python3 research/drift_persistence_report.py 2>&1 | tail -6` -> rolling 63d Sharpe `2026-10-28 0.4459 … 2026-11-04 -0.8724`.
+  3. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` -> **45 passed in 30.11s**.
+  4. `git status --porcelain data/ config/` -> (empty). `git status --porcelain` -> only `M research/reports/paper_trading_rolling.md`; `git diff` shows single hunk: self-generated `git_sha` provenance `59afd6b` -> `d3bb451` (current HEAD). Expected, no code change warranted.
+  5. **Raw data audit:** all 28 `data/raw/*.parquet` files inspected; max date across all is **2026-11-04** (SPY, QQQ, IWM, EFA, EEM, GLD, TLT, ^VIX). Commodity/futures tickers lag further (BNO/UNG 2026-10-21, CL-F/GC-F/NG-F/USO/GSG/ZB-F 2026-10-15, DBC/VNQ/XB* 2026-10-08). No 2026-11-05 bar exists in any asset. Strong evidence that even after gate release, `sessions_extended==0` is the likely outcome (no completed bar to extend into).
+- **State:** `data/processed/paper_trading_state.yaml` last_run_date `2026-11-04`, NAV `133995.4210085515`, drift flags present (`low_rolling_sharpe` persistence 6). No changes to gates/thresholds/cost model/universe/config/data.
+- **Wakeup:** `wku_1ab09e8f2001VDwxakLxHPbc0u` scheduled for **2026-11-05T22:22:05Z** (~13h) to execute the post-gate verification sequence (commands 1–6).
+- **Decision:** no trading verdict published, no canonical state written, no commit.
+- **Unresolved blocker (external):** clock gate not released until 22:00 UTC 2026-11-05 and no completed 2026-11-05 bar in canonical `data/raw`. Post-gate acceptance criteria cannot be fully verified before gate release; after release, `sessions_extended==0` is expected because no completed 2026-11-05 bar exists in raw data.
+
 ## Handoff (latest verified baseline — 2026-11-05T09:28Z invocation 136)
 - **UTC 2026-11-05T09:27:34Z** (04:27:34 EST, Thu). Gate **NOT released** (~12.5h until 22:00 UTC 2026-11-05). Scope boundary respected: `extend_paper_trading_state.py` not run (pre-gate premature no-op forbidden by line 27).
 - **Supervisor recommendation (41954503612-attempt-1-review-0005-3526c2dca1e4, CONTINUE):** disposition remains `in_progress` in `.kilo-runtime/worker-disposition.json` (updated this invocation). Accepted: run post-gate verification at/after 22:00 UTC; do not commit unless asked.
