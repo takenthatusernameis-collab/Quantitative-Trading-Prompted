@@ -28,8 +28,8 @@ from __future__ import annotations
 
 import argparse
 import sys
-from pathlib import Path
 from collections.abc import Sequence
+from pathlib import Path
 
 import pandas as pd
 import yaml
@@ -83,19 +83,26 @@ def symbol_frontier(raw_dir: Path, symbol: str) -> str | None:
 
 
 def cache_frontier(
-    raw_dir: Path = RAW_DIR, symbols: Sequence[str] | None = None
+    raw_dir: Path | None = None, symbols: Sequence[str] | None = None
 ) -> str | None:
     """Last session for which the FULL universe is observable in the cache.
 
     The minimum across universe symbols: the simulation needs every symbol on
     every date, so the binding constraint is the symbol with the shortest
     history. Returns None if any universe symbol is missing entirely.
+
+    ``raw_dir`` defaults to the module-level ``RAW_DIR`` *at call time* (not at
+    definition time): binding it as a default argument would freeze the value
+    when the module loads and silently ignore monkeypatching in tests, which
+    made the offline tests audit the canonical cache instead of the fixture.
     """
+    if raw_dir is None:
+        raw_dir = RAW_DIR
     symbols = list(symbols) if symbols is not None else universe_symbols()
     frontiers = [symbol_frontier(raw_dir, s) for s in symbols]
     if any(f is None for f in frontiers):
         return None
-    return min(frontiers)  # type: ignore[arg-type]
+    return min(f for f in frontiers if f is not None)
 
 
 def missing_sessions(
