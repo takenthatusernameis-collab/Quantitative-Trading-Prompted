@@ -1,3 +1,13 @@
+## Cycle 1138: paper-trading extension gate check (2026-11-06 pre-gate, invocation 511) — **GATE NOT RELEASED; NO EXTENSION; VERIFIED**
+- UTC 2026-11-05T23:04:21Z (18:04:21 EST, Thu). Gate for 2026-11-06 **NOT released** (releases 17:00 ET / 22:00 UTC on 2026-11-06). No state extension; `data/`/`config/` unchanged. No commit.
+- **Observed (fresh):** `python3 research/extend_paper_trading_state.py` -> `clock gate: NOT released`, `next expected session: 2026-11-06 (Friday)`, `candidate available: no` (future session), `sessions extended: 0`, NAV `129990.36021343581` unchanged, state write count 0. Idempotent second run: `sessions extended: 0`, write count 0, NAV unchanged.
+- **Drift:** `python3 research/drift_persistence_report.py` tail includes `2026-11-05 -2.1203` (consistent with `paper_trading_state.yaml`).
+- **Tests:** `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` -> **47 passed in 18.22s**.
+- **Git:** `git status --porcelain data/ config/` -> empty.
+- **Supervisor (review-0006, advisory):** decompose negative 63d Sharpe into gross vs cost/turnover drag — recorded as separate bounded research follow-up; superseded for this gate-check invocation by NEXT_AGENT_TASK scope boundaries. Disposition in `.kilo-runtime/worker-disposition.json`.
+- **State (unchanged):** `last_run_date 2026-11-05`, `current_nav 129990.36021343581`, `rolling_sharpe_63d -2.1203`.
+- **Next task:** at/after 22:00 UTC on 2026-11-06 run NEXT_AGENT_TASK.md commands 1–6; extend by ≤1 session to 2026-11-06 only if completed bar exists (else `sessions_extended==0` with explicit reason), idempotent re-run, drift report, pytest, `git status --porcelain data/ config/`. Do not commit unless asked.
+
 ## Cycle 1137: paper-trading extension check (2026-11-05 pre-gate, invocation 497) — **GATE NOT RELEASED; NO EXTENSION; BASELINE RE-VERIFIED FRESH; WAKEUP 22:05 UTC**
 - UTC 2026-11-05T14:45:18Z (09:45:18 EST, Thu). Gate NOT released (release 22:00 UTC on 2026-11-05, ~7.25h away). Per NEXT_AGENT_TASK.md scope boundary, `extend_paper_trading_state.py` **NOT run**. No source/data/config/test/gate/threshold/cost/universe/clock-gate/canonical state modified. No commit.
 - **Supervisor/runtime:** `.kilo-runtime/` empty (no `current-supervisor-recommendation.json`, no `worker-disposition.json`); no disposition update required. No prior pending wakeup for this session; scheduled post-gate wakeup below.
