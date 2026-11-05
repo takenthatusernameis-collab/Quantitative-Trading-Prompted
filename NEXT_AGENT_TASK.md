@@ -1,12 +1,11 @@
 # NEXT_AGENT_TASK — Paper-trading extension gate check (post-236 verification)
 
-## Handoff (invocation 2026-11-05T12:25Z — verified, pre-gate)
-- **UTC 2026-11-05T12:25:22Z / 07:25:22 EST (Thu). Gate NOT released** (~9.6h until 22:00 UTC 2026-11-05). `extend_paper_trading_state.py` **NOT run** (scope boundary). No source/data/config/test/gate/threshold/cost/universe/canonical-state changes. No commit.
-- **Fresh pre-gate verification (this invocation):** (1) `date -u && TZ=America/New_York date` -> Thu Nov 5 12:25:22 UTC / 07:25:22 EST 2026. (2) `python3 research/drift_persistence_report.py` -> rolling 63d Sharpe `2026-10-26 0.1284, 2026-10-27 0.7423, 2026-10-28 0.4459, 2026-10-29 0.1752, 2026-10-30 -0.7690, 2026-11-02 -1.3784, 2026-11-03 -1.3997, 2026-11-04 -0.8724`; `low_rolling_sharpe` persistence 6. (3) Raw audit: max date 2026-11-04; no 2026-11-05 bar. (4) `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` -> **45 passed in 15.24s**. (5) `git status --porcelain data/ config/` -> empty; `git status --porcelain` -> empty.
-- **State (unchanged):** `data/processed/paper_trading_state.yaml` last_run_date `2026-11-04`, NAV `133995.4210085515`. `git diff --name-only HEAD` -> empty.
-- **Wakeup:** `wku_1abac6812001tc37uQlDS6D3NA` scheduled **2026-11-05T22:05:00Z** (freshly scheduled this invocation; prior wakeup list was empty).
-- **Unresolved external blocker:** clock gate not released until 22:00 UTC; post-gate acceptance criteria (real extension / idempotency of a real extend) unverifiable pre-gate. If no completed 2026-11-05 bar exists after release, expect `sessions_extended==0` with explicit reason and unchanged state.
-- **Working tree note:** README.md updated with Cycle 1132 entry; NEXT_AGENT_TASK.md handoff updated. Do not commit unless asked.
+## Handoff (invocation 2026-11-05T12:27Z — verified, pre-gate)
+- **UTC 2026-11-05T12:27:08Z / 07:27:08 EST (Thu). Gate NOT released** (~9.55h until 22:00 UTC 2026-11-05). `extend_paper_trading_state.py` **NOT run** (scope boundary). No source/data/config/test/gate/threshold/cost/universe/canonical-state changes. No commit.
+- **Fresh pre-gate verification (this invocation):** (1) `date -u && TZ=America/New_York date` -> Thu Nov 5 12:27:08 UTC / 07:27:08 EST 2026. (2) `python3 research/drift_persistence_report.py` -> rolling 63d Sharpe `2026-10-26 0.1284, 2026-10-27 0.7423, 2026-10-28 0.4459, 2026-10-29 0.1752, 2026-10-30 -0.7690, 2026-11-02 -1.3784, 2026-11-03 -1.3997, 2026-11-04 -0.8724`; `low_rolling_sharpe` persistence 6. (3) Raw audit: no `data/raw/*.parquet` bar dated >= 2026-11-05. (4) `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` -> **45 passed in 15.21s**. (5) `git status --porcelain data/ config/` -> empty.
+- **State (unchanged):** `data/processed/paper_trading_state.yaml` last_run_date `2026-11-04`, NAV `133995.4210085515`. Working tree shows only `research/reports/paper_trading_rolling.md` self-generated `git_sha` provenance bump from drift report run (expected; do not commit unless asked).
+- **Supervisor/runtime:** `.kilo-runtime/` empty (no recommendation/disposition). No pending wakeups observed this session.
+- **Unresolved external blocker:** clock gate not released until 22:00 UTC; post-gate acceptance criteria unverifiable pre-gate. If no completed 2026-11-05 bar exists after release, expect `sessions_extended==0` with explicit reason and unchanged state. At/after gate run verification commands 1–6 in order.
 
 ## Context
 - Last processed session: **2026-11-04** (NAV `133995.4210085515`).
