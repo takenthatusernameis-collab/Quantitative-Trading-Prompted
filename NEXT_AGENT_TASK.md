@@ -1,5 +1,12 @@
 # NEXT_AGENT_TASK — Paper-trading extension gate check (post-236 verification)
 
+## Handoff (latest verified baseline — 2026-11-05T11:34Z invocation 152)
+- UTC 2026-11-05T11:34:33Z / 06:34:33 EST. Gate NOT released (~10.4h until 22:00 UTC 2026-11-05). `extend_paper_trading_state.py` NOT run (scope boundary).
+- Drift: rolling 63d Sharpe -0.8724 at 2026-11-04; `low_rolling_sharpe` persistence 6.
+- Tests: 45 passed in 15.38s.
+- `git status --porcelain data/ config/` empty; raw max date 2026-11-04; state unchanged 2026-11-04 / NAV 133995.4210085515.
+- No extension/write/commit. Wakeup 22:05Z remains scheduled.
+
 ## Handoff (latest verified baseline — 2026-11-05T11:32Z invocation 151)
 - **UTC 2026-11-05T11:32:16Z** (06:32:16 EST, Thu). Gate **NOT released** (~10.5h until 22:00 UTC 2026-11-05). Scope boundary respected: `extend_paper_trading_state.py` **not run**.
 - **Supervisor/runtime:** `.kilo-runtime/` exists but empty (no `current-supervisor-recommendation.json` / `worker-disposition.json`); no disposition update required.
