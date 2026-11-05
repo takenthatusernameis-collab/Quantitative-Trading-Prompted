@@ -1,10 +1,10 @@
-# NEXT_AGENT_TASK — Paper-trading extension gate check (post-236 verification)
+# NEXT_AGENT_TASK — Paper-trading extension gate check (post-496 verification)
 
-## Handoff (invocation 495, 2026-11-05T14:39Z — pre-gate re-verification; wakeup scheduled)
-- **UTC 2026-11-05T14:39:31Z / 09:39:31 EST (Thu). Gate NOT released** (~7.34h until 22:00 UTC 2026-11-05). `extend_paper_trading_state.py` **NOT run** this invocation (scope boundary: do not run before 22:00 UTC). No canonical state/source/data/config/test/gate/threshold/cost/universe changes. No commit.
-- **Fresh pre-gate-safe verification (observed):** (1) `date -u && TZ=America/New_York date` -> `Thu Nov  5 14:39:31 UTC 2026 / 09:39:31 EST 2026`. (2) `python3 research/drift_persistence_report.py` -> last 10 sessions include `2026-10-28 0.4459, 2026-10-29 0.1752, 2026-10-30 -0.7690, 2026-11-02 -1.3784, 2026-11-03 -1.3997, 2026-11-04 -0.8724`; `low_rolling_sharpe` persistence 6 consistent. (3) `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` -> **45 passed in 16.30s**. (4) `git status --porcelain data/ config/` -> empty.
-- **State (unchanged):** `data/processed/paper_trading_state.yaml` `last_run_date 2026-11-04`, `current_nav 133995.4210085515`. `.kilo-runtime/` empty (no recommendation/disposition). Durable handoff: `CORRECTIVE_HANDOFF_INVOCATION_495.md`.
-- **Wakeup scheduled:** `wku_1ac272b93001I5V8GlsBI9s0qb` at **2026-11-05T22:05:00Z** for post-gate verification commands 1–6 (this file).
+## Handoff (invocation 496, 2026-11-05T14:42Z — pre-gate re-verification; wakeup scheduled)
+- **UTC 2026-11-05T14:42:04Z / 09:42:04 EST (Thu). Gate NOT released** (~7.3h until 22:00 UTC 2026-11-05). `extend_paper_trading_state.py` **NOT run** this invocation (scope boundary: do not run before 22:00 UTC). No canonical state/source/data/config/test/gate/threshold/cost/universe changes. No commit.
+- **Fresh pre-gate-safe verification (observed):** (1) `date -u && TZ=America/New_York date` -> `Thu Nov  5 14:42:04 UTC 2026 / 09:42:04 EST 2026`. (2) `python3 research/drift_persistence_report.py` -> last 10 sessions include `2026-10-28 0.4459, 2026-10-29 0.1752, 2026-10-30 -0.7690, 2026-11-02 -1.3784, 2026-11-03 -1.3997, 2026-11-04 -0.8724`; `low_rolling_sharpe` persistence 6 consistent. (3) `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` -> **45 passed in 16.17s**. (4) `git status --porcelain data/ config/` -> empty.
+- **State (unchanged):** `data/processed/paper_trading_state.yaml` `last_run_date 2026-11-04`, `current_nav 133995.4210085515`. `.kilo-runtime/` empty (no recommendation/disposition). Durable handoff: `CORRECTIVE_HANDOFF_INVOCATION_496.md`.
+- **Wakeup scheduled:** `wku_1ac2a3c10001V5vnFDtnpQNy0k` at **2026-11-05T22:05:00Z** for post-gate verification commands 1–6 (this file).
 - **Unresolved external blocker:** clock gate not released until 22:00 UTC 2026-11-05; 2026-11-05 bar availability unknown until post-gate. At/after gate run commands 1–6 with observed output; extend by <=1 session only if completed bar exists, else `sessions_extended==0` with explicit reason, NAV unchanged, 0 writes.
 
 ## Context
@@ -41,5 +41,5 @@ At/after **22:00 UTC on 2026-11-05**, run the real extension and persistence che
 6. `git status --porcelain data/ config/`
 
 ## Prior compressed context
-- 2026-11-05 pre-gate invocations (10:30Z–12:22Z, many): gate closed, state 2026-11-04/NAV 133995.4210085515, drift -0.8724 persistence 6, 45 tests pass, `data/config` clean, no 2026-11-05 raw bar observed. Wakeup `wku_1aba9f229001aI7WBr7KMWagXg` scheduled 22:05Z.
+- 2026-11-05 pre-gate invocations (10:30Z–14:42Z, many): gate closed, state 2026-11-04/NAV 133995.4210085515, drift -0.8724 persistence 6, 45 tests pass, `data/config` clean, no 2026-11-05 raw bar observed. Wakeup `wku_1ac2a3c10001V5vnFDtnpQNy0k` scheduled 22:05Z.
 - Corrective 343 / earlier: idempotent no-op behavior and active extension path previously verified; real extension remains post-gate.
