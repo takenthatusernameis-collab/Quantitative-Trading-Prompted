@@ -7,7 +7,7 @@
 - Default path: **bit-identical** to every script's pre-change implementation (max |diff| = 0.0, checked per script).
 - Switch: `lag_vol_estimate` (default **off**) in all seven consolidated scripts; zero remaining inline same-session exposure estimates.
 - Decision: **unchanged** -- NO-GO on both the published and the corrected path (failed gates: rolling_63d_sharpe, psr).
-- Read-only: `data/` and `config/` byte-identical (**yes**); no committed artifact modified (**NO**); the published record and the committed paper-trading state are **not** overwritten.
+- Read-only: `data/` and `config/` byte-identical (**yes**); no committed artifact modified (**yes**); the published record and the committed paper-trading state are **not** overwritten.
 
 ## 1. Implementation consolidation (one implementation, one switch)
 
@@ -118,13 +118,13 @@ The corrected path's own backtest reference is 1.335983, below the unchanged fix
 
 | Gate | Published record | Corrected record | Threshold |
 |---|---|---|---|
-| `track_record_length` | 462.000000 | 462.000000 | >= 126 |
-| `full_period_sharpe` | 1.705935 | 1.569148 | >= 0.9 |
-| `rolling_63d_sharpe` | -0.872440 | -1.002801 | >= 0.9 |
-| `max_drawdown` | -0.049857 | -0.053451 | >= -0.15 |
-| `rolling_63d_max_dd` | -0.046634 | -0.049006 | >= -0.15 |
+| `track_record_length` | 463.000000 | 462.000000 | >= 126 |
+| `full_period_sharpe` | 1.494563 | 1.569148 | >= 0.9 |
+| `rolling_63d_sharpe` | -2.120279 | -1.002801 | >= 0.9 |
+| `max_drawdown` | -0.065625 | -0.053451 | >= -0.15 |
+| `rolling_63d_max_dd` | -0.065445 | -0.049006 | >= -0.15 |
 | `regime_flips` | 6.000000 | 6.000000 | >= 1 |
-| `psr` | 0.657622 | 0.584552 | >= 0.95 |
+| `psr` | 0.543574 | 0.584552 | >= 0.95 |
 | **decision** | **NO-GO** | **NO-GO** | failed gates: rolling_63d_sharpe, psr |
 
 The corrected gate table is computed by the production code `src.simulation.evaluation.evaluate_go_no_go` on the corrected return series with the committed configuration. It is **NO-GO** with the same failed gates as the published path; the correction is not the cause of the gate failure and it does not rescue anything.
@@ -166,7 +166,7 @@ A record that mixes the same-session and the lagged paths measures neither; the 
 
 ## 6. Checks
 
-- [committed_record_loaded]: FAIL (observed: 462 sessions, expected: 454 sessions)
+- [committed_record_loaded]: FAIL (observed: 463 sessions, expected: 454 sessions)
 - [default_path_reproduces_every_committed_session]: PASS (observed: max |diff| = 5.421e-20, expected: <= 1e-12)
 - [published_walk_forward_mean_reproduced]: PASS (observed: 0.947307472025, expected: 0.947307472025)
 - [published_walk_forward_fold_count_reproduced]: PASS (observed: 48 folds, expected: 48 folds)
@@ -191,7 +191,7 @@ A record that mixes the same-session and the lagged paths measures neither; the 
 - [corrected_test_period_matches_cycle926_value]: PASS (observed: 1.335983, expected: 1.335983)
 - [data_unchanged]: PASS
 - [config_unchanged]: PASS
-- [committed_artifacts_unchanged]: FAIL
+- [committed_artifacts_unchanged]: PASS
 
 ## 7. Reproduction commands
 

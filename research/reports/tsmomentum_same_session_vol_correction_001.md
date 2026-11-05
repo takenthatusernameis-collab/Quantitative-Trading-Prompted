@@ -97,13 +97,13 @@ PSR settings (the repository's own): `n_bootstrap=1000`, `block_size=22`, `seed=
 
 | Gate | Published record | Corrected record | Threshold |
 |---|---|---|---|
-| `track_record_length` | 462.000000 | 462.000000 | >= 126 |
-| `full_period_sharpe` | 1.705935 | 1.569148 | >= 0.9 |
-| `rolling_63d_sharpe` | -0.872440 | -1.002801 | >= 0.9 |
-| `max_drawdown` | -0.049857 | -0.053451 | >= -0.15 |
-| `rolling_63d_max_dd` | -0.046634 | -0.049006 | >= -0.15 |
+| `track_record_length` | 463.000000 | 462.000000 | >= 126 |
+| `full_period_sharpe` | 1.494563 | 1.569148 | >= 0.9 |
+| `rolling_63d_sharpe` | -2.120279 | -1.002801 | >= 0.9 |
+| `max_drawdown` | -0.065625 | -0.053451 | >= -0.15 |
+| `rolling_63d_max_dd` | -0.065445 | -0.049006 | >= -0.15 |
 | `regime_flips` | 6.000000 | 6.000000 | >= 1 |
-| `psr` | 0.657622 | 0.584552 | >= 0.95 |
+| `psr` | 0.543574 | 0.584552 | >= 0.95 |
 | **decision** | **NO-GO** | **NO-GO** | failed gates: rolling_63d_sharpe, psr |
 
 The corrected record's gate table is computed by the production code (`src/simulation/evaluation.py::evaluate_go_no_go`) on the corrected return series with the committed configuration; only the return series and the dates are substituted, because the promotion gates consume only the returns, the dates, the run-history turnover and the run-history regime exposure.
@@ -262,7 +262,7 @@ The same-session estimate is a point-in-time error in the live path, so a new li
 
 ## 8. Checks
 
-- [committed_record_loaded]: FAIL (observed: 462 sessions, expected: 454 sessions)
+- [committed_record_loaded]: FAIL (observed: 463 sessions, expected: 454 sessions)
 - [default_path_reproduces_every_committed_session]: PASS (observed: max |diff| = 5.421e-20 over 462 sessions, expected: <= 1e-12)
 - [default_research_path_is_bit_identical_to_the_pre_change_implementation]: PASS (observed: net max |diff| = 0.000e+00, weights max |diff| = 0.000e+00, expected: 0.0 (bit-identical))
 - [default_simulation_path_is_bit_identical_to_the_pre_change_implementation]: PASS (observed: weights max |diff| = 0.000e+00, vol_scale max |diff| = 0.000e+00, expected: 0.0 (bit-identical))
@@ -507,7 +507,7 @@ git status --porcelain data/ config/
     {
       "expected": "454 sessions",
       "name": "committed_record_loaded",
-      "observed": "462 sessions",
+      "observed": "463 sessions",
       "pass": false
     },
     {
@@ -733,15 +733,15 @@ git status --porcelain data/ config/
         "psr"
       ],
       "gates": {
-        "full_period_sharpe": 1.7059348900291404,
-        "max_drawdown": -0.04985740111232129,
-        "psr": 0.6576216295500155,
+        "full_period_sharpe": 1.4945625492186219,
+        "max_drawdown": -0.06562469374042079,
+        "psr": 0.5435739041039391,
         "regime_flips": 6.0,
-        "rolling_63d_max_dd": -0.04663398278493247,
-        "rolling_63d_sharpe": -0.872439579425076,
-        "track_record_length": 462.0
+        "rolling_63d_max_dd": -0.06544463769225417,
+        "rolling_63d_sharpe": -2.1202794870108126,
+        "track_record_length": 463.0
       },
-      "psr_normal": 0.6576216295500155
+      "psr_normal": 0.5435739041039391
     },
     "psr_settings": {
       "block_size": 22,

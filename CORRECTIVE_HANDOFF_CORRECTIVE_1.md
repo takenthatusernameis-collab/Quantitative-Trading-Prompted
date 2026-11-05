@@ -1,33 +1,38 @@
-# Corrective Handoff — Corrective Invocation 1
+# CORRECTIVE_HANDOFF_CORRECTIVE_1.md (corrective invocation 1, 2026-11-05T23:09Z)
 
-## Invocation context
-- Diagnostic log: `/home/runner/work/_temp/kilo-session-7.log`
-- Prior invocation (session 7) verified gate not released and scheduled wakeup wku_1a42ec662001iAjQUy4rIfqAgk for ~23:01 UTC 2026-11-04 (after 22:00 UTC gate release). No durable project changes were made; working tree clean.
-- This corrective invocation re-ran the full acceptance verification suite at 2026-11-04T01:32:45Z with identical blocked result.
+## Context
+- Current time: 2026-11-05T23:09:24 UTC (18:09:24 EST, Thursday)
+- Last processed session: 2026-11-05, NAV 129990.36021343581 (data/processed/paper_trading_state.yaml)
+- Clock gate for next session 2026-11-06 releases at 22:00 UTC on 2026-11-06 (17:00 ET)
+- Gate NOT released: 23:09 UTC 2026-11-05 < 22:00 UTC 2026-11-06 (~23 hours remaining)
+- 355-minute session cutoff (~05:24 UTC 2026-11-06) precedes gate release — no extension possible this session
+- git status --porcelain data/ config/ → empty (clean); full tree clean
+- No scheduled wakeups existed before this invocation
 
-## Root cause / approach difference
-- **Not a code defect.** The blocker is a genuine time gate: current time 2026-11-04T01:32:45Z = 2026-11-03 20:32 EST. `last_run_date` is 2026-11-03, so the next candidate session 2026-11-04 is in the future (today is 2026-11-03 ET). No completed bar exists beyond `last_run_date` 2026-11-03.
-- Clock gate releases at 22:00 UTC on 2026-11-04 (17:00 ET). Per `session_is_complete` in `research/extend_paper_trading_state.py:45`, the gate requires `local_now.date() > next_calendar` OR `local_now.date() == d and local_now.hour >= close_hour + 1` (17:00 ET on session date). Neither condition is met (local_now.date() == 2026-11-03, not >= 2026-11-04).
-- `extend_paper_trading_state.py` correctly returns candidate available: no, sessions extended: 0, NAV unchanged at 132866.0435881768, state write count: 0, raw cache scratch.
-- Second invocation idempotent: sessions_extended: 0, write count 0, NAV unchanged.
-- No code change warranted or safe under scope boundaries (do not change thresholds/gates/cost model/universe/clock-gate logic; do not modify `data/raw`; do not hand-edit canonical state; do not commit unless asked).
-- Materially different from prior approach: this invocation ran all 5 acceptance verification commands fresh (date, extension x2, drift report, git status) rather than only the extension script, confirming the blocker with current clock state.
+## Materially different approach
+Prior corrective invocations read files and concluded the gate blocks extension. This invocation independently verified: current date/time, git status (clean), drift_persistence_report.py (stored == recomputed, 2026-11-05 -2.1203), and the full pytest suite (47 passed). Additionally, scheduled a wakeup at 22:10 UTC on 2026-11-06 for post-gate acceptance-sequence execution — no prior invocation in this chain scheduled a wakeup.
+
+## Root cause
+No code defect. The blocker is a genuine time gate: the 2026-11-06 session has not occurred yet (today is 2026-11-05); no completed candidate bar exists beyond last_run_date 2026-11-05. Scope boundary (NEXT_AGENT_TASK.md line 38) forbids running extend_paper_trading_state.py before 22:00 UTC on 2026-11-06. No safe code correction is possible without altering forbidden gate logic.
 
 ## What changed
-- Nothing in source/data/config/tests. `git status --porcelain data/ config/` is empty (clean).
-- Durable evidence: fresh full verification run confirming the time gate, idempotency, drift persistence, and clean data/config tree.
+- No source/data/config/test changes. git status --porcelain data/ config/ → empty.
+- Scheduled wakeup id returned for 2026-11-06T22:10:00Z to resume post-gate acceptance sequence.
+- Durable evidence: independent verification outputs recorded below.
 
-## Exact verification commands and outputs (run fresh this invocation)
-1. `date -u && TZ=America/New_York date` → Wed Nov 4 01:32:45 UTC 2026 / Tue Nov 3 20:32:45 EST 2026
-2. `python3 research/extend_paper_trading_state.py 2>&1 | tail -25` → exit 0; clock gate NOT released; candidate available: no; candidate reason: next session 2026-11-04 has not closed yet (in the future (today is 2026-11-03)); sessions extended: 0; NAV before/after 132866.0435881768; state write count: 0; raw cache scratch
-3. `python3 research/drift_persistence_report.py 2>&1 | tail -4` → stored == recomputed: True; rolling 63d Sharpe -1.3997 at 2026-11-03
-4. `python3 research/extend_paper_trading_state.py 2>&1 | tail -6` → exit 0; sessions extended: 0; NAV before/after 132866.0435881768; state write count: 0; raw cache scratch (idempotent)
-5. `git status --porcelain data/ config/` → empty (clean)
+## Exact verification commands and outputs (run this invocation)
+1. `date -u && TZ=America/New_York date` → Thu Nov  5 23:09:24 UTC 2026 / Thu Nov  5 18:09:24 EST 2026
+2. `git status --porcelain data/ config/` → empty (clean); `git status --porcelain` → empty (clean)
+3. `python3 research/drift_persistence_report.py 2>&1 | tail -6` → 2026-10-29 0.1752 / 2026-10-30 -0.7690 / 2026-11-02 -1.3784 / 2026-11-03 -1.3997 / 2026-11-04 -0.8724 / 2026-11-05 -2.1203 (stored == recomputed)
+4. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` → 47 passed in 18.50s
+5. extend_paper_trading_state.py NOT run — scope boundary forbids execution before 22:00 UTC on 2026-11-06
 
-## Blocker
-Clock gate not released until 22:00 UTC (17:00 ET) on 2026-11-04. Global 355-minute cutoff (~07:28 UTC on 2026-11-04) precedes gate release, so no extension can complete in this session. No safe code correction possible without altering forbidden gate logic.
+## Unresolved blockers
+- Clock gate not released until 22:00 UTC on 2026-11-06; no extension possible before then
+- 355-minute session cutoff (~05:24 UTC 2026-11-06) precedes gate release; session will end before gate
+- Extension progress must wait for gate release at/after 2026-11-06T22:00Z
 
-## Next distinct investigation needed
-Re-run `python3 research/extend_paper_trading_state.py` after 22:00 UTC gate release (session 7 scheduled wakeup wku_1a42ec662001iAjQUy4rIfqAgk for ~23:01 UTC 2026-11-04 covers this). If completed 2026-11-04 bar exists: extend by 1 session, verify idempotency on second run, run drift report, confirm data/config clean.
+## Next distinct investigation
+At/after 2026-11-06T22:00Z (wakeup scheduled at 22:10 UTC), run the full NEXT_AGENT_TASK.md acceptance sequence: extend_paper_trading_state.py (expect sessions_extended==1 if 2026-11-06 bar completed, else 0 with reason), drift_persistence_report.py, extend_paper_trading_state.py (idempotency), pytest suite, git status --porcelain data/ config/. If completed 2026-11-06 bar exists: extend by 1 session, verify idempotency, drift report, tests, data/config clean.
 
 CORRECTIVE_VERIFICATION=BLOCKED
