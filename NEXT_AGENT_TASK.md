@@ -1,5 +1,20 @@
 # NEXT_AGENT_TASK — Paper-trading extension gate check (post-236 verification)
 
+## Handoff (latest verified baseline — 2026-11-05T10:30Z invocation 143)
+- **UTC 2026-11-05T10:30:18Z** (05:30:18 EST, Thu). Gate **NOT released** (~11.5h until 22:00 UTC 2026-11-05). Scope boundary respected: `extend_paper_trading_state.py` not run (pre-gate premature no-op forbidden by NEXT_AGENT_TASK.md line 28).
+- **Supervisor:** `.kilo-runtime/` empty (no `current-supervisor-recommendation.json`, no `worker-disposition.json`); no disposition update required.
+- **Fresh verification (this invocation, pre-gate safe, all commands ran):**
+  1. `date -u && TZ=America/New_York date` -> Thu Nov 5 10:30:18 UTC 2026 / Thu Nov 5 05:30:18 EST 2026.
+  2. `python3 research/drift_persistence_report.py` -> exit 0; rolling 63d Sharpe `-0.8724` at 2026-11-04 (`2026-10-28 0.4459, 2026-10-29 0.1752, 2026-10-30 -0.7690, 2026-11-02 -1.3784, 2026-11-03 -1.3997, 2026-11-04 -0.8724`); `low_rolling_sharpe` persistence 6.
+  3. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` -> **45 passed in 15.81s**.
+  4. `git status --porcelain data/ config/` -> empty. `git status --porcelain` -> empty (working tree clean).
+  5. **Raw data audit:** 27 `data/raw/*.parquet` files inspected; overall max date **2026-11-04** (SPY/QQQ/IWM/EFA/EEM/GLD/TLT/^VIX). Commodity/futures tickers lag further (BNO/UNG 2026-10-21, CL-F/GC-F/NG-F/USO/GSG/ZB-F 2026-10-15, DBC/VNQ/XB* 2026-10-08). No 2026-11-05 bar in any asset. Strong evidence that even after gate release, `sessions_extended==0` is the likely outcome (no completed bar to extend into).
+- **State:** `data/processed/paper_trading_state.yaml` last_run_date `2026-11-04`, NAV `133995.4210085515`, drift flags present (`low_rolling_sharpe` persistence 6). No changes to gates/thresholds/cost model/universe/config/data/canonical state.
+- **Wakeup:** `wku_1ab432157001jsgECABIPLXYkS` scheduled for **2026-11-05T22:05:00Z** to execute post-gate verification commands 1–6.
+- **Decision:** no trading verdict published, no canonical state written, no commit.
+- **Unresolved blocker (external):** clock gate not released until 22:00 UTC 2026-11-05 and no completed 2026-11-05 bar in canonical `data/raw`. Post-gate acceptance criteria cannot be fully verified before gate release; after release, `sessions_extended==0` is expected unless a completed bar becomes available.
+- **Next agent task (at/after 22:00 UTC on 2026-11-05):** run verification commands 1–6 in order from this file (extend -> drift report -> idempotency re-run -> pytest -> `git status --porcelain data/ config/`). Extend by at most one session to 2026-11-05 only if a completed bar exists; otherwise record `sessions_extended==0` with explicit reason and keep state unchanged. Do not commit unless asked.
+
 ## Context
 - Last processed session: **2026-11-04** (NAV `133995.4210085515`, 462 cumulative dates).
 - Rolling 63d Sharpe at 2026-11-04: **-0.8724** (`low_rolling_sharpe`, persistence_days 6).
