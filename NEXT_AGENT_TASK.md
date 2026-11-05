@@ -35,19 +35,19 @@ At/after 22:00 UTC on 2026-11-05, run the real extension and persistence checks.
 5. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q`
 6. `git status --porcelain data/ config/`
 
-## Handoff (latest verified baseline — 2026-11-05T10:21Z invocation 138)
-- **UTC 2026-11-05T10:21:38Z** (05:21:38 EST, Thu). Gate **NOT released** (~11.5h until 22:00 UTC 2026-11-05). Scope boundary respected: `extend_paper_trading_state.py` not run (pre-gate premature no-op forbidden by line 27).
-- **Environment unblocked (this invocation):** declared dependencies (numpy, pandas, pyyaml, pytest, yfinance, pyarrow) were NOT installed in this environment; installed them from `requirements.txt`. Until this install the README's "45 passed" / "pytest importable" claims could not be reproduced (drift report and pytest both errored on missing modules).
-- **Fresh verification (this invocation, pre-gate safe):**
-  1. `date -u && TZ=America/New_York date` -> Thu Nov 5 10:21:38 UTC 2026 / Thu Nov 5 05:21:38 EST 2026.
+## Handoff (latest verified baseline — 2026-11-05T10:22Z invocation 139)
+- **UTC 2026-11-05T10:22:26Z** (05:22:26 EST, Thu). Gate **NOT released** (~11.6h until 22:00 UTC 2026-11-05). Scope boundary respected: `extend_paper_trading_state.py` not run (pre-gate premature no-op forbidden by line 28).
+- **Supervisor:** `.kilo-runtime/current-supervisor-recommendation.json` absent; no disposition update required.
+- **Fresh verification (this invocation, pre-gate safe, all commands ran):**
+  1. `date -u && TZ=America/New_York date` -> Thu Nov 5 10:22:26 UTC 2026 / Thu Nov 5 05:22:26 EST 2026.
   2. `python3 research/drift_persistence_report.py` -> exit 0; rolling 63d Sharpe `-0.8724` at 2026-11-04 (`low_rolling_sharpe`, persistence_days 6).
-  3. `python3 -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` -> **45 passed in 16.79s**.
-  4. `git status --porcelain data/ config/` -> empty; `git status --porcelain` -> only `M research/reports/paper_trading_rolling.md` (single hunk: self-generated `git_sha` provenance bumped by drift report; expected, no code change warranted).
-- **Raw data audit:** max date across all 28 `data/raw/*.parquet` is **2026-11-04**; no 2026-11-05 bar exists in any asset. Even after gate release, `sessions_extended==0` is the likely outcome (no completed bar to extend into).
-- **State:** `data/processed/paper_trading_state.yaml` last_run_date `2026-11-04`, NAV `133995.4210085515`, drift flags present (`low_rolling_sharpe` persistence 6). No changes to gates/thresholds/cost model/universe/config/data.
+  3. `python3 -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` -> **45 passed in 18.52s**.
+  4. `git status --porcelain data/ config/` -> empty. `git diff --name-only HEAD` -> only `research/reports/paper_trading_rolling.md` (single hunk: self-generated `git_sha` provenance `0241fb13...` -> `e4e786f7...` = current HEAD; expected, no code change warranted).
+- **Raw data audit:** all 28 `data/raw/*.parquet` inspected; overall max date **2026-11-04**; `has_2026-11-05 False` (SPY/QQQ/IWM/EFA/EEM/GLD/TLT/^VIX max 2026-11-04). Even after gate release, `sessions_extended==0` is likely if no completed 2026-11-05 bar is served.
+- **State:** `data/processed/paper_trading_state.yaml` last_run_date `2026-11-04`, NAV `133995.4210085515`, drift flags present (`low_rolling_sharpe` persistence 6). No changes to gates/thresholds/cost model/universe/config/data/canonical state.
 - **Decision:** no trading verdict published, no canonical state written, no commit.
-- **Unresolved blocker (external):** clock gate not released until 22:00 UTC 2026-11-05 and no completed 2026-11-05 bar in canonical `data/raw`. Post-gate acceptance criteria cannot be fully verified before gate release; after release, `sessions_extended==0` is expected because no completed 2026-11-05 bar exists in raw data.
-- **Next agent task (at/after 22:00 UTC on 2026-11-05):** run the verification commands 1–6 in order from this file (extend -> drift report -> idempotency re-run -> pytest -> `git status --porcelain data/ config/`). Extend by at most one session to 2026-11-05 only if a completed bar exists; otherwise record `sessions_extended==0` with explicit reason and keep state unchanged. Do not commit unless asked.
+- **Unresolved blocker (external):** clock gate not released until 22:00 UTC 2026-11-05 and no completed 2026-11-05 bar in canonical `data/raw`. Post-gate acceptance criteria cannot be fully verified before gate release; after release, `sessions_extended==0` is expected unless a completed bar becomes available.
+- **Next agent task (at/after 22:00 UTC on 2026-11-05):** run verification commands 1–6 in order from this file (extend -> drift report -> idempotency re-run -> pytest -> `git status --porcelain data/ config/`). Extend by at most one session to 2026-11-05 only if a completed bar exists; otherwise record `sessions_extended==0` with explicit reason and keep state unchanged. Do not commit unless asked.
 
 ## Handoff (latest verified baseline — 2026-11-05T09:36Z invocation 137)
 - **UTC 2026-11-05T09:36:19Z** (04:36:19 EST, Thu). Gate **NOT released** (~12.4h until 22:00 UTC 2026-11-05). Scope boundary respected: `extend_paper_trading_state.py` not run (pre-gate premature no-op forbidden by line 27).
