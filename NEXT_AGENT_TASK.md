@@ -34,17 +34,16 @@ At/after 22:00 UTC on 2026-11-05, run the real extension and persistence checks.
 5. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q`
 6. `git status --porcelain data/ config/`
 
-## Handoff (latest verified baseline — 2026-11-05T09:24Z corrective invocation 134)
-- **UTC 2026-11-05T09:23:54Z** (04:23:54 EST, Thu). Gate **NOT released** (~12.6h until 22:00 UTC 2026-11-05). Scope boundary respected: `extend_paper_trading_state.py` not run (pre-gate premature no-op forbidden).
-- **Inspected prior corrective log:** `/home/runner/work/_temp/kilo-session-19-recovery-133.log` shows status 1 due to model/auth error ("Sign up for free...") with no durable project changes. Working tree already contained uncommitted self-generated/regenerated report diffs (git_sha bumps in `research/reports/paper_trading_rolling.md` and regenerated `tsmomentum_*` report artifacts) and a consolidated `NEXT_AGENT_TASK.md`; `data/` and `config/` were clean.
+## Handoff (latest verified baseline — 2026-11-05T09:26Z invocation 135)
+- **UTC 2026-11-05T09:25:39Z** (04:25:39 EST, Thu). Gate **NOT released** (~12.6h until 22:00 UTC 2026-11-05). Scope boundary respected: `extend_paper_trading_state.py` not run (pre-gate premature no-op forbidden by line 27).
+- **Supervisor recommendation (41954503612-attempt-1-review-0005-3526c2dca1e4, CONTINUE):** disposition remains `in_progress` in `.kilo-runtime/worker-disposition.json` (updated this invocation). Accepted: run post-gate verification at/after 22:00 UTC; do not commit unless asked.
 - **Fresh verification (this invocation, pre-gate safe):**
-  1. `date -u && TZ=America/New_York date` → Thu Nov 5 09:23:54 UTC 2026 / Thu Nov 5 04:23:54 EST 2026.
-  2. `python3 research/drift_persistence_report.py 2>&1 | tail -6` → rolling 63d Sharpe `-0.8724` at 2026-11-04 (2026-10-28 0.4459 … 2026-11-04 -0.8724).
-  3. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` → **45 passed in 30.99s**.
-  4. `git status --porcelain data/ config/` → (empty).
-- **State:** `data/processed/paper_trading_state.yaml` last_run_date `2026-11-04`, current_nav `133995.4210085515`, drift flags present (`low_rolling_sharpe` persistence 6). HEAD `115169e`. No 2026-11-05 bar in canonical `data/raw` (per prior evidence; `data/raw` unchanged).
-- **Decision:** no trading verdict published, no canonical state written, no strategy/gate/threshold/cost-model/universe/data change, no commit.
-- **Materially different corrective action (justified, minimal):** updated this durable handoff to record invocation 134 evidence, prior-log diagnosis, and exact verification outputs; did not run `extend_paper_trading_state.py` pre-gate and did not touch `data/`/`config/`. Left uncommitted self-generated/regenerated report diffs uncommitted (no user request to commit; reverting would be unnecessary churn).
+  1. `date -u && TZ=America/New_York date` → Thu Nov 5 09:25:39 UTC 2026 / Thu Nov 5 04:25:39 EST 2026.
+  2. `python3 research/drift_persistence_report.py 2>&1 | tail -6` → rolling 63d Sharpe `2026-10-28 0.4459 … 2026-11-04 -0.8724`.
+  3. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` → **45 passed in 30.50s**.
+  4. `git status --porcelain` and `git status --porcelain data/ config/` → (empty).
+- **State:** `data/processed/paper_trading_state.yaml` last_run_date `2026-11-04`, current_nav `133995.4210085515`, drift flags present (`low_rolling_sharpe` persistence 6). No 2026-11-05 bar in canonical `data/raw` (unchanged). No changes to gates/thresholds/cost model/universe/config/data.
+- **Decision:** no trading verdict published, no canonical state written, no commit.
 - **Unresolved blocker (external):** clock gate not released until 22:00 UTC 2026-11-05 and no completed 2026-11-05 bar in canonical `data/raw`. Post-gate acceptance criteria (real extension / idempotency of a real extend / expected state advancement if bar exists) cannot be verified before gate release; after release, `sessions_extended==0` remains possible if no completed bar is available.
 - **Next distinct action at/after 22:00 UTC:** run verification commands 1–6 in order from this file. Extend by at most one session to 2026-11-05 only if a completed bar exists; otherwise record `sessions_extended==0` with explicit reason and keep state unchanged. Do not commit unless asked.
 
