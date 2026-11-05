@@ -154,6 +154,34 @@ def update_rolling_report(report: dict, report_path: Path = ROLLING_REPORT_PATH)
             return False
         content = report_path.read_text()
         prov = report.get("provenance") or {}
+        # Preserve existing git_sha when state/config hashes are unchanged to avoid
+        # self-referential churn (a commit that updates this block changes HEAD).
+        existing_state_sha = None
+        existing_git_sha = None
+        existing_cfg = {}
+        if "## Drift Persistence Provenance" in content:
+            idx = content.find("## Drift Persistence Provenance")
+            rest = content[idx:]
+            m_end = re.search(r"\n## [^#]", rest)
+            block_text = rest[: m_end.start() + 1] if m_end else rest
+            m = re.search(r"paper_trading_state_sha256:\*\*\s*(\S+)", block_text)
+            if m:
+                existing_state_sha = m.group(1).strip()
+            m = re.search(r"git_sha:\*\*\s*(\S+)", block_text)
+            if m:
+                existing_git_sha = m.group(1).strip()
+            for cm in re.finditer(r"\*\*(\w+)_sha256:\*\*\s*(\S+)", block_text):
+                if cm.group(1) != "paper_trading_state":
+                    existing_cfg[cm.group(1)] = cm.group(2).strip()
+        cfg = prov.get("config") or {}
+        if (
+            existing_git_sha
+            and existing_state_sha == prov.get("paper_trading_state_sha256")
+            and existing_cfg == (cfg if isinstance(cfg, dict) else {})
+        ):
+            prov = dict(prov)
+            prov["git_sha"] = existing_git_sha
+
         lines = []
         lines.append("## Drift Persistence Provenance")
         lines.append("")
@@ -161,7 +189,6 @@ def update_rolling_report(report: dict, report_path: Path = ROLLING_REPORT_PATH)
             lines.append(f"- **git_sha:** {prov['git_sha']}")
         if prov.get("paper_trading_state_sha256"):
             lines.append(f"- **paper_trading_state_sha256:** {prov['paper_trading_state_sha256']}")
-        cfg = prov.get("config")
         if cfg and isinstance(cfg, dict):
             for k, v in cfg.items():
                 lines.append(f"- **{k}_sha256:** {v}")

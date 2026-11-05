@@ -301,3 +301,40 @@ def test_main_json_includes_provenance(tmp_path, monkeypatch, capsys):
     assert prov.get("git_sha")
     assert prov.get("paper_trading_state_sha256")
     assert prov.get("config")
+
+
+def test_update_rolling_report_preserves_git_sha_when_hashes_unchanged(tmp_path, monkeypatch):
+    """Avoid self-referential churn: git_sha only updates when state/config hashes change."""
+    state = _load_state()
+    report = report_tool.build_report(state, state_path=STATE_PATH)
+    prov = report["provenance"]
+    report_path = tmp_path / "rolling.md"
+    report_path.write_text(
+        "# Report\n\n## Drift Persistence Provenance\n\n"
+        f"- **git_sha:** deadbeefcafebabe\n"
+        f"- **paper_trading_state_sha256:** {prov['paper_trading_state_sha256']}\n"
+        f"- **paper_trading_config_sha256:** {prov['config']['paper_trading_config']}\n"
+    )
+    monkeypatch.setattr(report_tool, "_get_git_sha", lambda: "newhead0000000000000000000000000000000000")
+    changed = report_tool.update_rolling_report(report, report_path=report_path)
+    text = report_path.read_text()
+    assert "deadbeefcafebabe" in text
+    assert "newhead0000000000000000000000000000000000" not in text
+
+
+def test_update_rolling_report_updates_git_sha_when_state_hash_changes(tmp_path, monkeypatch):
+    """When state/config hashes change, git_sha should update to provenance value."""
+    state = _load_state()
+    report = report_tool.build_report(state, state_path=STATE_PATH)
+    report = json.loads(json.dumps(report))  # deep copy
+    report["provenance"]["git_sha"] = "newhead0000000000000000000000000000000000"
+    report_path = tmp_path / "rolling.md"
+    report_path.write_text(
+        "# Report\n\n## Drift Persistence Provenance\n\n"
+        "- **git_sha:** deadbeefcafebabe\n"
+        "- **paper_trading_state_sha256:** differenthash\n"
+        f"- **paper_trading_config_sha256:** {report['provenance']['config']['paper_trading_config']}\n"
+    )
+    report_tool.update_rolling_report(report, report_path=report_path)
+    text = report_path.read_text()
+    assert "newhead0000000000000000000000000000000000" in text
