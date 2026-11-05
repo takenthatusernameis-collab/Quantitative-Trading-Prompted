@@ -177,3 +177,14 @@ At/after 22:00 UTC on 2026-11-05, run real extension and persistence checks. Ext
 - **State:** `data/processed/paper_trading_state.yaml` last_run_date `2026-11-04`, current_nav `133995.4210085515`, 462 cumulative dates, drift_flags.low_rolling_sharpe value -0.8724 persistence_days 6. `git status --porcelain data/ config/` -> empty. HEAD `e2ce806`.
 - **Decision:** no trading verdict published, no canonical state written. The active write path is now verified defect-free at the real clock against the live provider; the only remaining gate is the external time condition (2026-11-05 session close at 22:00 UTC).
 - **Next task:** at/after 22:00 UTC on 2026-11-05 run the NEXT_AGENT_TASK.md verification sequence (extend -> drift report -> idempotency re-run -> pytest -> git status). Extend by at most one session to 2026-11-05 if a completed bar exists; otherwise sessions_extended==0 with explicit reason, state unchanged. Do not commit unless asked.
+
+## Handoff notes (current cycle — invocation 2026-11-05T08:47Z)
+- UTC 2026-11-05T08:47:16Z (03:47:16 EST, Thu). Gate NOT released (release 22:00 UTC on 2026-11-05, ~13.2h away). Per NEXT_AGENT_TASK.md scope boundary line 31, `extend_paper_trading_state.py` NOT run (premature no-op). No source, data, config, test, gate, threshold, cost model, or state modified. No commit made. HEAD `94f964c`.
+- **Supervisor protocol:** recommendation review-0005 (`41954503612-attempt-1-review-0005-3526c2dca1e4`, review_cycle 5, STATUS: CONTINUE) disposition `in_progress` in `.kilo-runtime/worker-disposition.json`. Accepted: defer extend_paper_trading_state.py per scope boundary line 31; run post-gate verification sequence at/after 22:00 UTC; do not commit unless asked.
+- **Baseline re-verified fresh this invocation:**
+  1. `date -u && TZ=America/New_York date` -> Thu Nov 5 08:47:16 UTC 2026 / Thu Nov 5 03:47:16 EST 2026.
+  2. `git status --porcelain` -> empty; `git status --porcelain data/ config/` -> empty; HEAD `94f964c`.
+  3. No unstaged changes anywhere in the working tree.
+- **State:** `data/processed/paper_trading_state.yaml` last_run_date `2026-11-04`, current_nav `133995.4210085515`, drift_flags.low_rolling_sharpe present. Prior drift rolling 63d Sharpe `-0.8724` at 2026-11-04, persistence_days 6. Prior pytest: 45 passed.
+- **Decision:** no trading verdict published, no state written. Gate remains the sole blocker; post-gate verification sequence cannot execute until 22:00 UTC on 2026-11-05.
+- **Next task:** at/after 22:00 UTC on 2026-11-05 run the NEXT_AGENT_TASK.md verification sequence (extend -> drift report -> idempotency re-run -> pytest -> git status). Extend by at most one session to 2026-11-05 if a completed bar exists; otherwise sessions_extended==0 with explicit reason, state unchanged. Do not commit unless asked.
