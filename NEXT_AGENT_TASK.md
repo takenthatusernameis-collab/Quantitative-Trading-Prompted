@@ -38,6 +38,18 @@ At/after 22:00 UTC on 2026-11-05, run real extension and persistence checks. Ext
 5. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q`
 6. `git status --porcelain data/ config/`
 
+## Handoff notes (current cycle — invocation 2026-11-05T03:38Z)
+- UTC 2026-11-05T03:38Z (22:38 EST, Wed). Gate NOT released (release 22:00 UTC on 2026-11-05, ~18.4h away). No extension run per scope boundary. Wakeup scheduled `wku_1a9cb2fc4001mIvNYT2K4eO778` at 2026-11-05T22:05:00Z. Supervisor recommendation review-0004 disposition `in_progress` in `.kilo-runtime/worker-disposition.json`.
+- **Baseline re-verified fresh this invocation (all commands ran):**
+  1. `date -u && TZ=America/New_York date` -> Thu Nov 5 03:38:47 UTC 2026 / Wed Nov 4 22:38:47 EST 2026.
+  2. `git status --porcelain` -> empty; `git status --porcelain data/ config/` -> empty.
+  3. `python3 research/drift_persistence_report.py` -> rolling 63d Sharpe `-0.8724` at 2026-11-04 (2026-10-28 0.4459, 2026-10-29 0.1752, 2026-10-30 -0.7690, 2026-11-02 -1.3784, 2026-11-03 -1.3997, 2026-11-04 -0.8724).
+  4. `git diff research/reports/paper_trading_rolling.md` -> single hunk: self-generated `git_sha` provenance line bumped `512ab856a3f0affe38c8e7ac5d6d761581f153bd` (committed HEAD) -> `188b699c8c75d5df256b992a8f00079776ca0b25` (current HEAD). Expected self-generated report metadata; no code change warranted.
+  5. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` -> **45 passed in 26.32s**.
+- **State:** `data/processed/paper_trading_state.yaml` last_run_date `2026-11-04`, current_nav `133995.4210085515`, drift_flags.low_rolling_sharpe present. Raw cache latest committed bar remains 2026-11-04 across equity/ETF/VIX tickers (SPY/QQQ/IWM/EFA/EEM/GLD/TLT/^VIX); commodity/futures tickers lag further (latest 2026-10-21 to 2026-10-15). No 2026-11-05 bar in canonical data/raw.
+- **Decision of this cycle: none** — no trading verdict published, no state written, no strategy/gate/threshold/config change. `extend_paper_trading_state.py` deliberately NOT run (gate not released; premature no-op, already verified idempotent across many prior invocations).
+- **Next task:** at/after 22:00 UTC on 2026-11-05 run the NEXT_AGENT_TASK.md verification sequence (extend -> drift report -> idempotency re-run -> pytest -> git status). Extend by at most one session to 2026-11-05 if a completed bar exists; otherwise sessions_extended==0 with explicit reason, state unchanged. Do not commit unless asked.
+
 ## Handoff notes (current cycle — invocation 2026-11-05T03:32Z)
 - UTC 2026-11-05T03:32Z (22:32 EST, Wed). Gate NOT released (release 22:00 UTC on 2026-11-05, ~18.5h away). No extension run per scope boundary. Wakeup scheduled `wku_1a9c5b41d001a4ZPtqRue0l5Uw` at 2026-11-05T22:05:00Z. Supervisor recommendation review-0004 disposition `in_progress` in `.kilo-runtime/worker-disposition.json`.
 - **Baseline re-verified fresh this invocation (all commands ran):**
