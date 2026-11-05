@@ -38,7 +38,10 @@ At/after 22:00 UTC on 2026-11-05, run real extension and persistence checks. Ext
 5. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q`
 6. `git status --porcelain data/ config/`
 
-## Handoff notes (current cycle — invocation 2026-11-05T02:03Z)
+## Handoff notes (current cycle — invocation 2026-11-05T02:04Z)
+- UTC 2026-11-05T02:04Z (21:04 EST, Wed). Gate NOT released (release 22:00 UTC). No extension run per scope boundary. Wakeup scheduled `wku_1a973b384001EdF27r6suoY7Au` at 2026-11-05T22:04:54Z. Baseline unchanged: last processed 2026-11-04, NAV 133995.4210085515, sessions_extended 0, 0 writes, drift rolling 63d Sharpe -0.8724. git clean data/config. Next task unchanged: run verification sequence at/after 22:00 UTC 2026-11-05.
+
+## Handoff notes (prior cycle — invocation 2026-11-05T02:03Z)
 
 - UTC 2026-11-05T02:03Z (21:03 EST, Wed). Gate NOT released (release 22:00 UTC / 17:00 ET on 2026-11-05, ~20h away). No extension run per scope boundary (premature no-op, already verified idempotent). Wakeup scheduled `wku_1a972f63c001GfYT0cc9bSQF3a` at 2026-11-05T22:05:00Z to resume the post-gate verification sequence. Supervisor review-0004 disposition `in_progress` in `.kilo-runtime/worker-disposition.json`.
 - Baseline: last processed 2026-11-04, NAV 133995.4210085515, sessions_extended 0, 0 writes. Drift rolling 63d Sharpe -0.8724 at 2026-11-04. Tests: 45 passed (invocation 236). `git status --porcelain data/ config/` empty. `tests/test_real_extension_path.py` committed at HEAD (9aadb30); no uncommitted test edits.
