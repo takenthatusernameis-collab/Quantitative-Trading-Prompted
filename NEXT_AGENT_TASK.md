@@ -92,3 +92,9 @@ At/after 22:00 UTC on 2026-11-05, run the real extension and persistence checks.
 
 ## Prior handoff summary (compressed)
 - 2026-11-04T22:47Z–2026-11-05T08:48Z: repeated pre-gate checks confirmed gate closed, state unchanged (2026-11-04/NAV 133995.4210085515), drift -0.8724, 45 tests pass, `data/config` clean, idempotent no-op behavior. Corrective 343 additionally verified active extension path (offline pinned clock + live real-clock/yfinance) PASS with canonical artifacts untouched. Supervisor dispositions/wakeups recorded in prior logs; post-gate verification sequence remains the active task.
+
+## Handoff (latest verified baseline — 2026-11-05T10:24Z invocation 140)
+- **UTC 2026-11-05T10:24:11Z** (05:24:11 EST, Thu). Gate **NOT released** (~11.6h until 22:00 UTC 2026-11-05). Scope boundary respected: `extend_paper_trading_state.py` not run.
+- Pre-gate safe checks: drift report exit 0 (rolling 63d Sharpe -0.8724 at 2026-11-04); pytest 45 passed in 17.73s; `git status --porcelain data/ config/` empty.
+- Wakeup scheduled for 2026-11-05T22:22:00Z to execute post-gate verification commands 1–6.
+- No state changes; no commit.
