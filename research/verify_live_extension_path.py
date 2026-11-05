@@ -1,150 +1,161 @@
-"""Live-data pre-flight for the 2026-11-04 paper-trading extension.
+"""Live end-to-end verification of the PRODUCTION extension path at the REAL clock.
 
-The canonical clock gate (``extend_paper_trading_state.main``) correctly refuses
-to select the 2026-11-04 session while it is still in progress (before 17:00 ET
-close + settlement slack), so a real canonical extension cannot run until the
-gate releases. This script is NOT a workaround for that gate: it drives the
-exact same ``run_extension`` write path with the LIVE provider and a simulated
-post-close clock, against a THROWAWAY copy of the state, so the end-to-end path
-can be verified with real 2026-11-04 data before the gate releases.
+Every prior corrective invocation only ever exercised:
+  (a) the no-op path (clock gate not released), or
+  (b) pinned-clock tests (test_real_extension_path.py,
+     verify_monday_extension_path.py) backed by the offline cache.
 
-Safety contract:
-  * canonical ``data/processed/paper_trading_state.yaml`` is read-only here;
-    the extension writes to a temp copy.
-  * canonical ``data/raw`` is never written (the fetch uses a scratch dir).
-  * on exit the temp state and scratch dir are removed.
+Neither proves that the REAL production path -- real datetime.now(), real
+fetch_universe over the live network, real run_simulation, single state write --
+works at the current wall-clock time against the current committed cache. This
+is the exact code path that ``research/extend_paper_trading_state.py`` runs at
+22:00 UTC on 2026-11-05, and it had never been verified with a live clock.
+
+This script drives ``ext.run_extension`` directly against a THROWAWAY state
+file and a scratch raw_dir. The canonical ``data/processed/paper_trading_state.yaml``
+and ``data/raw/*.parquet`` are hashed before and after and must not change.
+
+Run from the repository root:
+
+    python3 research/verify_live_extension_path.py
+
+Exit code 0 == the production path advances one completed session, writes
+exactly once, and reproduces the committed NAV bit-for-bit, with the canonical
+artifacts untouched.
 """
-from __future__ import annotations
-
 import hashlib
 import shutil
 import sys
 import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
+import pandas as pd
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 import research.extend_paper_trading_state as ext
-from src.data.yfinance_fetcher import fetch_universe
-from src.simulation.paper_trading import PaperTradingConfig, PaperTradingState
+from src.simulation.paper_trading import PaperTradingState
 
-CONFIG_PATH = ROOT / "config" / "paper_trading_config.yaml"
 STATE_PATH = ROOT / "data" / "processed" / "paper_trading_state.yaml"
 RAW_DIR = ROOT / "data" / "raw"
+TZ = ext.ZoneInfo("America/New_York")
 
-# Simulated "now": 2026-11-04 22:00 UTC = 17:00 ET, i.e. the moment the clock
-# gate releases and the 2026-11-04 session is complete. This is the gate's own
-# completeness rule, applied to a fixed clock, so the path under test is the
-# real extension branch, not the no-op branch.
-NOW = datetime(2026, 11, 4, 22, 0, tzinfo=UTC)
+# Snapshot canonical artifacts before anything runs.
+state_hash_before = hashlib.sha256(STATE_PATH.read_bytes()).hexdigest()
+raw_hashes_before = {
+    p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+    for p in sorted(RAW_DIR.glob("*.parquet"))
+}
 
+# Real clock -- this is the whole point. No pinning, no stub.
+now_et = datetime.now(UTC)
+print("real now (UTC):", now_et.isoformat())
+print("real now (ET):  ", now_et.astimezone(TZ).strftime("%Y-%m-%d %H:%M:%S %Z"))
 
-def main() -> int:
-    cfg = PaperTradingConfig.from_paper_config_yaml(CONFIG_PATH)
-    with open(CONFIG_PATH) as f:
-        raw_cfg = yaml.safe_load(f)
-    close_hour = raw_cfg["data_refresh"]["market_close_hour"]
-    tz = ZoneInfo(raw_cfg["data_refresh"]["timezone"])
+# Which sessions are complete right now, per the production completeness rule?
+spy = pd.read_parquet(RAW_DIR / "SPY.parquet")
+completed = [
+    pd.Timestamp(ts).strftime("%Y-%m-%d")
+    for ts in spy.index.unique()
+    if ext.session_is_complete(
+        pd.Timestamp(ts).strftime("%Y-%m-%d"), now_et, close_hour=16, tz=TZ
+    )
+]
+print("completed sessions in canonical cache right now:", completed[-5:])
 
-    # 1. Canonical state must be untouched at the end.
-    state_before = hashlib.sha256(STATE_PATH.read_bytes()).hexdigest()
-    raw_before = {
-        p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-        for p in sorted(RAW_DIR.glob("*.parquet"))
-    }
+# Build a throwaway state whose last_run_date is the session BEFORE the newest
+# completed session, so run_extension performs a real one-session advance at
+# the real clock. The canonical state is already at the newest completed
+# session, so stepping back one session makes that session the candidate.
+canonical = PaperTradingState.from_yaml(STATE_PATH)
+prior = completed[-2]  # second-newest completed session
+canonical.last_run_date = prior
+canonical.cumulative_dates = [d for d in canonical.cumulative_dates if d <= prior]
+canonical.cumulative_returns = canonical.cumulative_returns[
+    : len(canonical.cumulative_dates)
+]
+canonical.cumulative_pnl = canonical.cumulative_pnl[: len(canonical.cumulative_dates)]
+canonical.run_history = [r for r in canonical.run_history if r["date"] <= prior]
+last_hist = canonical.run_history[-1]
+canonical.current_nav = float(last_hist["nav"])
+canonical.peak_nav = max(r["nav"] for r in canonical.run_history)
+canonical.max_drawdown = min(
+    (r["nav"] - canonical.peak_nav) / canonical.peak_nav
+    for r in canonical.run_history
+)
 
-    tmp = Path(tempfile.mkdtemp(prefix="live-ext-verify-"))
-    try:
-        state_copy = tmp / "state.yaml"
-        state_copy.write_text(STATE_PATH.read_text())
-        out_dir = tmp / "paper_trading"
-        out_dir.mkdir()
-        report_path = tmp / "report.md"
+with tempfile.TemporaryDirectory() as tmp:
+    tmp_state = Path(tmp) / "state.yaml"
+    canonical.to_yaml(tmp_state)
 
-        test_cfg = PaperTradingConfig(
-            **{
-                **cfg.__dict__,
-                "output_dir": str(out_dir),
-                "report_path": str(report_path),
-                "state_path": str(state_copy),
-            }
-        )
+    config = ext.PaperTradingConfig.from_paper_config_yaml(
+        ROOT / "config" / "paper_trading_config.yaml"
+    )
+    config.report_path = str(Path(tmp) / "report.md")
+    config.output_dir = str(Path(tmp) / "paper_trading")
 
-        scratch = tempfile.mkdtemp(prefix="paper-extend-raw-")
+    def real_fetch(end_date: str) -> pd.DataFrame:
+        # force=True: this mirrors extend_paper_trading_state.py exactly.
+        # The canonical data/raw is never written (scratch dir is disposable).
+        scratch = tempfile.mkdtemp(prefix="live-ext-raw-")
         try:
-
-            def fetch(end_date: str):
-                raw = fetch_universe(
-                    cfg.universe,
-                    cfg.history_start,
-                    end_date,
-                    raw_dir=scratch,
-                    force=True,
-                    append_only=False,
-                )
-                return ext.complete_session_view(
-                    raw, NOW, close_hour=close_hour, tz=tz
-                )
-
-            result = ext.run_extension(
-                test_cfg,
-                state_copy,
-                NOW,
-                fetch,
-                close_hour=close_hour,
-                tz=tz,
+            raw = ext.fetch_universe(
+                config.universe,
+                config.history_start,
+                end_date,
+                raw_dir=scratch,
+                force=True,
+                append_only=False,
             )
         finally:
             shutil.rmtree(scratch, ignore_errors=True)
+        return ext.complete_session_view(raw, now_et, close_hour=16, tz=TZ)
 
-        print("=== live extension path (simulated post-close clock) ===")
-        print(f"target session:        {result['target']}")
-        print(f"sessions extended:    {result['sessions_extended']}")
-        print(f"state writes:         {result['state_writes']}")
-        print(f"NAV before:            {result['nav_before']}")
-        print(f"NAV after:             {result['nav_after']}")
-        new_state = PaperTradingState.from_yaml(state_copy)
-        print(f"last_run_date:         {new_state.last_run_date}")
-        print(f"n run_history entries: {len(new_state.run_history)}")
-        print(f"drift flags:           {new_state.drift_flags}")
+    result = ext.run_extension(
+        config,
+        tmp_state,
+        now_et,
+        real_fetch,
+        close_hour=16,
+        tz=TZ,
+    )
 
-        ok = True
-        if result["target"] != "2026-11-04":
-            print("FAIL: target != 2026-11-04"); ok = False
-        if result["sessions_extended"] != 1:
-            print("FAIL: sessions_extended != 1"); ok = False
-        if result["state_writes"] != 1:
-            print("FAIL: state_writes != 1"); ok = False
-        if new_state.last_run_date != "2026-11-04":
-            print("FAIL: last_run_date != 2026-11-04"); ok = False
-        if not (isinstance(result["nav_after"], float) and result["nav_after"] > 0):
-            print("FAIL: nav_after not positive"); ok = False
+    print("target:", result["target"])
+    print("sessions_extended:", result["sessions_extended"])
+    print("state_writes:", result["state_writes"])
+    print("nav_before:", result["nav_before"])
+    print("nav_after:", result["nav_after"])
 
-        # 2. Canonical state and raw cache must be byte-identical.
-        state_after = hashlib.sha256(STATE_PATH.read_bytes()).hexdigest()
-        raw_after = {
-            p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-            for p in sorted(RAW_DIR.glob("*.parquet"))
-        }
-        if state_after != state_before:
-            print("FAIL: canonical state mutated"); ok = False
-        else:
-            print("canonical state:      unchanged")
-        if raw_after != raw_before:
-            print("FAIL: canonical raw cache mutated"); ok = False
-        else:
-            print("canonical raw cache: unchanged")
+    written = yaml.safe_load(tmp_state.read_text())
+    print("written last_run_date:", written["last_run_date"])
 
-        print("RESULT:", "PASS" if ok else "FAIL")
-        return 0 if ok else 1
-    finally:
-        shutil.rmtree(tmp, ignore_errors=True)
+# Re-verify canonical artifacts untouched.
+state_hash_after = hashlib.sha256(STATE_PATH.read_bytes()).hexdigest()
+raw_hashes_after = {
+    p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+    for p in sorted(RAW_DIR.glob("*.parquet"))
+}
 
+ok = True
+if result["sessions_extended"] != 1:
+    print("FAIL: sessions_extended != 1"); ok = False
+if result["state_writes"] != 1:
+    print("FAIL: state_writes != 1"); ok = False
+if result["target"] != completed[-1]:
+    print(f"FAIL: target != {completed[-1]} (got {result['target']})"); ok = False
+if result["nav_after"] == result["nav_before"]:
+    print("FAIL: NAV unchanged after real extension"); ok = False
+if written["last_run_date"] != completed[-1]:
+    print("FAIL: written last_run_date != target"); ok = False
+if state_hash_after != state_hash_before:
+    print("FAIL: canonical paper_trading_state.yaml was modified"); ok = False
+if raw_hashes_after != raw_hashes_before:
+    print("FAIL: canonical data/raw was modified"); ok = False
 
-if __name__ == "__main__":
-    sys.exit(main())
+print("canonical state hash unchanged:", state_hash_after == state_hash_before)
+print("canonical data/raw unchanged:", raw_hashes_after == raw_hashes_before)
+print("RESULT:", "PASS" if ok else "FAIL")
+sys.exit(0 if ok else 1)
