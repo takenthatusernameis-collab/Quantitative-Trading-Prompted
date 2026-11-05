@@ -38,6 +38,19 @@ At/after 22:00 UTC on 2026-11-05, run real extension and persistence checks. Ext
 5. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q`
 6. `git status --porcelain data/ config/`
 
+## Handoff notes (current cycle — invocation 2026-11-05T04:23Z)
+- UTC 2026-11-05T04:23:47Z (23:23:47 EST, Wed). Gate NOT released (release 22:00 UTC on 2026-11-05, ~17.6h away). Per NEXT_AGENT_TASK.md scope boundary, `extend_paper_trading_state.py` NOT run (premature no-op). No source, data, config, test, gate, threshold, cost model, or state modified. `git status --porcelain` empty except the self-generated `research/reports/paper_trading_rolling.md` git_sha provenance line bumped by `drift_persistence_report.py` (expected, documented in README.md); `git status --porcelain data/ config/` empty. HEAD `b1ec46e`.
+- Supervisor cycle=0002 (STATUS: CONTINUE) advised committing the report change; dispositioned `rejected_with_reason` in `.kilo-runtime/worker-disposition.json` because scope boundary 'Do not commit unless asked' has not been satisfied (no user request to commit) and the change is self-generated report metadata needing no commit.
+- Wakeup scheduled `wku_1a9f538a9001vvbNS1iuUaMixN` at 2026-11-05T22:06:00Z to resume the post-gate verification sequence.
+- **Baseline re-verified fresh this invocation (all commands ran):**
+  1. `date -u && TZ=America/New_York date` -> Thu Nov 5 04:23:47 UTC 2026 / Wed Nov 4 23:23:47 EST 2026.
+  2. `git status --porcelain data/ config/` -> empty.
+  3. `python3 research/drift_persistence_report.py` -> rolling 63d Sharpe `-0.8724` at 2026-11-04 (2026-10-28 0.4459, 2026-10-29 0.1752, 2026-10-30 -0.7690, 2026-11-02 -1.3784, 2026-11-03 -1.3997, 2026-11-04 -0.8724); drift flags low_rolling_sharpe persistence_days 6; stored == recomputed True.
+  4. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` -> **45 passed in 26.58s** (numpy/pandas/pyarrow/yfinance/pytest installed into user site for this session; system Python previously lacked them).
+- **State:** `data/processed/paper_trading_state.yaml` last_run_date `2026-11-04`, current_nav `133995.4210085515`, drift_flags.low_rolling_sharpe present.
+- **Decision of this cycle: none** — no trading verdict published, no state written, no strategy/gate/threshold/config change. `extend_paper_trading_state.py` deliberately NOT run (gate not released; premature no-op).
+- **Next task:** at/after 22:00 UTC on 2026-11-05 run the NEXT_AGENT_TASK.md verification sequence (extend -> drift report -> idempotency re-run -> pytest -> git status). Extend by at most one session to 2026-11-05 if a completed bar exists; otherwise sessions_extended==0 with explicit reason, state unchanged. Do not commit unless asked.
+
 ## Handoff notes (current cycle — invocation 2026-11-05T03:44Z)
 - UTC 2026-11-05T03:44:22Z (22:44:22 EST, Wed). Gate NOT released (release 22:00 UTC on 2026-11-05, ~18.3h away). No extension run per scope boundary. Wakeup scheduled `wku_1a9cfc316001KYLqSU670VXWW8` at 2026-11-05T22:06:27Z. Supervisor recommendation review-0004 disposition `in_progress` in `.kilo-runtime/worker-disposition.json`.
 - **Baseline re-verified fresh this invocation (all commands ran):**
