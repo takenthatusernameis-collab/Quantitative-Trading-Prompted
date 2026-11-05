@@ -1,11 +1,15 @@
 # NEXT_AGENT_TASK — Paper-trading extension gate check (post-236 verification)
 
-## Handoff (latest verified baseline — 2026-11-05T11:30Z invocation 150)
-- **UTC 2026-11-05T11:30:56Z** (06:30:56 EST, Thu). Gate **NOT released** (~10.5h until 22:00 UTC 2026-11-05). Scope boundary respected: `extend_paper_trading_state.py` not run.
-- **Supervisor/runtime:** `.kilo-runtime/` empty; no recommendation/disposition required.
-- **Fresh pre-gate verification (this invocation):** (1) time 11:30:56 UTC / 06:30:56 EST. (2) `python3 research/drift_persistence_report.py` -> rolling 63d Sharpe `-0.8724` at 2026-11-04 (`2026-10-28 0.4459, 2026-10-29 0.1752, 2026-10-30 -0.7690, 2026-11-02 -1.3784, 2026-11-03 -1.3997, 2026-11-04 -0.8724`); `low_rolling_sharpe` persistence 6; `stored == recomputed: True`. (3) `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` -> **45 passed in 15.29s**. (4) `git status --porcelain data/ config/` -> empty. (5) Canonical state unchanged: `last_run_date 2026-11-04`, `NAV 133995.4210085515`. (6) Raw-data audit: 27 `data/raw/*.parquet`, max date `2026-11-04` (SPY/QQQ/IWM/EFA/EEM/GLD/TLT/^VIX); commodity/futures lag; no `2026-11-05` bar.
+## Handoff (latest verified baseline — 2026-11-05T11:32Z invocation 151)
+- **UTC 2026-11-05T11:32:16Z** (06:32:16 EST, Thu). Gate **NOT released** (~10.5h until 22:00 UTC 2026-11-05). Scope boundary respected: `extend_paper_trading_state.py` **not run**.
+- **Supervisor/runtime:** `.kilo-runtime/` exists but empty (no `current-supervisor-recommendation.json` / `worker-disposition.json`); no disposition update required.
+- **Fresh pre-gate verification (this invocation):** (1) time 11:32:16 UTC / 06:32:16 EST. (2) `python3 research/drift_persistence_report.py` -> rolling 63d Sharpe `-0.8724` at 2026-11-04 (`2026-10-26 0.1284, 2026-10-27 0.7423, 2026-10-28 0.4459, 2026-10-29 0.1752, 2026-10-30 -0.7690, 2026-11-02 -1.3784, 2026-11-03 -1.3997, 2026-11-04 -0.8724`); `low_rolling_sharpe` persistence 6. (3) `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` -> **45 passed in 16.96s**. (4) `git status --porcelain data/ config/` -> empty. (5) Canonical state unchanged: `data/processed/paper_trading_state.yaml` `last_run_date 2026-11-04`, `current_nav 133995.4210085515`. (6) Raw-data audit: max `data/raw/*.parquet` date **2026-11-04** (`^VIX.parquet`); no `2026-11-05` bar observed.
+- **Working tree note:** `git diff --name-only HEAD` shows only `research/reports/paper_trading_rolling.md` (expected self-generated `git_sha` provenance bump from drift report run); do not commit unless asked.
 - **Decision:** no trading verdict, no extension, no canonical state write, no commit, no gate/threshold/cost/universe/config/data changes.
-- **Wakeup:** scheduled **2026-11-05T22:05:00Z** (post-gate commands 1–6).
+- **Wakeup:** scheduled for **2026-11-05T22:05:00Z** (post-gate commands 1–6).
+
+## Handoff (prior — 2026-11-05T11:30Z invocation 150)
+- UTC 2026-11-05T11:30:56Z. Gate NOT released. Drift -0.8724 (2026-11-04, persistence 6); pytest 45 passed in 15.29s; `data/config` clean; raw max 2026-11-04. State 2026-11-04 / NAV 133995.4210085515. No extension/write/commit. Wakeup 22:05Z noted.
 
 ## Handoff (latest verified baseline — 2026-11-05T11:29Z invocation 149)
 - **UTC 2026-11-05T11:29:04Z** (06:29:04 EST, Thu). Gate **NOT released** (~10.5h until 22:00 UTC 2026-11-05). Scope boundary respected: `extend_paper_trading_state.py` not run.
