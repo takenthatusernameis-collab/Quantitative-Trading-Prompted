@@ -36,3 +36,5 @@ Temporal gate: the NEXT_AGENT_TASK.md objective requests execution at/after 17:0
 
 ## Material difference from prior invocation (241)
 Same validation commands run with fresh timestamps; conclusion is PASS (all acceptance criteria met under the documented "no completed bar" branch) rather than BLOCKED, because the acceptance criteria explicitly cover this case.
+
+CORRECTIVE_VERIFICATION=PASS
