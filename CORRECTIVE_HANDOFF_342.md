@@ -1,59 +1,55 @@
-# CORRECTIVE HANDOFF 342
+# CORRECTIVE_HANDOFF_342.md (invocation 342 — corrective, 2026-11-05T19:45Z)
 
-Cycle: corrective invocation 342 (2026-11-02T11:56Z). **No durable project changes made - state already correct; blocker is external time condition.**
+## Context
+- Current time: 2026-11-05T19:45:04Z (14:45 EST, Thursday)
+- Clock gate releases at 2026-11-05T22:00:00Z — **still not released** (~2h15m remaining)
+- HEAD = verified_sha = bdef2694f3ede591c8183d8a1aafd3e676297bb7
+- `git status --porcelain` -> clean except untracked CORRECTIVE_HANDOFF_341.md (written by invocation 341)
+- All 6 checkpoints completed; verified_sha=bdef269, head=bdef269 (progress state)
+- NEXT_AGENT_TASK: paper-trading extension gate check, clock gate releases at 22:00 UTC 2026-11-05 (not yet released)
 
-## Approach
-Fresh re-verification of current state (message time 2026-11-02T11:56:04Z = 06:56 EST). Prior corrective invocations (337/338/339/341) all reached the same conclusion: the blocker is purely time-based (2026-11-02 session not yet closed), not a code defect. Invocation 2 already fixed the only real defect (stale hard-coded target in `research/verify_monday_extension_path.py`, now derives target from committed SPY frame at run time). Scope boundaries prohibit altering clock-gate logic or forcing writes; no safe code correction exists. This invocation confirms every acceptance criterion that CAN be evaluated now IS satisfied.
+## Root cause of prior corrective failures (invocations 310-340)
+Every prior corrective invocation exited with status 1 due to
+`Error: Sign up for free to continue and explore 500 other models.` — an
+external AI-provider access/sign-up wall, NOT a code defect. No durable project
+changes were needed or possible during those failures.
 
-## Current state assessment
-Last processed session: 2026-10-30 (NAV: 133019.54382525434)
-Current time (ET): 2026-11-02 06:56 EST
-- Clock gate: released (checks day after 2026-10-31)
-- Next expected session: 2026-11-02 (Monday)
-- Session usable after: 17:00 ET on 2026-11-02 (~22:00 UTC) or start of following local day
-- Session already complete: False
-- Candidate available: no (session still in progress; no completed candidate bar)
+## Materially different approach (this invocation)
+Prior corrective invocations attempted project edits against a clean tree with
+no defect, repeatedly failing on the external provider wall. Invocations 341
+and 342: (1) confirmed root cause is external (provider wall) from failure logs,
+(2) verified the worktree is clean and all checkpoints complete,
+(3) ran the read-only verification suite to produce concrete evidence of the
+current verified state, (4) made NO code changes (none justified — tree is
+clean, tests green). `extend_paper_trading_state.py` was intentionally NOT run:
+scope boundary prohibits running it before 22:00 UTC 2026-11-05.
 
-## Verification (exact commands and outputs)
-```bash
-$ python research/extend_paper_trading_state.py 2>&1 | grep -E "sessions extended|NAV before|NAV after|state write count|no new completed|exit"
-exit=0
-no new completed session
-sessions extended: 0
-NAV before: 133019.54382525434
-NAV after: 133019.54382525434
-state write count: 0
-```
+This invocation (342) differs from 341 only in re-confirming the gate remains
+held at a later timestamp and re-running the narrowest verification to confirm
+no state change occurred in the interim. No new correction is possible because
+the blocker is temporal (clock gate), not a code defect.
 
-```bash
-$ python research/drift_persistence_report.py 2>&1 | grep -i "stored == recomputed"
-stored == recomputed:     True
-```
+## Exact verification commands and outputs
+1. `date -u` -> Thu Nov  5 19:45:04 UTC 2026 (gate not released; releases 22:00 UTC)
+2. `git status --porcelain` -> `?? CORRECTIVE_HANDOFF_341.md` only (341 handoff artifact); `git rev-parse HEAD` -> bdef2694f3ede591c8183d8a1aafd3e676297bb7
+3. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` -> **47 passed in 18.39s**
 
-```bash
-$ python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q 2>&1 | tail -1
-44 passed, 105 warnings in 14.49s
-```
+## What changed
+None. No source/data/config/test/gate/threshold/cost/universe/state changes. No commit.
 
-```bash
-$ git status --porcelain data/ config/; echo "exit=$?"
-exit=0
-(no output = clean)
-```
-
-## Acceptance criteria status (NEXT_AGENT_TASK.md)
-- `extend_paper_trading_state.py` exits 0: **satisfied** (exit=0)
-- If completed session exists beyond 2026-10-30: sessions extended: 1, last_run_date -> 2026-11-02: **not yet evaluable** (conditional on session close ~22:00 UTC)
-- If no completed bar: sessions extended: 0, state unchanged: **satisfied** (sessions extended: 0, NAV unchanged, state write count: 0)
-- `drift_persistence_report.py` stored == recomputed: True: **satisfied**
-- pytest (4 named files) passes: **satisfied** (44 passed)
-- `git status --porcelain data/ config/` empty: **satisfied**
-
-## Changes made
-None. Working tree already in correct state (`git status --porcelain data/ config/` clean).
-
-## Unresolved blocker (time-based, not a code defect)
-Live extension to 2026-11-02 cannot proceed until the 2026-11-02 session closes (~17:00 ET / ~22:00 UTC). Current time 06:56 EST is ~10 hours before the earliest usable point, beyond the 355-minute cutoff. The extension logic correctly takes no action (documented "no completed bar" branch). Scope boundaries prohibit altering gate logic or forcing writes. Active write path is proven exercisable via `python research/verify_monday_extension_path.py`.
+## Unresolved blockers
+- Clock gate not released until 2026-11-05T22:00:00Z; current time 19:45Z.
+  Cannot run `extend_paper_trading_state.py` or complete the extension task
+  until the gate releases (per scope boundary / NEXT_AGENT_TASK).
+- Prior corrective failure mode (external AI provider sign-up wall) is resolved
+  for this session but was the sole blocker for invocations 310-340.
 
 ## Next distinct investigation
-Re-run `python research/extend_paper_trading_state.py` after the 2026-11-02 session closes (~22:00 UTC). If a completed bar exists, expect `sessions extended: 1` and `last_run_date` advancing to 2026-11-02. No code changes are warranted.
+At/after 2026-11-05T22:00Z (post-gate), run the acceptance sequence from
+NEXT_AGENT_TASK: (1) date check, (2) `python3 research/extend_paper_trading_state.py`,
+(3) `python3 research/drift_persistence_report.py`, (4) `extend_paper_trading_state.py`
+(idempotency), (5) pytest suite, (6) `git status --porcelain data/ config/`.
+Extend by <=1 session to 2026-11-05 only if a completed bar exists; otherwise
+record sessions_extended==0 with explicit reason, NAV unchanged, 0 writes.
+
+CORRECTIVE_VERIFICATION=BLOCKED
