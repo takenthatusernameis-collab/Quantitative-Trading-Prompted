@@ -1,13 +1,15 @@
 # NEXT_AGENT_TASK — Paper-trading extension gate check (2026-11-06, post-gate)
 
-## Handoff (corrective invocation 1, 2026-11-05T23:06:53Z — pre-gate re-verified; gate NOT released)
-- **UTC 2026-11-05T23:06:53Z / 18:06:53 EST (Thu).** Gate NOT released for 2026-11-06 (releases 17:00 ET / 22:00 UTC on 2026-11-06). No state extension performed (scope boundary: do not run extension before 22:00 UTC).
-- **Observed:** `extend_paper_trading_state.py` -> `candidate available: no` (next session 2026-11-06 not closed yet; today 2026-11-05), `sessions extended: 0`, NAV before/after `129990.36021343581`, state write count 0.
-- **Drift report:** rolling 63d Sharpe includes `2026-11-05 -2.1203` (consistent; `low_rolling_sharpe` persists).
-- **Tests:** 47 passed in 18.55s (`tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py`).
-- **Git:** `git status --porcelain data/ config/` clean. No commits made.
-- **Supervisor (review-0006, advisory):** decompose negative 63d Sharpe into gross vs cost/turnover drag — follow-up, out of scope for this bounded gate-check.
+## Handoff (corrective invocation 512, 2026-11-05T23:44:26Z — pre-gate, gate NOT released, env deps missing)
+- **UTC 2026-11-05T23:44:26Z / 18:44:26 EST (Thu).** Gate **NOT released** for 2026-11-06 (releases 17:00 ET / 22:00 UTC on 2026-11-06). No extension attempted (scope boundary).
+- **State (read directly, unchanged):** `last_run_date 2026-11-05`, `current_nav 129990.36021343581`, `low_rolling_sharpe` `-2.1202794870108126` (persistence 7, 2026-11-05).
+- **Git:** `git status --porcelain data/ config/` empty; `git diff --name-only HEAD` empty. `.kilo-runtime/` empty.
+- **Blocker (environment):** `/usr/bin/python3 3.12.3` missing project deps — `pandas` import failed for `extend_paper_trading_state.py`, `numpy` for `drift_persistence_report.py`, `pytest` module unavailable. Required acceptance commands (extend/drift/pytest) **not runnable** in this environment; outputs not fabricated. Materially different approach needed: run in an environment with `requirements.txt` deps installed.
+- **Durable artifact:** `CORRECTIVE_HANDOFF_INVOCATION_512.md`.
 - **Next candidate:** 2026-11-06 (Friday), usable after 17:00 ET / 22:00 UTC on 2026-11-06.
+
+## Prior handoff (corrective invocation 1, 2026-11-05T23:06:53Z)
+- Gate NOT released; `candidate available: no` (2026-11-06 not closed), `sessions extended: 0`, NAV `129990.36021343581`, 0 writes; 47 tests passed; `data/ config/` clean. Supervisor advisory (decompose 63d Sharpe gross vs cost/turnover drag) — follow-up, out of scope for gate-check.
 
 ## Prior handoff (invocation 511, 2026-11-05T23:04:21Z)
 - Gate NOT released; `sessions_extended: 0`, NAV unchanged `129990.36021343581`, 0 writes; 47 tests passed; `data/ config/` clean.
