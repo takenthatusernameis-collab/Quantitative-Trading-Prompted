@@ -38,6 +38,10 @@ At/after 22:00 UTC on 2026-11-05, run real extension and persistence checks. Ext
 5. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q`
 6. `git status --porcelain data/ config/`
 
+## Handoff notes (current cycle — invocation 2026-11-05T02:00Z)
+
+- UTC 2026-11-05T02:00Z (21:00 EST, Wed). Gate NOT released (22:00 UTC release). No extension run per scope boundary. Drift report updated: rolling 63d Sharpe -0.8724 at 2026-11-04. Tests: 45 passed. `git status --porcelain data/ config/` empty. State unchanged: last processed 2026-11-04, NAV 133995.4210085515.
+
 ## Handoff notes (current cycle)
 - **Time/context:** UTC 2026-11-05T01:59Z (20:59 EST, Wednesday). Gate NOT released (gate 22:00 UTC). Verified baseline: 45 tests pass, git clean. No extension run performed (scope boundary).
 - **Durable verification performed (invocation 236):**
