@@ -38,6 +38,19 @@ At/after 22:00 UTC on 2026-11-05, run real extension and persistence checks. Ext
 5. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q`
 6. `git status --porcelain data/ config/`
 
+## Handoff notes (current cycle — invocation 2026-11-05T04:31Z)
+- UTC 2026-11-05T04:31:01Z (23:31:01 EST, Wed). Gate NOT released (release 22:00 UTC on 2026-11-05, ~17.5h away). Per NEXT_AGENT_TASK.md scope boundary, `extend_paper_trading_state.py` NOT run (premature no-op). No source, data, config, test, gate, threshold, cost model, or state modified. No commit made. HEAD `4b8352b`.
+- **Supervisor protocol:** recommendation review-0004 (`41954503612-attempt-1-review-0004-7415d38857ef`, review_cycle 4, STATUS: CONTINUE) disposition `accepted` then `in_progress` in `.kilo-runtime/worker-disposition.json`. Accepted both points: run post-gate verification sequence at/after 22:00 UTC; do not commit unless asked. Both align with NEXT_AGENT_TASK.md scope boundaries (lines 28, 31).
+- **Baseline re-verified fresh this invocation (all commands ran):**
+  1. `date -u && TZ=America/New_York date` -> Thu Nov 5 04:31:01 UTC 2026 / Wed Nov 4 23:31:01 EST 2026.
+  2. `git status --porcelain` -> empty; `git status --porcelain data/ config/` -> empty; HEAD `4b8352b`.
+  3. `git diff research/reports/paper_trading_rolling.md` -> single hunk at line 55: self-generated `git_sha` provenance line bumped `f42c92b0f2767ac7431e73ab4ba563e71bfe895d` (committed HEAD) -> `4b8352b179ad3d81af395a98ab2af694a76c75cf` (current HEAD). Expected self-generated report metadata written by `drift_persistence_report.py`; no code change warranted. (Resolves supervisor limitation "modified line not inspected" from prior cycles.)
+  4. `python3 research/drift_persistence_report.py` -> rolling 63d Sharpe `-0.8724` at 2026-11-04 (2026-10-28 0.4459, 2026-10-29 0.1752, 2026-10-30 -0.7690, 2026-11-02 -1.3784, 2026-11-03 -1.3997, 2026-11-04 -0.8724); drift flags low_rolling_sharpe persistence_days 6.
+  5. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` -> **45 passed in 25.80s**.
+- **State:** `data/processed/paper_trading_state.yaml` last_run_date `2026-11-04`, current_nav `133995.4210085515`, drift_flags.low_rolling_sharpe present.
+- **Wakeup:** scheduled `wku_1a9fa739e001a7KXHrlyGWHJLn` at 2026-11-05T22:22:05Z to resume the post-gate verification sequence (extend -> drift report -> idempotency re-run -> pytest -> git status). If gate still not released / no completed 2026-11-05 bar, record sessions_extended==0 with explicit reason, state unchanged, re-schedule, leave disposition `in_progress`.
+- **Next task:** at/after 22:00 UTC on 2026-11-05 run the NEXT_AGENT_TASK.md verification sequence (extend -> drift report -> idempotency re-run -> pytest -> git status). Extend by at most one session to 2026-11-05 if a completed bar exists; otherwise sessions_extended==0 with explicit reason, state unchanged. Do not commit unless asked.
+
 ## Handoff notes (current cycle — invocation 2026-11-05T04:28Z)
 - UTC 2026-11-05T04:28:48Z (23:28:48 EST, Wed). Gate NOT released (release 22:00 UTC on 2026-11-05, ~17.5h away). Per NEXT_AGENT_TASK.md scope boundary, `extend_paper_trading_state.py` NOT run (premature no-op). No source, data, config, test, gate, threshold, cost model, or state modified. `git status --porcelain data/ config/` empty. HEAD `5627ad7`.
 - **Baseline re-verified fresh this invocation (all commands ran):**
