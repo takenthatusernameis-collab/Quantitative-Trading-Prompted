@@ -98,3 +98,10 @@ At/after 22:00 UTC on 2026-11-05, run the real extension and persistence checks.
 - Pre-gate safe checks: drift report exit 0 (rolling 63d Sharpe -0.8724 at 2026-11-04); pytest 45 passed in 17.73s; `git status --porcelain data/ config/` empty.
 - Wakeup scheduled for 2026-11-05T22:22:00Z to execute post-gate verification commands 1–6.
 - No state changes; no commit.
+
+## Handoff (latest verified baseline — 2026-11-05T10:25Z invocation 141)
+- **UTC 2026-11-05T10:25:02Z** (05:25:02 EST, Thu). Gate **NOT released** (~11.6h until 22:00 UTC on 2026-11-05). Scope boundary respected: `extend_paper_trading_state.py` not run (pre-gate premature no-op forbidden by NEXT_AGENT_TASK.md line 28).
+- Baseline remains fresh from invocation 139 (10:22:26Z): drift report exit 0 (rolling 63d Sharpe `-0.8724` at 2026-11-04); pytest **45 passed**; `git status --porcelain data/ config/` empty; raw data audit — max date across all 28 `data/raw/*.parquet` is **2026-11-04**, no 2026-11-05 bar in any asset, so `sessions_extended==0` is expected after gate release unless a completed bar appears.
+- No supervisor recommendation pending (`.kilo-runtime/` empty); no disposition update required.
+- **Wakeup scheduled for 2026-11-05T22:05:00Z** to execute post-gate verification commands 1–6 in order: `date -u` → `python3 research/extend_paper_trading_state.py` → `python3 research/drift_persistence_report.py` → idempotency re-run of extend → pytest suite → `git status --porcelain data/ config/`. Extend by at most one session to 2026-11-05 only if a completed bar exists; otherwise record `sessions_extended==0` with explicit reason and keep state unchanged. Do not commit unless asked.
+- No state changes; no commit.
