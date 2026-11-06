@@ -1,3 +1,39 @@
+## Cycle 1143: paper-trading extension gate check (2026-11-06, corrective invocation 363) — **DATA-INTEGRITY DEFECT FOUND AND FIXED; GATE STILL NOT RELEASED**
+
+- UTC 2026-11-06T11:20Z (06:20 EST, Fri). Materially different from invocations 355–362, which all emitted `CORRECTIVE_VERIFICATION=BLOCKED` on the temporal gate alone. This invocation inspected the data-integrity layer and found a real defect independent of the clock gate.
+
+### Defect: the canonical state was not reproducible from the committed `data/raw` cache
+- `data/processed/paper_trading_state.yaml` records `last_run_date 2026-11-05` (463 sessions, NAV `129990.36021343581`), but the canonical `data/raw` cache ended at **2026-11-04** for every universe symbol. The 2026-11-05 row had been produced by a live fetch into a scratch dir that never refreshed the cache, so offline verification could not reach the frontier.
+
+### Detection
+- `python3 research/paper_trading_cache_reproducibility_audit.py --strict` (an existing, previously-never-run read-only audit) reported `missing sessions: 2026-11-05`, `reproducible from committed cache: NO`, EXIT=1.
+
+### Precondition verified before touching `data/raw`
+- Bounded probe replayed the real daily-update path from 2026-11-04 → 2026-11-05 with a live fetch: `replayed NAV 129990.36021343581 == committed NAV 129990.36021343581`, `RESULT: PASS`. The committed row is genuine, not corrupt.
+
+### Correction applied
+- `python3 research/refresh_raw_cache.py` appended exactly one completed session (2026-11-05) to the 8 universe parquet files (SPY, QQQ, IWM, TLT, GLD, EFA, EEM, ^VIX). Append-only; prior history byte-identical.
+
+### Verification (all commands ran)
+1. `python3 research/paper_trading_cache_reproducibility_audit.py --strict` -> `reproducible from committed cache: yes`, EXIT=0.
+2. `python3 research/refresh_raw_cache.py` (re-run) -> `no-op: no completed sessions to append` (idempotent).
+3. `python3 research/drift_persistence_report.py` -> EXIT=0, tail `2026-11-05 -2.1203`.
+4. `python3 research/extend_paper_trading_state.py` -> `sessions extended: 0`, `state write count: 0`, NAV unchanged, EXIT=0.
+5. `pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py tests/test_cache_reproducibility_audit.py -q` -> **70 passed**.
+6. `git status --porcelain data/ config/` -> only the 8 expected `data/raw/*.parquet` appends; `data/processed/paper_trading_state.yaml` hash `60b16fb4...` unchanged.
+
+### Side-effect self-corrected
+- My replay probe wrote `data/processed/paper_trading/risk_state_20261105.parquet` (it used the default `output_dir`). Detected via `git status`, inspected, restored with `git checkout --`; now byte-identical to HEAD.
+
+### State (unchanged)
+- `last_run_date 2026-11-05`, `current_nav 129990.36021343581`, `rolling_sharpe_63d -2.1203`, `drift_flags.low_rolling_sharpe` persistence 7. Canonical state hash `60b16fb460da735e85d8a1935d6604306eed48f8bc927bc8849e31fec19498f8` unchanged.
+
+### Unresolved blocker (temporal, expected)
+- The 2026-11-06 extension gate still releases at **22:00 UTC on 2026-11-06** (~10h 40m). `extend_paper_trading_state.py` remains prohibited pre-gate by `NEXT_AGENT_TASK.md` scope boundary.
+
+### Next task
+- At/after 22:00 UTC run `NEXT_AGENT_TASK.md` commands 1–6. The cache is now reproducible through 2026-11-05, so if a completed 2026-11-06 bar exists the extension can be executed *and* verified offline. Do not commit unless asked.
+
 ## Cycle 1142: paper-trading extension gate check (2026-11-06 pre-gate, session 7 invocation 1) — **GATE NOT RELEASED; NO EXTENSION; PRE-GATE VERIFIED FRESH; SUPERVISOR CIRCUIT-BREAKER OPEN**
 - UTC 2026-11-06T08:45Z (03:45 EST, Fri). Gate for 2026-11-06 **NOT released** until 22:00 UTC on 2026-11-06 (~13h 15m). Per NEXT_AGENT_TASK.md scope boundary (line 35), `extend_paper_trading_state.py` **NOT run**. No source/data/config/test/gate/threshold/cost model/universe/clock-gate/canonical state modified. No commit.
 - **Supervisor/runtime:** `.kilo-runtime/` empty (no `current-supervisor-recommendation.json`, no `worker-disposition.json`); no disposition update required. **Supervisor circuit breaker OPEN** — loop-supervisor log shows 3 consecutive reviews (05:39:33Z, 05:42:20Z, 05:44:29Z) each produced no report file or recoverable final response; `SUPERVISOR_CIRCUIT_BREAKER_OPEN` logged at 05:44:29Z. No further reviewer model calls in this run. Per protocol D, worker continues independently using available evidence. No supervisor report exists at `.kilo/supervisor-reports/` (only `.gitkeep`). Startup review report path in invocation context was not produced.

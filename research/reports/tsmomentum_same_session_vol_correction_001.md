@@ -262,7 +262,7 @@ The same-session estimate is a point-in-time error in the live path, so a new li
 
 ## 8. Checks
 
-- [committed_record_loaded]: FAIL (observed: 463 sessions, expected: 454 sessions)
+- [committed_record_loaded]: PASS (observed: 463 sessions, expected: 463 sessions)
 - [default_path_reproduces_every_committed_session]: PASS (observed: max |diff| = 5.421e-20 over 462 sessions, expected: <= 1e-12)
 - [default_research_path_is_bit_identical_to_the_pre_change_implementation]: PASS (observed: net max |diff| = 0.000e+00, weights max |diff| = 0.000e+00, expected: 0.0 (bit-identical))
 - [default_simulation_path_is_bit_identical_to_the_pre_change_implementation]: PASS (observed: weights max |diff| = 0.000e+00, vol_scale max |diff| = 0.000e+00, expected: 0.0 (bit-identical))
@@ -505,10 +505,10 @@ git status --porcelain data/ config/
   "candidate": "tsmomentum_spytrend_001",
   "checks": [
     {
-      "expected": "454 sessions",
+      "expected": "463 sessions",
       "name": "committed_record_loaded",
       "observed": "463 sessions",
-      "pass": false
+      "pass": true
     },
     {
       "expected": "<= 1e-12",

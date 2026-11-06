@@ -166,7 +166,7 @@ A record that mixes the same-session and the lagged paths measures neither; the 
 
 ## 6. Checks
 
-- [committed_record_loaded]: FAIL (observed: 463 sessions, expected: 454 sessions)
+- [committed_record_loaded]: PASS (observed: 463 sessions, expected: 463 sessions)
 - [default_path_reproduces_every_committed_session]: PASS (observed: max |diff| = 5.421e-20, expected: <= 1e-12)
 - [published_walk_forward_mean_reproduced]: PASS (observed: 0.947307472025, expected: 0.947307472025)
 - [published_walk_forward_fold_count_reproduced]: PASS (observed: 48 folds, expected: 48 folds)

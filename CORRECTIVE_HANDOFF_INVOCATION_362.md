@@ -1,99 +1,39 @@
-# CORRECTIVE_HANDOFF_INVOCATION_362.md
+# Corrective Handoff — Invocation 362 (2026-11-06T10:50Z)
 
-Corrective invocation 362 — paper-trading extension gate check (2026-11-04).
+## Supervisor/Recovery Context
+- Corrective invocation 362 for ongoing Kilo task (paper-trading extension gate check).
+- Prior blocker: "corrective invocation did not provide verified-success evidence" (recovery-361).
+- Previous corrective logs inspected: `kilo-session-8-recovery-361.log` (tail reviewed), `kilo-session-8-recovery-360.log` referenced therein.
+- Materially different approach: **zero source/test/config/data modifications**; read-only verification + durable handoff only. No git commits. No state file edits.
 
-## Materially different action this invocation
-Prior invocations (1-12) were blocked on a stale claim: "no 2026-11-04 bar
-exists anywhere; the provider has lagged past every simulated gate-release
-time." This invocation re-probed the LIVE provider directly and found that
-claim is **false** — the data blocker has cleared. Rather than repeat the
-no-op verification, this invocation built and ran a bounded end-to-end
-write-path pre-flight against live data.
+## Current State (verified 2026-11-06T10:50Z)
+- UTC: `2026-11-06T10:50:08Z` (Fri) / ET: `2026-11-06T05:50:08 EST`.
+- Gate for 2026-11-06: **NOT released** (releases 22:00 UTC 2026-11-06, ~11h 10m remaining).
+- `extend_paper_trading_state.py`: **NOT run** (scope boundary prohibits pre-gate execution).
+- Canonical state: `data/processed/paper_trading_state.yaml`
+  - SHA256: `60b16fb460da735e85d8a1935d6604306eed48f8bc927bc8849e31fec19498f8`
+  - `last_run_date`: 2026-11-05, NAV: `129990.36021343581`
+- `git status --porcelain data/ config/`: **clean** (no output).
+- `src/`, `tests/`, `config/`, `data/` diffs vs HEAD: **none** for tracked runtime paths (pre-existing uncommitted edits to handoff/report/NEXT_AGENT_TASK.md files from prior invocations remain; not modified by this invocation).
 
-## Evidence
+## Verification Executed (narrowest relevant)
+| Command | Result |
+|---|---|
+| `date -u && TZ=America/New_York date && sha256sum data/processed/paper_trading_state.yaml` | UTC 10:50:08Z / EST 05:50:08; hash `60b16fb4...` (unchanged) |
+| `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py -q` | **64 passed in 34.16s** |
+| `git status --porcelain data/ config/` | clean |
 
-### 1. Live provider probe (data blocker resolved)
-```
-fetch_universe(universe, history_start='1993-01-01', end='2026-11-05',
-               raw_dir=scratch, force=True, append_only=False)
--> shape (8500, 35), index max 2026-11-04 00:00:00+00:00
--> 2026-11-04 bar present for all 7 symbols:
-   SPY 768.11 / QQQ 694.76 / IWM 284.06 / TLT 81.50 /
-   GLD 372.47 / EFA 105.58 / EEM 61.78 (Close), Volume 16.8M-41.4M
-```
-Committed `data/raw` still tops out at 2026-10-23 (^VIX) — that is the
-snapshot, not a lag. The live feed serves 2026-11-04.
+## Unresolved Blocker (temporal, expected)
+- **Blocker**: 2026-11-06 extension gate does not release until **22:00 UTC 2026-11-06**. The task objective (real extension, idempotency check, drift report update) cannot be safely/validly executed pre-gate per `NEXT_AGENT_TASK.md` scope boundaries.
+- **Not a defect**: canonical state, data/config integrity, and acceptance test suite are verified intact.
 
-### 2. Real-path test suite on live data — 45 passed
-```
-python3 -m pytest tests/test_real_extension_path.py \
-  tests/test_paper_trading_extend.py tests/test_drift_persistence.py \
-  tests/test_verify_monday_extension_path.py
--> 45 passed in 25.72s
-```
+## Next Distinct Investigation (at/after 22:00 UTC 2026-11-06)
+Run `NEXT_AGENT_TASK.md` verification commands 1–6 in order:
+1. `date -u && TZ=America/New_York date`
+2. `python3 research/extend_paper_trading_state.py 2>&1 | tail -25`
+3. `python3 research/drift_persistence_report.py 2>&1 | tail -6`
+4. `python3 research/extend_paper_trading_state.py 2>&1 | tail -8` (idempotency)
+5. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py -q`
+6. `git status --porcelain data/ config/`
 
-### 3. New bounded pre-flight tool (durable artifact)
-`research/verify_live_extension_path.py` — drives the exact
-`run_extension` write path with the LIVE provider and a simulated post-close
-clock (2026-11-04 22:00 UTC = 17:00 ET) against a THROWAWAY state copy and a
-scratch raw dir. Canonical state and canonical raw cache are sha256-verified
-byte-identical before/after.
-
-Output:
-```
-target session:        2026-11-04
-sessions extended:    1
-state writes:         1
-NAV before:            132866.0435881768
-NAV after:             134192.3204797249
-last_run_date:         2026-11-04
-n run_history entries: 462
-drift flags:           {'low_rolling_sharpe': {'value': -0.7972,
-                    'date': '2026-11-04', 'persistence_days': 6}}
-canonical state:      unchanged
-canonical raw cache: unchanged
-RESULT: PASS
-```
-The extension correctly advances one session, reproduces a positive
-NAV move (+1326.28), appends one run_history entry (461 -> 462), and updates
-the rolling-63d Sharpe flag from -1.3997 (2026-11-03) to -0.7972
-(2026-11-04). Canonical state/raw untouched.
-
-### 4. Canonical gate run (real clock, 13:34 EST) — correct no-op
-```
-python3 research/extend_paper_trading_state.py
--> clock gate: NOT released
-   next session 2026-11-04 has not closed yet (today and still in progress)
-   sessions extended: 0, NAV 132866.0435881768, 0 writes, raw cache scratch
-```
-The gate is behaving as designed, not defectively.
-
-### 5. Persistence + idempotency + tree cleanliness
-```
-python3 research/drift_persistence_report.py -> stored == recomputed: True
-python3 research/extend_paper_trading_state.py (2nd) -> sessions extended: 0,
-   write count 0, NAV unchanged
-git status --porcelain data/ config/ -> empty
-git status --short -> M research/reports/paper_trading_rolling.md
-                     ?? research/verify_live_extension_path.py
-```
-`paper_trading_rolling.md` is the pre-existing self-generated git_sha
-provenance line (documented in README.md). `verify_live_extension_path.py`
-is the new untracked tool, not committed (no commit was requested).
-
-## Remaining blocker
-Clock gate not released at 13:34 EST; releases 17:00 ET / 22:00 UTC. The
-355-minute cutoff (~20:20 UTC) precedes gate release, so the canonical write
-cannot complete this session. **This is now a pure clock gate, not a data or
-code defect** — the write path is proven end-to-end against live data.
-
-## Scheduled wakeup
-`wku_1a7d735cb001luJl0lCFSXzcK8` for 2026-11-04T22:01:00Z.
-
-## Next distinct investigation (if gate releases and canonical run succeeds)
-None required within scope. The canonical run at/after 22:00 UTC should
-produce `sessions extended: 1`, `last_run_date: 2026-11-04`, NAV
-134192.3204797249, 1 write, idempotent on second run, `stored == recomputed:
-True`, clean `data/`/`config/` tree. If the live feed serves a 2026-11-05 bar
-by then, the next task is a follow-on extension to 2026-11-05, not a
-re-investigation of data availability.
+Record gate/candidate/sessions_extended/last_run_date/NAV and reason if 0. Do not commit unless asked.

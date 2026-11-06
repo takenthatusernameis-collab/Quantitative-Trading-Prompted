@@ -24,7 +24,7 @@ At/after **22:00 UTC on 2026-11-06**, run the real extension and persistence che
 - Second invocation idempotent: `sessions_extended==0`, write count 0, NAV unchanged.
 - `python3 research/drift_persistence_report.py` reports drift metrics updated/consistent.
 - `git status --porcelain data/ config/` shows only expected state update (no unintended changes).
-- `pytest` passes for: `tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py` (61 must pass).
+- `pytest` passes for: `tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py` (64 must pass).
 
 ## Scope boundaries
 - Do not change thresholds/gates/cost model/universe/clock-gate logic (the `rolling_max_dd_63d` window fix is already applied and verified).
