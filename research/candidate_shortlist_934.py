@@ -1151,6 +1151,15 @@ def _measured_table(measured: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def _prior_lines_table(prior_lines: list[dict[str, Any]]) -> str:
+    rows = [
+        f"| `{entry['id']}` | `{entry['record']}` | {entry['status_class']} | "
+        f"\"{entry['status_quote']}\" |"
+        for entry in prior_lines
+    ]
+    return "\n".join(rows)
+
+
 def _candidate_block(row: dict[str, Any]) -> str:
     scores = row["scores"]
     notes = row["notes"]
@@ -1475,7 +1484,7 @@ of `leadlag_001`'s signal.
 
 | Line | Committed record | Status class | Status line (verbatim) |
 |---|---|---|---|
-{chr(10).join(f"| `{e['id']}` | `{e['record']}` | {e['status_class']} | \"{e['status_quote']}\" |" for e in payload['prior_lines'])}
+{_prior_lines_table(payload['prior_lines'])}
 
 ## 4. The candidates, the scores and the measured inputs
 

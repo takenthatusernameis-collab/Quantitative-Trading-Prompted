@@ -47,7 +47,7 @@ four candidates are alternatives, not trials of one hypothesis.
 
 ### 1. The inventory that the scores rest on
 
-**Data available** (1856 files under `data/`, 14 configuration files under `config/`, all read-only).
+**Data available** (1907 files under `data/`, 19 configuration files under `config/`, all read-only).
 
 | Data class | Available in the cache | Consequence for this shortlist |
 |---|---|---|
@@ -101,7 +101,7 @@ implementing the candidate. Every such prior is labelled in the candidate block.
 | `reversal_001` | 6991 | 1998-12-22 .. 2026-10-08 | 52.00 | 1.5600% | 77.8181%/yr | 2.0047% | 5/5 | 1398 | not applicable (one book) | $296,232,152 |
 | `pairs_001` | 6991 | 1998-12-22 .. 2026-10-08 | 52.00 | 1.5600% | 69.6626%/yr | 2.2394% | 5/5 | 1398 | 4.96 | $296,232,152 |
 | `liquidity_001` | 6991 | 1998-12-22 .. 2026-10-08 | 24.00 | 0.7200% | 73.4546%/yr | 0.9802% | 5/5 | 332 | not applicable (one book) | $296,232,152 |
-| `leadlag_001` | 2960 | 2015-01-02 .. 2026-10-15 | 52.00 | 1.5600% | 30.1518%/yr | 5.1738% | 4/5 | 592 | 2.96 | $188,536,208 |
+| `leadlag_001` | 2960 | 2015-01-02 .. 2026-10-15 | 52.00 | 1.5600% | 30.1518%/yr | 5.1738% | 4/5 | 592 | 2.96 | $195,219,729 |
 
 ### 5. The candidate blocks
 
@@ -195,11 +195,11 @@ implementing the candidate. Every such prior is labelled in the candidate block.
 
 | Dimension | Score | Basis (measured where measurable) |
 |---|---|---|
-| (a) Data quality/access | 1 | coverage 11.8y (>= 10 years); -1: cross-section is not constant (51.5% of sessions); -1: 1 integrity defect rows in the required series; -1: required execution input absent (roll price / roll cost: the cached front-month series exposes the roll date but not the roll price, so the futures return series is contaminated at every roll) |
+| (a) Data quality/access | 1 | coverage 11.8y (>= 10 years); -1: cross-section is not constant (51.6% of sessions); -1: 1 integrity defect rows in the required series; -1: required execution input absent (roll price / roll cost: the cached front-month series exposes the roll date but not the roll price, so the futures return series is contaminated at every roll) |
 | (b) Plausible structural explanation | 3 | declared prior: The mechanism is one AGENTS.md names explicitly (delayed price discovery), but the daily-bar cache cannot time the intraday sequencing that the mechanism depends on. |
 | (c) Expected return after costs | 2 | cost hurdle 5.1738% of the measured gross scale -> hurdle 4/5; declared gross prior 2/5; score = min = 2 |
 | (d) Robustness / statistical power | 3 | 592 non-overlapping holding-horizon observations (>= 500); -1: only 2.96 effective independent bets |
-| (e) Liquidity / capacity | 3 | median instrument $188,536,208/day (>= $50m/day) |
+| (e) Liquidity / capacity | 3 | median instrument $195,219,729/day (>= $50m/day) |
 | (f) Automation / operating burden | 3 | declared prior: daily bars, one venue, session hours; -1: front-month futures series (roll windows to detect and exclude); -1: more than nine instruments to maintain |
 | (g) Diversification from existing research | 1 | mechanism-family novelty 5/5 (no committed candidate hypothesis in this family); instrument overlap with 5 closed line(s) -> exposure score 1/5; shared: tsmomentum_001, riskparity_001, csmomentum_001, macroregime_001, futuresbasis_002 |
 
