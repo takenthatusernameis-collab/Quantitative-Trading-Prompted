@@ -897,7 +897,7 @@ def measure_candidate(candidate: dict[str, Any], cost_per_unit: float,
     last = str(close.index.max().date())
     years = (
         pd.Timestamp(last).year - pd.Timestamp(first).year
-        + (pd.Timestamp(last).dayofyear - pd.Timestamp(first).dayofyear) / 365.25
+        + (pd.Timestamp(last).day_of_year - pd.Timestamp(first).day_of_year) / 365.25
     )
     for symbol in universe:
         facts[symbol]["_years"] = years
