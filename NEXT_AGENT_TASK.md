@@ -1,10 +1,10 @@
-# NEXT_AGENT_TASK — Paper-trading extension gate check (post-2026-11-06, next session 2026-11-09)
+# NEXT_AGENT_TASK — Paper-trading extension gate check (post-2026-11-09, next session)
 
 ## Context
-- Last processed session: 2026-11-06 (NAV 130874.77477663972). Extension on 2026-11-06 reported sessions_extended=0 (next session 2026-11-09 not closed; weekend excluded).
+- Last processed session: 2026-11-06 (NAV 130874.77477663972). Extension to 2026-11-09 is time-gated: gate releases at 17:00 ET / 22:00 UTC on 2026-11-09.
 - Rolling 63d Sharpe at 2026-11-06: -1.8144.
-- Clock gate for 2026-11-09 releases at 17:00 ET / 22:00 UTC on 2026-11-09.
-- git status --porcelain data/ config/ clean.
+- git status --porcelain data/ config/ clean as of 2026-11-06 23:28 UTC (session 2 invocation 1).
+- Prior invocation verified: sessions_extended==0 with explicit reason ("next session 2026-11-09 has not closed yet (in the future)"), NAV unchanged, 0 writes, pytest 64 passed.
 
 ## Objective
 At/after 22:00 UTC on 2026-11-09, run the real extension and persistence checks. Extend by at most one session to 2026-11-09 only if a completed bar exists; otherwise record sessions_extended==0 with explicit reason and keep state unchanged.
@@ -31,5 +31,3 @@ At/after 22:00 UTC on 2026-11-09, run the real extension and persistence checks.
 4. python3 research/extend_paper_trading_state.py 2>&1 | tail -8
 5. python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py -q
 6. git status --porcelain data/ config/
-" filePath">
-/home/runner/work/Quantitative-Trading-Prompted/Quantitative-Trading-Prompted/NEXT_AGENT_TASK.md
