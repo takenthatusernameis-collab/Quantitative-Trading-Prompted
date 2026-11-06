@@ -13,6 +13,11 @@
 - **Wakeup re-scheduled:** prior session's wakeup `wku_1b1154bb3001oJk8BMewX9UON3` was not visible in this session's pending-wakeup list. Fresh wakeup `wku_1b117ae8b001WHHxiZz6Qg62I5` scheduled for **2026-11-06T22:27:21Z** to resume the post-gate sequence.
 - **Handoff recorded:** `CORRECTIVE_HANDOFF_302.md`. No commit made. No source/data/config/test/gate/threshold/cost model/universe/clock-gate/canonical state modified.
 
+## Verified post-gate expected outcome (corrective invocation 259, 2026-11-06T15:57Z)
+- The real post-gate extension path was executed end-to-end against a **temporary copy** of the canonical state with a stubbed post-gate clock (Fri 2026-11-06 22:30 UTC) and the **live** `fetch_universe` network path. Result: `target=2026-11-06`, `sessions_extended=1`, `state_writes=1`, `nav_before=129990.36`, `nav_after=131118.81`, `written.last_run_date=2026-11-06`. Idempotent re-run → `0/0/None`. Canonical state SHA256 and `data/raw/` parquet hashes unchanged; no `.backup` left behind.
+- **The provider DOES return a 2026-11-06 bar** via the real fetch path. The expected post-gate outcome is therefore `sessions_extended==1` (advance to 2026-11-06), NOT 0. If the live run instead reports 0, treat that as a data/provider anomaly and record the reason.
+- Canonical state and `data/raw/` were never modified by the probe; probe side effects (4 `*_20261106.parquet` artifacts and the rolling report write) were reverted.
+
 ## Context
 - Last processed session: **2026-11-05** (NAV `129990.36021343581`).
 - Rolling 63d Sharpe at 2026-11-05: **-2.1203** (low_rolling_sharpe, persistence 7).

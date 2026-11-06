@@ -929,7 +929,7 @@ def main(argv: list[str] | None = None) -> int:
         fh.write("- the committed artifact is regenerated or edited by this tool -> reject.\n")
         fh.write("- a file under data/ or config/ changed during the run -> reject.\n")
         fh.write("- the common-inception sample does not have seven assets with a price -> reject.\n")
-        fh.write("- two runs of the tool disagree -> reject.\n\n")
+        fh.write("- two runs of the tool disagree -> reject.\n")
 
     print(f"OVERALL: {overall}")
     print(
