@@ -171,7 +171,7 @@ def run_historical_validation(
                 "date": date_str,
             }
 
-        if regime_persistence < 5 and state.previous_regime_exposure is not None and state.previous_regime_exposure != regime_exp:
+        if regime_persistence < 5 and state.previous_regime_exposure is not None:
             drift_flags["regime_persistence_low"] = {
                 "value": regime_persistence,
                 "threshold": 5,

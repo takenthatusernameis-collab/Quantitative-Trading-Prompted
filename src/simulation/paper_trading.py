@@ -424,7 +424,19 @@ def run_daily_paper_update(
             "persistence_days": sharpe_persistence_days,
         }
 
-    if regime_persistence < 5 and state.previous_regime_exposure is not None and state.previous_regime_exposure != regime_exp:
+    # Low regime-persistence alert. The condition is persistence below the
+    # threshold with a known prior exposure; it must NOT also require a flip.
+    # Requiring ``previous_regime_exposure != regime_exp`` made the flag fire
+    # only on a regime flip, and ``regime_persistence`` is reset to exactly 1 on
+    # every flip (lines 352-355), so the flag was a strict subset of the
+    # ``regime_flip`` flag above and could never fire independently. It was a
+    # dead/duplicate flag: it added no monitoring value, cluttered
+    # ``drift_flags``, and implied a persistence-based alert that did not exist
+    # (Cycle 1141). Without the flip predicate the flag reports genuinely low
+    # persistence: it fires on a flip (persistence 1) and on the few sessions
+    # after a fresh state start, then stops once persistence reaches the
+    # threshold.
+    if regime_persistence < 5 and state.previous_regime_exposure is not None:
         drift_flags["regime_persistence_low"] = {
             "value": regime_persistence,
             "threshold": 5,

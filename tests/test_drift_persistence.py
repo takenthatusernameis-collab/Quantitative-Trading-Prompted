@@ -303,6 +303,113 @@ def test_main_json_includes_provenance(tmp_path, monkeypatch, capsys):
     assert prov.get("config")
 
 
+# ---------------------------------------------------------------------------
+# regime_persistence_low: the flag must be able to fire WITHOUT a regime flip
+# ---------------------------------------------------------------------------
+
+
+def _state_with_persistence(persistence_days: int, prev_exposure: float | None,
+                            current_exposure: float) -> pt.PaperTradingState:
+    """Build a state whose regime_persistence_days and prior exposure are set."""
+    return pt.PaperTradingState(
+        last_run_date="2026-01-30",
+        cumulative_returns=[0.001] * 30,
+        cumulative_pnl=[0.0] * 30,
+        cumulative_dates=[f"2026-01-{i:02d}" for i in range(1, 31)],
+        current_nav=100000.0,
+        peak_nav=100000.0,
+        regime_persistence_days=persistence_days,
+        previous_regime_exposure=prev_exposure,
+    )
+
+
+def test_regime_persistence_low_fires_on_flip(tmp_path, monkeypatch):
+    """A regime flip resets persistence to 1, so the flag fires (persistence < 5)."""
+    state = _state_with_persistence(persistence_days=148, prev_exposure=0.0,
+                                    current_exposure=1.0)
+    config = _config(tmp_path)
+    latest_date = "2026-01-31"
+    monkeypatch.setattr(
+        pt,
+        "run_simulation",
+        lambda *a, **k: _StubSimulation(
+            _stub_daily(latest_date, -0.001, config.universe)
+        ),
+    )
+
+    new_state, _ = pt.run_daily_paper_update(
+        config, state, market_data=_stub_daily(latest_date, -0.001, config.universe)
+    )
+
+    flag = new_state.drift_flags.get("regime_persistence_low")
+    assert flag is not None, (
+        "regime_persistence_low must fire on a flip (persistence reset to 1)"
+    )
+    assert flag["value"] == 1
+    assert flag["threshold"] == 5
+    # The flip flag must also be present.
+    assert "regime_flip" in new_state.drift_flags
+
+
+def test_regime_persistence_low_fires_without_a_flip(tmp_path, monkeypatch):
+    """THE REGRESSION: with the old predicate the flag could never fire here.
+
+    The old condition required ``previous_regime_exposure != regime_exp``, but
+    ``regime_persistence`` is reset to exactly 1 on every flip and only grows on
+    a no-flip, so the flag was a strict subset of ``regime_flip`` and could
+    never fire independently. Without the flip predicate the flag must still
+    fire when persistence is genuinely low and there is no flip: a prior flip
+    reset persistence to 1, and the following no-flip sessions give persistence
+    2, 3 and 4 -- all below the threshold and none of them a flip.
+    """
+    state = _state_with_persistence(persistence_days=1, prev_exposure=1.0,
+                                    current_exposure=1.0)
+    config = _config(tmp_path)
+    latest_date = "2026-01-31"
+    monkeypatch.setattr(
+        pt,
+        "run_simulation",
+        lambda *a, **k: _StubSimulation(
+            _stub_daily(latest_date, -0.001, config.universe)
+        ),
+    )
+
+    new_state, _ = pt.run_daily_paper_update(
+        config, state, market_data=_stub_daily(latest_date, -0.001, config.universe)
+    )
+
+    flag = new_state.drift_flags.get("regime_persistence_low")
+    assert flag is not None, (
+        "regime_persistence_low must fire on a no-flip session whose "
+        "persistence (2) is below the threshold, i.e. independently of regime_flip"
+    )
+    assert flag["value"] == 2
+    # No flip flag must be raised: the regime did not change this session.
+    assert "regime_flip" not in new_state.drift_flags
+
+
+def test_regime_persistence_low_silent_when_persistence_healthy(tmp_path, monkeypatch):
+    """The flag must NOT fire when persistence is at or above the threshold."""
+    state = _state_with_persistence(persistence_days=148, prev_exposure=1.0,
+                                    current_exposure=1.0)
+    config = _config(tmp_path)
+    latest_date = "2026-01-31"
+    monkeypatch.setattr(
+        pt,
+        "run_simulation",
+        lambda *a, **k: _StubSimulation(
+            _stub_daily(latest_date, -0.001, config.universe)
+        ),
+    )
+
+    new_state, _ = pt.run_daily_paper_update(
+        config, state, market_data=_stub_daily(latest_date, -0.001, config.universe)
+    )
+
+    assert "regime_persistence_low" not in new_state.drift_flags
+    assert new_state.regime_persistence_days == 149
+
+
 def test_update_rolling_report_preserves_git_sha_when_hashes_unchanged(tmp_path, monkeypatch):
     """Avoid self-referential churn: git_sha only updates when state/config hashes change."""
     state = _load_state()

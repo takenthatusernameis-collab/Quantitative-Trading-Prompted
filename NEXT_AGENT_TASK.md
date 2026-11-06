@@ -1,13 +1,12 @@
 # NEXT_AGENT_TASK — Paper-trading extension gate check (2026-11-06, pre-gate)
 
-## Handoff (corrective invocation 515, 2026-11-06T00:51Z — pre-gate, gate NOT released)
-- **UTC 2026-11-06T00:51:04Z / 19:51:04 EST (Thu).** Gate for 2026-11-06 **NOT released** until 22:00 UTC on 2026-11-06. `extend_paper_trading_state.py` **NOT run** for extension (scope boundary).
-- **Durable project change this cycle (first in the corrective loop):** producer defect `rolling_max_dd_63d` corrected — see README "Cycle 1140". Canonical state rewritten (single field, sha256 `f9572aed...` -> `60b16fb4...`); `src/simulation/paper_trading.py`, `research/audit_state_aggregates.py`, `tests/test_state_aggregate_audit.py` updated; new tool `research/correct_rolling_max_dd_field.py`.
-- **Pre-gate verification (fresh, no extension):** `extend_paper_trading_state.py` -> clock gate NOT released; `candidate available: no` (2026-11-06 future); `sessions extended: 0`; NAV `129990.36021343581` unchanged; `state write count: 0`; raw cache scratch. Required suite **61 passed (36.38s)** this cycle (was 47; +14 from `test_state_aggregate_audit.py` + `test_rolling_63d_gate_refresh.py`); drift report `stored == recomputed: True` (Sharpe `-2.1203`, persistence 7).
-- **Supervisor:** recommendation `42124771982-attempt-1-review-0003-6eb37be3c38d` dispositioned `verified` in `.kilo-runtime/worker-disposition.json`.
-- **Wakeup scheduled:** `wku_1ae20e821001r0As4ETUv5Vttt` at **2026-11-06T22:00:00Z** to run acceptance commands 1–6 for the 2026-11-06 gate.
-- **Durable handoff:** `CORRECTIVE_HANDOFF_INVOCATION_515.md`.
-- **Next candidate:** 2026-11-09 (Monday), usable after 17:00 ET / 22:00 UTC on 2026-11-09.
+## Handoff (corrective invocation 1054, 2026-11-06T04:53Z — pre-gate, gate NOT released)
+- **UTC 2026-11-06T04:53:02Z / 23:53:02 EST (Thu).** Gate for 2026-11-06 **NOT released** until 22:00 UTC on 2026-11-06 (~17h 7m). `extend_paper_trading_state.py` **NOT run** for real extension (scope boundary). Blocker is temporal only; 355-min cutoff expires before gate.
+- **Cycle 1141 fix (uncommitted, verified intact):** `regime_persistence_low` dead-flag corrected in `src/simulation/paper_trading.py` + `research/run_cycle10.py` (removed `previous_regime_exposure != regime_exp` predicate so flag fires independently of regime flips; was subset of `regime_flip`). `tests/test_drift_persistence.py` adds 3 regression tests. Targeted regression: **3 passed**. Fix presence confirmed in both producers.
+- **Pre-gate verification (fresh, invocation 1054):** canonical state sha256 `60b16fb460da735e85d8a1935d6604306eed48f8bc927bc8849e31fec19498f8` (`last_run_date` 2026-11-05, NAV 129990.36021343581); `audit_state_aggregates.py` → 463 sessions (2025-01-02→2026-11-05), 11 fields, `all_match: True`; `drift_persistence_report.py` last 2026-11-05 Sharpe `-2.1203` consistent (stored==recomputed). Pre-gate `extend_paper_trading_state.py`: `clock gate: NOT released`, `candidate available: no`, `sessions extended: 0`, NAV unchanged, `state write count: 0`, `raw cache: scratch`.
+- **Acceptance suite:** `tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py` → **64 passed in 34.52s**.
+- **Durable handoff:** `CORRECTIVE_HANDOFF_INVOCATION_1054.md`. Prior: `CORRECTIVE_HANDOFF_INVOCATION_1053.md`, recovery log `/home/runner/work/_temp/kilo-session-9-recovery-1053.log`.
+- **No commit made** (not requested). `git status --porcelain data/ config/` clean. `data/raw/` untouched. Unrelated pre-existing worktree diffs/untracked files left untouched.
 
 ## Context
 - Last processed session: **2026-11-05** (NAV `129990.36021343581`).

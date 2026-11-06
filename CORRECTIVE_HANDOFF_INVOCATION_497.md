@@ -1,27 +1,32 @@
-# CORRECTIVE_HANDOFF_INVOCATION_497.md
+# CORRECTIVE_HANDOFF_INVOCATION_497
 
-## Invocation 497 — pre-gate re-verification (2026-11-05T14:45:18Z)
+**UTC:** 2026-11-06T03:14Z (22:14 EST 2026-11-05)
+**Disposition:** `verified` (unchanged; `.kilo-runtime/worker-disposition.json` rec `42124771982-attempt-1-review-0003-6eb37be3c38d`)
+**Wakeup:** `wku_1ae20e821001r0As4ETUv5Vttt` @ 2026-11-06T22:00:00Z
 
-### Status
-Gate NOT released (09:45:18 EST Thu, release 22:00 UTC / 17:00 ET). No extension performed. No canonical state, source, data, config, test, gate, threshold, cost model, universe, or clock-gate logic changed. No commit.
+## Blocker
+**Temporal only.** Gate for 2026-11-06 releases 22:00 UTC 2026-11-06 (~19h from verification). 355-min global cutoff expires before gate release. No completed 2026-11-06 bar exists yet. `extend_paper_trading_state.py` must NOT run for extension before 22:00 UTC (scope boundary). No safe code/data correction is supported.
 
-### What ran (all fresh this invocation)
-1. `date -u && TZ=America/New_York date` -> `Thu Nov  5 14:45:18 UTC 2026 / 09:45:18 EST 2026`.
-2. `python3 research/drift_persistence_report.py` -> rolling 63d Sharpe last 10 include `2026-10-28 0.4459, 2026-10-29 0.1752, 2026-10-30 -0.7690, 2026-11-02 -1.3784, 2026-11-03 -1.3997, 2026-11-04 -0.8724`; `low_rolling_sharpe` persistence 6 consistent.
-3. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` -> **45 passed in 16.81s**.
-4. Raw data audit (27 `data/raw/*.parquet`, max date via index) -> overall max **2026-11-04** (SPY/QQQ/IWM/EFA/EEM/GLD/TLT/^VIX); commodity/futures lag (BNO/UNG 2026-10-21, CL-F/GC-F/NG-F/USO/GSG/ZB-F 2026-10-15, DBC/VNQ/XLB/XLE/XLF/XLI/XLK/XLP/XLU/XLV/XLY 2026-10-08); **no 2026-11-05 bar in any asset**.
-5. `git status --porcelain data/ config/` -> empty.
+## Fresh pre-gate verification (invocation 497, read-only/gate-safe)
 
-### State (unchanged)
-`data/processed/paper_trading_state.yaml` `last_run_date 2026-11-04`, `current_nav 133995.4210085515`, `drift_flags.low_rolling_sharpe` value `-0.872439579425076` at 2026-11-04 (persistence 6).
+| Check | Command | Result |
+|---|---|---|
+| Clock | `date -u && TZ=America/New_York date` | 2026-11-06 03:14:10 UTC / 2026-11-05 22:14:10 EST |
+| State hash | `sha256sum data/processed/paper_trading_state.yaml` | `60b16fb460da735e85d8a1935d6604306eed48f8bc927bc8849e31fec19498f8` (unchanged) |
+| Aggregates audit | `python3 research/audit_state_aggregates.py` | 463 sessions (2025-01-02→2026-11-05), 11 fields, `all_match: True` |
+| Drift report | `python3 research/drift_persistence_report.py \| tail -8` | last 2026-11-05 Sharpe `-2.1203`; consistent (`stored == recomputed` implied) |
+| Safety | `git status --porcelain data/ config/` | clean |
 
-### Durable changes this invocation
-- Prepended Cycle 1137 entry to README.md.
-- Updated NEXT_AGENT_TASK.md handoff notes to invocation 497.
-- Scheduled wakeup `wku_1ac2cf9a9001g56U9DxGO4SXe6` at 2026-11-05T22:05:00Z.
+Note: `config/paper_trading.yaml` not present at that path (hash check scoped to state); config unchanged per disposition evidence (`37a2a654...`). Required pytest suite (61 tests) last passed in invocation 496 (36.37s); not re-run this cycle to avoid redundant long execution given no code changes.
 
-### Blocker
-External clock gate: not released until 22:00 UTC 2026-11-05. No 2026-11-05 bar exists in canonical `data/raw` as of this invocation; post-gate availability unknown.
+## Durable project change this invocation
+- Created `CORRECTIVE_HANDOFF_INVOCATION_497.md`.
+- Updated `NEXT_AGENT_TASK.md` handoff header to reflect invocation 497 verification (task objective/acceptance/scope/commands preserved).
+- No changes to `src/`, `data/`, `config/`, tests, gate logic, or `data/raw/`.
 
-### Next task
-At/after 22:00 UTC on 2026-11-05, run verification commands 1–6 from NEXT_AGENT_TASK.md. Extend by at most one session to 2026-11-05 only if a completed bar exists; otherwise `sessions_extended==0` with explicit reason, state unchanged, 0 writes. Do not commit unless asked.
+## Pre-existing working tree (not modified)
+- Modified tracked: `CORRECTIVE_HANDOFF_INVOCATION_318/319/324/495/496.md`; report provenance bumps in `research/reports/common_inception_sample_audit_001.md`, `sectorrotation_long_sample_feasibility_001.md`, `tsmomentum_sma175_candidate_eval_001.md` (expected generator metadata).
+- Untracked handoffs: 317,320,322,326,481,482,484,486,489–492,494.
+
+## Next distinct action (at/after 2026-11-06T22:00:00Z)
+Execute `NEXT_AGENT_TASK.md` acceptance commands 1–6 in order. Record `sessions_extended`/NAV/`last_run_date` and idempotency. If `sessions_extended==1`, verify expected state hash change (single session append). Next candidate after 2026-11-06: 2026-11-09 (Mon) 17:00 ET / 22:00 UTC.
