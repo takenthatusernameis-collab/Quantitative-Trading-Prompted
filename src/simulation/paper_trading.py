@@ -336,8 +336,15 @@ def run_daily_paper_update(
         )["streak_days"]
     )
 
-    # Rolling max DD
-    cum = np.cumprod(1.0 + returns_arr)
+    # Rolling max DD over the SAME trailing 63-session window used for the
+    # rolling Sharpe above. The field is named ``rolling_max_dd_63d`` and the
+    # promotion gate (config/promotion_gates.yaml "rolling_63d_max_dd")
+    # documents it as "peak-to-trough drawdown of the compounded trailing
+    # 63-session return window", so it must be measured on ``recent_returns``,
+    # not on the full history. Computing it over the full history silently
+    # reported the all-time maximum drawdown under a rolling-63d name, and the
+    # stored value only agreed with that wrong computation (Cycle 1140).
+    cum = np.cumprod(1.0 + recent_returns)
     peak = np.maximum.accumulate(cum)
     rolling_max_dd = float((cum / peak - 1.0).min())
 

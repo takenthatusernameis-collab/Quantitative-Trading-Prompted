@@ -5578,7 +5578,7 @@ run_history:
   n_positions: 4
 previous_regime_exposure: 1.0
 rolling_sharpe_63d: -2.1202794870108126
-rolling_max_dd_63d: -0.06562469374042079
+rolling_max_dd_63d: -0.06544463769225417
 regime_persistence_days: 148
 vol_scale_min: 0.43731674589035896
 vol_scale_max: 1.0

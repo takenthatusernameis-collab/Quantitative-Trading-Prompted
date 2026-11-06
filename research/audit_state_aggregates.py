@@ -57,8 +57,13 @@ def audit(state: dict | None = None) -> dict:
     recent = rets[-63:]
     rolling_sharpe = float(sharpe_ratio(recent))
 
-    # --- rolling max dd: min(cum/peak - 1) over the full NAV product series ---
-    cum = np.cumprod(1.0 + rets)
+    # --- rolling max dd: min(cum/peak - 1) over the TRAILING 63-session window ---
+    # Mirrors src/simulation/paper_trading.run_daily_paper_update, which measures
+    # this field on the same 63-session window as rolling_sharpe_63d (the field
+    # name and the promotion gate both describe a trailing-63 drawdown, not the
+    # all-time drawdown; see Cycle 1140).
+    recent_dd = rets[-63:]
+    cum = np.cumprod(1.0 + recent_dd)
     peak = np.maximum.accumulate(cum)
     rolling_max_dd = float((cum / peak - 1.0).min())
 
