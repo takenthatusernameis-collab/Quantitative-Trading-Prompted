@@ -6,6 +6,13 @@
 - **State (unchanged):** `data/processed/paper_trading_state.yaml` SHA256 `60b16fb460da735e85d8a1935d6604306eed48f8bc927bc8849e31fec19498f8` (`last_run_date 2026-11-05`, NAV `129990.36021343581`). `git status --porcelain data/ config/` clean (pre-handoff doc edits).
 - **Verification (this session):** acceptance suite `tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py` → **64 passed** (40.01s). `tests/test_go_no_go_evaluation.py tests/test_candidate_shortlist_934.py` → **41 passed, 24 warnings** (19.52s). No commit made. `data/raw/` untouched. No source/data/config/test/gate/threshold/cost model/universe/clock-gate/canonical state modified.
 
+## Handoff (corrective invocation 302, 2026-11-06T13:40Z — pre-gate, gate NOT released)
+- **UTC 2026-11-06T13:40Z / 08:40 EST (Fri).** Gate for 2026-11-06 **NOT released** until 22:00 UTC (~8h 20m). `extend_paper_trading_state.py` **NOT run** (scope boundary). Temporal blocker remains.
+- **Durable code correction verified:** `research/candidate_shortlist_934.py:900` — `pd.Timestamp.dayofyear` → `day_of_year` (pandas 4.x compatible; removes pre-existing deprecation warning). Confirmed present in worktree via grep.
+- **Re-verification (this invocation):** acceptance suite → **64 passed in 38.96s**. `git status --short` → empty (clean working tree). `git status --porcelain data/ config/` → empty. Canonical state SHA256 unchanged.
+- **Wakeup re-scheduled:** prior session's wakeup `wku_1b1154bb3001oJk8BMewX9UON3` was not visible in this session's pending-wakeup list. Fresh wakeup `wku_1b117ae8b001WHHxiZz6Qg62I5` scheduled for **2026-11-06T22:27:21Z** to resume the post-gate sequence.
+- **Handoff recorded:** `CORRECTIVE_HANDOFF_302.md`. No commit made. No source/data/config/test/gate/threshold/cost model/universe/clock-gate/canonical state modified.
+
 ## Context
 - Last processed session: **2026-11-05** (NAV `129990.36021343581`).
 - Rolling 63d Sharpe at 2026-11-05: **-2.1203** (low_rolling_sharpe, persistence 7).
