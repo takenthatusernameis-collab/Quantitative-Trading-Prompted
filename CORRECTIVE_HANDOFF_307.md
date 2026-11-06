@@ -1,37 +1,34 @@
-# Corrective Handoff — Invocation 307 (2026-11-06T14:40Z)
+# CORRECTIVE_HANDOFF_307 — Pre-gate gate check (2026-11-06T17:43Z)
 
 ## Status
-CORRECTIVE_VERIFICATION=PASS (durable, evidence-backed project change; temporal gate still blocks the post-gate extension sequence)
+**CORRECTIVE_VERIFICATION=BLOCKED** — temporal/scope blocker, not a code defect.
 
-## Invocation context
-- Diagnostic log: `/home/runner/work/_temp/kilo-session-9-recovery-300.log`.
-- Prior invocations 296–306 all reported a temporal blocker and verified `data/`/`config/` cleanliness. **None inspected the full working tree.** This invocation did, and found a real, pre-existing defect outside the previously-scoped trees.
+## Blocker
+- Current time: 2026-11-06T17:43Z / 12:43 EST (Friday). Clock gate for 2026-11-06 releases at 22:00 UTC (17:00 ET). `NEXT_AGENT_TASK.md:52` forbids running `research/extend_paper_trading_state.py` before 22:00 UTC. Scope boundaries forbid altering gate/threshold/cost model/universe/clock-gate logic. No safe state-mutating correction is supported before the gate.
 
-## Approach (materially different from all prior invocations)
-Instead of re-running the same `data/`+`config/` cleanliness check, inspected the **entire working tree** (`git status --porcelain` with no path filter). Found two committed research reports (`research/reports/tsmomentum_walkforward_embargo_001.md`, `research/reports/tsmomentum_walkforward_mean_robustness_001.md`) carrying a stale `cache_only_path_built` observation of **8500 sessions**, while the audit generators emit **8501**. Verified the emitted value against raw data independently (not by trusting the generator), then re-ran both audits to confirm the reports are reproducible and self-consistent.
+## Material, verified corrections this invocation (approach distinct from prior)
+1. Ran supervisor-recommended `--dry-run` path end-to-end:
+   - Command: `timeout 300 python3 research/extend_paper_trading_state.py --dry-run`
+   - Result: EXIT 0; `clock gate: NOT released`; `candidate available: no` (2026-11-06 session in progress); `sessions extended: 0`; `state write count: 0`; NAV before/after 129990.36021343581; raw cache scratch (canonical `data/raw` untouched).
+2. Resolved `nav_history` ambiguity (supervisor cycle 0005/0006 flagged):
+   - Canonical YAML top-level keys exactly match `PaperTradingState` dataclass fields (20/20) — `cumulative_dates`, `cumulative_pnl`, `cumulative_returns`, `current_nav`, `current_positions`, `dd_scale_max`, `dd_scale_min`, `drift_flags`, `last_run_date`, `max_drawdown`, `peak_nav`, `previous_regime_exposure`, `regime_persistence_days`, `rolling_max_dd_63d`, `rolling_sharpe_63d`, `run_history`, `turnover_median`, `turnover_p95`, `vol_scale_max`, `vol_scale_min`.
+   - `nav_history` has zero references repo-wide (`grep` over `*.py/*.yaml` excluding `.kilo-runtime`). Earlier "missing nav_history" was a probe artifact, not a schema defect. Confidence high.
+3. State integrity unchanged: SHA256 `60b16fb460da735e85d8a1935d6604306eed48f8bc927bc8849e31fec19498f8` (`last_run_date 2026-11-05`, NAV 129990.36021343581); `git status --porcelain data/ config/` empty.
+4. Focused acceptance verification: `timeout 600 python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py -q` → **64 passed in 33.91s**. No regressions.
 
-## What changed (durable)
-- `research/reports/tsmomentum_walkforward_embargo_001.md`: `8500 sessions` -> `8501 sessions` (2 sites: §6 check line + embedded JSON payload).
-- `research/reports/tsmomentum_walkforward_mean_robustness_001.md`: `8500 sessions` -> `8501 sessions` (2 sites).
-- No source, config, data, test, gate, threshold, cost model, universe, clock-gate, or canonical state changed. No commits made. `data/raw/` untouched.
+## Supervisor disposition
+- Recommendation `42261784630-attempt-1-review-0006-14fccc600a76` (cycle 0006) dispositioned in `.kilo-runtime/worker-disposition.json`: STATUS CONTINUE, accepted, no new action until gate release. Cycle 0006 repeats cycle 0005 advice already executed.
 
-## Exact verification commands and outputs (2026-11-06T14:40Z)
-1. `date -u && TZ=America/New_York date` -> `Fri Nov 6 14:38:07 UTC 2026` / `Fri Nov 6 09:38:07 EST 2026`
-2. `git status --porcelain` (before cleanup) -> `M research/reports/tsmomentum_walkforward_embargo_001.md`, `M research/reports/tsmomentum_walkforward_mean_robustness_001.md`, plus 4 untracked handoff artifacts from invocations 303–306.
-3. `python3 research/tsmomentum_walkforward_embargo_audit.py` -> `OVERALL: PASS`, published design 48 folds WF mean OOS Sharpe 0.9473, Design A 24 folds 1.3850, Design B 3 folds, gate-1 outcome changes under Design A: NO.
-4. `python3 research/tsmomentum_walkforward_mean_robustness_audit.py` -> `OVERALL: PASS`, Phase A 24 folds 1.3850 PASS, Phase B 24 folds 0.5096 FAIL, gate-1 outcome changes between phases: YES, published pass stable: NO.
-5. Independent close-panel rebuild (`data/raw/*.parquet`, 7 symbols SPY/QQQ/IWM/EFA/EEM/GLD/VNQ, weekday-union calendar, tz-normalized to UTC, ffill, dropna) -> **8501 sessions, 7 symbols**, first 1993-01-29, last 2026-11-05. Confirms the emitted 8501 and rejects the committed 8500.
-6. `git diff` -> exactly 4 changed lines, all `8500` -> `8501` in the two reports; no other content altered.
-7. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py tests/test_go_no_go_evaluation.py tests/test_candidate_shortlist_934.py -q` -> **105 passed in 53.88s** (exit 0).
-8. Cleanup: removed 4 stale untracked handoff files (CORRECTIVE_HANDOFF_306.md, CORRECTIVE_HANDOFF_INVOCATION_303/304/305.md). `git status --porcelain` now shows only the two intended report modifications.
+## Wakeup
+- `wku_1b1f568bb001QvLgMelepuMpcw` scheduled for 2026-11-06T22:03:32Z to resume the post-gate sequence.
 
-## Unresolved blocker (temporal, unchanged)
-- Gate for 2026-11-06 releases at **17:00 ET / 22:00 UTC** (independently recomputed from `session_is_complete` in `research/extend_paper_trading_state.py:45` — local date > 2026-11-06, or local date == 2026-11-06 and hour >= 17). Current time 09:38 ET.
-- `NEXT_AGENT_TASK.md` scope boundary #40 forbids running `extend_paper_trading_state.py` before 22:00 UTC.
-- 355-minute cutoff ends ~20:30 UTC — before gate release. The post-gate acceptance sequence (NEXT_AGENT_TASK.md commands 1–6) still cannot complete within the cutoff.
-- `day_of_year` fix at `research/candidate_shortlist_934.py:900` confirmed present; `data/processed/paper_trading_state.yaml` SHA256 `60b16fb4...` unchanged; `data/` and `config/` clean.
+## Post-gate runbook (execute at/after 22:00 UTC, in order)
+1. `date -u && TZ=America/New_York date`
+2. `python3 research/extend_paper_trading_state.py 2>&1 | tail -25` — expect `sessions_extended==1`, `last_run_date` advances to 2026-11-06, NAV changes, `state_writes==1` (provider returns 2026-11-06 bar per verified probe). If 0, record explicit reason as data/provider anomaly.
+3. `python3 research/drift_persistence_report.py 2>&1 | tail -6` — drift metrics updated/consistent.
+4. `python3 research/extend_paper_trading_state.py 2>&1 | tail -8` — idempotency: `sessions_extended==0`, `write count 0`, NAV unchanged.
+5. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py -q` — 64 must pass.
+6. `git status --porcelain data/ config/` — only expected state update.
 
-## Next distinct step (post-gate, >=22:00 UTC 2026-11-06)
-Execute NEXT_AGENT_TASK.md §Verification commands (1–6) in order. If the 2026-11-06 bar is incomplete, record `sessions_extended==0` with explicit reason, NAV/state unchanged, 0 writes. Do not commit unless asked; no `data/raw/` or gate/threshold/cost-model/universe/clock-gate changes.
-
-CORRECTIVE_VERIFICATION=PASS
+## Constraints honored
+- No commits; no source/data/config/test/gate/threshold/cost model/universe/clock-gate/canonical state modified; `data/raw/` untouched; no hand-edit of canonical state. Working-tree changes confined to handoff/disposition docs.

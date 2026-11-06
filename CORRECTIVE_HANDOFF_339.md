@@ -1,61 +1,37 @@
 # CORRECTIVE HANDOFF 339
 
-Cycle: corrective invocation 339 (2026-11-02T11:54Z). **No durable project changes made - state already correct from prior corrective invocations.**
+Cycle: corrective invocation 339 (2026-11-06T19:05Z). **No durable project changes made - state already correct from prior corrective invocations.**
 
-## Approach (materially different vs 337/338)
-Invocations 337 and 338 re-ran the same validation and concluded BLOCKED solely because the live extension to 2026-11-02 did not occur. This invocation confirms the narrower, actually-satisfiable position: every acceptance criterion that CAN be evaluated now IS satisfied; the only pending item is the conditional extension to 2026-11-02, which is gated on the 2026-11-02 session closing (~17:00 ET / ~22:00 UTC), a time-based external condition, not a code defect. No code change is warranted or safe (scope boundaries prohibit altering clock-gate logic or forcing writes).
+## Latest observed blocker
+- Previous corrective invocation (338) exited with status 124: idle watchdog killed the session after 600s with no child output. The child was idle-waiting for the gate with no verification output (same root cause as invocation 335).
 
-Prior real defect (already fixed in invocation 2): `research/verify_monday_extension_path.py` had a stale hard-coded target 2026-10-22; it now derives target/clock from the committed SPY frame at run time. Active write path verified end-to-end (RESULT: PASS) in invocation 2 and covered by `tests/test_verify_monday_extension_path.py`.
+## Materially different approach (vs invocation 335/338 idle-waiting)
+- Instead of idle-waiting with no output, this invocation ran concrete pre-gate verification: date check, state SHA256, git status data/config, and the full 64-test acceptance suite. All produced output and passed. No idle timeout.
+- Scheduled wakeup due 2026-11-06T22:07:00Z to resume post-gate sequence.
 
 ## Current state assessment
-Last processed session: 2026-10-30 (NAV: 133019.54382525434)
-Current time (ET): 2026-11-02 06:54 EST
-- Clock gate: released (checks day after 2026-10-31)
-- Next expected session: 2026-11-02 (Monday)
-- Session usable after: 17:00 ET on 2026-11--02 (or start of following local day) -> ~22:00 UTC
-- Session already complete: False
-- Candidate available: no (session still in progress; no completed candidate bar)
+- Current time: 2026-11-06T19:05:10 UTC / 14:05:10 EST (Friday)
+- Clock gate for 2026-11-06 NOT released until 22:00 UTC (~2h 55m from now)
+- `extend_paper_trading_state.py` NOT run (scope boundary: do not run before 22:00 UTC on 2026-11-06)
+- Temporal blocker remains; no extension progress possible before gate release
 
-## Verification (exact commands and outputs)
-```bash
-$ python research/extend_paper_trading_state.py 2>&1 | grep -E "sessions extended|NAV before|NAV after|state write count|no new completed|exit"
-exit=0
-no new completed session
-sessions extended: 0
-NAV before: 133019.54382525434
-NAV after: 133019.54382525434
-state write count: 0
-```
-(Full readiness block printed above: clock gate released, session already complete: False, candidate available: no.)
+## Exact verification commands and outputs (run fresh this invocation)
+1. `date -u && TZ=America/New_York date` → Fri Nov 6 19:05:10 UTC 2026 / 14:05:10 EST 2026 (pre-gate; gate releases 22:00 UTC)
+2. `sha256sum data/processed/paper_trading_state.yaml` → 60b16fb460da735e85d8a1935d6604306eed48f8bc927bc8849e31fec19498f8 (unchanged; last_run_date 2026-11-05, NAV 129990.36021343581)
+3. `git status --porcelain data/ config/` → empty (clean)
+4. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py -q` → 64 passed in 35.88s
+5. `python3 research/drift_persistence_report.py 2>&1 | grep -i "stored"` → stored == recomputed: True
 
-```bash
-$ python research/drift_persistence_report.py 2>&1 | grep -i "stored == recomputed"
-stored == recomputed:     True
-```
+## Unresolved blockers
+- Clock gate not released until 2026-11-06T22:00:00Z; current time 19:05Z. Cannot run `extend_paper_trading_state.py` or complete the extension task until the gate releases (per scope boundary / NEXT_AGENT_TASK).
+- Global 355-minute cutoff (~00:36 UTC on 2026-11-07) is after gate release, so extension is possible in a future session.
 
-```bash
-$ python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q 2>&1 | tail -1
-44 passed, 105 warnings in 14.39s
-```
-
-```bash
-$ git status --porcelain data/ config/; echo "exit=$?"
-(exit=0, no output = clean)
-```
-
-## Acceptance criteria status (NEXT_AGENT_TASK.md)
-- `extend_paper_trading_state.py` exits 0: **satisfied** (exit=0)
-- If completed session exists beyond 2026-10-30: sessions extended: 1, last_run_date -> 2026-11-02: **not yet evaluable** (no completed bar exists yet; conditional on session close ~22:00 UTC)
-- If no completed bar: sessions extended: 0, state unchanged: **satisfied** (sessions extended: 0, NAV unchanged, state write count: 0)
-- `drift_persistence_report.py` stored == recomputed: True: **satisfied**
-- pytest (4 named files) passes: **satisfied** (44 passed)
-- `git status --porcelain data/ config/` empty: **satisfied**
-
-## Changes made
-None. Working tree already in correct state.
-
-## Unresolved blocker (time-based, not a code defect)
-Live extension to 2026-11-02 cannot proceed until the 2026-11-02 session closes (~17:00 ET / ~22:00 UTC). The extension logic correctly identifies no completed session and takes no action (the documented "no completed bar" branch). Scope boundaries prohibit altering gate logic or forcing writes. Active write path is proven exercisable via `python research/verify_monday_extension_path.py`.
+## What changed
+- No source/data/config/test/gate/threshold/cost model/universe/clock-gate/canonical state modified.
+- No commit made.
+- CORRECTIVE_HANDOFF_339.md written (this file).
 
 ## Next distinct investigation
-Re-run `python research/extend_paper_trading_state.py` after the 2026-11-02 session closes (~22:00 UTC). If a completed bar exists, expect `sessions extended: 1` and `last_run_date` advancing to 2026-11-02. No code changes are warranted.
+At/after 22:00 UTC on 2026-11-06 (wakeup fires at 22:07:00Z), run the acceptance sequence from NEXT_AGENT_TASK: (1) date check, (2) `python3 research/extend_paper_trading_state.py`, (3) `python3 research/drift_persistence_report.py`, (4) `extend_paper_trading_state.py` (idempotency), (5) pytest 6 suites, (6) `git status --porcelain data/ config/`. Extend by <=1 session to 2026-11-06 only if a completed bar exists; otherwise record sessions_extended==0 with explicit reason, NAV unchanged, 0 writes. No code changes are warranted.
+
+CORRECTIVE_VERIFICATION=BLOCKED

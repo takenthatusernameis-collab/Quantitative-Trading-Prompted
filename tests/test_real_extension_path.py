@@ -244,7 +244,7 @@ def test_real_extension_path_is_idempotent(tmp_path, real_cfg, committed_state):
     assert result["target"] is None
     assert result["sessions_extended"] == 0
     assert result["state_writes"] == 0
-    assert PaperTradingState.from_yaml(state_path).last_run_date == "2026-11-05"
+    assert PaperTradingState.from_yaml(state_path).last_run_date == "2026-11-06"
     assert hashlib.sha256(state_path.read_bytes()).hexdigest() == before
 
 
