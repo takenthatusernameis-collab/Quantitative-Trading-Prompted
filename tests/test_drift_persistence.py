@@ -423,7 +423,7 @@ def test_update_rolling_report_preserves_git_sha_when_hashes_unchanged(tmp_path,
         f"- **paper_trading_config_sha256:** {prov['config']['paper_trading_config']}\n"
     )
     monkeypatch.setattr(report_tool, "_get_git_sha", lambda: "newhead0000000000000000000000000000000000")
-    changed = report_tool.update_rolling_report(report, report_path=report_path)
+    report_tool.update_rolling_report(report, report_path=report_path)
     text = report_path.read_text()
     assert "deadbeefcafebabe" in text
     assert "newhead0000000000000000000000000000000000" not in text
