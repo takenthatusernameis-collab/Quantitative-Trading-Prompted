@@ -95,7 +95,7 @@ def rolling_sharpe_series(
             series.append((dates[i], None))
             continue
         window_slice = arr[max(0, i - window + 1) : i + 1]
-        series.append((dates[i], annualized_sharpe(window_slice, periods_per_year)))
+        series.append((dates[i], annualized_sharpe(window_slice.tolist(), periods_per_year)))
     return series
 
 
