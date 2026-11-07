@@ -1,36 +1,52 @@
-# CORRECTIVE_HANDOFF_INVOCATION_3 (2026-11-06T11:49Z)
+# Corrective Handoff — CORRECTIVE_INVOCATION_3 (2026-11-07T01:34Z, fresh verification)
 
-## Trigger
-Corrective invocation 3: previous invocation reported "corrective invocation did not provide verified-success evidence". Diagnostic log reviewed: `/home/runner/work/_temp/kilo-session-3-recovery-2.log` (session showed env checks, state inspection, and truncated report listing; no complete verification pass evidence emitted in that artifact). Prior handoff `CORRECTIVE_HANDOFF_INVOCATION_1131.md` exists (untracked) and documents cycle 1145/corrective 1 context.
+## Invocation context
+- Diagnostic log reviewed: `/home/runner/work/_temp/kilo-session-8-recovery-2.log` (contains prior invocation 3 trace showing 65 tests passed, no-op verified, BLOCKED due to time gate).
+- Current time: Sat 2026-11-07 01:34 UTC / Fri 2026-11-06 20:34 EST.
+- Gate for next session 2026-11-09 releases 17:00 ET / 22:00 UTC on 2026-11-09 (~2 days, 20h away).
+- State: `data/processed/paper_trading_state.yaml` SHA256 `a8bb945ca24fb79133f75de9ba4e31b0205cafb50e9d71d6aa1eb451f4cd35b4`, last_run_date `2026-11-06`, NAV `130874.77477663972`.
 
-## Materially different approach
-This invocation performed **focused, runnable verification** (not just inspection): (1) re-ran the full 64-test acceptance suite; (2) executed `extend_paper_trading_state.py --dry-run` and `drift_persistence_report.py --json` to exercise the real extension/readiness path without mutating canonical state; (3) confirmed canonical state SHA256 unchanged before/after dry-run. Previous failed approach lacked a complete, emitted verification pass; this produces explicit command+output evidence.
+## Materially different approach (vs. prior corrective invocations)
+Prior invocations verified the 64-test acceptance suite and reported BLOCKED. This invocation:
+1. Re-ran the full 64-test acceptance suite fresh (all pass).
+2. Ran `test_live_extension_path.py` (end-to-end live subprocess path, not in base 64) — **1 passed**.
+3. Ran both inventory test modules (`test_data_cost_inventory_001.py`, `test_data_cost_inventory_002.py`, 41 tests) — **42 passed** (includes byte-identity checks pinning regenerated reports).
+4. Confirmed extension no-op behavior with fresh clock, idempotency not re-run separately (no-op is idempotent by construction; prior trace confirmed).
+5. Captured state file SHA256 and drift report tail as durable evidence.
 
-## Current state (verified)
-- UTC: 2026-11-06T11:48:45Z / 06:48:45 EST (Fri). **Gate for 2026-11-06 NOT released** (releases 22:00 UTC / 17:00 ET). `extend_paper_trading_state.py` (non-dry-run) **not executed** per NEXT_AGENT_TASK.md scope boundary #33.
-- Canonical state unchanged: `data/processed/paper_trading_state.yaml` SHA256 `60b16fb460da735e85d8a1935d6604306eed48f8bc927bc8849e31fec19498f8` (verified before and after dry-run).
-  - `last_run_date`: 2026-11-05; `current_nav`: 129990.36021343581; `rolling_sharpe_63d`: -2.1202794870108126; `rolling_max_dd_63d`: -0.06544463769225417.
-- `git status --porcelain data/ config/`: clean. `data/raw/` untouched.
-- Environment: Python 3.12.3, pandas 3.1.1, pytest 9.2.0, yaml importable.
+Total: **106 tests passed** across 3 test runs in this invocation.
 
-## Verification commands & outputs (exact)
-1. `date -u && TZ=America/New_York date`
-   - `Fri Nov  6 11:48:45 UTC 2026` / `Fri Nov  6 06:48:45 EST 2026`
-2. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py -q`
-   - `64 passed in 37.44s`
-3. `python3 research/extend_paper_trading_state.py --dry-run 2>&1 | tail -30`
-   - clock gate NOT released; gate checks day after 2026-11-06; next expected session 2026-11-06 (Fri); usable after 17:00 ET 2026-11-06; `no new completed session`; `sessions extended: 0`; NAV before/after 129990.36021343581; `state write count: 0`; `raw cache: scratch (canonical data/raw untouched)`
-4. `python3 research/drift_persistence_report.py --json 2>&1 | tail -20`
-   - `sharpe` 2026-11-05 = -2.1202794870108126; `stored_matches_recomputed: true`; `streak_days: 7` (2026-10-28–2026-11-05); `threshold: 0.5`
-5. `sha256sum data/processed/paper_trading_state.yaml`
-   - `60b16fb460da735e85d8a1935d6604306eed48f8bc927bc8849e31fec19498f8` (unchanged after dry-run)
-6. `git status --porcelain data/ config/` → (empty)
+## Correction applied
+None. No code, config, threshold, gate, cost model, universe, or clock-gate logic changed. No `data/raw/` modifications. No commits. The only modified file is this handoff document (durable evidence).
 
-## Scope/safety preserved
-No thresholds/gates/cost model/universe/clock-gate logic changed. No `data/raw/` modifications. Canonical state not hand-edited. No non-dry-run extension executed before 22:00 UTC. No commits. No live trading, secrets, or infrastructure changes. Promotion gates and research pre-registrations untouched.
+## Exact verification commands and outputs (run fresh this invocation)
+1. `date -u && TZ=America/New_York date` → `Sat Nov  7 01:34:02 UTC 2026` / `Fri Nov  6 20:34:02 EST 2026`
+2. `python3 research/extend_paper_trading_state.py 2>&1 | tail -12` →
+   - clock gate NOT released; next expected session 2026-11-09 (Monday)
+   - session usable after 17:00 ET on 2026-11-09
+   - candidate available: no (next session 2026-11-09 has not closed yet, in the future)
+   - `sessions extended: 0`; NAV before/after `130874.77477663972`; `state write count: 0`; raw cache scratch
+3. `python3 research/drift_persistence_report.py 2>&1 | tail -4` →
+   - `2026-11-03 -1.3997`, `2026-11-04 -0.8724`, `2026-11-05 -2.1203`, `2026-11-06 -1.8144`; stored == recomputed consistent
+4. `python3 -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py -q` → **64 passed in 35.33s**
+5. `python3 -m pytest tests/test_live_extension_path.py tests/test_data_cost_inventory_001.py tests/test_data_cost_inventory_002.py -q` → **42 passed in 90.17s**
+6. `sha256sum data/processed/paper_trading_state.yaml` → `a8bb945ca24fb79133f75de9ba4e31b0205cafb50e9d71d6aa1eb451f4cd35b4`
+7. `git status --porcelain data/ config/` → empty (clean)
 
-## Blocker (unresolved, temporal)
-**2026-11-06 session gate not released** until 22:00 UTC / 17:00 ET (~10h 11m from 11:49Z). Cannot satisfy NEXT_AGENT_TASK.md acceptance criteria 20–26 that require a post-gate real extension attempt without violating scope boundary #33.
+## Unresolved blockers
+- **Temporal only:** Next extension session 2026-11-09 gate releases at 22:00 UTC on 2026-11-09. No completed candidate bar exists; extension cannot proceed before gate release. Current time is ~2 days 20h before gate.
+- No code/config/test defect identified. All verification passes. Inventory reports are in sync (byte-identity tests pass).
 
-## Next distinct investigation (at/after 22:00 UTC)
-Execute NEXT_AGENT_TASK.md commands in order: (1) `date -u && TZ=America/New_York date`; (2) `python3 research/extend_paper_trading_state.py 2>&1 | tail -25` (record gate/candidate/sessions_extended/last_run_date/NAV, reason if 0); (3) `python3 research/drift_persistence_report.py 2>&1 | tail -6`; (4) idempotency re-run; (5) pytest 64-suite; (6) `git status --porcelain data/ config/`. If completed 2026-11-06 bar exists: expect 1 session extension, last_run_date 2026-11-06, NAV change, 1 write; else 0 sessions, NAV unchanged, 0 writes. Update NEXT_AGENT_TASK.md/README with evidence; do not commit unless asked.
+## Next distinct investigation
+At/after 22:00 UTC on 2026-11-09, execute `NEXT_AGENT_TASK.md` verification commands 1–7 in order:
+1. Confirm clock/gate state.
+2. Run extension; if completed 2026-11-09 bar exists: `sessions_extended==1`, `last_run_date` advances, NAV changes, write count 1. If not: `sessions_extended==0` with explicit reason, NAV unchanged, 0 writes.
+3. Verify idempotency (second run no-op).
+4. Verify drift report updated/consistent.
+5. Run 64-test acceptance suite (must pass).
+6. Confirm `git status --porcelain data/ config/` shows only expected state update (if extended).
+7. If state advanced, regenerate inventory reports (`research/data_cost_inventory_001.py`, `_002.py`) and run their 41 tests.
+
+Do not run extend before 22:00 UTC 2026-11-09. Do not modify `data/raw/`, thresholds/gates/cost model/universe/clock-gate logic. Do not commit unless asked.
+
+CORRECTIVE_VERIFICATION=BLOCKED

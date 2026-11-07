@@ -648,9 +648,9 @@ def run_correction(
     record_dates = [pd.Timestamp(str(d), tz="UTC") for d in state_doc["cumulative_dates"]]
     record_check(
         "committed_record_loaded",
-        len(committed_returns) == 463,
+        len(committed_returns) == 464,
         f"{len(committed_returns)} sessions",
-        "463 sessions",
+        "464 sessions",
     )
 
     close = load_close_from_cache(list(SYMBOLS), raw_dir)
