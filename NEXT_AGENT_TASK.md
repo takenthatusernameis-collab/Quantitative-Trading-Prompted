@@ -1,11 +1,12 @@
 # NEXT_AGENT_TASK — Paper-trading extension gate check (post-2026-11-09, next session)
 
 ## Context
-- Last processed session: 2026-11-06 (NAV 130874.77477663972). Extension to 2026-11-09 is time-gated: gate releases at 17:00 ET / 22:00 UTC on 2026-11-09.
+- Last processed session: 2026-11-06, NAV 130874.77477663972 (data/processed/paper_trading_state.yaml, SHA256 a8bb945ca24fb79133f75de9ba4e31b0205cafb50e9d71d6aa1eb451f4cd35b4).
 - Rolling 63d Sharpe at 2026-11-06: -1.8144.
-- git status --porcelain data/ config/ clean as of 2026-11-07 03:28 UTC (corrective invocation 21).
-- Corrective invocation 21 (2026-11-07 03:27–03:28 UTC / 2026-11-06 22:27–22:28 EST): recovery-20 log showed external model gate error (`Sign up for free...`, exit 1), no repo defect. Verified bounded pre-gate no-op: `python3 research/extend_paper_trading_state.py` (x2, idempotent) → clock gate NOT released (gate checks day after 2026-11-07), candidate 2026-11-09 not closed (future), `sessions extended: 0`, NAV before/after `130874.77477663972`, `state write count: 0`, raw cache scratch. `python3 research/drift_persistence_report.py` tail: 2026-11-05 -2.1203, 2026-11-06 -1.8144. Pytest: 64 passed (core 6 modules, 35.59s) + 41 passed (inventory 001/002, 79.03s). `git status --porcelain data/ config/` empty. No `data/`, `config/`, `data/raw/`, threshold/gate/cost/universe/clock-gate changes.
-- Cycle 1147 correction (durable): regenerated `research/reports/data_cost_inventory_001.md` and `_002.md` from their canonical tools; they now report 1856 files / 4640 rows / last 2026-11-06 (were stale at 1852 / 4630 / 2026-11-05). Both inventory test modules (41 tests) pass and pin byte-identity of the regenerated reports.
+- git status --porcelain data/ config/ clean as of 2026-11-07 05:23 UTC (invocation 1148).
+- Invocation 1148 (2026-11-07 05:21–05:23 UTC): fixed a deterministic environment blocker (system Python 3.14.4 had only PyYAML; installed pandas 3.1.1, numpy 2.5.4, pytest 9.2.0, yfinance 1.8.0, arch 8.0.0, statsmodels 0.15.0, scipy 1.18.1, pyarrow 26.0.1, python-dotenv). Ran the full acceptance sequence: extend → gate NOT released (next session 2026-11-09, not closed), sessions_extended 0, NAV unchanged, 0 writes; drift report consistent (2026-11-06 -1.8144); idempotent second run; **pytest 64 passed in 28.69s**; git status data/ config/ clean. No code/data/config/gate/cost/universe/threshold/raw changes.
+- Supervisor recommendation 42326826034-attempt-1-review-0002-bfbd92bab48e (cycle 0002): accepted and verified — missing optional deps were the root cause of the collection abort; now resolved environment-only.
+- Extension to 2026-11-09 is time-gated: gate releases at 17:00 ET / 22:00 UTC on 2026-11-09.
 
 ## Objective
 At/after 22:00 UTC on 2026-11-09, run the real extension and persistence checks. Extend by at most one session to 2026-11-09 only if a completed bar exists; otherwise record sessions_extended==0 with explicit reason and keep state unchanged.
@@ -35,4 +36,4 @@ At/after 22:00 UTC on 2026-11-09, run the real extension and persistence checks.
 6. git status --porcelain data/ config/
 7. (only if state advanced) python3 research/data_cost_inventory_001.py && python3 research/data_cost_inventory_002.py && python -m pytest tests/test_data_cost_inventory_001.py tests/test_data_cost_inventory_002.py -q
 
-(End of file - total 33 lines)
+(End of file - total 38 lines)
