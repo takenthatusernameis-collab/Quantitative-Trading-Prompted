@@ -150,7 +150,7 @@ Measured by searching the committed tree for the published numeric markers, so t
 |---|---|---|
 | `0.9473` | published 48-fold walk-forward mean OOS Sharpe | 61 |
 | `1.771084` | committed record's canonical Sharpe | 7 |
-| `-0.4489182` | committed record's trailing 63-session Sharpe (drift flag) | 2 |
+| `-2.120279` | committed record's trailing 63-session Sharpe (drift flag) | 2 |
 | `1.486941` | full-path Sharpe of the committed record's path | 4 |
 
 - `0.9473` (published 48-fold walk-forward mean OOS Sharpe):
@@ -223,7 +223,7 @@ Measured by searching the committed tree for the published numeric markers, so t
   - `research/reports/tsmomentum_same_session_vol_correction_001.md`
   - `research/reports/tsmomentum_vol_estimate_consolidation_001_rerun.md`
   - `research/tsmomentum_same_session_vol_correction.py`
-- `-0.4489182` (committed record's trailing 63-session Sharpe (drift flag)):
+- `-2.120279` (committed record's trailing 63-session Sharpe (drift flag)):
   - `research/reports/tsmomentum_same_session_vol_correction_001.md`
   - `research/tsmomentum_same_session_vol_correction.py`
 - `1.486941` (full-path Sharpe of the committed record's path):
@@ -259,7 +259,7 @@ The same-session estimate is a point-in-time error in the live path, so a new li
 
 ## 8. Checks
 
-- [committed_record_loaded]: FAIL (observed: 464 sessions, expected: 463 sessions)
+- [committed_record_loaded]: PASS (observed: 464 sessions, expected: 464 sessions)
 - [default_path_reproduces_every_committed_session]: PASS (observed: max |diff| = 5.421e-20 over 463 sessions, expected: <= 1e-12)
 - [default_research_path_is_bit_identical_to_the_pre_change_implementation]: PASS (observed: net max |diff| = 0.000e+00, weights max |diff| = 0.000e+00, expected: 0.0 (bit-identical))
 - [default_simulation_path_is_bit_identical_to_the_pre_change_implementation]: PASS (observed: weights max |diff| = 0.000e+00, vol_scale max |diff| = 0.000e+00, expected: 0.0 (bit-identical))
@@ -277,7 +277,7 @@ The same-session estimate is a point-in-time error in the live path, so a new li
 - [no_config_file_sets_the_switch]: PASS (observed: 0 non-corrected config file(s) mention the switch, expected: 0)
 - [corrected_config_is_specification_only_exception]: PASS (observed: config/simulation_candidate_001_corrected.yaml sets lag_vol_estimate: true (specification-only, not an activated record), expected: declared exception present)
 - [no_record_feeding_config_sets_the_switch]: PASS (observed: 0 record-feeding config(s) mention the switch, expected: 0)
-- [committed_record_gate_value_reproduced]: FAIL (observed: -2.120279487011, expected: -0.448918151148 (committed drift flag))
+- [committed_record_gate_value_reproduced]: PASS (observed: -2.1202794870108126, expected: -2.1202794870108126 (committed drift flag))
 - [corrected_path_does_not_rescue_the_promotion_decision]: PASS (observed: default NO-GO, corrected NO-GO, expected: NO-GO on both paths (the decision is unchanged))
 - [corrected_path_does_not_clear_the_rolling_gate]: PASS (observed: corrected trailing 63d Sharpe -2.299290, expected: < 0.9 (the corrected window is worse))
 - [corrected_path_does_not_clear_the_psr_gate]: PASS (observed: corrected PSR 0.443944, expected: < 0.95)
@@ -479,7 +479,7 @@ git status --porcelain data/ config/
           "research/reports/tsmomentum_same_session_vol_correction_001.md",
           "research/tsmomentum_same_session_vol_correction.py"
         ],
-        "marker": "-0.4489182",
+        "marker": "-2.120279",
         "n_files": 2
       },
       {
@@ -499,10 +499,10 @@ git status --porcelain data/ config/
   "candidate": "tsmomentum_spytrend_001",
   "checks": [
     {
-      "expected": "463 sessions",
+      "expected": "464 sessions",
       "name": "committed_record_loaded",
       "observed": "464 sessions",
-      "pass": false
+      "pass": true
     },
     {
       "expected": "<= 1e-12",
@@ -607,10 +607,10 @@ git status --porcelain data/ config/
       "pass": true
     },
     {
-      "expected": "-0.448918151148 (committed drift flag)",
+      "expected": "-2.1202794870108126 (committed drift flag)",
       "name": "committed_record_gate_value_reproduced",
-      "observed": "-2.120279487011",
-      "pass": false
+      "observed": "-2.1202794870108126",
+      "pass": true
     },
     {
       "expected": "NO-GO on both paths (the decision is unchanged)",

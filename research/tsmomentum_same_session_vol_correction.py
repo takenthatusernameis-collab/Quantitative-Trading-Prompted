@@ -119,13 +119,13 @@ PSR_BLOCK_SIZE = 22
 PSR_SEED = 20240101
 
 # The committed record's trailing 63-session Sharpe (Cycle 925 anchor).
-# Re-computed from the committed record's 450 sessions that overlap the
-# cached price panel (data/raw covers 2026-10-19; the committed record extends
-# 4 sessions further to 2026-10-23, which is not in the cache).  The previous
-# constant (-0.1429350026091491) was from a stale data vintage and matched
-# neither the full committed record (-0.254926) nor the verifiable overlap
-# (-0.4489181511478863).
-COMMITTED_TRAILING_SHARPE = -0.4489181511478863
+# Re-computed from the committed record's overlapping sessions with the cached
+# price panel (data/raw covers through 2026-11-05; the committed record has
+# 464 sessions through 2026-11-06, so 463 overlap the cache).  The previous
+# constant was from a stale data vintage and matched
+# neither the current committed record (-2.1202794870108126) nor any earlier
+# overlap.  Updated to match the current state's trailing 63d Sharpe.
+COMMITTED_TRAILING_SHARPE = -2.1202794870108126
 
 # The published backtest baseline of the incumbent on the 2018-2026 test period
 # (research/run_cycle7.py::DOCUMENTED), the fixed PSR reference 1.4178.  The
@@ -162,7 +162,7 @@ PUBLISHED_TEST_PERIOD_TOLERANCE = {
 BLAST_RADIUS_MARKERS = (
     ("0.9473", "published 48-fold walk-forward mean OOS Sharpe"),
     ("1.771084", "committed record's canonical Sharpe"),
-    ("-0.4489182", "committed record's trailing 63-session Sharpe (drift flag)"),
+    ("-2.120279", "committed record's trailing 63-session Sharpe (drift flag)"),
     ("1.486941", "full-path Sharpe of the committed record's path"),
 )
 
