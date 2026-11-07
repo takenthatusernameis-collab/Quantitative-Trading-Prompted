@@ -448,7 +448,7 @@ def load_cached_close_frame(
         frames[symbol] = df["Close"]
 
     all_index = pd.DatetimeIndex(sorted(set().union(*[s.index for s in frames.values()])))
-    all_index = all_index[all_index.weekday < 5]
+    all_index = all_index[all_index.day_of_week < 5]
     out = pd.DataFrame(index=all_index, columns=list(frames.keys()), dtype=float)
     for symbol, series in frames.items():
         out[symbol] = series.reindex(all_index).ffill()

@@ -156,7 +156,7 @@ def aligned_close_from_cache(universe: list[str]) -> pd.DataFrame:
             fail(f"missing raw cache file: {path}")
         frames[symbol] = load_symbol_frame(path)
     all_index = pd.DatetimeIndex(sorted(set().union(*[f.index for f in frames.values()])))
-    all_index = all_index[all_index.weekday < 5]
+    all_index = all_index[all_index.day_of_week < 5]
     close = pd.DataFrame(index=all_index, columns=list(frames.keys()), dtype=float)
     for symbol, frame in frames.items():
         close[symbol] = frame["Close"].reindex(all_index).ffill()

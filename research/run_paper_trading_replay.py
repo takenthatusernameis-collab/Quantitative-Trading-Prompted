@@ -51,7 +51,7 @@ def main() -> None:
     # Get trading days from 2025-01-01 to latest available (captures 2025 regime flips)
     start_replay_date = "2025-01-01"
     replay_dates = all_market_data.index[(all_market_data.index >= start_replay_date) & (all_market_data.index <= all_market_data.index.max())]
-    replay_dates = replay_dates[replay_dates.weekday < 5]  # Ensure weekdays only
+    replay_dates = replay_dates[replay_dates.day_of_week < 5]  # Ensure weekdays only
     print(f"Replay period: {start_replay_date} to {end_date} ({len(replay_dates)} trading days)")
 
     # Create fresh state (reset for clean replay)

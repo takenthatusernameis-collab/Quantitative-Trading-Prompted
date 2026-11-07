@@ -1,3 +1,11 @@
+## Cycle 1156: pandas deprecation fix (2026-11-07 09:53 UTC, session 20 inv 1) — **DURABLE FIX APPLIED**
+
+- **UTC 2026-11-07T09:53Z (04:53 EST Sat).** Gate for next session 2026-11-09 **not released** (releases 17:00 ET / 22:00 UTC 2026-11-09). Clock gate blocks paper-trading extension until Monday. No writes to `data/` or `config/`; `data/raw/` untouched; state SHA256 unchanged `a8bb945ca24fb79133f75de9ba4e31b0205cafb50e9d71d6aa1eb451f4cd35b4`.
+- **Durable fix:** Replaced deprecated `DatetimeIndex.weekday` → `day_of_week` in 7 research scripts: `tsmomentum_walkforward_embargo_audit.py:348`, `tsmomentum_sma175_candidate_eval.py:91`, `run_paper_trading_replay.py:54`, `tsmomentum_sma175_promotion_gate_eval.py:124`, `tsmomentum_sma175_validation_audit.py:130`, `cost_admissibility_screen.py:451`, `csmomentum_common_inception_audit.py:159`. `extend_paper_trading_state.py:77` uses `pd.Timestamp.weekday()` (Python method, not deprecated) — left unchanged.
+- **Verification (fresh):** `test_cost_admissibility_screen.py` → **40 passed**; `test_csmomentum_common_inception_audit.py` → **13 passed**; `test_cost_gate_break_even_audit.py` → **9 passed**; `test_csmomentum_plateau_gate_eval.py` + `test_tsmomentum_walkforward_embargo_audit.py` → **35 passed**. `grep` confirms zero remaining `DatetimeIndex.weekday` in `research/`.
+- **Supervisor:** disposition `verified` for `42326826034-attempt-1-review-0003-190561f60068`.
+- **Next bounded task:** at/after 22:00 UTC 2026-11-09, run NEXT_AGENT_TASK.md commands 1–7; extend by ≤1 session to 2026-11-09 only if a completed bar exists, else `sessions_extended==0` with explicit reason.
+
 ## Cycle 1155: pre-gate verification (2026-11-07 09:31 UTC, session 19 inv 1) — **NO-OP VERIFIED**
 
 - **UTC 2026-11-07T09:31Z (04:31 EST Sat).** Gate for next session 2026-11-09 **not released** (releases 17:00 ET / 22:00 UTC 2026-11-09). State unchanged: `data/processed/paper_trading_state.yaml` SHA256 `a8bb945ca24fb79133f75de9ba4e31b0205cafb50e9d71d6aa1eb451f4cd35b4`, last_run_date `2026-11-06`, NAV `130874.77477663972`. No writes to `data/` or `config/`; `data/raw/` untouched.

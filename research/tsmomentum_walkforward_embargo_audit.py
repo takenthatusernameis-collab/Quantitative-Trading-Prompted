@@ -345,7 +345,7 @@ def load_close_from_cache(symbols: list[str], raw_dir: Path) -> pd.DataFrame:
         frames[symbol] = df.sort_index()
 
     all_index = pd.DatetimeIndex(sorted(set().union(*[f.index for f in frames.values()])))
-    all_index = all_index[all_index.weekday < 5]
+    all_index = all_index[all_index.day_of_week < 5]
     if len(all_index) == 0:
         fail("cached price files produced an empty calendar")
 
