@@ -3,9 +3,9 @@
 ## Context
 - Last processed session: 2026-11-06, NAV 130874.77477663972 (data/processed/paper_trading_state.yaml, SHA256 a8bb945ca24fb79133f75de9ba4e31b0205cafb50e9d71d6aa1eb451f4cd35b4).
 - Rolling 63d Sharpe at 2026-11-06: -1.8144.
-- git status --porcelain data/ config/ clean as of 2026-11-07 06:22 UTC (this invocation).
-- Invocation 1151 (2026-11-07 06:22 UTC, Sat 01:22 EST): gate for 2026-11-09 **NOT released** (releases 17:00 ET / 22:00 UTC 2026-11-09). `python3 research/extend_paper_trading_state.py` (x2) → gate NOT released, next expected session 2026-11-09 (Monday), candidate unavailable (next session has not closed yet / in the future), `sessions_extended 0`, NAV unchanged `130874.77477663972`, `state write count 0`, raw cache scratch, idempotent. `drift_persistence_report.py` tail consistent at 2026-11-06 `-1.8144`. `pytest` core 6 modules → **64 passed, 1 warning in 28.28s**. No writes to `data/` or `config/`; `data/raw/` untouched; no code/threshold/gate/cost/universe/clock-gate changes.
-- Prior invocations 1148–1150 also verified pre-gate no-op; deps present in this environment.
+- git status --porcelain data/ config/ clean as of 2026-11-07 06:25 UTC (this invocation).
+- Invocation 1151 (2026-11-07 06:25 UTC, Sat 01:25 EST): gate for 2026-11-09 **NOT released** (releases 17:00 ET / 22:00 UTC 2026-11-09). `python3 research/extend_paper_trading_state.py` (x2) → gate NOT released, next expected session 2026-11-09 (Monday), candidate unavailable (next session has not closed yet / in the future), `sessions_extended 0`, NAV unchanged `130874.77477663972`, `state write count 0`, raw cache scratch, idempotent. `drift_persistence_report.py` tail consistent at 2026-11-06 `-1.8144`. `pytest` core 6 modules → **64 passed, 1 warning in 26.39s**. No writes to `data/` or `config/`; `data/raw/` untouched; no code/threshold/gate/cost/universe/clock-gate changes.
+- Prior invocations 1145–1150 also verified pre-gate no-op; deps present in this environment.
 
 ## Objective
 At/after 22:00 UTC on 2026-11-09, run the real extension and persistence checks. Extend by at most one session to 2026-11-09 only if a completed bar exists; otherwise record sessions_extended==0 with explicit reason and keep state unchanged.
