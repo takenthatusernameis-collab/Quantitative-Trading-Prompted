@@ -243,6 +243,7 @@ def refresh(
             entry["would_append_dates"] = [
                 pd.Timestamp(ts).strftime("%Y-%m-%d") for ts in new_rows.index
             ]
+            total_appended += appended
         else:
             result = append_to_cache(raw_dir, symbol, new_rows)
             after_rows, after_max = result["after_rows"], result["after_max"]
