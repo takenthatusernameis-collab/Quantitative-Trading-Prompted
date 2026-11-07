@@ -5,7 +5,7 @@
 The C3 baseline was **already executed** (Cycle 13, `research/run_cycle13.py`) and its config-faithful gate table was published in Cycle 907; the candidate's label is unchanged. What was still open is the **last of the four pre-registered promotion gates**: the **parameter-plateau gate** (gate 4). This cycle evaluates it on the config-faithful month-end path, publishes the pre-registered 18-configuration grid on that path, and completes the multiple-testing record.
 
 - Candidate: `csmomentum_001` (pre-registered baseline 252/21/0.5)
-- Git rev: 9d610a9
+- Git rev: f88103f
 - Frozen config SHA-256: `296a619f794262d05f2b00f044fbab706b4dbf3429e3ac3302282a66aa67f57f`
 - Decision: **NO-GO** -- research label **Rejected/Failed**
 - Failed gates: wf_mean_oos_sharpe

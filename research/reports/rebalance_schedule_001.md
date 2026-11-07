@@ -100,7 +100,7 @@ selected. Adopting the shared implementation there is a separate, explicitly sco
 ## The incumbent path is untouched
 
 `run_backtest` was called with its default arguments on the incumbent's universe
-(2004-11-18 .. 2026-10-19, 8488 sessions). The incumbent's published
+(2004-11-18 .. 2026-11-05, 8501 sessions). The incumbent's published
 numbers are the numbers of the **reference sample** -- the committed raw cache truncated at
 `2026-10-16`, 8487 sessions -- because the engine's path is
 point-in-time (the weights at t use data up to t only), so truncating the return series
@@ -112,11 +112,11 @@ reproduces the published path exactly:
 | max drawdown | -0.6224126346564325 | -0.6224126346564325 |
 | PSR | 2.2219753177036448e-08 | 2.2219753177036448e-08 |
 
-The full sample (8488 sessions, through 2026-10-19) gives canonical Sharpe
-0.5657179297830458, max drawdown -0.6224126346564325 and PSR 1.6549061233035153e-08: the difference is the
+The full sample (8501 sessions, through 2026-11-05) gives canonical Sharpe
+0.5544866131202392, max drawdown -0.6224126346564325 and PSR 9.382315085066624e-09: the difference is the
 appended session(s) only, and it is why the reference sample -- not the full sample -- is the
 invariant that is asserted. The raw-cache fingerprint of the incumbent's universe at the time of
-this audit: SPY: rows=8488, last=2026-10-19, sha256=971d02284b9790df; QQQ: rows=6946, last=2026-10-19, sha256=71215972c77f917d; IWM: rows=6638, last=2026-10-19, sha256=5bd3985f67dd47ad; TLT: rows=6095, last=2026-10-19, sha256=f745d0921006c792; GLD: rows=5513, last=2026-10-19, sha256=5ca9683ee5f6af6e; EFA: rows=6323, last=2026-10-19, sha256=a77623de41bdf6d5; EEM: rows=5917, last=2026-10-19, sha256=922f0181be3ed98c.
+this audit: SPY: rows=8501, last=2026-11-05, sha256=e23d1cb44f361354; QQQ: rows=6959, last=2026-11-05, sha256=5b867704a6d2b876; IWM: rows=6651, last=2026-11-05, sha256=c16dd9c4a3ea1a58; TLT: rows=6108, last=2026-11-05, sha256=ee9b2f84d5cf1b19; GLD: rows=5526, last=2026-11-05, sha256=ad0cc279eb77ad66; EFA: rows=6336, last=2026-11-05, sha256=875eecce9ab7c80e; EEM: rows=5930, last=2026-11-05, sha256=0630300350fe56bc.
 
 The code-level decision stays **NO-GO** with failed gates `['full_period_sharpe', 'rolling_63d_sharpe', 'max_drawdown', 'psr']`.
 
@@ -148,7 +148,7 @@ This cycle's conclusions are wrong if any of the following holds:
 | `no_position_before_the_first_valid_signal` | PASS | the first valid momentum cross-section is 2000-01-24; no position exists before 2000-02-01. |
 | `simulation_m_branch_is_calendar_based` | PASS | the simulation 'M' branch fires on 235 of 6991 sessions and has no rebalance at all in 100 of 335 months. |
 | `simulation_m_never_rebalances_on_the_same_session_as_the_shared_schedule` | PASS | the two schedules change the portfolio on 0 common sessions (137 'M' branch sessions vs 175 shared-schedule sessions): the 'M' branch rebalances one session earlier, on the month's last session itself. |
-| `incumbent_default_path_unchanged` | PASS | incumbent default path on the 8487-session reference sample (through 2026-10-16): canonical Sharpe 0.5646255767978904 (committed 0.5646255767978904), max DD -0.6224126346564325 (committed -0.6224126346564325), PSR 2.2219753177036448e-08 (committed 2.2219753177036448e-08); full sample (8488 sessions, through 2026-10-19): Sharpe 0.5657179297830458, max DD -0.6224126346564325, PSR 1.6549061233035153e-08. |
+| `incumbent_default_path_unchanged` | PASS | incumbent default path on the 8487-session reference sample (through 2026-10-16): canonical Sharpe 0.5646255767978904 (committed 0.5646255767978904), max DD -0.6224126346564325 (committed -0.6224126346564325), PSR 2.2219753177036448e-08 (committed 2.2219753177036448e-08); full sample (8501 sessions, through 2026-11-05): Sharpe 0.5544866131202392, max DD -0.6224126346564325, PSR 9.382315085066624e-09. |
 | `raw_cache_unchanged` | PASS | the raw cache is byte-identical. |
 
 ## Reproduction

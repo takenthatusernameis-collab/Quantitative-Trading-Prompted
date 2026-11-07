@@ -47,7 +47,7 @@ four candidates are alternatives, not trials of one hypothesis.
 
 ### 1. The inventory that the scores rest on
 
-**Data available** (1907 files under `data/`, 19 configuration files under `config/`, all read-only).
+**Data available** (1911 files under `data/`, 19 configuration files under `config/`, all read-only).
 
 | Data class | Available in the cache | Consequence for this shortlist |
 |---|---|---|

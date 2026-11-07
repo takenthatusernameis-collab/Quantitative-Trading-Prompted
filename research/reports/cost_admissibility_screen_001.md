@@ -1,6 +1,6 @@
 # Cost-Admissibility Screen (cost_admissibility_screen_001, Cycle 881; extended in Cycle 882)
 
-**Generated:** 2026-10-20 | **code revision:** 26ed1c7
+**Generated:** 2026-11-07 | **code revision:** f88103f
 **Tool:** `research/cost_admissibility_screen.py` (read-only, deterministic, exit 0 on `OVERALL: PASS`)
 **Cost model:** the repository's flat model, `get_cost_params()` = 1 bp commission + 2 bp slippage
 = **3.0 bp per unit of weight change**; sensitivity rows 3 / 5 / 10 bp per unit.
@@ -190,7 +190,7 @@ re-tuned.
 | Gross signal surplus vs the requirement | -5.9642% |
 | **Break-even cost per unit (net annualized return = 0)** | **1.7385 bp/unit** |
 | Cost per unit at which the net WF Sharpe equals the same-fold benchmark's | 0.2912 bp/unit |
-| Cost per unit at which the net full-window canonical Sharpe equals the benchmark's | 0.7806 bp/unit |
+| Cost per unit at which the net full-window canonical Sharpe equals the benchmark's | 0.8108 bp/unit |
 | WF mean OOS Sharpe (3 bp/unit) | -0.599718 |
 | WF mean OOS Sharpe, canonical scale (3 bp/unit) | -0.408532 |
 | Benchmark WF mean OOS Sharpe (3 bp/unit, same folds) | 0.844696 |
@@ -229,7 +229,7 @@ Notes: none.
 | Gross signal surplus vs the requirement | +2.0087% |
 | **Break-even cost per unit (net annualized return = 0)** | **11.1639 bp/unit** |
 | Cost per unit at which the net WF Sharpe equals the same-fold benchmark's | -22.6852 bp/unit |
-| Cost per unit at which the net full-window canonical Sharpe equals the benchmark's | -4.9885 bp/unit |
+| Cost per unit at which the net full-window canonical Sharpe equals the benchmark's | -14.0625 bp/unit |
 | WF mean OOS Sharpe (3 bp/unit) | -0.025432 |
 | WF mean OOS Sharpe, canonical scale (3 bp/unit) | 0.260782 |
 | Benchmark WF mean OOS Sharpe (3 bp/unit, same folds) | 0.844696 |
@@ -268,7 +268,7 @@ Notes: none.
 | Gross signal surplus vs the requirement | +13.5175% |
 | **Break-even cost per unit (net annualized return = 0)** | **106.7540 bp/unit** |
 | Cost per unit at which the net WF Sharpe equals the same-fold benchmark's | 32.3052 bp/unit |
-| Cost per unit at which the net full-window canonical Sharpe equals the benchmark's | 72.1446 bp/unit |
+| Cost per unit at which the net full-window canonical Sharpe equals the benchmark's | 71.3379 bp/unit |
 | WF mean OOS Sharpe (3 bp/unit) | 0.928608 |
 | WF mean OOS Sharpe, canonical scale (3 bp/unit) | 1.499856 |
 | Benchmark WF mean OOS Sharpe (3 bp/unit, same folds) | 0.705721 |
@@ -307,7 +307,7 @@ Notes: none.
 | Gross signal surplus vs the requirement | +9.3687% |
 | **Break-even cost per unit (net annualized return = 0)** | **402.3209 bp/unit** |
 | Cost per unit at which the net WF Sharpe equals the same-fold benchmark's | -5.3347 bp/unit |
-| Cost per unit at which the net full-window canonical Sharpe equals the benchmark's | 112.2549 bp/unit |
+| Cost per unit at which the net full-window canonical Sharpe equals the benchmark's | 80.4686 bp/unit |
 | WF mean OOS Sharpe (3 bp/unit) | 0.697524 |
 | WF mean OOS Sharpe, canonical scale (3 bp/unit) | 0.840389 |
 | Benchmark WF mean OOS Sharpe (3 bp/unit, same folds) | 0.714520 |
@@ -346,7 +346,7 @@ Notes: The trade-count and per-fold turnover convention of the Cycle 871 record 
 | Gross signal surplus vs the requirement | +7.1262% |
 | **Break-even cost per unit (net annualized return = 0)** | **231.7102 bp/unit** |
 | Cost per unit at which the net WF Sharpe equals the same-fold benchmark's | -31.1587 bp/unit |
-| Cost per unit at which the net full-window canonical Sharpe equals the benchmark's | 5.2023 bp/unit |
+| Cost per unit at which the net full-window canonical Sharpe equals the benchmark's | 4.2328 bp/unit |
 | WF mean OOS Sharpe (3 bp/unit) | 0.709767 |
 | WF mean OOS Sharpe, canonical scale (3 bp/unit) | 0.847243 |
 | Benchmark WF mean OOS Sharpe (3 bp/unit, same folds) | 0.781687 |
@@ -385,7 +385,7 @@ Notes: The trade-count convention of the Cycle 869 record (counted from the turn
 | Gross signal surplus vs the requirement | +6.8112% |
 | **Break-even cost per unit (net annualized return = 0)** | **180.2653 bp/unit** |
 | Cost per unit at which the net WF Sharpe equals the same-fold benchmark's | -86.1521 bp/unit |
-| Cost per unit at which the net full-window canonical Sharpe equals the benchmark's | 41.9769 bp/unit |
+| Cost per unit at which the net full-window canonical Sharpe equals the benchmark's | 3.1245 bp/unit |
 | WF mean OOS Sharpe (3 bp/unit) | 0.263566 |
 | WF mean OOS Sharpe, canonical scale (3 bp/unit) | 0.460847 |
 | Benchmark WF mean OOS Sharpe (3 bp/unit, same folds) | 0.644000 |
@@ -424,7 +424,7 @@ Notes: The trade-count and per-fold turnover convention of the Cycle 871 record 
 | Gross signal surplus vs the requirement | +8.6908% |
 | **Break-even cost per unit (net annualized return = 0)** | **69.1853 bp/unit** |
 | Cost per unit at which the net WF Sharpe equals the same-fold benchmark's | 17.4734 bp/unit |
-| Cost per unit at which the net full-window canonical Sharpe equals the benchmark's | 60.7678 bp/unit |
+| Cost per unit at which the net full-window canonical Sharpe equals the benchmark's | 55.6284 bp/unit |
 | WF mean OOS Sharpe (3 bp/unit) | 4.499528 |
 | WF mean OOS Sharpe, canonical scale (3 bp/unit) | 9.541725 |
 | Benchmark WF mean OOS Sharpe (3 bp/unit, same folds) | 0.432100 |
@@ -640,6 +640,6 @@ has an edge.
 | `tsmomentum_spytrend_001_reproduces_test_period_Sharpe_2018-2026` | PASS | published +1.417800 vs re-derived +1.407770 (abs diff 1.003e-02 <= 2e-02). |
 | `benchmark_walk_forward_sharpe_is_cost_invariant` | PASS | the close-to-close benchmark's walk-forward Sharpe is the same at 3 bp/unit and at 10 bp/unit for every candidate (its only turnover is the initial purchase, which sits before the first test window), so the benchmark-parity cost compares the candidate and the benchmark at the same cost level on the same folds. |
 | `screen_is_deterministic` | PASS | re-running the screen on the same inputs reproduces the annual turnover, the gross annualized signal, the minimum required gross signal and the WF mean OOS Sharpe bit-for-bit. |
-| `no_file_under_data_or_config_changed` | PASS | the SHA-256 fingerprint of all 1866 files under data/ and config/ is identical before and after the run. |
+| `no_file_under_data_or_config_changed` | PASS | the SHA-256 fingerprint of all 1930 files under data/ and config/ is identical before and after the run. |
 
 **OVERALL: PASS** (50/50 checks passed)

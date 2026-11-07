@@ -351,8 +351,8 @@ This cycle's conclusions are wrong if any of the following holds:
 
 | Check | Result | Detail |
 |---|---|---|
-| `csmomentum_legacy_reproduces_committed_weights` | PASS | max abs(legacy weights - data/processed/weights_csmomentum_001.parquet) = 0.000e+00 (tolerance 1e-12) over 8482 sessions. |
-| `csmomentum_legacy_net_returns_match_committed_simulation` | PASS | max abs(legacy net return - committed simulation) = 1.388e-17 (tolerance 1e-12); 0 of 8482 sessions differ. |
+| `csmomentum_legacy_reproduces_committed_weights` | PASS | max abs(legacy weights - data/processed/weights_csmomentum_001.parquet) = 0.000e+00 (tolerance 1e-12) over 8481 sessions. |
+| `csmomentum_legacy_net_returns_match_committed_simulation` | PASS | max abs(legacy net return - committed simulation) = 1.388e-17 (tolerance 1e-12); 0 of 8481 sessions differ. |
 | `csmomentum_legacy_reproduces_published_calendar_record` | PASS | the legacy path reproduces the test-period metrics of research/experiments/csmomentum_baseline_wf_001.md exactly |
 | `csmomentum_legacy_reproduces_published_walkforward` | PASS | the legacy path reproduces the walk-forward block of research/experiments/csmomentum_baseline_wf_001.md (folds 48, mean OOS Sharpe 0.6868, pooled trades 313). |
 | `csmomentum_001_experiment_001_is_the_daily_rerank_path` | PASS | the daily re-rank path reproduces research/experiments/csmomentum_001_experiment_001.md (full sample Sharpe 0.4496, test Sharpe 0.5652, 1781 trade days); the legacy calendar path does NOT. |

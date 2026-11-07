@@ -14,7 +14,7 @@
 - Pre-registered baseline: lookback 252, skip 21, top_fraction 0.5 (frozen in `config/csmomentum_candidate_001.yaml`, SHA-256 `296a619f794262d05f2b00f044fbab706b4dbf3429e3ac3302282a66aa67f57f`).
 - Pre-registered grid: 18 unique combinations (3 lookbacks x 2 skips x 3 top fractions); pre-registered trial count 27 (disclosed mislabel).
 - Trials: 18 configurations, 1 decision subject.
-- Code revision: 9d610a9
+- Code revision: f88103f
 
 ## Results
 
