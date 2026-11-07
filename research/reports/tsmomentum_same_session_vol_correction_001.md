@@ -9,7 +9,7 @@
 - Switch: `lag_vol_estimate` (default **off**), available in the shared risk helpers, the simulation engine and the published research path.
 - Record on the corrected path: canonical Sharpe 1.494563 -> 1.318898, trailing 63-session Sharpe -2.120279 -> -2.299290, PSR vs 1.4178 0.543574 -> 0.443944.
 - Decision: **unchanged** -- NO-GO on the published path and NO-GO on the corrected path (failed gates: rolling_63d_sharpe, psr).
-- Read-only: `data/` and `config/` byte-identical before and after the run (**yes**); no committed artifact modified (**yes**); the published walk-forward record and the committed paper-trading state are **not** overwritten.
+- Read-only: `data/` and `config/` byte-identical before and after the run (**yes**); no committed artifact modified (**NO**); the published walk-forward record and the committed paper-trading state are **not** overwritten.
 - Data source: committed parquet cache in `data/raw/` and the committed paper-trading state; the fetcher is never called.
 - No gate, threshold, universe, cost model, Sharpe convention, parameter, hypothesis or drift flag is changed by this tool, and no candidate is promoted, re-fit or re-ranked.
 
@@ -290,7 +290,7 @@ The same-session estimate is a point-in-time error in the live path, so a new li
 - [published_test_period_baseline_reproduced]: PASS (observed: Sharpe 1.417752, max DD -0.077940, trades 1196, expected: the 8 documented values of research/run_cycle7.py::DOCUMENTED on the 2026-10-09 vintage (mismatching: none))
 - [data_unchanged]: PASS
 - [config_unchanged]: PASS
-- [committed_artifacts_unchanged]: PASS
+- [committed_artifacts_unchanged]: FAIL
 
 ## 9. Reproduction commands
 
@@ -668,7 +668,7 @@ git status --porcelain data/ config/
       "expected": "",
       "name": "committed_artifacts_unchanged",
       "observed": "",
-      "pass": true
+      "pass": false
     }
   ],
   "cycle": "926",
@@ -688,9 +688,9 @@ git status --porcelain data/ config/
     "recommendation": "adopt_only_for_new_live_paper_trading_records"
   },
   "incumbent_verdict": "Credible Candidate (unchanged); promotion decision NO-GO (unchanged)",
-  "overall": "PASS",
+  "overall": "FAIL",
   "read_only": {
-    "committed_artifacts_unchanged": true,
+    "committed_artifacts_unchanged": false,
     "config_unchanged": true,
     "data_unchanged": true
   },
