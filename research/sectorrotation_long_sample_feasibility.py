@@ -1159,7 +1159,6 @@ def main() -> int:
         f.write("| Check | Pass | Detail |\n|---|---|---|\n")
         for c in checks:
             f.write(f"| {c['check']} | {c['pass']} | {c['detail']} |\n")
-        f.write("\n")
 
     n_pass = sum(1 for c in checks if c["pass"])
     overall = "PASS" if n_pass == len(checks) else "FAIL"
