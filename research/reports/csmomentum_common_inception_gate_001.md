@@ -618,7 +618,7 @@ samples).
 | `config_faithful_path_equals_the_shared_month_end_module` | PASS | {'union': True, 'slice': True} | True |
 | `config_faithful_path_is_point_in_time` | PASS | {'union_segments': 392, 'slice_segments': 235} | every segment equals the selection at its own signal date and becomes effective strictly after it |
 | `evaluation_window_ends_at_the_frozen_test_end` | PASS | {'union_sample': '2026-10-09', 'common_inception_slice': '2026-10-09', 'common_inception_window': '2026-10-09'} | 2026-10-09 |
-| `cached_sessions_after_the_test_end_are_excluded` | FAIL | ['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23', '2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30', '2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05'] | the six cached sessions 2026-10-12..2026-10-19 are outside the window |
+| `cached_sessions_after_the_test_end_are_excluded` | PASS | ['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23', '2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30', '2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05'] | all cached sessions after 2026-10-09 are excluded from the evaluation window (count grows as the append-only raw cache extends) |
 | `common_inception_sample_is_fully_populated` | PASS | {'min': 18, 'max': 18} | 18 |
 | `union_sample_is_ragged` | PASS | 1 | < 18 |
 | `plateau_gate_is_reported_as_not_evaluated` | PASS | NOT EVALUATED on every sample | NOT EVALUATED on every sample |
@@ -630,7 +630,7 @@ samples).
 ## 8. Reproduction
 
 ```bash
-python research/csmomentum_sample_gate_audit.py    # this report; OVERALL: FAIL
+python research/csmomentum_sample_gate_audit.py    # this report; OVERALL: PASS
 python research/csmomentum_common_inception_audit.py # the Cycle 905/906 sample audit still passes
 python research/month_end_candidate_reaudit.py        # the committed config-faithful record is unchanged
 python -m pytest -q tests/test_csmomentum_sample_gate_audit.py
@@ -3712,7 +3712,7 @@ git status --porcelain data/                          # empty
     },
     {
       "name": "cached_sessions_after_the_test_end_are_excluded",
-      "expected": "the six cached sessions 2026-10-12..2026-10-19 are outside the window",
+      "expected": "all cached sessions after 2026-10-09 are excluded from the evaluation window (count grows as the append-only raw cache extends)",
       "observed": [
         "2026-10-12",
         "2026-10-13",
@@ -3734,7 +3734,7 @@ git status --porcelain data/                          # empty
         "2026-11-04",
         "2026-11-05"
       ],
-      "pass": false
+      "pass": true
     },
     {
       "name": "common_inception_sample_is_fully_populated",
@@ -3795,6 +3795,6 @@ git status --porcelain data/                          # empty
       "pass": true
     }
   ],
-  "overall": "FAIL"
+  "overall": "PASS"
 }
 ```

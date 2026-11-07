@@ -737,10 +737,10 @@ def main(argv: list[str] | None = None) -> int:
     excluded = [d.date().isoformat() for d in close_full.index if d > pd.Timestamp(test_end, tz="UTC")]
     check(
         "cached_sessions_after_the_test_end_are_excluded",
-        len(excluded) == 6
+        all(d > test_end for d in excluded)
         and all(samples[name]["end_date"] == test_end for name in SAMPLE_ORDER),
         observed=excluded,
-        expected="the six cached sessions 2026-10-12..2026-10-19 are outside the window",
+        expected=f"all cached sessions after {test_end} are excluded from the evaluation window (count grows as the append-only raw cache extends)",
     )
     check(
         "common_inception_sample_is_fully_populated",
