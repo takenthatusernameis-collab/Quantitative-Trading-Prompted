@@ -11,7 +11,7 @@ Diagnose the `rolling_63d_sharpe` promotion-gate failure on the committed paper-
 
 ## Data
 
-- Committed paper-trading record: 463 sessions, 2025-01-02 .. 2026-11-05
+- Committed paper-trading record: 464 sessions, 2025-01-02 .. 2026-11-06
 - Price panel: committed parquet cache `data/raw/*.parquet` (cache-only; the fetcher is never called)
 - Universe: SPY, QQQ, IWM, TLT, GLD, EFA, EEM
 - Cost model: 1.0 bps commission + 2.0 bps slippage = 3.0 bps round-trip
@@ -26,10 +26,10 @@ Diagnose the `rolling_63d_sharpe` promotion-gate failure on the committed paper-
 
 ## Results
 
-- Trailing 63d Sharpe: **-2.120279** (gate 0.9, FAIL); production decision NO-GO (unchanged)
-- Rolling windows: 401; base rate 71.5711% (bootstrap 95% CI [57.3566%, 90.5299%]); current value at percentile 0.25%
-- Distribution: min -2.120279, p10 -0.211884, p25 0.518717, median 1.877372, p75 3.688758, max 6.144063
-- Current failing run: 19 window(s); last passing window ended 2026-10-09
+- Trailing 63d Sharpe: **-1.814422** (gate 0.9, FAIL); production decision NO-GO (unchanged)
+- Rolling windows: 402; base rate 71.3930% (bootstrap 95% CI [57.4627%, 90.2985%]); current value at percentile 0.50%
+- Distribution: min -2.120279, p10 -0.224490, p25 0.518017, median 1.875069, p75 3.674914, max 6.144063
+- Current failing run: 20 window(s); last passing window ended 2026-10-09
 - F1 calendar phase (published fold parity): eta^2 0.353830, permutation p 0.000100, bucket gap -2.919032 (bootstrap 95% CI [-4.506950, +1.061537])
 - F2 SPY trend state at the fold's test-window start: eta^2 0.000000, permutation p 1.000000, bucket gap not estimable (one bucket absent in the record period)
 - F3 SPY trailing 12-month return sign at the fold's test-window start: eta^2 0.000000, permutation p 1.000000, bucket gap not estimable (one bucket absent in the record period)
@@ -37,7 +37,7 @@ Diagnose the `rolling_63d_sharpe` promotion-gate failure on the committed paper-
 - Spearman(rolling Sharpe, spy_ret_12m) = -0.0065
 - Spearman(rolling Sharpe, spy_rv_63) = -0.3854
 - Spearman(rolling Sharpe, spy_sma_gap) = 0.4549
-- Spearman(rolling Sharpe, strategy_window_realised_vol) = -0.1290
+- Spearman(rolling Sharpe, strategy_window_realised_vol) = -0.1289
 - V0_baseline: trailing 63d -2.120279, record 1.494563, full path 1.470579, WF mean OOS 0.947307
 - V1_no_vol_target: trailing 63d -2.032203, record 1.063829, full path 1.322684, WF mean OOS 0.930602
 - V2_vol_estimate_lagged_1d: trailing 63d -2.299290, record 1.318898, full path 1.394376, WF mean OOS 1.318605
@@ -50,15 +50,15 @@ Diagnose the `rolling_63d_sharpe` promotion-gate failure on the committed paper-
 
 ## Verdict
 
-**1. The failing gate value is a tail state of the record's own rolling-window distribution, not a new level.** The trailing 63-session Sharpe -2.120279 sits at the 0.25% percentile of the 401 rolling windows the record has produced; the gate passes in 71.57% of them (bootstrap 95% CI [57.36%, 90.53%]). The current failing run covers 2026-10-12 .. 2026-11-05 (19 window(s)), and the record has produced longer failing runs before (the longest: 36 windows).
+**1. The failing gate value is a tail state of the record's own rolling-window distribution, not a new level.** The trailing 63-session Sharpe -1.814422 sits at the 0.50% percentile of the 402 rolling windows the record has produced; the gate passes in 71.39% of them (bootstrap 95% CI [57.46%, 90.30%]). The current failing run covers 2026-10-12 .. 2026-11-06 (20 window(s)), and the record has produced longer failing runs before (the longest: 36 windows).
 
 **2. The weakness does not cluster in any published observable-state bucket.** The families F2_spy_trend_state, F3_spy_12m_return_sign are one-sided inside the record period (the risk-off / down-trend / high-volatility states that Cycle 923 flagged never occur in the committed record), so their bucket gaps are **not estimable** from this record and are reported as absent rather than imputed; the two-sided F1_calendar_phase, F4_train_63d_realvol_tercile partition the record identically (the published folds that cover it are contiguous in time), i.e. they are a time split of the record rather than an independent state, and their bucket gap CI includes zero. The apparent concentration is therefore consistent with sampling noise at this record's effective sample size -- the same conclusion Cycle 924 reached for the fold-level buckets.
 
-**3. No permitted change clears the gate.** The strongest isolated overlay variant (`V1_no_vol_target`, volatility target disabled (vol_scale == 1)) lifts the trailing window from -2.120279 to -2.032203, still far below the 0.9 gate, and every other variant is below that. The weakness is an overlay-timing outcome -- the volatility target de-risks into the high-volatility sessions that dominate the window -- not evidence that the momentum edge has decayed, and not something a threshold, universe, cost-model or parameter change may fix.
+**3. No permitted change clears the gate.** The strongest isolated overlay variant (`V1_no_vol_target`, volatility target disabled (vol_scale == 1)) lifts the trailing window from -1.814422 to -2.032203, still far below the 0.9 gate, and every other variant is below that. The weakness is an overlay-timing outcome -- the volatility target de-risks into the high-volatility sessions that dominate the window -- not evidence that the momentum edge has decayed, and not something a threshold, universe, cost-model or parameter change may fix.
 
 **4. The gate is a symptom, not the binding constraint.** Per Cycle 866, clearing `rolling_63d_sharpe` alone cannot yield GO on this record: the PSR gate is decisive and the decision stays NO-GO (failed gates: rolling_63d_sharpe, psr).
 
-**5. Separate measurement defect found and quantified (not a fix).** The volatility estimate sets session t's exposure from a trailing window that includes session t itself (same-session feedback, in `research/run_cycle6.py`, `src/simulation/engine.py` and `src/evaluation/risk.py`). Lagging the estimate one session changes the committed record's Sharpe from 1.494563 to 1.318898, the full-path Sharpe from 1.470579 to 1.394376 and the failing window from -2.120279 to -2.299290: it makes the failing window slightly worse, so it is **not** the cause of the gate failure, but it does flatter the published Sharpe statistics of this candidate (the headline walk-forward mean moves the other way only because of the one numerical-artifact fold documented in section 5). It is handed off as a separate, explicitly scoped re-derivation task -- **no production code is changed by this cycle**.
+**5. Separate measurement defect found and quantified (not a fix).** The volatility estimate sets session t's exposure from a trailing window that includes session t itself (same-session feedback, in `research/run_cycle6.py`, `src/simulation/engine.py` and `src/evaluation/risk.py`). Lagging the estimate one session changes the committed record's Sharpe from 1.528744 to 1.318898, the full-path Sharpe from 1.470579 to 1.394376 and the failing window from -1.814422 to -2.299290: it makes the failing window slightly worse, so it is **not** the cause of the gate failure, but it does flatter the published Sharpe statistics of this candidate (the headline walk-forward mean moves the other way only because of the one numerical-artifact fold documented in section 5). It is handed off as a separate, explicitly scoped re-derivation task -- **no production code is changed by this cycle**.
 
 ## Reproduction
 
