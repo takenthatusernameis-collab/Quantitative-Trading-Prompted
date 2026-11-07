@@ -181,7 +181,7 @@ A record that mixes the same-session and the lagged paths measures neither; the 
 - [no_config_file_sets_the_switch]: PASS (observed: 0 non-corrected config file(s) mention the switch, expected: 0)
 - [corrected_config_is_specification_only_exception]: PASS (observed: config/simulation_candidate_001_corrected.yaml sets lag_vol_estimate: true (specification-only, not an activated record), expected: declared exception present)
 - [no_record_feeding_config_sets_the_switch]: PASS (observed: 0 record-feeding config(s) mention the switch, expected: 0)
-- [committed_record_gate_value_reproduced]: PASS (observed: -2.1202794870108126, expected: -2.1202794870108126)
+- [committed_record_gate_value_reproduced]: PASS (observed: -2.120279487011, expected: -2.120279487011)
 - [corrected_path_does_not_rescue_the_promotion_decision]: PASS (observed: default NO-GO, corrected NO-GO, expected: NO-GO on both paths)
 - [corrected_path_is_worse_on_every_record_statistic]: PASS (observed: canonical 1.318898 < 1.494563, trailing -2.299290 < -2.120279, PSR 0.443944 < 0.543574, expected: lower on every record statistic)
 - [corrected_record_matches_cycle926_values]: FAIL (observed: canonical 1.318898, trailing -2.299290, PSR 0.443944, max DD -0.078141, expected: matches Cycle 926 corrected values)
