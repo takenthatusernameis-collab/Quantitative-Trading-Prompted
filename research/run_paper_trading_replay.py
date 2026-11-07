@@ -12,18 +12,16 @@ import sys
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
-import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from src.data.yfinance_fetcher import fetch_universe
 from src.simulation.paper_trading import (
     PaperTradingConfig,
     PaperTradingState,
     generate_paper_report,
     run_daily_paper_update,
 )
-from src.data.yfinance_fetcher import fetch_universe
 
 
 def main() -> None:
@@ -94,7 +92,7 @@ def main() -> None:
         else:
             vol = 0.0
             sharpe = 0.0
-        print(f"\n=== SUMMARY ===")
+        print("\n=== SUMMARY ===")
         print(f"Days tracked: {days}")
         print(f"Current NAV: ${state.current_nav:,.2f}")
         print(f"Total Return: {total_ret:.2%}")
