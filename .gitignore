@@ -15,3 +15,7 @@ node_modules/
 
 # Binance archive download cache (rebuildable from the published checksums).
 data/raw/crypto/_cache/
+
+# Editor/backup artifacts
+*.bak
+*.backup
