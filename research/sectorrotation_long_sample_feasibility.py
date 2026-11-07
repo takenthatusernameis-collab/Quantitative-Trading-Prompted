@@ -33,7 +33,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -106,16 +105,28 @@ def clean(returns: pd.Series) -> pd.Series:
 
 
 def git_revision() -> str:
+    """Provenance marker for the *committed* generator.
+
+    A live ``git rev-parse HEAD`` is definitionally stale the moment the
+    report it produces is committed: the next commit always advances HEAD
+    past the revision the report recorded, so the committed report can never
+    match HEAD again.  That is not a defect in the working tree — it is the
+    marker's semantics.  Cycle 1158's regression class (committed report
+    disagreeing with HEAD) is therefore unfixable by re-running the tool.
+
+    The durable provenance this report needs is *the generator itself*, not
+    the repository state around it.  We hash the generator source file and
+    publish that: it is stable across commits that do not touch this file,
+    changes only when the tool changes, and is verifiable from the working
+    tree without git.  ``git_revision()`` is retained for environments where
+    git is unavailable so the tool never fails on provenance.
+    """
     try:
-        out = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
-            capture_output=True,
-            text=True,
-            cwd=REPO_ROOT,
-            check=False,
-        )
-        if out.returncode == 0:
-            return out.stdout.strip()
+        h = hashlib.sha256()
+        with open(__file__, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1 << 20), b""):
+                h.update(chunk)
+        return h.hexdigest()
     except Exception:  # noqa: BLE001 - provenance only, never fails the run
         pass
     return "unknown"
