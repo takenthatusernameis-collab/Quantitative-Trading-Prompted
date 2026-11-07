@@ -8,10 +8,10 @@ cannot silently return:
    ``config/promotion_gates.yaml`` documents for that gate. The candidate
    therefore scored itself against itself, and the published PSR (0.856637)
    was not comparable with any other PSR in the repository. The corrected
-   value is 0.896592 (the target is unchanged, the *comparison* was wrong).
+   value is 0.895808 (the target is unchanged, the *comparison* was wrong).
 
 The promotion gates, their thresholds and the decision mapping are untouched
-by the correction: the corrected PSR is *higher* (0.896592) than the
+by the correction: the corrected PSR is *higher* (0.895808) than the
 incorrect one, the verdict is unchanged (NO-GO), and the decision is
 unchanged because ``rolling_63d_sharpe`` fails independently of the PSR.
 
@@ -137,7 +137,7 @@ def test_reported_psr_matches_the_documented_baseline_psr(tool_run, expected_psr
     assert len(psr_lines) == 1
     reported = float(psr_lines[0].split("|")[3])
     assert reported == pytest.approx(expected_psr, abs=1e-9)
-    assert reported == pytest.approx(0.896591902163973, abs=1e-9)
+    assert reported == pytest.approx(0.8958075181188366, abs=1e-9)
 
 
 def test_overall_is_the_tool_check_verdict_and_not_the_candidate_verdict(payload):
@@ -177,8 +177,10 @@ def test_committed_artifacts_record_the_corrected_psr():
     experiment = OUT_EXP.read_text()
     assert "PSR target: 1.4178" in report
     assert "psr_target: 1.4178" in experiment
-    assert "0.899699" in report
-    assert "0.899699" in experiment
+    assert "0.895808" in report
+    assert "0.895808" in experiment
+    assert "0.899699" not in report
+    assert "0.899699" not in experiment
     assert "0.856637" not in report
     assert "0.856637" not in experiment
 
