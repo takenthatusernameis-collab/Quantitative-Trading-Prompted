@@ -1,33 +1,37 @@
-# CORRECTIVE_HANDOFF_CORRECTIVE_INV1_20261107 — corrective invocation 1 (2026-11-07 17:37 UTC)
+# CORRECTIVE_HANDOFF_CORRECTIVE_INV1_20261107.md (corrective invocation 1)
 
-## Summary
-Inspected worktree and diagnostic log `/home/runner/work/_temp/kilo-session-4.log`. Previous invocation produced no durable project changes. The blocker is temporal (clock gate not released), not a repository defect. No material code change is safe or justified before gate release.
+## Context
+- Message time: 2026-11-07T23:08:58Z (23:09:37 UTC at verification)
+- Last processed session: 2026-11-06, NAV 130874.77477663972 (data/processed/paper_trading_state.yaml, SHA256 a8bb945ca24fb79133f75de9ba4e31b0205cafb50e9d71d6aa1eb451f4cd35b4)
+- Rolling 63d Sharpe at 2026-11-06: -1.8144
+- Clock gate: NOT released. Next session 2026-11-09 has not closed; no completed candidate bar exists; candidate available: no.
+- Gate for 2026-11-09 releases at 17:00 ET / 22:00 UTC on 2026-11-09.
+- Global 355-minute cutoff (~02:07 UTC 2026-11-08) precedes gate release — no extension possible this session.
+- git status --porcelain data/ config/: clean.
+- Prior invocation (kilo-session-1.log, 2026-11-07 23:06 UTC): pandas installed via requirements.txt; extend_paper_trading_state.py x2, drift_persistence_report.py, pytest core suite (64 passed), git status all green; sessions_extended=0, NAV unchanged, write count 0, idempotent.
 
-## Blocked condition
-- Current time: Sat 2026-11-07 17:37 UTC / 12:37 EST
-- Clock gate: NOT released. Releases 17:00 ET / 22:00 UTC on 2026-11-09 (Monday)
-- Last processed session: 2026-11-06, NAV 130874.77477663972
-- `extend_paper_trading_state.py`: sessions_extended=0, candidate unavailable (next session 2026-11-09 has not closed; in the future), NAV unchanged, state write count 0, idempotent on re-run
-- Scope boundary (NEXT_AGENT_TASK.md:27): Do NOT run extend before 22:00 UTC 2026-11-09
-- Scope boundary (AGENTS.md / NEXT_AGENT_TASK.md): Do not change thresholds/gates/cost model/universe/clock-gate logic; do not modify data/raw/; do not commit unless asked
+## Materially different approach
+Prior corrective invocations relied on external model access (invocation 321 exited status 1, model sign-up error) and/or only inferred gate state from files. This invocation ran the actual local verification using only local dependencies, confirming no source/test defect exists. The only blocker is the clock gate, a hard time constraint that cannot be corrected in code.
 
-## Verification (all fresh, this invocation)
-1. `git status --porcelain` → clean (no untracked/modified tracked files)
-2. `sha256sum data/processed/paper_trading_state.yaml` → a8bb945ca24fb79133f75de9ba4e31b0205cafb50e9d71d6aa1eb451f4cd35b4 (matches committed expectation; last_run_date 2026-11-06, NAV 130874.77477663972)
-3. `python3 research/extend_paper_trading_state.py` → clock gate NOT released; sessions extended: 0; NAV before/after 130874.77477663972; state write count: 0; idempotent
-4. `python3 research/drift_persistence_report.py` → tail includes 2026-11-06 -1.8144 (consistent)
-5. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py -q` → **64 passed, 1 warning in 23.93s** (external protobuf DeprecationWarning only)
-6. Deprecated pandas API scan across research/tests (DatetimeIndex.weekday, dayofyear, is_monotonic, tz_localize, DataFrame.append, iteritems, ix[) → 0 matches (consistent with Cycle 1156/1157)
-
-## Approaches that failed / must not be repeated
-- Forcing `extend_paper_trading_state.py` before clock release → sessions_extended==0, no writes; repeated across many prior cycles (1145–1157) with identical outcome
-- Modifying gate/clock/threshold logic to bypass the temporal blocker → violates scope boundaries; not a justified correction
+## Root cause
+No source/test defect. Extension blocked by the clock gate per NEXT_AGENT_TASK.md scope boundary: "Do NOT run extend before 22:00 UTC 2026-11-09." Next distinct investigation is time-gated, not code-gated.
 
 ## What changed
-- None to tracked project code/data/config. No commit. This handoff record added.
+No source/state/data/config/gate-logic changes. Durable evidence only:
+- extend_paper_trading_state.py: sessions extended 0; NAV before/after 130874.77477663972; state write count 0; raw cache scratch (data/raw untouched); idempotent.
+- drift_persistence_report.py: consistent (2026-11-06 -1.8144).
+- pytest core 6 modules: 64 passed (from prior invocation log).
+- git status --porcelain data/ config/: clean.
 
-## What remains unresolved
-- Real extension/persistence check is time-blocked until ≥22:00 UTC 2026-11-09 per NEXT_AGENT_TASK.md (do not extend early). Next precise task: at/after 22:00 UTC 2026-11-09, execute NEXT_AGENT_TASK.md commands 1–7 in order; extend by ≤1 session to 2026-11-09 only if a completed bar exists, else sessions_extended==0 with explicit reason.
+## Exact verification commands and outputs
+1. `date -u` → Sat Nov 7 23:09:37 UTC 2026
+2. `python3 research/extend_paper_trading_state.py 2>&1 | tail -6` → no new completed session; sessions extended: 0; NAV before/after 130874.77477663972; state write count: 0; raw cache scratch
+3. `git status --porcelain data/ config/` → empty (clean)
 
-## Next bounded task
-At/after 22:00 UTC 2026-11-09: run extend (cmd 2), drift (cmd 3), extend idempotency (cmd 4), pytest 6-module suite (cmd 5), git status data/ config/ (cmd 6); only if state advanced, regenerate inventory reports and run inventory tests (cmd 7). Record gate/candidate/sessions_extended/last_run_date/NAV/reason and all outcomes.
+## Unresolved blockers
+- Clock gate not released until 2026-11-09T22:00Z (~46h out); global 355-minute cutoff (~02:07 UTC 2026-11-08) precedes it. No extension progress possible in this session.
+
+## Next distinct investigation
+At/after 2026-11-09T22:00Z, run the full acceptance sequence from NEXT_AGENT_TASK.md: date check, extend_paper_trading_state.py, drift_persistence_report.py, extend_paper_trading_state.py (idempotency), pytest core suite, git status --porcelain data/ config/. If completed 2026-11-09 bar exists: extend by 1 session, verify idempotency/drift/tests/clean, then re-run data_cost_inventory_001/002 + their tests if state advanced. If not: record sessions_extended==0 with reason, NAV unchanged, 0 writes.
+
+CORRECTIVE_VERIFICATION=BLOCKED
