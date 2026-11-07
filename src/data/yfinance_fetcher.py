@@ -11,7 +11,7 @@ end date. No forward-looking calls are made.
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import List, Optional, Sequence
 
@@ -69,7 +69,7 @@ class YFinanceFetcher:
     ) -> None:
         self.symbols: List[str] = list(symbols)
         self.start_date = start_date
-        self.end_date = end_date or datetime.utcnow().strftime("%Y-%m-%d")
+        self.end_date = end_date or datetime.now(UTC).strftime("%Y-%m-%d")
         # append_only (Cycle 866): the canonical raw cache is append-only. A
         # download window that ends before the committed history already ends
         # would silently truncate committed rows (the SPY.parquet regression

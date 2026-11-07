@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Optional
 
@@ -290,7 +290,7 @@ def generate_report(
     slippage_bps = settings.get("backtest", {}).get("default_slippage_bps", 2.0)
     rf_annual = settings.get("evaluation", {}).get("risk_free_rate_annual", 0.02)
 
-    today = datetime.utcnow().strftime("%Y-%m-%d")
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
 
     report = f"""# Experiment: Time-Series Momentum Baseline (tsmomentum_baseline_001)
 
@@ -480,7 +480,7 @@ def main():
     args = parser.parse_args()
 
     symbols = [s.strip().upper() for s in args.symbols.split(",")]
-    end_date = args.end_date or datetime.utcnow().strftime("%Y-%m-%d")
+    end_date = args.end_date or datetime.now(UTC).strftime("%Y-%m-%d")
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
