@@ -2,7 +2,7 @@
 
 Candidate `sectorrotation_001` (frozen config `config/sectorrotation_candidate_001.yaml`) evaluated on its own long sample, in the pattern of `research/promotion_feasibility_backtest.py`.
 
-- code revision: `27e25d0`
+- code revision: `8e82f76db31ae2b1dc380a980735afe8ba3712638c896d312646d582008aa2d1`
 - report generator: `research/sectorrotation_long_sample_feasibility.py`
 - raw cache SHA-256 identical before/after: True
 
