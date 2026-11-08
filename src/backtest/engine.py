@@ -8,11 +8,8 @@ train/validation/test splits.
 from __future__ import annotations
 
 import argparse
-import json
-import os
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -28,7 +25,6 @@ from src.features.momentum import (
     build_weights,
     compute_momentum,
     select_top_decile,
-    signal_summary,
 )
 
 
@@ -147,7 +143,7 @@ def run_backtest(
     skip: int = 21,
     top_fraction: float = 0.5,
     rebalance_freq: str = "M",
-    rebalance_schedule: Optional[str] = None,
+    rebalance_schedule: str | None = None,
 ) -> tuple[pd.Series, pd.DataFrame, dict]:
     """Run the full backtest pipeline.
 
@@ -425,10 +421,11 @@ def _get_git_hash() -> str:
             capture_output=True,
             text=True,
             cwd=_project_root(),
+            check=False,
         )
         if result.returncode == 0:
             return result.stdout.strip()
-    except Exception:
+    except (OSError, subprocess.SubprocessError):
         pass
     return "unknown"
 

@@ -1,3 +1,24 @@
+## Cycle 1165: supervisor-driven ruff baseline + artifact persistence (2026-11-08 14:08 UTC, run 42462883073 attempt 1 session 7 inv 1) — **RUFF BASELINE CLEAN; DURABLE ARTIFACTS PERSISTED**
+
+- **UTC 2026-11-08T14:08Z (09:08 EST Sun).** Gate for next session 2026-11-09 **NOT released** until 17:00 ET / 22:00 UTC 2026-11-09. `extend_paper_trading_state.py` (x1 this cycle): clock gate released for day-after check, next expected session 2026-11-09 (Monday), candidate available **no** (reason: next session 2026-11-09 has not closed yet, in the future, today is 2026-11-08); `sessions extended: 0`, NAV before/after `130874.77477663972`, `state write count: 0`, raw cache scratch. `drift_persistence_report.py` tail `2026-11-06 -1.8144` consistent. `paper_trading_cache_reproducibility_audit.py --strict` → state frontier `2026-11-06`, cache frontier `2026-11-05`, `reproducible from committed cache: NO` (pre-existing gap; `data/raw` untouched).
+- **Supervisor recommendation 0009 disposition `accepted` (materially incomplete on inspection):** the recommendation claimed "2 ruff errors (1 fixable) across the six files". Actual measurement: **7 errors in `src/backtest/engine.py`**, zero in the other five engine files (`src/simulation/engine.py`, `src/simulation/paper_trading.py`, `src/simulation/evaluation.py`, `src/evaluation/drift.py`, `src/evaluation/risk.py`). Fixed all 7 with the smallest sufficient change:
+  1. Removed unused `import json` (F401)
+  2. Removed unused `import os` (F401)
+  3. Removed unused `signal_summary` from `src.features.momentum` import (F401) — no test imports it
+  4. Converted `Optional[str]` → `str | None` (UP045)
+  5. Added explicit `check=False` to `subprocess.run` (PLW1510)
+  6. Replaced bare `except Exception: pass` with `except (OSError, subprocess.SubprocessError): pass` (S110/BLE001)
+- **Verification (fresh, this invocation):**
+  1. `python -m ruff check src/simulation/engine.py src/backtest/engine.py src/simulation/paper_trading.py src/simulation/evaluation.py src/evaluation/drift.py src/evaluation/risk.py` → **All checks passed!** (was 7 errors; now 0)
+  2. Six-file pytest baseline (`test_rebalance_schedule`, `test_candidate_shortlist_934`, `test_cost_gate_break_even_audit`, `test_data_cost_inventory_001`, `test_data_cost_inventory_002`, `test_eval_cryptofunding`) → **141 passed, 3 warnings in 251.97s**
+  3. `python3 research/extend_paper_trading_state.py` → `sessions extended: 0`, NAV `130874.77477663972` unchanged, `state write count: 0`
+  4. `python3 research/drift_persistence_report.py` → tail `2026-11-05 -2.1203`, `2026-11-06 -1.8144` (consistent)
+  5. `python3 research/paper_trading_cache_reproducibility_audit.py --strict` → state frontier `2026-11-06`, cache frontier `2026-11-05`, `reproducible from committed cache: NO` (pre-existing, out of scope)
+  6. `git status --porcelain` → only `src/backtest/engine.py` modified (the ruff fix)
+- **Durable artifacts persisted (committed):** `CORRECTIVE_HANDOFF_CORRECTIVE_INV322_20261108T1408Z.md` (corrective handoff), `NEXT_AGENT_TASK.md` (rewritten to the canonical post-2026-11-09 extension spec, cmds 1–8).
+- **Scope preserved:** no threshold/gate/cost model/universe/clock-gate/raw changes; no commit of `data/`/`config/`; no extension before 22:00 UTC 2026-11-09.
+- **Next bounded task (unchanged):** at/after 22:00 UTC 2026-11-09, run `NEXT_AGENT_TASK.md` commands 1–8; extend by ≤1 session to 2026-11-09 only if a completed bar exists, else `sessions_extended==0` with explicit reason; if state advances, run cmd 7 (regenerate inventory reports and re-run inventory tests).
+
 ## Cycle 1164: pre-gate verification (2026-11-08 13:18 UTC, run 42462883073 attempt 1 session 5 inv 1) — **NO-OP VERIFIED**
 
 - **UTC 2026-11-08T13:18Z (08:18 EST Sun).** Gate for next session 2026-11-09 **NOT released** until 17:00 ET / 22:00 UTC 2026-11-09. `extend_paper_trading_state.py` (x2): clock gate released for day-after check, next expected session 2026-11-09 (Monday), candidate available **no** (reason: next session 2026-11-09 has not closed yet, in the future, today is 2026-11-08); `sessions extended 0`, NAV before/after `130874.77477663972`, `state write count 0`, raw cache scratch, idempotent on second invocation. `drift_persistence_report.py` tail `2026-11-05 -2.1203`, `2026-11-06 -1.8144` consistent.
