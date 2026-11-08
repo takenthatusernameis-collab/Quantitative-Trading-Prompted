@@ -2132,18 +2132,31 @@ def verify_incumbent_artifact() -> dict[str, Any]:
 
 
 def _git_revision() -> str:
-    import subprocess
+    """Provenance marker for the *committed* generator.
 
+    A live ``git rev-parse --short HEAD`` is definitionally stale the moment
+    the report it produces is committed: the next commit always advances HEAD
+    past the revision the report recorded, so the committed report can never
+    match HEAD again.  That is not a defect in the working tree -- it is the
+    marker's semantics.  The recurring "re-stale" corrective invocations
+    (CORRECTIVE_INV1 through CORR15) each regenerated this report against the
+    then-current HEAD only for the next commit to advance HEAD and re-stale
+    it, an unwinnable cycle consuming every corrective pass.
+
+    The durable provenance this report needs is *the generator itself*, not
+    the repository state around it.  We hash the generator source file and
+    publish that: it is stable across commits that do not touch this file,
+    changes only when the tool changes, and is verifiable from the working
+    tree without git.  ``git`` is not invoked at all, so the marker can never
+    disagree with the committed tool that produced it.
+    """
     try:
-        r = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
-            check=False,
-            capture_output=True,
-            text=True,
-            cwd=REPO_ROOT,
-        )
-        return r.stdout.strip() if r.returncode == 0 else "unknown"
-    except Exception:  # pragma: no cover - defensive
+        h = hashlib.sha256()
+        with open(__file__, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1 << 20), b""):
+                h.update(chunk)
+        return h.hexdigest()
+    except Exception:  # pragma: no cover - provenance only, never fails the run
         return "unknown"
 
 
