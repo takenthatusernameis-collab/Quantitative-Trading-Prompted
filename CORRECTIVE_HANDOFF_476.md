@@ -1,34 +1,24 @@
-# Corrective handoff 476
+# CORRECTIVE_HANDOFF_476 — Paper-trading extension gate blocked (durable wakeup ensured)
 
-Date: 2026-11-08 06:08 UTC.
+## Invocation
+- Corrective invocation 476 (2026-11-08T07:05:00Z UTC / 02:05 EST). Reviewed recovery log `/home/runner/work/_temp/kilo-session-8-recovery-475.log` and prior handoffs (475/476/479). Prior invocations already completed pre-gate verification with no code/config/data changes; repeating the same suite unchanged would not produce new durable progress.
 
-## Diagnosis
-No code failure. The active task (NEXT_AGENT_TASK.md) is a gated real-extension check whose gate is not yet released: candidate session 2026-11-09 is not usable until 17:00 ET / 22:00 UTC on 2026-11-09. Per the cycle contract I executed the full verification suite (which legitimately exercises the no-op path), confirmed idempotency/health, and prepared the evidence-based next task rather than waiting passively.
+## Materially different action (durable)
+- Verified `cancel_wakeup list` returned **no pending wakeups** in this session context; scheduled a **persistent** post-gate wakeup (`when=2026-11-09T22:05:00Z`, 5 min after 22:00 UTC gate release) to auto-run the full `NEXT_AGENT_TASK.md` acceptance sequence (commands 1–8). This differs from prior invocations that only re-ran checks or referenced an earlier wakeup claim.
+- Created this handoff with fresh, verified evidence. No source/data/config/tests modified. No commit. `data/raw/` untouched.
 
-## Actions taken
-- Ran NEXT_AGENT_TASK verification commands 1–6 and 8 in order. Cmd 7 (inventory regeneration) is conditional on state advancing and was correctly skipped.
-- Verified the no-op path twice (idempotent): `sessions extended: 0`, NAV `130874.77477663972` before and after, `state write count: 0`, raw cache scratch, canonical `data/raw` untouched.
-
-## Commands and outputs
-1. `date -u && TZ=America/New_York date` -> `Sun Nov 8 06:06:15 UTC 2026 / Sun Nov 8 01:06:15 EST 2026`
-2. `python3 research/extend_paper_trading_state.py` -> clock gate released for day-after check; next expected session `2026-11-09` (Monday); `candidate available: no` (reason: next session 2026-11-09 has not closed yet — in the future, today is 2026-11-08); `sessions extended: 0`, NAV before/after `130874.77477663972`, `state write count: 0`, raw cache scratch
-3. `python3 research/drift_persistence_report.py` -> tail `2026-11-06 -1.8144` (consistent with recorded value)
-4. `python3 research/extend_paper_trading_state.py` (idempotency) -> `sessions extended: 0`, NAV unchanged `130874.77477663972`, `state write count: 0`; `sha256sum` before/after both `a8bb945ca24fb79133f75de9ba4e31b0205cafb50e9d71d6aa1eb451f4cd35b4`
-5. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py -q` -> **64 passed, 1 warning (18.20s)**
-6. `git status --porcelain data/ config/` -> empty (clean)
-7. (skipped — conditional on state advance; state did not advance)
-8. `python -m ruff check research/drift_persistence_report.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py` -> **All checks passed!**
-
-## Newly surfaced evidence (not a defect)
-`python3 research/paper_trading_cache_reproducibility_audit.py --strict` reports:
-- state frontier: `2026-11-06`, cache frontier: `2026-11-05`, missing from cache: 1 (`2026-11-06`), `reproducible from committed cache: NO`
-- `BLOCKER: the canonical state is not reproducible from the committed raw cache; refresh data/raw before trusting offline verification of the frontier extension.`
-This is the same pre-existing, documented gap recorded in CORRECTIVE_HANDOFF_RECOVERY3_20261108.md: the trailing session was produced by a live scratch-dir fetch that never refreshed `data/raw`. It is NOT a runtime defect — the extension tool re-fetches live data, the active-path verifier passed, and `data/raw` is untouched. Recorded so the next cycle does not mistake it for a regression.
+## Focused verification (narrow, 2026-11-08 07:05 UTC)
+- `date -u && TZ=America/New_York date` → `Sun Nov  8 07:05:00 UTC 2026 / 02:05:00 EST 2026`.
+- `python3 research/extend_paper_trading_state.py` (tail): gate not released; `session usable after 17:00 ET on 2026-11-09`; `session already complete: False`; `candidate available: no` (2026-11-09 not closed; today 2026-11-08; no completed candidate bar); `sessions extended: 0`; NAV before/after `130874.77477663972`; `state write count: 0`; raw cache scratch (canonical `data/raw` untouched).
+- Idempotency: second extend run → `sessions extended: 0`, NAV unchanged, `state write count: 0`.
+- `python3 research/drift_persistence_report.py` tail: `2026-11-06 -1.8144` (consistent).
+- State SHA256 unchanged: `a8bb945ca24fb79133f75de9ba4e31b0205cafb50e9d71d6aa1eb451f4cd35b4` (`data/processed/paper_trading_state.yaml`, `last_run_date: 2026-11-06`).
+- `git status --porcelain data/ config/` → empty. Tree clean aside from handoff artifacts.
 
 ## Blocker
-Real extension gated until 22:00 UTC 2026-11-09 (17:00 ET Monday). Candidate 2026-11-09 must be a completed bar to extend into. No safe code correction needed; project state verified healthy.
+Real acceptance extension (2026-11-09 completed bar) cannot run before gate release (22:00 UTC 2026-11-09, ~39h). Global 355-minute cutoff precedes gate release. Clock-gate logic/data/raw must not be altered.
 
-## Next
-At/after 22:00 UTC 2026-11-09, execute NEXT_AGENT_TASK.md verification commands 1–8. Extend by at most one session to 2026-11-09 only if a completed bar exists; otherwise record `sessions_extended==0` with explicit reason and keep state unchanged. If state advances, run cmd 7 (regenerate `data_cost_inventory_001/002` reports, re-run `tests/test_data_cost_inventory_001.py` and `tests/test_data_cost_inventory_002.py`). Do not modify thresholds/gates/cost model/universe/clock-gate logic or `data/raw/`; do not commit unless asked.
+## Next distinct step (post-gate, via scheduled wakeup)
+At/after 2026-11-09T22:00Z run `NEXT_AGENT_TASK.md` cmds 1–8. If completed 2026-11-09 bar exists: expect `sessions_extended==1`, `last_run_date` advances, NAV changes, write count 1; verify idempotency, drift stored==recomputed, `data/config` clean, pytest 64 pass, ruff clean; if state advanced re-run `research/data_cost_inventory_{001,002}.py` and their tests. If no bar: record `sessions_extended==0` with explicit reason, NAV/0 writes unchanged. Emit `CORRECTIVE_VERIFICATION=PASS` only if focused verification actually succeeds.
 
-CORRECTIVE_VERIFICATION=PASS
+CORRECTIVE_VERIFICATION=BLOCKED
