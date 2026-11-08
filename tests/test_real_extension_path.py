@@ -36,10 +36,14 @@ from src.simulation.paper_trading import PaperTradingConfig, PaperTradingState
 CONFIG_PATH = ROOT / "config" / "paper_trading_config.yaml"
 COMMITTED_STATE_PATH = ROOT / "data" / "processed" / "paper_trading_state.yaml"
 
-# Fixed "now" used across the real-path tests: Monday 2026-11-02 23:00 UTC
-# (18:00 ET), i.e. after the 2026-11-02 session has closed. This is the moment
+# Fixed "now" used across the real-path tests: 2026-11-05 23:00 UTC
+# (18:00 ET), i.e. after the 2026-11-05 session has closed. This is the moment
 # at which the extension's ``sessions extended: 1`` branch becomes exercisable
 # once the provider serves a completed bar beyond the last processed session.
+# (Cycle 1035: the docstring previously read "Monday 2026-11-02 23:00 UTC",
+# which is wrong both in date and weekday -- 2026-11-05 is a Wednesday, and
+# 2026-11-02 23:00 UTC would be 18:00 ET on a Monday. The constant itself was
+# never changed, but the stale prose misdescribed it.)
 NOW = datetime(2026, 11, 5, 23, 0, tzinfo=UTC)
 
 
@@ -140,7 +144,7 @@ def test_real_daily_update_reproduces_committed_state(
         all_data = fetch((pd.Timestamp(target) + pd.Timedelta(days=1)).strftime("%Y-%m-%d"))
         market_slice = all_data.loc[:target]
 
-        new_state, artifacts = run_daily_paper_update(
+        new_state, _artifacts = run_daily_paper_update(
             cfg, state, market_data=market_slice
         )
     finally:
@@ -239,8 +243,11 @@ def test_real_extension_path_is_idempotent(tmp_path, real_cfg, committed_state):
     finally:
         cleanup()
 
-    # Second invocation: last_run_date stays at the committed 2026-11-04 since
-    # the next session 2026-11-05 is not complete at NOW (2026-11-03 23:00 UTC).
+    # Second invocation: the committed state's last_run_date is 2026-11-06, so
+    # the clock gate checks the calendar day after it (2026-11-07). NOW is
+    # 2026-11-05 23:00 UTC (18:00 ET), i.e. before the start of 2026-11-07, so
+    # the gate is NOT released and no candidate can be complete. last_run_date
+    # therefore stays at the committed 2026-11-06.
     assert result["target"] is None
     assert result["sessions_extended"] == 0
     assert result["state_writes"] == 0
