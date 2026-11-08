@@ -24,8 +24,8 @@ import yaml
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import research.audit_state_aggregates as audit  # noqa: E402
-from src.evaluation.sharpe import sharpe_ratio  # noqa: E402
+import research.audit_state_aggregates as audit
+from src.evaluation.sharpe import sharpe_ratio
 
 STATE_PATH = ROOT / "data" / "processed" / "paper_trading_state.yaml"
 

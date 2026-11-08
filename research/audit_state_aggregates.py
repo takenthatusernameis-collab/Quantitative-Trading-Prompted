@@ -23,7 +23,7 @@ import yaml
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from src.evaluation.sharpe import sharpe_ratio  # noqa: E402
+from src.evaluation.sharpe import sharpe_ratio
 
 STATE_PATH = ROOT / "data" / "processed" / "paper_trading_state.yaml"
 
@@ -127,8 +127,8 @@ def audit(state: dict | None = None) -> dict:
     }
 
     mismatches = {}
-    for k in recomputed:
-        r, s = recomputed[k], stored[k]
+    for k, r in recomputed.items():
+        s = stored[k]
         tol = 1e-6 if isinstance(r, float) else 0
         if isinstance(r, float):
             ok = abs(r - s) <= max(tol, abs(s) * 1e-9)
