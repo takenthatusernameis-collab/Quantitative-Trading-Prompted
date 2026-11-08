@@ -49,17 +49,18 @@ CYCLE = 918
 
 
 def _git_hash() -> str:
-    try:
-        import subprocess
+    """Stable provenance marker: SHA-256 of this generator's own source.
 
-        r = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
-            check=False,
-            capture_output=True,
-            text=True,
-            cwd=REPO_ROOT,
-        )
-        return r.stdout.strip() if r.returncode == 0 else "unknown"
+    Replaces ``git rev-parse --short HEAD``, which is definitionally stale the
+    moment the report is committed (the next commit advances HEAD past the
+    revision the report recorded). A source fingerprint is stable across
+    commits that do not touch this file, changes only when the tool changes,
+    and is verifiable from the working tree without invoking git.
+    """
+    try:
+        import hashlib
+
+        return hashlib.sha256(Path(__file__).resolve().read_bytes()).hexdigest()
     except (OSError, RuntimeError):
         return "unknown"
 
