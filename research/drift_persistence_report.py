@@ -60,7 +60,7 @@ def _sha256_file(path: Path) -> str | None:
         h = hashlib.sha256()
         h.update(path.read_bytes())
         return h.hexdigest()
-    except Exception:
+    except OSError:
         return None
 
 
@@ -69,14 +69,15 @@ def _get_git_sha() -> str | None:
         result = subprocess.run(
             ["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"],
             capture_output=True,
+            check=False,
             text=True,
             timeout=5,
         )
         if result.returncode == 0:
             sha = result.stdout.strip()
             return sha if sha else None
-    except Exception:
-        pass
+    except (OSError, subprocess.SubprocessError):
+        return None
     return None
 
 
@@ -212,7 +213,7 @@ def update_rolling_report(report: dict, report_path: Path = ROLLING_REPORT_PATH)
             report_path.write_text(new_content)
             return True
         return False
-    except Exception:
+    except OSError:
         return False
 
 
@@ -285,7 +286,7 @@ def main():
 
     try:
         update_rolling_report(report)
-    except Exception:
+    except OSError:
         pass
 
     if report["stored_matches_recomputed"] is False:

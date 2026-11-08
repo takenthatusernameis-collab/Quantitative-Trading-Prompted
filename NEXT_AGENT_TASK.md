@@ -6,6 +6,7 @@
 - git status --porcelain data/ config/ clean as of 2026-11-08 00:30 UTC (Cycle 1159, run 42422468592 attempt 1 session 6 inv 1).
 - Cycle 1159 (2026-11-08 00:28–00:30 UTC, pre-gate): **NO-OP VERIFIED** per NEXT_AGENT_TASK commands 1–6. UTC 00:28:18Z / ET 19:28:18 Sat 2026-11-07. `extend_paper_trading_state.py` (x2): clock gate released for day-after check, but next expected session 2026-11-09 (Monday) candidate unavailable (future; usable after 17:00 ET 2026-11-09); `sessions extended 0`, NAV before/after `130874.77477663972`, `state write count 0`, idempotent. `drift_persistence_report.py` tail `2026-11-06 -1.8144` consistent. Core pytest (6 modules) → **64 passed, 1 warning (31.67s)**. `git status --porcelain data/ config/` empty. State SHA256 unchanged. Supervisor review 0006 disposition `verified`: `pytest tests/test_cost_admissibility_screen.py -q` → **40 passed, 4 warnings (80.91s)**; `git diff -- research/reports/cost_admissibility_screen_001.md` no changes.
 - Deps present in this environment (pandas 3.1.1, numpy 2.5.4, pytest 9.2.0). Gate for 2026-11-09 **NOT released** until 17:00 ET / 22:00 UTC 2026-11-09. Do NOT extend before then.
+- Lint state as of Cycle 1160 (2026-11-08 01:16 UTC): `python -m ruff check research/drift_persistence_report.py` -> **All checks passed!** (was 7 errors: 4 BLE001, 2 S110, 1 PLW1510; narrowed to specific `OSError`/`SubprocessError` handlers, behavior-preserving). `research/extend_paper_trading_state.py` -> 1 error (SIM103, intentional unsafe-fix skip from Cycle 867, unchanged by design). `research/verify_monday_extension_path.py` -> 0 errors. `data/` and `config/` untouched by the fix.
 
 ## Objective
 At/after 22:00 UTC on 2026-11-09, run the real extension and persistence checks. Extend by at most one session to 2026-11-09 only if a completed bar exists; otherwise record sessions_extended==0 with explicit reason and keep state unchanged.
@@ -34,5 +35,6 @@ At/after 22:00 UTC on 2026-11-09, run the real extension and persistence checks.
 5. python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py -q
 6. git status --porcelain data/ config/
 7. (only if state advanced) python3 research/data_cost_inventory_001.py && python3 research/data_cost_inventory_002.py && python -m pytest tests/test_data_cost_inventory_001.py tests/test_data_cost_inventory_002.py -q
+8. python -m ruff check research/drift_persistence_report.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py
 
 (End of file - total 45 lines)
