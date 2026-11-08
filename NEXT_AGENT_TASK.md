@@ -3,10 +3,9 @@
 ## Context
 - Last processed session: 2026-11-06, NAV 130874.77477663972 (data/processed/paper_trading_state.yaml, SHA256 a8bb945ca24fb79133f75de9ba4e31b0205cafb50e9d71d6aa1eb451f4cd35b4).
 - Rolling 63d Sharpe at 2026-11-06: -1.8144.
-- git status --porcelain data/ config/ clean as of 2026-11-07 22:33 UTC (Cycle 1158, session 22 inv 1).
-- Cycle 1158 (2026-11-07 22:33 UTC): stale-artifact correction applied — `research/reports/sectorrotation_long_sample_feasibility_001.md` carried `code revision: 78b12dd` while HEAD = `27e25d0`; regenerated with `research/sectorrotation_long_sample_feasibility.py` (12/12 checks pass, headline metrics unchanged: Sharpe 0.472367, PSR 0.006618, 36 folds, NO-GO). Only the revision line changed; raw cache SHA-256 byte-identical to the report's recorded hashes; `data/` and `config/` untouched; `tests/test_sectorrotation_long_sample_feasibility.py` + `test_sectorrotation_walkforward_embargo_audit.py` → 10 passed. Durable evidence: `CORRECTIVE_HANDOFF_INVOCATION_1158.md`.
-- Prior pre-gate invocations (1152–1157) verified pre-gate no-op; deps present in this environment after Cycle 1157 re-provision (pandas 3.1.1, numpy 2.5.4, pytest 9.2.0).
-- Gate for 2026-11-09 **NOT released** until 17:00 ET / 22:00 UTC 2026-11-09. Do NOT run `extend_paper_trading_state.py` before then.
+- git status --porcelain data/ config/ clean as of 2026-11-08 00:30 UTC (Cycle 1159, run 42422468592 attempt 1 session 6 inv 1).
+- Cycle 1159 (2026-11-08 00:28–00:30 UTC, pre-gate): **NO-OP VERIFIED** per NEXT_AGENT_TASK commands 1–6. UTC 00:28:18Z / ET 19:28:18 Sat 2026-11-07. `extend_paper_trading_state.py` (x2): clock gate released for day-after check, but next expected session 2026-11-09 (Monday) candidate unavailable (future; usable after 17:00 ET 2026-11-09); `sessions extended 0`, NAV before/after `130874.77477663972`, `state write count 0`, idempotent. `drift_persistence_report.py` tail `2026-11-06 -1.8144` consistent. Core pytest (6 modules) → **64 passed, 1 warning (31.67s)**. `git status --porcelain data/ config/` empty. State SHA256 unchanged. Supervisor review 0006 disposition `verified`: `pytest tests/test_cost_admissibility_screen.py -q` → **40 passed, 4 warnings (80.91s)**; `git diff -- research/reports/cost_admissibility_screen_001.md` no changes.
+- Deps present in this environment (pandas 3.1.1, numpy 2.5.4, pytest 9.2.0). Gate for 2026-11-09 **NOT released** until 17:00 ET / 22:00 UTC 2026-11-09. Do NOT extend before then.
 
 ## Objective
 At/after 22:00 UTC on 2026-11-09, run the real extension and persistence checks. Extend by at most one session to 2026-11-09 only if a completed bar exists; otherwise record sessions_extended==0 with explicit reason and keep state unchanged.
