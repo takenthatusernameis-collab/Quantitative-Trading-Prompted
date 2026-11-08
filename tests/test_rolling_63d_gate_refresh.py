@@ -30,10 +30,10 @@ import yaml
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import research.rolling_63d_gate_refresh as refresh  # noqa: E402
-from src.evaluation.sharpe import sharpe_ratio  # noqa: E402
-from src.evaluation.utils import max_drawdown  # noqa: E402
-from src.simulation.evaluation import _compute_rolling_metrics  # noqa: E402
+import research.rolling_63d_gate_refresh as refresh
+from src.evaluation.sharpe import sharpe_ratio
+from src.evaluation.utils import max_drawdown
+from src.simulation.evaluation import _compute_rolling_metrics
 
 STATE_PATH = ROOT / "data" / "processed" / "paper_trading_state.yaml"
 
@@ -67,6 +67,7 @@ def test_tool_runs_standalone_and_is_read_only():
         capture_output=True,
         text=True,
         timeout=600,
+        check=False,
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "OVERALL: PASS" in proc.stdout

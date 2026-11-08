@@ -17,8 +17,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
@@ -43,6 +41,7 @@ def test_verify_monday_extension_path_passes_and_is_side_effect_free():
         capture_output=True,
         text=True,
         timeout=600,
+        check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert "RESULT: PASS" in result.stdout
@@ -66,6 +65,7 @@ def test_verify_monday_extension_path_target_matches_canonical_cache():
         capture_output=True,
         text=True,
         timeout=600,
+        check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert f"target session: {expected}" in result.stdout
