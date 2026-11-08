@@ -5,6 +5,7 @@
 - Rolling 63d Sharpe at 2026-11-06: `-1.8144`.
 - `git status --porcelain data/ config/`: clean as of 2026-11-08 14:08 UTC (this session).
 - **No-op path already verified this session (2026-11-08 14:06–14:08 UTC):** `extend_paper_trading_state.py` reported `clock gate: released`, `next expected session: 2026-11-09 (Monday)`, `candidate available: no` (reason: next session 2026-11-09 has not closed yet — in the future, today is 2026-11-08), `sessions extended: 0`, NAV before/after `130874.77477663972`, `state write count: 0`, raw cache scratch. `drift_persistence_report.py` tail `2026-11-06 -1.8144` consistent.
+- **Gate check 2026-11-08 14:12 UTC:** `date -u` = Sun Nov 8 14:12:49 UTC 2026; gate NOT released (need >= 2026-11-09 22:00 UTC). Extend NOT run per scope. pytest 64 pass; ruff clean.
 - **Reproducibility gap (pre-existing, not a defect):** `paper_trading_cache_reproducibility_audit.py --strict` → state frontier `2026-11-06`, cache frontier `2026-11-05`, missing from cache: 1 (`2026-11-06`), `reproducible from committed cache: NO`. The trailing session was produced by a live scratch-dir fetch that never refreshed `data/raw`. The extension tool re-fetches live data, so this does not block the extension; `data/raw` remains untouched.
 - Deps present in this environment (pandas 3.1.1, numpy 2.5.4, pytest 9.2.0). The gate for 2026-11-09 is **NOT released** until 17:00 ET / 22:00 UTC 2026-11-09, and the candidate session is only usable once it is itself complete. Do NOT extend before then.
 
