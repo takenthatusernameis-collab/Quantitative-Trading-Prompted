@@ -12,13 +12,13 @@ side instead of one being labelled as the other.
 ```json
 {
   "label_start_date": "2004-11-18",
-  "label_end_date": "2026-11-05",
+  "label_end_date": "2026-11-06",
   "realized_start_date": "1993-01-29",
-  "realized_end_date": "2026-11-05",
-  "realized_session_count": 8501,
+  "realized_end_date": "2026-11-06",
+  "realized_session_count": 8502,
   "start_date": "1993-01-29",
-  "end_date": "2026-11-05",
-  "session_count": 8501,
+  "end_date": "2026-11-06",
+  "session_count": 8502,
   "universe": [
     "SPY",
     "QQQ",
@@ -40,99 +40,99 @@ side instead of one being labelled as the other.
   "overlay_warmup": "slice",
   "data_source": "committed raw cache (data/raw/*.parquet)",
   "sha256_raw_files": {
-    "SPY": "e23d1cb44f361354293187d1c514d69d4f8dc58bbabe6c9cc58096eecb52102b",
-    "QQQ": "5b867704a6d2b87615c2d6867b6e068c1e50f3b59f0030d54ece7529208c90ba",
-    "IWM": "c16dd9c4a3ea1a5815d37bec1c222e71f4af439378d1f10cc85210f75fa47201",
-    "TLT": "ee9b2f84d5cf1b195d821499d3d54bbb143000c6b302ecf5f33fd74fc54177e1",
-    "GLD": "ad0cc279eb77ad6622d16e147944d263893b7a5dd74bc596f425dd77cb056669",
-    "EFA": "875eecce9ab7c80ec9ba954a76fd1eb06519b8c85bdea3664fea0d432689c218",
-    "EEM": "0630300350fe56bc729e3104be12a6d0f2fcc58de0cc83703a3cc39793fdd980"
+    "SPY": "7649e6a42c1282f021870650c06c11044dceacb47d78a2cfa7e65d0d74eb0f38",
+    "QQQ": "2592918f78c2e88e6cfedf32da7f9815e379a0dd341d58ecde2063cb2c8e0f2b",
+    "IWM": "31d5093c17a884e0fdcea95f99d4639b821393b911fe8004642edca30d073eb6",
+    "TLT": "809f3531285eb971178a2a272bc15ab9b9273180586bc0c8cb67d4cb7983562c",
+    "GLD": "185f6120aa79dc017e445cd448d19029b9d5b124386671ccabd89ea9c81dbd0d",
+    "EFA": "f90dcab2a54e77877b001c177cda62e22e9445a3e2a1063672f7f5aae760c6fd",
+    "EEM": "0155ad5f13503c6a281dbe4e63d69c1f2470431325d2d8a758e83395c5ef0620"
   },
   "per_symbol_stats": {
     "SPY": {
       "first_date": "1993-01-29",
-      "last_date": "2026-11-05",
-      "row_count": 8501
+      "last_date": "2026-11-06",
+      "row_count": 8502
     },
     "QQQ": {
       "first_date": "1999-03-10",
-      "last_date": "2026-11-05",
-      "row_count": 6959
+      "last_date": "2026-11-06",
+      "row_count": 6960
     },
     "IWM": {
       "first_date": "2000-05-26",
-      "last_date": "2026-11-05",
-      "row_count": 6651
+      "last_date": "2026-11-06",
+      "row_count": 6652
     },
     "TLT": {
       "first_date": "2002-07-30",
-      "last_date": "2026-11-05",
-      "row_count": 6108
+      "last_date": "2026-11-06",
+      "row_count": 6109
     },
     "GLD": {
       "first_date": "2004-11-18",
-      "last_date": "2026-11-05",
-      "row_count": 5526
+      "last_date": "2026-11-06",
+      "row_count": 5527
     },
     "EFA": {
       "first_date": "2001-08-27",
-      "last_date": "2026-11-05",
-      "row_count": 6336
+      "last_date": "2026-11-06",
+      "row_count": 6337
     },
     "EEM": {
       "first_date": "2003-04-14",
-      "last_date": "2026-11-05",
-      "row_count": 5930
+      "last_date": "2026-11-06",
+      "row_count": 5931
     }
   },
   "union_index_fingerprint": {
     "first_date": "1993-01-29",
-    "last_date": "2026-11-05",
-    "count": 8501
+    "last_date": "2026-11-06",
+    "count": 8502
   },
   "cache_fingerprint": {
     "per_symbol": {
       "SPY": {
-        "rows": 8501,
+        "rows": 8502,
         "first_date": "1993-01-29",
-        "last_date": "2026-11-05",
-        "sha256": "e23d1cb44f361354293187d1c514d69d4f8dc58bbabe6c9cc58096eecb52102b"
+        "last_date": "2026-11-06",
+        "sha256": "7649e6a42c1282f021870650c06c11044dceacb47d78a2cfa7e65d0d74eb0f38"
       },
       "QQQ": {
-        "rows": 6959,
+        "rows": 6960,
         "first_date": "1999-03-10",
-        "last_date": "2026-11-05",
-        "sha256": "5b867704a6d2b87615c2d6867b6e068c1e50f3b59f0030d54ece7529208c90ba"
+        "last_date": "2026-11-06",
+        "sha256": "2592918f78c2e88e6cfedf32da7f9815e379a0dd341d58ecde2063cb2c8e0f2b"
       },
       "IWM": {
-        "rows": 6651,
+        "rows": 6652,
         "first_date": "2000-05-26",
-        "last_date": "2026-11-05",
-        "sha256": "c16dd9c4a3ea1a5815d37bec1c222e71f4af439378d1f10cc85210f75fa47201"
+        "last_date": "2026-11-06",
+        "sha256": "31d5093c17a884e0fdcea95f99d4639b821393b911fe8004642edca30d073eb6"
       },
       "TLT": {
-        "rows": 6108,
+        "rows": 6109,
         "first_date": "2002-07-30",
-        "last_date": "2026-11-05",
-        "sha256": "ee9b2f84d5cf1b195d821499d3d54bbb143000c6b302ecf5f33fd74fc54177e1"
+        "last_date": "2026-11-06",
+        "sha256": "809f3531285eb971178a2a272bc15ab9b9273180586bc0c8cb67d4cb7983562c"
       },
       "GLD": {
-        "rows": 5526,
+        "rows": 5527,
         "first_date": "2004-11-18",
-        "last_date": "2026-11-05",
-        "sha256": "ad0cc279eb77ad6622d16e147944d263893b7a5dd74bc596f425dd77cb056669"
+        "last_date": "2026-11-06",
+        "sha256": "185f6120aa79dc017e445cd448d19029b9d5b124386671ccabd89ea9c81dbd0d"
       },
       "EFA": {
-        "rows": 6336,
+        "rows": 6337,
         "first_date": "2001-08-27",
-        "last_date": "2026-11-05",
-        "sha256": "875eecce9ab7c80ec9ba954a76fd1eb06519b8c85bdea3664fea0d432689c218"
+        "last_date": "2026-11-06",
+        "sha256": "f90dcab2a54e77877b001c177cda62e22e9445a3e2a1063672f7f5aae760c6fd"
       },
       "EEM": {
-        "rows": 5930,
+        "rows": 5931,
         "first_date": "2003-04-14",
-        "last_date": "2026-11-05",
-        "sha256": "0630300350fe56bc729e3104be12a6d0f2fcc58de0cc83703a3cc39793fdd980"
+        "last_date": "2026-11-06",
+        "sha256": "0155ad5f13503c6a281dbe4e63d69c1f2470431325d2d8a758e83395c5ef0620"
       }
     },
     "note": "derived from the raw cache at run time; a later append to the cache changes these values and is therefore visible as a fingerprint change"
@@ -185,14 +185,14 @@ side instead of one being labelled as the other.
 
 ```json
 {
-  "paper_sharpe": 0.5544866131202392,
+  "paper_sharpe": 0.5564979703883025,
   "paper_max_dd": -0.6224126346564325,
-  "rolling_sharpe_63d": -2.0322030121783885,
+  "rolling_sharpe_63d": -1.7076117952763843,
   "rolling_63d_max_dd": -0.109209305725669,
   "regime_flips": 6,
-  "paper_days": 8501,
-  "sharpe_observed_canonical": 0.5544866131202392,
-  "sharpe_se": 0.15353194440392845
+  "paper_days": 8502,
+  "sharpe_observed_canonical": 0.5564979703883025,
+  "sharpe_se": 0.15264855348720863
 }
 ```
 
@@ -200,13 +200,13 @@ side instead of one being labelled as the other.
 
 ```json
 {
-  "sharpe_backtest_scale": 0.37219520221141195,
+  "sharpe_backtest_scale": 0.37437761124543095,
   "psr_target_backtest_scale": 1.4178,
   "baseline_tieback": {
     "recorded_baseline": 1.4178,
     "tolerance": "window/warmup/costs explain deviation (must be quantified)",
     "within_tolerance": false,
-    "delta": -1.045604797788588
+    "delta": -1.043422388754569
   }
 }
 ```
@@ -215,7 +215,7 @@ side instead of one being labelled as the other.
 
 ```json
 {
-  "psr_normal": 9.382315085066624e-09,
+  "psr_normal": 8.385489043436886e-09,
   "psr_empirical": 0.0,
   "psr_zone": "below_grey",
   "sharpe_ci_lower": NaN,
@@ -228,19 +228,19 @@ side instead of one being labelled as the other.
 ```json
 {
   "track_record_length": {
-    "value": 8501.0,
+    "value": 8502.0,
     "threshold": 126.0,
     "comparison": "gte",
     "pass": true
   },
   "full_period_sharpe": {
-    "value": 0.5544866131202392,
+    "value": 0.5564979703883025,
     "threshold": 0.9,
     "comparison": "gte",
     "pass": false
   },
   "rolling_63d_sharpe": {
-    "value": -2.0322030121783885,
+    "value": -1.7076117952763843,
     "threshold": 0.9,
     "comparison": "gte",
     "pass": false
@@ -264,7 +264,7 @@ side instead of one being labelled as the other.
     "pass": true
   },
   "psr": {
-    "value": 9.382315085066624e-09,
+    "value": 8.385489043436886e-09,
     "threshold": 0.95,
     "comparison": "gte",
     "pass": false
@@ -320,9 +320,9 @@ side instead of one being labelled as the other.
 ```json
 {
   "psr_reaches_095": false,
-  "required_observed_sharpe_for_psr095": 1.6703375756057135,
-  "sharpe_se_at_this_sample": 0.15353194440392845,
-  "sample_length": 8501,
+  "required_observed_sharpe_for_psr095": 1.668884526852331,
+  "sharpe_se_at_this_sample": 0.15264855348720863,
+  "sample_length": 8502,
   "note": "PSR>=0.95 when (sr_obs - sr_t)/se >= 1.64485 at same SE."
 }
 ```
