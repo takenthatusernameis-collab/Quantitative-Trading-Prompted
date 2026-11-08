@@ -10,10 +10,10 @@ end date. No forward-looking calls are made.
 
 from __future__ import annotations
 
-import os
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import List, Optional, Sequence
+from collections.abc import Sequence
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -63,11 +63,11 @@ class YFinanceFetcher:
         self,
         symbols: Sequence[str],
         start_date: str,
-        end_date: Optional[str] = None,
-        raw_dir: Optional[str] = None,
+        end_date: str | None = None,
+        raw_dir: str | None = None,
         append_only: bool = True,
     ) -> None:
-        self.symbols: List[str] = list(symbols)
+        self.symbols: list[str] = list(symbols)
         self.start_date = start_date
         self.end_date = end_date or datetime.now(UTC).strftime("%Y-%m-%d")
         # append_only (Cycle 866): the canonical raw cache is append-only. A
@@ -124,7 +124,7 @@ class YFinanceFetcher:
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
-    def _download(self, symbol: str) -> Optional[pd.DataFrame]:
+    def _download(self, symbol: str) -> pd.DataFrame | None:
         raw = yf.download(
             symbol,
             start=self.start_date,
@@ -154,13 +154,13 @@ class YFinanceFetcher:
         safe = symbol.replace("/", "-").replace("=", "-")
         return self.raw_dir / f"{safe}.parquet"
 
-    def _load_cached(self, symbol: str) -> Optional[pd.DataFrame]:
+    def _load_cached(self, symbol: str) -> pd.DataFrame | None:
         path = self._cache_path(symbol)
         if not path.exists():
             return None
         try:
             df = pd.read_parquet(path)
-        except Exception:
+        except (OSError, ValueError, ImportError):
             return None
         if df.empty:
             return None
@@ -185,7 +185,7 @@ class YFinanceFetcher:
                 else:
                     committed_idx = committed_idx.tz_convert("UTC")
                 committed_max = pd.Timestamp(committed_idx.max())
-            except Exception:
+            except (OSError, ValueError, ImportError):
                 committed_max = None
             downloaded_idx = pd.to_datetime(df.index)
             if downloaded_idx.tz is None:
@@ -228,8 +228,8 @@ class YFinanceFetcher:
 def fetch_universe(
     symbols: Sequence[str],
     start_date: str,
-    end_date: Optional[str] = None,
-    raw_dir: Optional[str] = None,
+    end_date: str | None = None,
+    raw_dir: str | None = None,
     force: bool = False,
     append_only: bool = True,
 ) -> pd.DataFrame:

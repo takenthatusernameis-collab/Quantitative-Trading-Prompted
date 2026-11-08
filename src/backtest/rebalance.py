@@ -30,7 +30,8 @@ default so that every committed artifact stays reproducible.
 
 from __future__ import annotations
 
-from typing import Any, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -49,7 +50,7 @@ SCHEDULE_ALIASES: dict[str, str] = {
 }
 
 
-def normalize_schedule(schedule: Optional[str]) -> str:
+def normalize_schedule(schedule: str | None) -> str:
     """Return the canonical name of *schedule*.
 
     ``None`` is not accepted here: the caller decides what the default is.
@@ -89,7 +90,7 @@ def month_end_sessions(index: pd.DatetimeIndex) -> list[pd.Timestamp]:
 
 def build_month_end_weights(
     mask: pd.DataFrame,
-    month_ends: Optional[Sequence[pd.Timestamp]] = None,
+    month_ends: Sequence[pd.Timestamp] | None = None,
 ) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
     """Month-end rebalanced, 1-session-lagged, equal-weight target weights.
 
