@@ -6,7 +6,7 @@
 
 ## 1. Data inventory — `data/raw/`
 
-**35 parquet files, 180263 rows** (22 ETF, 4 futures, 8 crypto, 1 index). **0 missing prices**, **0 duplicate timestamps**, **1 (n/a for the 4 funding-rate files) non-positive prices**, **8610 (n/a for the 4 funding-rate files) zero-volume rows**.
+**35 parquet files, 180255 rows** (22 ETF, 4 futures, 8 crypto, 1 index). **0 missing prices**, **0 duplicate timestamps**, **1 (n/a for the 4 funding-rate files) non-positive prices**, **8609 (n/a for the 4 funding-rate files) zero-volume rows**.
 
 The counters marked *n/a* apply to the crypto funding-rate files: a funding rate is a signed rate (a negative value is ordinary, not an anomaly) and the series carries no volume column.
 
@@ -15,16 +15,16 @@ The counters marked *n/a* apply to the crypto funding-rate files: a funding rate
 | 1 | `data/raw/BNO.parquet` | etf | 4123 | 2010-06-02 | 2026-10-21 | daily | 0 | 0 | 77 | 0 | 27 | `f9f85c5844ba3884` |
 | 2 | `data/raw/CL-F.parquet` | futures | 2964 | 2015-01-02 | 2026-10-15 | daily | 0 | 0 | 12 | 1 | 7 | `5d7ec126885110fc` |
 | 3 | `data/raw/DBC.parquet` | etf | 5201 | 2006-02-06 | 2026-10-08 | daily | 0 | 0 | 85 | 0 | 0 | `3218ecb019945226` |
-| 4 | `data/raw/EEM.parquet` | etf | 5931 | 2003-04-14 | 2026-11-06 | daily | 0 | 0 | 40 | 0 | 0 | `0155ad5f13503c6a` |
-| 5 | `data/raw/EFA.parquet` | etf | 6337 | 2001-08-27 | 2026-11-06 | daily | 0 | 0 | 49 | 0 | 0 | `f90dcab2a54e7787` |
+| 4 | `data/raw/EEM.parquet` | etf | 5930 | 2003-04-14 | 2026-11-05 | daily | 0 | 0 | 40 | 0 | 0 | `0630300350fe56bc` |
+| 5 | `data/raw/EFA.parquet` | etf | 6336 | 2001-08-27 | 2026-11-05 | daily | 0 | 0 | 49 | 0 | 0 | `875eecce9ab7c80e` |
 | 6 | `data/raw/GC-F.parquet` | futures | 2964 | 2015-01-02 | 2026-10-15 | daily | 0 | 0 | 15 | 0 | 36 | `2dc89075a6bfe3a9` |
-| 7 | `data/raw/GLD.parquet` | etf | 5527 | 2004-11-18 | 2026-11-06 | daily | 0 | 0 | 20 | 0 | 0 | `185f6120aa79dc01` |
+| 7 | `data/raw/GLD.parquet` | etf | 5526 | 2004-11-18 | 2026-11-05 | daily | 0 | 0 | 20 | 0 | 0 | `ad0cc279eb77ad66` |
 | 8 | `data/raw/GSG.parquet` | etf | 2964 | 2015-01-02 | 2026-10-15 | daily | 0 | 0 | 59 | 0 | 0 | `d38c0d9bed4894da` |
-| 9 | `data/raw/IWM.parquet` | etf | 6652 | 2000-05-26 | 2026-11-06 | daily | 0 | 0 | 20 | 0 | 0 | `31d5093c17a884e0` |
+| 9 | `data/raw/IWM.parquet` | etf | 6651 | 2000-05-26 | 2026-11-05 | daily | 0 | 0 | 20 | 0 | 0 | `c16dd9c4a3ea1a58` |
 | 10 | `data/raw/NG-F.parquet` | futures | 2965 | 2015-01-02 | 2026-10-15 | daily | 0 | 0 | 11 | 0 | 7 | `6d480ef7769f42eb` |
-| 11 | `data/raw/QQQ.parquet` | etf | 6960 | 1999-03-10 | 2026-11-06 | daily | 0 | 0 | 38 | 0 | 0 | `2592918f78c2e88e` |
-| 12 | `data/raw/SPY.parquet` | etf | 8502 | 1993-01-29 | 2026-11-06 | daily | 0 | 0 | 62 | 0 | 0 | `7649e6a42c1282f0` |
-| 13 | `data/raw/TLT.parquet` | etf | 6109 | 2002-07-30 | 2026-11-06 | daily | 0 | 0 | 31 | 0 | 0 | `809f3531285eb971` |
+| 11 | `data/raw/QQQ.parquet` | etf | 6959 | 1999-03-10 | 2026-11-05 | daily | 0 | 0 | 38 | 0 | 0 | `5b867704a6d2b876` |
+| 12 | `data/raw/SPY.parquet` | etf | 8501 | 1993-01-29 | 2026-11-05 | daily | 0 | 0 | 62 | 0 | 0 | `e23d1cb44f361354` |
+| 13 | `data/raw/TLT.parquet` | etf | 6108 | 2002-07-30 | 2026-11-05 | daily | 0 | 0 | 31 | 0 | 0 | `ee9b2f84d5cf1b19` |
 | 14 | `data/raw/UNG.parquet` | etf | 4910 | 2007-04-18 | 2026-10-21 | daily | 0 | 0 | 63 | 0 | 0 | `0ce2a5b25a2e8e6b` |
 | 15 | `data/raw/USO.parquet` | etf | 2964 | 2015-01-02 | 2026-10-15 | daily | 0 | 0 | 23 | 0 | 0 | `fa22094f98b4e826` |
 | 16 | `data/raw/VNQ.parquet` | etf | 5542 | 2004-09-29 | 2026-10-08 | daily | 0 | 0 | 30 | 0 | 0 | `8714f6b1bf45d1b0` |
@@ -38,7 +38,7 @@ The counters marked *n/a* apply to the crypto funding-rate files: a funding rate
 | 24 | `data/raw/XLV.parquet` | etf | 6991 | 1998-12-22 | 2026-10-08 | daily | 0 | 0 | 91 | 0 | 0 | `bcf7029ba61bac58` |
 | 25 | `data/raw/XLY.parquet` | etf | 6991 | 1998-12-22 | 2026-10-08 | daily | 0 | 0 | 65 | 0 | 0 | `7a64cd50a03d5d70` |
 | 26 | `data/raw/ZB-F.parquet` | futures | 2964 | 2015-01-02 | 2026-10-15 | daily | 0 | 0 | 37 | 0 | 9 | `26f740c341408310` |
-| 27 | `data/raw/^VIX.parquet` | index (non-tradable) | 8523 | 1993-01-04 | 2026-11-06 | daily | 0 | 0 | 47 | 0 | 8523 | `8ea366d4f4805697` |
+| 27 | `data/raw/^VIX.parquet` | index (non-tradable) | 8522 | 1993-01-04 | 2026-11-05 | daily | 0 | 0 | 47 | 0 | 8522 | `188ccff010e9b5be` |
 | 28 | `data/raw/crypto/BTCUSDT_perp_1d_binance.parquet` | crypto | 2465 | 2020-01-01 | 2026-09-30 | daily | 0 | 0 | 0 | 0 | 0 | `b512246ba875b0d6` |
 | 29 | `data/raw/crypto/BTCUSDT_spot_1d_binance.parquet` | crypto | 2465 | 2020-01-01 | 2026-09-30 | daily | 0 | 0 | 0 | 0 | 0 | `0fd946222a284885` |
 | 30 | `data/raw/crypto/BTC_USDT_USDT_funding.parquet` | crypto | 296 | 2026-07-13 | 2026-10-20 | 8-hourly | 0 | 0 | 19 | - | - | `1c5ded033f01acc7` |
@@ -114,7 +114,7 @@ A member can only be ranked once it has a valid 226-session momentum that skips 
 | 4 | 228 | 2002-08-26 | 2003-07-22 |
 | 5 | 178 | 2003-07-23 | 2004-04-05 |
 | 6 | 404 | 2004-04-06 | 2005-11-09 |
-| 7 | 5280 | 2005-11-10 | 2026-11-06 |
+| 7 | 5279 | 2005-11-10 | 2026-11-05 |
 
 **The selection rule degenerates as the cross-section shrinks.** The repository's shared rule (`src/features/momentum.py:select_top_decile`) selects every asset whose cross-sectional rank is at least `max_rank x (1 - 0.5)`, which is a *rank* rule, not a count rule: with `k` assets that carry a valid momentum it holds
 
