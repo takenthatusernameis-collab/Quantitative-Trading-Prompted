@@ -1,0 +1,11 @@
+# Paper Trading Extension Gate Check — Pre-gate (Corrective Invocation 8)
+- UTC: 2026-11-09T21:31:27Z / EST: 2026-11-09T16:31:27-05:00
+- Gate (22:00 UTC 2026-11-09): **NOT OPEN** (< 22:00 UTC). Cmds 2/4/7 NOT run per scope #29.
+- State: `data/processed/paper_trading_state.yaml` SHA256 `a8bb945ca24fb79133f75de9ba4e31b0205cafb50e9d71d6aa1eb451f4cd35b4`, `last_run_date: 2026-11-06`, NAV `130874.77477663972` (unchanged).
+- Drift tail (drift_persistence_report.py): 2026-11-06 rolling 63d Sharpe `-1.8144` (consistent).
+- pytest (6 modules, cmd 5): `64 passed in 19.91s` — `/tmp/kilo-venv/bin/python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py -q`
+- ruff (cmd 8): `All checks passed!` — `/tmp/kilo-venv/bin/ruff check research/drift_persistence_report.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py`
+- `git status --porcelain data/ config/`: clean (no state writes).
+- Tooling: `/tmp/kilo-venv/bin/{python,ruff}` present.
+- Prior blocker (inv 7 / recovery-7): exited status 124 (idle timeout) while attempting to wait for gate; no durable progress. This invocation chose a materially different approach: run narrow read-only verification now, record durable evidence, do NOT idle-wait, do NOT run extend pre-gate.
+- Unresolved: real extension (cmds 2,4,7) blocked until >= 22:00 UTC 2026-11-09 and a completed 2026-11-09 bar exists. Next distinct step: at/after 22:00 UTC run cmds 1-8 in order per NEXT_AGENT_TASK.md.

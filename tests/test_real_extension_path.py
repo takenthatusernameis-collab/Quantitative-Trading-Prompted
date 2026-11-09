@@ -243,15 +243,17 @@ def test_real_extension_path_is_idempotent(tmp_path, real_cfg, committed_state):
     finally:
         cleanup()
 
-    # Second invocation: the committed state's last_run_date is 2026-11-06, so
-    # the clock gate checks the calendar day after it (2026-11-07). NOW is
-    # 2026-11-05 23:00 UTC (18:00 ET), i.e. before the start of 2026-11-07, so
-    # the gate is NOT released and no candidate can be complete. last_run_date
-    # therefore stays at the committed 2026-11-06.
+    # Second invocation: the committed state's last_run_date is read from the
+    # canonical state file (not hardcoded), so the clock gate checks the calendar
+    # day after it. NOW is 2026-11-05 23:00 UTC (18:00 ET), i.e. before the start
+    # of that next calendar day, so the gate is NOT released and no candidate can
+    # be complete. last_run_date therefore stays at the committed value and the
+    # file is byte-identical (idempotent no-op).
+    committed_last = PaperTradingState.from_yaml(COMMITTED_STATE_PATH).last_run_date
     assert result["target"] is None
     assert result["sessions_extended"] == 0
     assert result["state_writes"] == 0
-    assert PaperTradingState.from_yaml(state_path).last_run_date == "2026-11-06"
+    assert PaperTradingState.from_yaml(state_path).last_run_date == committed_last
     assert hashlib.sha256(state_path.read_bytes()).hexdigest() == before
 
 

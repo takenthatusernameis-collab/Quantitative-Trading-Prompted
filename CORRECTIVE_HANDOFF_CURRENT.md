@@ -284,6 +284,31 @@ CORRECTIVE_VERIFICATION=BLOCKED
 ## Next distinct investigation (>= 2026-11-09T22:00Z, after cutoff)
 Run NEXT_AGENT_TASK.md acceptance sequence (cmds 1-8). If `sessions_extended==1`: verify `last_run_date` advance, NAV change, write count 1, idempotent re-run, drift consistent; re-run inventories + inventory tests (step 7). If `sessions_extended==0`: record explicit reason, NAV/writes unchanged.
 
+## Corrective invocation (2026-11-09T22:03Z) — post-gate acceptance sequence (NEXT_AGENT_TASK cmds 1-8)
+
+- **Context:** Clock gate released at 22:00 UTC. State was **already extended to 2026-11-09** by a prior process (between diagnostic log at 20:56 UTC and this session at 22:03 UTC): `last_run_date: 2026-11-09`, NAV `130874.77477663972` → `132932.12732794194`, rolling Sharpe `-1.8144` → `-1.1566`. Git shows `M data/processed/paper_trading_state.yaml` + 4 new untracked `data/processed/paper_trading/*_20261109.parquet` files.
+- **Cmd 1 (time):** `Mon Nov  9 22:03:54 UTC 2026 / Mon Nov  9 17:03:54 EST 2026` (>= 22:00 UTC, gate released)
+- **Cmd 2 (extend):** `last processed session: 2026-11-09`, `next expected session: 2026-11-10`, `candidate available: no` (2026-11-10 not yet closed), `sessions extended: 0`, NAV `132932.12732794194`→`132932.12732794194`, `state write count: 0`, `raw cache: scratch` (no new extension needed — state already at 2026-11-09)
+- **Cmd 3 (drift):** tail ends `2026-11-06  -1.8144 / 2026-11-09  -1.1566` (consistent with extended state)
+- **Cmd 4 (idempotency):** 2nd extend → identical: `sessions extended: 0`, NAV unchanged, `state write count: 0`
+- **Cmd 5 (pytest):** 6 AC modules → **64 passed in 20.62s**
+- **Cmd 6 (git status):** ` M data/processed/paper_trading_state.yaml` + 4 new untracked 20261109 parquet files (only expected state update; no `data/raw/` or `config/` changes)
+- **Cmd 7 (inventories, state advanced):** `data_cost_inventory_001.py` → OVERALL: PASS; `data_cost_inventory_002.py` → OVERALL: PASS; `pytest tests/test_data_cost_inventory_001.py tests/test_data_cost_inventory_002.py -q` → **41 passed in 44.24s**
+- **Cmd 8 (ruff):** `ruff check research/drift_persistence_report.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py` → **All checks passed!**
+
+## Acceptance criteria evaluation
+- Gate confirmed released (>= 22:00 UTC): YES
+- State advanced to 2026-11-09: YES (by prior process; `last_run_date` advanced, NAV changed)
+- My invocation `sessions_extended: 0` with explicit reason (next candidate 2026-11-10 not yet closed): YES
+- Idempotent re-run: YES (`sessions extended: 0`, 0 writes)
+- Drift report updated/consistent: YES (`2026-11-09 -1.1566` present)
+- `git status --porcelain data/ config/` shows only expected state update: YES
+- pytest 64 pass: YES
+- Inventories regenerated + inventory tests pass: YES (41 passed)
+- ruff clean: YES
+
+No thresholds/gates/cost model/universe/clock-gate logic, tests, security controls, or workflow boundaries modified. `data/raw/` untouched. No commit (not requested).
+
 CORRECTIVE_VERIFICATION=PASS
 
 ## Corrective invocation 278 (2026-11-09T08:44Z) — narrow no-op verification after prior model-error failure
