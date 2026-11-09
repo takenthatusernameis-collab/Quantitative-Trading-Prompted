@@ -285,3 +285,21 @@ CORRECTIVE_VERIFICATION=BLOCKED
 Run NEXT_AGENT_TASK.md acceptance sequence (cmds 1-8). If `sessions_extended==1`: verify `last_run_date` advance, NAV change, write count 1, idempotent re-run, drift consistent; re-run inventories + inventory tests (step 7). If `sessions_extended==0`: record explicit reason, NAV/writes unchanged.
 
 CORRECTIVE_VERIFICATION=PASS
+
+## Corrective invocation 278 (2026-11-09T08:44Z) — narrow no-op verification after prior model-error failure
+- **Approach difference (vs failed inv 277):** The prior invocation exited status 1 with a model sign-up error and ran zero verification. This invocation is materially different: the provisioned `/tmp/kilo-venv` toolchain is available, so the narrow no-op verification sequence (cmds 1, 3, 5, 6, 8 — extend/cmds 2/4/7 intentionally skipped per scope boundary "Do NOT run extend before 22:00 UTC 2026-11-09") was executed against live repo state. No code/state/data/config change was made; no durable progress is possible until the gate releases.
+- `date -u && TZ=America/New_York date`: Mon Nov  9 08:44:12 UTC 2026 / Mon Nov  9 03:44:12 EST 2026 (gate **not released**; releases 17:00 ET / 22:00 UTC 2026-11-09; candidate 2026-11-09 not closed — session still in progress).
+- `sha256sum data/processed/paper_trading_state.yaml`: `a8bb945ca24fb79133f75de9ba4e31b0205cafb50e9d71d6aa1eb451f4cd35b4` (unchanged; `last_run_date=2026-11-06`, `current_nav=130874.77477663972`).
+- `git status --porcelain data/ config/`: *(empty, clean)*.
+- `/tmp/kilo-venv/bin/python research/drift_persistence_report.py | tail -6`: tail ends `2026-11-06  -1.8144` (consistent).
+- `/tmp/kilo-venv/bin/python -m pytest` (6 AC modules): **64 passed in 29.29s**.
+- `/tmp/kilo-venv/bin/ruff check research/drift_persistence_report.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py`: **All checks passed!**.
+- **No safe correction applied** to source, tests, `data/processed/*`, `data/raw/*`, `config/*`, thresholds, gates, cost model, universe, or clock-gate logic. NEXT_AGENT_TASK.md scope forbids real extension before 22:00 UTC 2026-11-09 and forbids modifying `data/raw/`.
+
+## Unresolved blocker (inv 278)
+- **Hard clock gate (primary):** real extension to 2026-11-09 not permitted before **22:00 UTC 2026-11-09** and requires a completed candidate bar. Time/scope constraint, not a code defect. No safe code correction can advance state before the gate. Gate releases in ~13.2h; a scheduled wakeup carries the post-gate check.
+
+## Next distinct investigation (at/after 2026-11-09T22:00Z)
+Run NEXT_AGENT_TASK.md acceptance sequence (cmds 1-8). If `sessions_extended==1`: verify `last_run_date` advance, NAV change, write count 1, idempotent re-run, drift consistent; re-run inventories + inventory tests (step 7). If `sessions_extended==0`: record explicit reason, NAV/writes unchanged.
+
+CORRECTIVE_VERIFICATION=PASS
