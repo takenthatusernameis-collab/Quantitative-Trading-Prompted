@@ -20,7 +20,7 @@
 - [PASS] phase_b_test_windows_pairwise_disjoint: observed=overlap=0.0, disjoint=24, folds=24; expected=overlap==0 and disjoint==folds
 - [PASS] phase_union_covers_published_fold_set: observed=phase A 24 folds, phase B 24 folds; expected=all 48 folds, disjoint
 - [PASS] phase_means_average_to_published_mean: observed=(1.539145+1.540784)/2=1.539964, published 1.539964; expected=equal within tol
-- [PASS] data_unchanged: observed=; expected=
+- [FAIL] data_unchanged: observed=; expected=
 - [PASS] config_unchanged: observed=; expected=
 - [PASS] committed_artifacts_unchanged: observed=; expected=
 
@@ -160,4 +160,4 @@
 - SMA-175 path computed via same overlay/cost model as run_cycle6 logic.
 - Cache-only data access via `load_close_from_cache`.
 
-**OVERALL:** PASS
+**OVERALL:** FAIL
