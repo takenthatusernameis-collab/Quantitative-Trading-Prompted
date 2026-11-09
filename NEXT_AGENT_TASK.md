@@ -3,8 +3,8 @@
 ## Context
 - State: `data/processed/paper_trading_state.yaml`, SHA256 `a8bb945ca24fb79133f75de9ba4e31b0205cafb50e9d71d6aa1eb451f4cd35b4`, `last_run_date: 2026-11-06`, NAV `130874.77477663972`.
 - Rolling 63d Sharpe at 2026-11-06: `-1.8144`.
-- `git status --porcelain data/ config/`: clean as of 2026-11-09 04:44 UTC (pre-gate verification).
-- **Pre-gate verification 2026-11-09 04:44 UTC:** `date -u` = Mon Nov 9 04:44:34 UTC 2026 / Sun Nov 8 23:44:34 EST. `extend_paper_trading_state.py` NOT run (gate not released until 22:00 UTC). `drift_persistence_report.py` tail `2026-11-06 -1.8144` consistent; pytest 6 modules → **64 passed**; `git status --porcelain data/ config/` clean; `ruff check` on 3 extension modules → **All checks passed!**. Real extension deferred until >= 22:00 UTC 2026-11-09.
+- `git status --porcelain data/ config/`: clean as of 2026-11-09 05:58 UTC (pre-gate verification).
+- **Pre-gate verification 2026-11-09 05:58 UTC:** `date -u` = Mon Nov 9 05:58:12 UTC 2026 / Mon Nov 9 00:58:12 EST. `extend_paper_trading_state.py` NOT run (gate not released until 22:00 UTC). `drift_persistence_report.py` tail `2026-11-06 -1.8144` consistent; pytest 6 modules → **64 passed**; `git status --porcelain data/ config/` clean; `ruff check` on 3 extension modules → **All checks passed!**. Real extension deferred until >= 22:00 UTC 2026-11-09.
 - **Tooling:** `/tmp/kilo-venv/bin/python` and `/tmp/kilo-venv/bin/ruff` verified working. If missing at gate time, re-create: `python3 -m venv /tmp/kilo-venv && /tmp/kilo-venv/bin/pip install -r requirements.txt ruff`.
 
 ## Objective
