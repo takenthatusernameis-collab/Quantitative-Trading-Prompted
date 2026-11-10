@@ -97,6 +97,35 @@ def test_verify_monday_extension_path_reproduces_committed_nav():
     )
 
 
+def test_verify_monday_extension_path_reproduces_committed_nav_unconditionally():
+    """The committed-NAV check must run on the ACTIVE path, not only the no-op.
+
+    Cycle 1036: the reproduction assertion was nested under
+    ``nav_after == nav_before`` (the no-op branch), so on a real one-session
+    advance -- where nav_after legitimately differs from nav_before -- the
+    check was skipped and RESULT: PASS was emitted with no NAV verification.
+    This test pins the hoisted, unconditional contract: the script's stdout
+    must contain the reproduction line for the target session.
+    """
+    import pandas as pd
+
+    spy = pd.read_parquet(RAW_DIR / "SPY.parquet")
+    target_date = pd.Timestamp(spy.index.max()).strftime("%Y-%m-%d")
+
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT)],
+        capture_output=True,
+        text=True,
+        timeout=600,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "RESULT: PASS" in result.stdout
+    assert (
+        f"nav_after reproduces committed {target_date} NAV:" in result.stdout
+    ), "committed-NAV reproduction line missing from active-path run"
+
+
 def test_verify_monday_extension_path_target_matches_canonical_cache():
     """The script's target session is the max date of the committed SPY frame."""
     import pandas as pd

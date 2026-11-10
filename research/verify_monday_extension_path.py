@@ -22,6 +22,12 @@ watchdog (exit 124) before the assertion phase ran. The canonical cache is
 the authoritative, committed dataset; exercising the active path against it
 is the deterministic, watchdog-safe equivalent. Pass --online to re-enable
 the live download.
+
+Cycle 1036: the committed-NAV reproduction check was nested under
+``nav_after == nav_before`` (the no-op branch), so on a real one-session
+advance -- where nav_after legitimately differs from nav_before -- the
+strongest assertion in this script was skipped and RESULT: PASS was emitted
+with no NAV verification at all. The check is now unconditional.
 """
 import argparse
 import hashlib
@@ -77,6 +83,7 @@ fixed_now = datetime.strptime(target_date, "%Y-%m-%d").replace(
 with tempfile.TemporaryDirectory() as tmp:
     tmp_state = Path(tmp) / "state.yaml"
     canonical = PaperTradingState.from_yaml(STATE_PATH)
+    committed_nav = next(r["nav"] for r in canonical.run_history if r["date"] == target_date)
     canonical.last_run_date = prior_date
     canonical.cumulative_dates = [d for d in canonical.cumulative_dates if d <= prior_date]
     canonical.cumulative_returns = canonical.cumulative_returns[: len(canonical.cumulative_dates)]
@@ -174,19 +181,18 @@ if result["sessions_extended"] != 1:
     print("FAIL: sessions_extended != 1"); ok = False
 if result["state_writes"] != 1:
     print("FAIL: state_writes != 1"); ok = False
-if result["nav_after"] == result["nav_before"]:
-    print("FAIL: NAV unchanged"); ok = False
-    # The extension must reproduce the COMMITTED NAV for the target session
-    # bit-for-bit (mirrors test_real_extension_path.py). A write that produces
-    # a different NAV is a real-path defect, not a no-op.
-    committed_nav = next(
-        r["nav"] for r in canonical.run_history if r["date"] == target_date
-    )
-    if result["nav_after"] != pytest.approx(committed_nav, rel=1e-12):
-        print(f"FAIL: nav_after {result['nav_after']} != committed {committed_nav}")
-        ok = False
-    else:
-        print(f"nav_after reproduces committed {target_date} NAV: {committed_nav}")
+# The extension must reproduce the COMMITTED NAV for the target session
+# bit-for-bit (mirrors test_real_extension_path.py). A write that produces
+# a different NAV is a real-path defect, not a no-op.
+#
+# Cycle 1036: the committed-NAV reproduction check is unconditional; it runs
+# on the real one-session advance path (not only the no-op branch), matching
+# the assertion in test_real_extension_path.py.
+if result["nav_after"] != pytest.approx(committed_nav, rel=1e-12):
+    print(f"FAIL: nav_after {result['nav_after']} != committed {target_date} NAV {committed_nav}")
+    ok = False
+else:
+    print(f"nav_after reproduces committed {target_date} NAV: {committed_nav}")
 if written["last_run_date"] != target_date:
     print(f"FAIL: written last_run_date != {target_date}"); ok = False
 if state_after_hash == state_before_hash:
