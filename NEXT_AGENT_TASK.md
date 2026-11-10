@@ -56,13 +56,14 @@
 - **Pre-gate verification 2026-11-10 14:09 UTC (this session, inv 1):** Gate still not open (releases 22:00 UTC 2026-11-10; current ET 09:09 Tue Nov 10). Pre-gate cmds 1,3,5,6,8 executed and **ALL PASSED**: date 2026-11-10T14:09:04Z / Tue Nov 10 09:09:04 EST; drift tail ends `2026-11-09  -1.1566` (consistent); pytest cmd5 (6 modules) **67 passed in 27.60s**; `git status --porcelain data/ config/` clean (no output); ruff cmd8 **All checks passed!** Cmds 2,4,7 **NOT run** (scope boundary #58: before 22:00 UTC). State unchanged (SHA256 `24cd92a33d138f9c12004ddad25931a109977a68e14143395b3231ffe38f53f2`, last_run_date 2026-11-09, NAV 132932.12732794194, run_history 465). No 2026-11-10 artifacts exist (candidate session not closed). Wakeup `wku_1c41eca55001kqDCHHkvqwbbA5` remains scheduled 2026-11-10T22:03:00Z for real gate check. Disposition written to `.kilo-runtime/worker-disposition.json` as `in_progress` (runtime file, not committed).
 - **Pre-gate verification 2026-11-10 14:01 UTC (corrective invocation 274):** Gate still not open (releases 22:00 UTC 2026-11-10; current ET 09:01 Tue Nov 10). Prior invocation exited status 1 with model sign-up error and ran zero verification — this invocation is materially different: no external model API calls; narrow read-only verification only (cmds 1,3,5,6,8; extend cmds 2/4/7 intentionally skipped per scope boundary). Cmds 1,3,5,6,8 executed and **ALL PASSED**: date 2026-11-10T14:01:04Z / Tue Nov 10 09:01:04 EST; drift tail ends `2026-11-09  -1.1566` (consistent); pytest cmd5 (6 modules) **67 passed in 26.99s**; `git status --porcelain data/ config/` clean (no output); ruff cmd8 **All checks passed!** Cmds 2,4,7 **NOT run** (scope boundary: before 22:00 UTC). State unchanged (SHA256 `24cd92a33d138f9c12004ddad25931a109977a68e14143395b3231ffe38f53f2`, last_run_date 2026-11-09, NAV 132932.12732794194, run_history 465). No 2026-11-10 artifacts exist (candidate session not closed). No code/state/data/config changes made.
 - **Pre-gate verification 2026-11-10 14:03 UTC (this session, inv 1):** Gate still not open (releases 22:00 UTC 2026-11-10; current ET 09:03 Tue Nov 10). Pre-gate cmds 1,3,5,6,8 executed and **ALL PASSED**: date 2026-11-10T14:03:52Z / Tue Nov 10 09:03:52 EST; drift tail ends `2026-11-09  -1.1566` (consistent); pytest cmd5 (6 modules) **67 passed in 27.18s**; `git status --porcelain data/ config/` clean (no output); ruff cmd8 **All checks passed!** Cmds 2,4,7 **NOT run** (scope boundary #56: before 22:00 UTC). State unchanged (SHA256 `24cd92a33d138f9c12004ddad25931a109977a68e14143395b3231ffe38f53f2`, last_run_date 2026-11-09, NAV 132932.12732794194, run_history 465). No 2026-11-10 artifacts exist (candidate session not closed). Wakeup `wku_1c41eca55001kqDCHHkvqwbbA5` remains scheduled 2026-11-10T22:03:00Z for real gate check.
+- **Pre-gate verification 2026-11-10 22:05 UTC (this session, run 42876630598 attempt 1 session 23 inv 1):** Gate for 2026-11-11 **NOT released** (releases 17:00 ET / 22:00 UTC 2026-11-11; current ET 17:05 Tue Nov 10). Pre-gate cmds 1,3,5,6,8 executed and **ALL PASSED**: date 2026-11-10T22:05:34Z / Tue Nov 10 17:05:34 EST; drift tail ends `2026-11-10  -1.4394` (consistent with post-gate state); pytest cmd5 (6 modules) **67 passed in 29.82s**; `git status --porcelain data/ config/` clean (no output); ruff cmd8 **All checks passed!** Cmds 2,4,7 **NOT run** (scope boundary #28: before 22:00 UTC 2026-11-11). State unchanged (SHA256 `111b642c4ac5834460c83ac250a0a90ffb75eed308321ad1bb6309a2fc552517`, last_run_date 2026-11-10, NAV 132498.02732499802, run_history 466). No 2026-11-11 artifacts exist (candidate session not closed). No supervisor recommendation file present; disposition `verified` / `none-received` written to `.kilo-runtime/worker-disposition.json`.
 
 ## Objective
-At/after 22:00 UTC on 2026-11-10, run the real extension and persistence checks. Extend by at most one session to 2026-11-10 only if a completed bar exists; otherwise record `sessions_extended==0` with explicit reason and keep state unchanged. No alpha/promotion claims.
+At/after 22:00 UTC on 2026-11-11, run the real extension and persistence checks. Extend by at most one session to 2026-11-11 only if a completed bar exists; otherwise record `sessions_extended==0` with explicit reason and keep state unchanged. No alpha/promotion claims.
 
 ## Acceptance criteria
 - Run verification commands in order; record gate/candidate/sessions_extended/last_run_date/NAV and reason if 0.
-- If a completed 2026-11-10 session exists: `sessions_extended==1`, `last_run_date` advances, NAV changes, write count 1.
+- If a completed 2026-11-11 session exists: `sessions_extended==1`, `last_run_date` advances, NAV changes, write count 1.
 - If not: `sessions_extended==0` with explicit reason, NAV unchanged, 0 writes.
 - Second invocation idempotent.
 - `drift_persistence_report` reports updated/consistent.
@@ -75,7 +76,7 @@ At/after 22:00 UTC on 2026-11-10, run the real extension and persistence checks.
 - Do not change thresholds/gates/cost model/universe/clock-gate logic.
 - Do not commit unless asked.
 - Do not modify `data/raw/`.
-- Do NOT run extend before 22:00 UTC 2026-11-10.
+- Do NOT run extend before 22:00 UTC 2026-11-11.
 
 ## Verification commands
 1. `date -u && TZ=America/New_York date`
@@ -88,6 +89,6 @@ At/after 22:00 UTC on 2026-11-10, run the real extension and persistence checks.
 8. `/tmp/kilo-venv/bin/ruff check research/drift_persistence_report.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py`
 
 ## Handoff / next cycle
-- Pre-staged next task (gate check for 2026-11-11, releases 22:00 UTC 2026-11-11): `NEXT_AGENT_TASK_20261111.md`. After completing the 2026-11-10 gate check and updating this file's log, the next session should rename/move `NEXT_AGENT_TASK_20261111.md` to `NEXT_AGENT_TASK.md` (filling in the 2026-11-10 post-gate log line first), then schedule a wakeup for 2026-11-11T22:03Z.
-- Wakeup for the 2026-11-10 gate check: `wku_1c41eca55001kqDCHHkvqwbbA5` at 2026-11-10T22:03:00Z.
+- Pre-staged next task (gate check for 2026-11-12, releases 22:00 UTC 2026-11-12): create `NEXT_AGENT_TASK_20261112.md` from this template. After completing the 2026-11-11 gate check and updating this file's log, the next session should rename/move `NEXT_AGENT_TASK_20261112.md` to `NEXT_AGENT_TASK.md` (filling in the 2026-11-11 post-gate log line first), then schedule a wakeup for 2026-11-12T22:03Z.
+- Wakeup for the 2026-11-11 gate check: schedule for 2026-11-11T22:03:00Z.
 - No commits made. `data/raw/` untouched.`
