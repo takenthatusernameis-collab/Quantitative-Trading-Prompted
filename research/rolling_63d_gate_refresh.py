@@ -42,9 +42,9 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.evaluation.sharpe import sharpe_ratio  # noqa: E402
-from src.simulation.evaluation import GoNoGoConfig, evaluate_go_no_go  # noqa: E402
-from src.simulation.paper_trading import (  # noqa: E402
+from src.evaluation.sharpe import sharpe_ratio
+from src.simulation.evaluation import GoNoGoConfig, evaluate_go_no_go
+from src.simulation.paper_trading import (
     PaperTradingConfig,
     PaperTradingState,
 )
@@ -197,7 +197,7 @@ def main() -> int:
     thresholds = {g["name"]: g for g in gates_table["gates"]}
 
     # ------------------------------------------------------------------
-    print(f"\n--- 1. committed record and canonical Sharpe re-derivation ---")
+    print("\n--- 1. committed record and canonical Sharpe re-derivation ---")
     print(f"sessions                    : {n}")
     print(f"first / last session        : {dates[0]} -> {dates[-1]}")
     print(f"state last_run_date         : {state.get('last_run_date')}")
@@ -240,7 +240,7 @@ def main() -> int:
         )
 
     # ------------------------------------------------------------------
-    print(f"\n--- 2. production gate table (config/promotion_gates.yaml) ---")
+    print("\n--- 2. production gate table (config/promotion_gates.yaml) ---")
     for gate in result.gates:
         print(
             f"  {gate.name:22s} value={gate.value:>12.6f} "
@@ -256,7 +256,7 @@ def main() -> int:
         "max_drawdown": full_max_drawdown(returns),
         "rolling_63d_max_dd": window_max_drawdown(trailing),
     }
-    print(f"\n--- 3. independent recomputation vs production gate values ---")
+    print("\n--- 3. independent recomputation vs production gate values ---")
     for name, value in indep.items():
         prod = production_gates[name].value
         print(f"  {name:22s} independent {value:>12.6f}   production {prod:>12.6f}   diff {value - prod:+.3e}")
@@ -273,7 +273,7 @@ def main() -> int:
     )
 
     # ------------------------------------------------------------------
-    print(f"\n--- 4. rolling 63d Sharpe: empirical base rate on the record ---")
+    print("\n--- 4. rolling 63d Sharpe: empirical base rate on the record ---")
     roll_sharpe = np.array(
         [sharpe_ratio(returns[i - WINDOW + 1: i + 1]) for i in range(WINDOW - 1, n)]
     )
@@ -309,7 +309,7 @@ def main() -> int:
           f"mean {np.mean(lags):.2f}, p90 {np.percentile(lags, 90):.1f}, max {max(lags)}")
 
     # ------------------------------------------------------------------
-    print(f"\n--- 5. max drawdown evidence ---")
+    print("\n--- 5. max drawdown evidence ---")
     dd_threshold = thresholds["max_drawdown"]["threshold"]
     roll_dd_threshold = thresholds["rolling_63d_max_dd"]["threshold"]
     print(f"full-period max DD (gate)           : {indep['max_drawdown']:.6f} "
@@ -340,7 +340,7 @@ def main() -> int:
     print(f"consecutive worst-recorded sessions to breach the gate: {sessions_to_breach}")
 
     # ------------------------------------------------------------------
-    print(f"\n--- 6. gap to each promotion threshold ---")
+    print("\n--- 6. gap to each promotion threshold ---")
     mean_window = float(trailing.mean())
     std_window = float(trailing.std(ddof=1))
     required_mean = target * std_window / math.sqrt(ANNUAL)
@@ -370,7 +370,7 @@ def main() -> int:
     record_best = np.sort(returns)[-WINDOW:]
     k_best = None
     k_avg = None
-    for k in range(0, WINDOW + 1):
+    for k in range(WINDOW + 1):
         cand = np.concatenate([worst_replaced[k:], record_best[:k]]) if k else worst_replaced
         if k_best is None and sharpe_ratio(cand) >= target:
             k_best = k
@@ -401,7 +401,7 @@ def main() -> int:
           f"{thresholds['psr']['threshold']}, se {result.sharpe_se:.6f}; an observed Sharpe of "
           f"{required_observed_sharpe:.6f} would be needed at the current SE")
     failing_now = set(result.failed_gates)
-    hypothetical = sorted((failing_now - {"rolling_63d_sharpe"}))
+    hypothetical = sorted(failing_now - {"rolling_63d_sharpe"})
     print(f"  if the rolling 63d Sharpe gate alone were met, the remaining failing gates would be "
           f"{hypothetical or ['<none>']} -> decision INCONCLUSIVE (grey-zone PSR only), not GO")
 
@@ -434,7 +434,7 @@ def main() -> int:
     )
 
     # ------------------------------------------------------------------
-    print(f"\n--- 7. read-only proof ---")
+    print("\n--- 7. read-only proof ---")
     hashes_after = fingerprint()
     changed = [k for k, v in hashes_before.items() if hashes_after.get(k) != v]
     check("state file and raw cache byte-identical before/after", not changed, f"changed: {changed}")

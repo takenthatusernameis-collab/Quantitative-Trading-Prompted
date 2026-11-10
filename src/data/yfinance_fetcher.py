@@ -10,10 +10,11 @@ end date. No forward-looking calls are made.
 
 from __future__ import annotations
 
+import time
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
-from collections.abc import Sequence
-from typing import Optional
+from urllib.error import HTTPError, URLError
 
 import numpy as np
 import pandas as pd
@@ -23,6 +24,19 @@ import yfinance as yf
 
 def _project_root() -> Path:
     return Path(__file__).resolve().parent.parent.parent
+
+
+# Transient provider errors that should be retried before the download is
+# reported as a hard failure.  Yahoo Finance intermittently returns HTTP 429
+# (Too Many Requests) or drops the connection (URLError) even when the caller
+# is well-behaved; a single attempt turns every one of those into an
+# unhandled exception that aborts the whole extension run (observed live:
+# the post-gate extension crashed on a 429 instead of recording
+# sessions_extended==0).  A bounded, linearly-backoff retry converts a
+# transient outage into a clean failure that the caller can record.
+RETRYABLE_ERRORS: tuple[type[BaseException], ...] = (HTTPError, URLError, ConnectionError)
+MAX_DOWNLOAD_RETRIES = 3
+DOWNLOAD_BACKOFF_SECONDS = 2.0
 
 
 def load_settings() -> dict:
@@ -125,6 +139,28 @@ class YFinanceFetcher:
     # Internals
     # ------------------------------------------------------------------
     def _download(self, symbol: str) -> pd.DataFrame | None:
+        """Download one symbol with bounded retry on transient provider errors.
+
+        ``yfinance.download`` is wrapped in a retry loop that backs off
+        linearly between attempts.  Only the transient error classes in
+        :data:`RETRYABLE_ERRORS` are retried; any other exception (bad data,
+        a programming error, a non-retryable HTTP status) propagates unchanged
+        so it is never silently swallowed.
+        """
+        last_exc: BaseException | None = None
+        for attempt in range(1, MAX_DOWNLOAD_RETRIES + 1):
+            try:
+                return self._download_once(symbol)
+            except RETRYABLE_ERRORS as exc:
+                last_exc = exc
+                if attempt < MAX_DOWNLOAD_RETRIES:
+                    time.sleep(DOWNLOAD_BACKOFF_SECONDS * attempt)
+        raise RuntimeError(
+            f"download for {symbol} failed after {MAX_DOWNLOAD_RETRIES} attempts: "
+            f"{type(last_exc).__name__}: {last_exc}"
+        ) from last_exc
+
+    def _download_once(self, symbol: str) -> pd.DataFrame | None:
         raw = yf.download(
             symbol,
             start=self.start_date,
