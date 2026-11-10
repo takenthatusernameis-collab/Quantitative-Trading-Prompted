@@ -5,11 +5,13 @@ script exercises the extension against the COMMITTED cache's own max date
 (2026-11-05), which is a backward replay. This script instead simulates the
 exact gate-release scenario the 22:00 UTC 2026-11-09 run will face:
 
-  * clock pinned at 2026-11-09 22:00:00 UTC (17:00 ET, gate released)
-  * canonical state last_run_date 2026-11-06 (unchanged)
-  * a synthetic 2026-11-09 bar appended to scratch copies of the committed
+  * clock pinned at 22:00 UTC on the target session's own date (gate-release
+    boundary for that session, resolved from the committed state)
+  * canonical state last_run_date read from the committed state (advanced
+    2026-11-06 -> 2026-11-09 in the post-gate run)
+  * a synthetic forward bar appended to scratch copies of the committed
     raw cache, so the active write path is exercised against a FORWARD bar
-    that the live fetch would return once the Monday session closes
+    that the live fetch would return once the target session closes
 
 The canonical state and data/raw are never modified: the synthetic frame is
 built in-memory from scratch copies and the canonical state is backed up and
@@ -42,7 +44,11 @@ from src.simulation.paper_trading import PaperTradingConfig, PaperTradingState
 STATE_PATH = ROOT / "data" / "processed" / "paper_trading_state.yaml"
 REPORT_PATH = ROOT / "research" / "reports" / "paper_trading_rolling.md"
 TZ = ZoneInfo("America/New_York")
-TARGET_DATE = "2026-11-09"
+# Target date is derived from the committed state's next trading session, not
+# hard-coded. The state advanced 2026-11-06 -> 2026-11-09 in the post-gate
+# run, so a fixed 2026-11-09 target made this script FAIL even though the
+# forward extension path itself was correct (Cycle 1186).
+TARGET_DATE = None  # resolved from state.last_run_date at runtime
 FIXED_NOW = datetime(2026, 11, 9, 22, 0, 0, tzinfo=UTC)
 
 
@@ -67,9 +73,11 @@ def build_synthetic_frame() -> pd.DataFrame:
         )
     synth = pd.concat(parts, axis=1, keys=("Open", "High", "Low", "Close", "Volume"))
     synth = synth.sort_index()
-    # Append synthetic Monday bar (up 0.5% from last close)
+    # Append synthetic forward bar (up 0.5% from last close) for the resolved
+    # target session, so the synthetic frame always exercises the extension
+    # against the session the live run would target next.
     new_row = synth.iloc[-1:].copy()
-    new_row.index = pd.DatetimeIndex(["2026-11-09 00:00:00+00:00"])
+    new_row.index = pd.DatetimeIndex([pd.Timestamp(TARGET_DATE + " 00:00:00+00:00")])
     new_row = new_row * 1.005
     return pd.concat([synth, new_row])
 
@@ -95,6 +103,17 @@ def main() -> int:
     before_report = hashlib.sha256(REPORT_PATH.read_bytes()).hexdigest()
     state = PaperTradingState.from_yaml(STATE_PATH)
     print("state last_run_date:", state.last_run_date, "NAV:", state.current_nav)
+
+    # Resolve the target forward session from the committed state so the
+    # synthetic bar always targets the session the live run would extend
+    # into next. The pinned clock is set to 22:00 UTC on the target session's
+    # own date (gate-release boundary for that session).
+    global TARGET_DATE, FIXED_NOW
+    last = pd.Timestamp(state.last_run_date)
+    target = ext.next_trading_session(last, tz=TZ)
+    TARGET_DATE = target.strftime("%Y-%m-%d")
+    FIXED_NOW = datetime(target.year, target.month, target.day, 22, 0, 0, tzinfo=UTC)
+    print("target session:", TARGET_DATE)
     print("pinned clock:", FIXED_NOW.isoformat(), "ET:", FIXED_NOW.astimezone(TZ))
 
     synth = build_synthetic_frame()

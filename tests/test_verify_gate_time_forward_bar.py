@@ -22,6 +22,10 @@ import hashlib
 import subprocess
 import sys
 from pathlib import Path
+from zoneinfo import ZoneInfo
+
+import pandas as pd
+import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -30,6 +34,28 @@ SCRIPT = ROOT / "research" / "verify_gate_time_forward_bar.py"
 STATE_PATH = ROOT / "data" / "processed" / "paper_trading_state.yaml"
 REPORT_PATH = ROOT / "research" / "reports" / "paper_trading_rolling.md"
 RAW_DIR = ROOT / "data" / "raw"
+TZ = ZoneInfo("America/New_York")
+
+
+def _expected_target() -> str:
+    """Next trading session after the committed state's last_run_date.
+
+    The target is derived from the state rather than hard-coded: the state
+    advanced 2026-11-06 -> 2026-11-09 in the post-gate run, so a fixed
+    2026-11-09 target would no longer describe the forward scenario the live
+    run would face next (Cycle 1186).
+    """
+    with open(ROOT / "config" / "paper_trading_config.yaml") as fh:
+        cfg = yaml.safe_load(fh) or {}
+    state_path = Path(cfg.get("state_path", "data/processed/paper_trading_state.yaml"))
+    state_path = state_path if state_path.is_absolute() else ROOT / state_path
+    with open(state_path) as fh:
+        state = yaml.safe_load(fh) or {}
+    last = pd.Timestamp(state["last_run_date"])
+    nxt = last.normalize() + pd.Timedelta(days=1)
+    while nxt.weekday() >= 5:
+        nxt += pd.Timedelta(days=1)
+    return nxt.strftime("%Y-%m-%d")
 
 
 def _hashes():
@@ -55,7 +81,7 @@ def test_gate_time_forward_bar_passes_and_is_side_effect_free():
     assert "RESULT: PASS" in result.stdout
     # The script prints the raw result dict and the post-write state; the
     # extension metrics are asserted there rather than on labeled lines.
-    assert "'target': '2026-11-09'" in result.stdout
+    assert f"'target': '{_expected_target()}'" in result.stdout
     assert "'sessions_extended': 1" in result.stdout
     assert "'state_writes': 1" in result.stdout
     assert "canonical state hash unchanged: True" in result.stdout
@@ -67,9 +93,11 @@ def test_gate_time_forward_bar_passes_and_is_side_effect_free():
     assert raw_after == raw_before, "canonical data/raw cache changed"
 
 
-def test_gate_time_forward_bar_targets_2026_11_09():
-    """The synthetic scenario advances the canonical state to the gate-release
-    target session 2026-11-09, the next trading session after last_run_date."""
+def test_gate_time_forward_bar_targets_next_session():
+    """The synthetic scenario advances the canonical state to the next trading
+    session after last_run_date, i.e. the gate-release target session the live
+    run would extend into next."""
+    target = _expected_target()
     result = subprocess.run(
         [sys.executable, str(SCRIPT)],
         capture_output=True,
@@ -78,5 +106,5 @@ def test_gate_time_forward_bar_targets_2026_11_09():
         check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "'target': '2026-11-09'" in result.stdout
-    assert "new last_run_date: 2026-11-09" in result.stdout
+    assert f"'target': '{target}'" in result.stdout
+    assert f"new last_run_date: {target}" in result.stdout
