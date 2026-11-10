@@ -33,6 +33,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pandas as pd
+import pytest
 import yaml
 
 ROOT = Path("/home/runner/work/Quantitative-Trading-Prompted/Quantitative-Trading-Prompted")
@@ -81,6 +82,19 @@ with tempfile.TemporaryDirectory() as tmp:
     canonical.cumulative_returns = canonical.cumulative_returns[: len(canonical.cumulative_dates)]
     canonical.cumulative_pnl = canonical.cumulative_pnl[: len(canonical.cumulative_dates)]
     canonical.run_history = [r for r in canonical.run_history if r["date"] <= prior_date]
+    # Truncating the history leaves current_nav / peak_nav / max_drawdown
+    # holding the COMMITTED (post-target) values, which would make nav_before
+    # already include the target session's return and silently mask a write
+    # that produces the wrong NAV (Cycle 1035). Recompute all three from the
+    # truncated history so the extension is a genuine one-session advance and
+    # nav_after can be checked bit-for-bit against the committed value.
+    last_hist = canonical.run_history[-1]
+    canonical.current_nav = float(last_hist["nav"])
+    canonical.peak_nav = max(r["nav"] for r in canonical.run_history)
+    canonical.max_drawdown = min(
+        (r["nav"] - canonical.peak_nav) / canonical.peak_nav
+        for r in canonical.run_history
+    )
     canonical.to_yaml(tmp_state)
 
     state_before_hash = hashlib.sha256(tmp_state.read_bytes()).hexdigest()
@@ -162,6 +176,17 @@ if result["state_writes"] != 1:
     print("FAIL: state_writes != 1"); ok = False
 if result["nav_after"] == result["nav_before"]:
     print("FAIL: NAV unchanged"); ok = False
+    # The extension must reproduce the COMMITTED NAV for the target session
+    # bit-for-bit (mirrors test_real_extension_path.py). A write that produces
+    # a different NAV is a real-path defect, not a no-op.
+    committed_nav = next(
+        r["nav"] for r in canonical.run_history if r["date"] == target_date
+    )
+    if result["nav_after"] != pytest.approx(committed_nav, rel=1e-12):
+        print(f"FAIL: nav_after {result['nav_after']} != committed {committed_nav}")
+        ok = False
+    else:
+        print(f"nav_after reproduces committed {target_date} NAV: {committed_nav}")
 if written["last_run_date"] != target_date:
     print(f"FAIL: written last_run_date != {target_date}"); ok = False
 if state_after_hash == state_before_hash:
