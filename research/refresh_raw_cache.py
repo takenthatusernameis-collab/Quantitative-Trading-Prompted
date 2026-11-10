@@ -23,7 +23,7 @@ import hashlib
 import json
 import sys
 import tempfile
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -68,7 +68,7 @@ def load_cache(raw_dir: Path, symbol: str) -> pd.DataFrame | None:
         return None
     try:
         df = pd.read_parquet(path)
-    except Exception:
+    except (OSError, ValueError, ImportError):
         return None
     if df is None or df.empty:
         return None
@@ -171,7 +171,7 @@ def sha256_file(path: Path) -> str:
 def write_manifest(entries: dict, reports_dir: Path = REPORTS_DIR) -> None:
     reports_dir.mkdir(parents=True, exist_ok=True)
     manifest = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "raw_dir": str(RAW_DIR),
         "symbols": entries,
     }
@@ -191,7 +191,7 @@ def refresh(
     fetch_fn=fetch_universe,
 ) -> dict:
     tz = ZoneInfo(tz_name)
-    now_et = now_et or datetime.now(timezone.utc)
+    now_et = now_et or datetime.now(UTC)
     symbols = symbols or universe_symbols()
 
     end_fetch = (now_et.date() + timedelta(days=1)).strftime("%Y-%m-%d")
@@ -258,7 +258,7 @@ def refresh(
         write_manifest(manifest_entries, reports_dir)
 
     return {
-        "now_utc": now_et.astimezone(timezone.utc).isoformat(),
+        "now_utc": now_et.astimezone(UTC).isoformat(),
         "dry_run": dry_run,
         "total_appended": total_appended,
         "symbols": summary,
@@ -272,8 +272,8 @@ def print_summary(result: dict) -> None:
     for entry in result["symbols"]:
         print(
             f"{entry['symbol']:<8} {entry['cached_rows']:>12} "
-            f"{str(entry['cached_max']):>12} {entry['appended_rows']:>10} "
-            f"{entry['after_rows']:>12} {str(entry['after_max']):>12}  {entry['status']}"
+            f"{entry['cached_max']!s:>12} {entry['appended_rows']:>10} "
+            f"{entry['after_rows']:>12} {entry['after_max']!s:>12}  {entry['status']}"
         )
     if result["total_appended"] == 0:
         print("no-op: no completed sessions to append")
