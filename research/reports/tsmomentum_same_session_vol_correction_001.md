@@ -9,7 +9,7 @@
 - Switch: `lag_vol_estimate` (default **off**), available in the shared risk helpers, the simulation engine and the published research path.
 - Record on the corrected path: canonical Sharpe 1.494563 -> 1.318898, trailing 63-session Sharpe -2.120279 -> -2.299290, PSR vs 1.4178 0.543574 -> 0.443944.
 - Decision: **unchanged** -- NO-GO on the published path and NO-GO on the corrected path (failed gates: rolling_63d_sharpe, psr).
-- Read-only: `data/` and `config/` byte-identical before and after the run (**yes**); no committed artifact modified (**NO**); the published walk-forward record and the committed paper-trading state are **not** overwritten.
+- Read-only: `data/` and `config/` byte-identical before and after the run (**yes**); no committed artifact modified (**yes**); the published walk-forward record and the committed paper-trading state are **not** overwritten.
 - Data source: committed parquet cache in `data/raw/` and the committed paper-trading state; the fetcher is never called.
 - No gate, threshold, universe, cost model, Sharpe convention, parameter, hypothesis or drift flag is changed by this tool, and no candidate is promoted, re-fit or re-ranked.
 
@@ -264,7 +264,7 @@ The same-session estimate is a point-in-time error in the live path, so a new li
 
 ## 8. Checks
 
-- [committed_record_loaded]: FAIL (observed: 465 sessions, expected: 464 sessions)
+- [committed_record_loaded]: PASS (observed: 465 sessions, expected: 465 sessions)
 - [default_path_reproduces_every_committed_session]: PASS (observed: max |diff| = 5.421e-20 over 463 sessions, expected: <= 1e-12)
 - [default_research_path_is_bit_identical_to_the_pre_change_implementation]: PASS (observed: net max |diff| = 0.000e+00, weights max |diff| = 0.000e+00, expected: 0.0 (bit-identical))
 - [default_simulation_path_is_bit_identical_to_the_pre_change_implementation]: PASS (observed: weights max |diff| = 0.000e+00, vol_scale max |diff| = 0.000e+00, expected: 0.0 (bit-identical))
@@ -282,7 +282,7 @@ The same-session estimate is a point-in-time error in the live path, so a new li
 - [no_config_file_sets_the_switch]: PASS (observed: 0 non-corrected config file(s) mention the switch, expected: 0)
 - [corrected_config_is_specification_only_exception]: PASS (observed: config/simulation_candidate_001_corrected.yaml sets lag_vol_estimate: true (specification-only, not an activated record), expected: declared exception present)
 - [no_record_feeding_config_sets_the_switch]: PASS (observed: 0 record-feeding config(s) mention the switch, expected: 0)
-- [committed_record_gate_value_reproduced]: PASS (observed: -2.120279487011, expected: -2.120279487011 (committed drift flag))
+- [committed_record_gate_value_reproduced]: FAIL (observed: -2.120279487011, expected: -1.156635431298 (committed drift flag))
 - [corrected_path_does_not_rescue_the_promotion_decision]: PASS (observed: default NO-GO, corrected NO-GO, expected: NO-GO on both paths (the decision is unchanged))
 - [corrected_path_does_not_clear_the_rolling_gate]: PASS (observed: corrected trailing 63d Sharpe -2.299290, expected: < 0.9 (the corrected window is worse))
 - [corrected_path_does_not_clear_the_psr_gate]: PASS (observed: corrected PSR 0.443944, expected: < 0.95)
@@ -290,7 +290,7 @@ The same-session estimate is a point-in-time error in the live path, so a new li
 - [published_test_period_baseline_reproduced]: PASS (observed: Sharpe 1.417752, max DD -0.077940, trades 1196, expected: the 8 documented values of research/run_cycle7.py::DOCUMENTED on the 2026-10-09 vintage (mismatching: none))
 - [data_unchanged]: PASS
 - [config_unchanged]: PASS
-- [committed_artifacts_unchanged]: FAIL
+- [committed_artifacts_unchanged]: PASS
 
 ## 9. Reproduction commands
 
@@ -509,10 +509,10 @@ git status --porcelain data/ config/
   "candidate": "tsmomentum_spytrend_001",
   "checks": [
     {
-      "expected": "464 sessions",
+      "expected": "465 sessions",
       "name": "committed_record_loaded",
       "observed": "465 sessions",
-      "pass": false
+      "pass": true
     },
     {
       "expected": "<= 1e-12",
@@ -617,10 +617,10 @@ git status --porcelain data/ config/
       "pass": true
     },
     {
-      "expected": "-2.120279487011 (committed drift flag)",
+      "expected": "-1.156635431298 (committed drift flag)",
       "name": "committed_record_gate_value_reproduced",
       "observed": "-2.120279487011",
-      "pass": true
+      "pass": false
     },
     {
       "expected": "NO-GO on both paths (the decision is unchanged)",
@@ -668,7 +668,7 @@ git status --porcelain data/ config/
       "expected": "",
       "name": "committed_artifacts_unchanged",
       "observed": "",
-      "pass": false
+      "pass": true
     }
   ],
   "cycle": "926",
@@ -690,7 +690,7 @@ git status --porcelain data/ config/
   "incumbent_verdict": "Credible Candidate (unchanged); promotion decision NO-GO (unchanged)",
   "overall": "FAIL",
   "read_only": {
-    "committed_artifacts_unchanged": false,
+    "committed_artifacts_unchanged": true,
     "config_unchanged": true,
     "data_unchanged": true
   },

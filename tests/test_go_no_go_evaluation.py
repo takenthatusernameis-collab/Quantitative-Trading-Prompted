@@ -393,18 +393,19 @@ def test_committed_record_is_not_promoted():
 # ----------------------------------------------------------------------
 
 # The rolling 63d Sharpe series for the last five sessions of the committed
-# record (464 sessions, last_run_date 2026-11-06). Re-derived from
+# record (465 sessions, last_run_date 2026-11-09). Re-derived from
 # src.evaluation.drift.sharpe_persistence on the committed state; the values
 # quoted here are the ones the monitoring artifacts and the drift flag report
 # (research/drift_persistence_report.py) must keep reproducing. The prior
-# set ended at 2026-11-05/-2.1203 and was stale after the state advanced to
-# 2026-11-06 (the extension to 2026-11-06 was verified in Cycle 1146).
+# set ended at 2026-11-06/-1.8144 and was stale after the state advanced to
+# 2026-11-09 (the extension to 2026-11-09 was verified in the post-gate
+# run of 2026-11-09 22:01 UTC).
 ARTIFACT_ROLLING_SERIES_TAIL = {
-    "2026-11-02": -1.3784,
     "2026-11-03": -1.3997,
     "2026-11-04": -0.8724,
     "2026-11-05": -2.1203,
     "2026-11-06": -1.8144,
+    "2026-11-09": -1.1566,
 }
 
 
@@ -444,11 +445,11 @@ def test_gate_rolling_sharpe_equals_the_stored_drift_flag_value():
     gate = next(g for g in result.gates if g.name == "rolling_63d_sharpe")
     stored = float(state.drift_flags["low_rolling_sharpe"]["value"])
     assert gate.value == pytest.approx(stored, abs=1e-12)
-    # Re-derived from the committed state at last_run_date 2026-11-06
-    # (464 sessions); the previously hardcoded value -2.1202794870108126
-    # was the rolling 63d Sharpe at 2026-11-05, stale after the state was
-    # extended to 2026-11-06. The gate and the stored drift flag agree.
-    assert gate.value == pytest.approx(-1.8144217837687115, abs=1e-12)
+    # Re-derived from the committed state at last_run_date 2026-11-09
+    # (465 sessions); the previously hardcoded value -1.8144217837687115
+    # was the rolling 63d Sharpe at 2026-11-06, stale after the state was
+    # extended to 2026-11-09. The gate and the stored drift flag agree.
+    assert gate.value == pytest.approx(-1.1566354312981708, abs=1e-12)
     # the gate value is on the canonical scale, not on the backtest scale
     assert gate.value != pytest.approx(
         backtest_sharpe_ratio(list(state.cumulative_returns)[-63:]), abs=1e-6

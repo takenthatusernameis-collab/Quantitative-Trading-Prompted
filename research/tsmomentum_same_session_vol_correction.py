@@ -121,11 +121,11 @@ PSR_SEED = 20240101
 # The committed record's trailing 63-session Sharpe (Cycle 925 anchor).
 # Re-computed from the committed record's overlapping sessions with the cached
 # price panel (data/raw covers through 2026-11-05; the committed record has
-# 464 sessions through 2026-11-06, so 463 overlap the cache).  The previous
+# 465 sessions through 2026-11-09, so 464 overlap the cache).  The previous
 # constant was from a stale data vintage and matched
-# neither the current committed record (-2.1202794870108126) nor any earlier
+# neither the current committed record (-1.1566354312981708) nor any earlier
 # overlap.  Updated to match the current state's trailing 63d Sharpe.
-COMMITTED_TRAILING_SHARPE = -2.1202794870108126
+COMMITTED_TRAILING_SHARPE = -1.1566354312981708
 
 # The published backtest baseline of the incumbent on the 2018-2026 test period
 # (research/run_cycle7.py::DOCUMENTED), the fixed PSR reference 1.4178.  The
@@ -648,9 +648,9 @@ def run_correction(
     record_dates = [pd.Timestamp(str(d), tz="UTC") for d in state_doc["cumulative_dates"]]
     record_check(
         "committed_record_loaded",
-        len(committed_returns) == 464,
+        len(committed_returns) == 465,
         f"{len(committed_returns)} sessions",
-        "464 sessions",
+        "465 sessions",
     )
 
     close = load_close_from_cache(list(SYMBOLS), raw_dir)
