@@ -392,6 +392,39 @@ def test_clock_gate_skips_fetch_when_session_not_complete(tmp_path, monkeypatch)
     assert hashlib.sha256(state_path.read_bytes()).hexdigest() == before
 
 
+def test_fetch_failure_records_noop_instead_of_crashing(tmp_path, monkeypatch):
+    """A transient provider outage at gate-release must not abort the run.
+
+    The live fetch (yfinance) sits past the clock gate, so a 429 or dropped
+    connection at the gate-release moment previously crashed the whole
+    monitoring invocation with no durable record. The acceptance contract
+    requires sessions_extended==0 with an explicit reason and zero writes;
+    that outcome must be produced even when the download dies.
+    """
+    state_path = _write_state(tmp_path / "state.yaml")
+    before = hashlib.sha256(state_path.read_bytes()).hexdigest()
+
+    def failing_fetch(end_date):
+        raise RuntimeError("Simulated yfinance 429 Too Many Requests")
+
+    # Friday 2026-10-16 last_run -> gate releases Monday 2026-10-19 00:00 UTC;
+    # 22:00 UTC on 10-19 (17:00 ET) leaves the 10-19 session complete, so the
+    # extension would attempt the real download and hit the failing fetch.
+    now = datetime(2026, 10, 19, 22, 0, tzinfo=UTC)
+
+    result = run_extension(
+        _config(tmp_path), state_path, now, failing_fetch,
+        close_hour=16, tz=TZ,
+    )
+    assert result["target"] is None
+    assert result["sessions_extended"] == 0
+    assert result["state_writes"] == 0
+    assert result["nav_before"] == result["nav_after"]
+    assert "fetch_error" in result
+    assert "429" in result["fetch_error"]
+    assert hashlib.sha256(state_path.read_bytes()).hexdigest() == before
+
+
 # ---------------------------------------------------------------------------
 # Readiness diagnostic (acceptance criterion 2)
 # ---------------------------------------------------------------------------

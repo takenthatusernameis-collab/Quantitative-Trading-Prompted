@@ -11,8 +11,12 @@ Data-integrity contract (Cycle 854):
     a monitoring/no-op run can never rewrite the committed dataset.
   * Only sessions that have already closed are used. Any in-session
     (partial) daily bar returned by the provider is dropped before slicing.
-  * The state is written at most once, and only after the update is confirmed
-    to have advanced the state to the intended target session.
+* The state is written at most once, and only after the update is confirmed
+     to have advanced the state to the intended target session.
+   * A transient provider outage during the post-gate download is converted
+     into a clean ``sessions_extended==0`` result with an explicit
+     ``fetch_error`` field and zero writes, instead of aborting the
+     monitoring run (Cycle 1190).
 """
 
 from __future__ import annotations
@@ -268,7 +272,23 @@ def run_extension(
         if state.last_run_date is not None
         else now_et.strftime("%Y-%m-%d")
     )
-    data = fetch(end_fetch)
+    try:
+        data = fetch(end_fetch)
+    except Exception as exc:  # noqa: BLE001 - transient provider outage
+        # A transient provider outage (HTTP 429, dropped connection, rate
+        # limit) at the gate-release moment must not abort the monitoring run.
+        # The acceptance contract requires an explicit sessions_extended==0
+        # record with a reason and zero writes; crashing instead leaves no
+        # durable evidence and no way to distinguish "no candidate bar" from
+        # "the fetch died". Fail closed to the no-op result.
+        return {
+            "target": None,
+            "sessions_extended": 0,
+            "nav_before": nav_before,
+            "nav_after": nav_before,
+            "state_writes": 0,
+            "fetch_error": f"{type(exc).__name__}: {exc}",
+        }
     candidate_dates = sorted(
         d for d in data.index.unique()
         if last_run is None or pd.Timestamp(d).date() > last_run
@@ -291,6 +311,7 @@ def run_extension(
         "nav_before": nav_before,
         "nav_after": nav_before,
         "state_writes": 0,
+        "fetch_error": None,
     }
 
     if target is None:
@@ -405,6 +426,8 @@ def main() -> int:
         print(f"NAV before: {result['nav_before']}")
         print(f"NAV after: {result['nav_after']}")
         print("state write count: 0")
+        if result.get("fetch_error"):
+            print(f"fetch error: {result['fetch_error']}")
         print("raw cache: scratch (canonical data/raw untouched)")
         return 0
 
