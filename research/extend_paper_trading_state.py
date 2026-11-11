@@ -13,10 +13,14 @@ Data-integrity contract (Cycle 854):
     (partial) daily bar returned by the provider is dropped before slicing.
 * The state is written at most once, and only after the update is confirmed
      to have advanced the state to the intended target session.
-   * A transient provider outage during the post-gate download is converted
-     into a clean ``sessions_extended==0`` result with an explicit
-     ``fetch_error`` field and zero writes, instead of aborting the
-     monitoring run (Cycle 1190).
+* A transient provider outage during the post-gate download is converted
+      into a clean ``sessions_extended==0`` result with an explicit
+      ``fetch_error`` field and zero writes, instead of aborting the
+      monitoring run (Cycle 1190).
+    * A provider that returns no rows at all for the requested window is
+      likewise converted into an explicit ``fetch_error`` (``"empty fetch"``)
+      with zero writes, instead of being reported as a clean no-op that is
+      indistinguishable from "no completed candidate bar yet" (Cycle 1191).
 """
 
 from __future__ import annotations
@@ -288,6 +292,25 @@ def run_extension(
             "nav_after": nav_before,
             "state_writes": 0,
             "fetch_error": f"{type(exc).__name__}: {exc}",
+        }
+    # An empty frame is a fetch failure, not a clean no-op. The exception
+    # path above already covers a provider that dies mid-download; a provider
+    # that returns zero rows (silent, no exception) would otherwise surface as
+    # ``fetch_error: None`` with ``sessions_extended: 0`` -- indistinguishable
+    # from a legitimate "no completed candidate bar yet" and therefore invisible
+    # to the monitoring loop. Fail closed to the same explicit no-op record
+    # (Cycle 1191).
+    if data is None or len(data) == 0:
+        return {
+            "target": None,
+            "sessions_extended": 0,
+            "nav_before": nav_before,
+            "nav_after": nav_before,
+            "state_writes": 0,
+            "fetch_error": (
+                "empty fetch: provider returned no completed candidate bar "
+                f"for window ending {end_fetch}"
+            ),
         }
     candidate_dates = sorted(
         d for d in data.index.unique()

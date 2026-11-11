@@ -425,6 +425,41 @@ def test_fetch_failure_records_noop_instead_of_crashing(tmp_path, monkeypatch):
     assert hashlib.sha256(state_path.read_bytes()).hexdigest() == before
 
 
+def test_empty_fetch_records_noop_instead_of_clean_noop(tmp_path, monkeypatch):
+    """A provider that returns zero rows must surface as a fetch failure.
+
+    The exception path (above) covers a provider that dies mid-download. A
+    provider that returns an empty frame silently would otherwise produce
+    ``fetch_error: None`` with ``sessions_extended: 0`` -- indistinguishable
+    from a legitimate "no completed candidate bar yet" and therefore invisible
+    to the monitoring loop. The acceptance contract requires the same explicit
+    no-op record with a reason and zero writes (Cycle 1191).
+    """
+    state_path = _write_state(tmp_path / "state.yaml")
+    before = hashlib.sha256(state_path.read_bytes()).hexdigest()
+
+    def empty_fetch(end_date):
+        return _market_frame([])  # zero rows, same frame type as a real fetch
+
+    # Friday 2026-10-16 last_run -> gate releases Monday 2026-10-19 00:00 UTC;
+    # 22:00 UTC on 10-19 leaves the 10-19 session complete, so the extension
+    # would attempt the real download and hit the empty fetch.
+    now = datetime(2026, 10, 19, 22, 0, tzinfo=UTC)
+
+    result = run_extension(
+        _config(tmp_path), state_path, now, empty_fetch,
+        close_hour=16, tz=TZ,
+    )
+    assert result["target"] is None
+    assert result["sessions_extended"] == 0
+    assert result["state_writes"] == 0
+    assert result["nav_before"] == result["nav_after"]
+    assert "fetch_error" in result
+    assert result["fetch_error"] is not None
+    assert "empty fetch" in result["fetch_error"]
+    assert hashlib.sha256(state_path.read_bytes()).hexdigest() == before
+
+
 # ---------------------------------------------------------------------------
 # Readiness diagnostic (acceptance criterion 2)
 # ---------------------------------------------------------------------------
