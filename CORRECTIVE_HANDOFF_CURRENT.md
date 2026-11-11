@@ -328,3 +328,22 @@ CORRECTIVE_VERIFICATION=PASS
 Run NEXT_AGENT_TASK.md acceptance sequence (cmds 1-8). If `sessions_extended==1`: verify `last_run_date` advance, NAV change, write count 1, idempotent re-run, drift consistent; re-run inventories + inventory tests (step 7). If `sessions_extended==0`: record explicit reason, NAV/writes unchanged.
 
 CORRECTIVE_VERIFICATION=PASS
+
+## Corrective invocation 1 (2026-11-11T06:48Z) — record pre-gate session in NEXT_AGENT_TASK.md (materially different from prior failed edit)
+- **Approach difference (vs prior failed invocation):** The prior invocation ran all pre-gate verification commands (1,3,5,6,8) — ALL PASSED — and wrote `.kilo-runtime/worker-disposition.json`, but its `edit` to `NEXT_AGENT_TASK.md` failed ("Could not find oldString in the file"), leaving no durable session record. This invocation used a materially different edit target: matching the exact header-to-first-entry boundary (`# NEXT_AGENT_TASK ...\n\n\n- **Pre-gate verification 2026-11-11 06:35 UTC`) rather than the previous unmatched oldString, and prepended the 06:44 UTC session entry.
+- `date -u && TZ=America/New_York date`: Wed Nov 11 06:48:54 UTC 2026 / Wed Nov 11 01:48:54 EST 2026 (gate for 2026-11-11 **NOT released**; releases 22:00 UTC 2026-11-11).
+- `sha256sum data/processed/paper_trading_state.yaml`: `111b642c4ac5834460c83ac250a0a90ffb75eed308321ad1bb6309a2fc552517` (unchanged; `last_run_date=2026-11-10`, `current_nav=132498.02732499802`, `run_history=466`, `rolling_sharpe_63d=-1.4394168982987599`).
+- `git status --porcelain data/ config/`: *(empty, clean)*.
+- `ls data/processed/paper_trading/ | grep -i 20261111`: NO 20261111 ARTIFACTS.
+- `python -m research/drift_persistence_report.py | tail -5`: tail ends `2026-11-10  -1.4394` (consistent).
+- Edit applied to `NEXT_AGENT_TASK.md`: prepended `- **Pre-gate verification 2026-11-11 06:44 UTC (this session, run 42950017695 attempt 1 session 5 inv 1):** ...` with full verified evidence (date, drift consistency, pytest 67 passed, ruff All checks passed, state unchanged, no 20261111 artifacts, cmds 2/4/7 NOT run per scope boundary, disposition verified/none-received, wakeup wku_1c8448845001omFY5tU83Glxyu scheduled 2026-11-11T22:03:00Z).
+- `git status --porcelain`: ` M NEXT_AGENT_TASK.md` only (no `data/`, `config/`, `src/`, `tests/`, or `research/` changes).
+- No thresholds/gates/cost model/universe/clock-gate logic, tests, security controls, or workflow boundaries modified. `data/raw/` untouched. No commits made.
+
+## Unresolved blockers (inv 1)
+- None: focused verification succeeded. Gate for 2026-11-11 remains temporally closed until 22:00 UTC 2026-11-11; scope correctly forbids early extension.
+
+## Next distinct investigation (at/after 2026-11-11T22:00Z)
+Run NEXT_AGENT_TASK.md acceptance sequence (cmds 1-8) after gate release. If `sessions_extended==1`: verify `last_run_date` advanced, NAV changed, write count 1, idempotent re-run, drift consistent; re-run inventories + inventory tests (step 7). If `sessions_extended==0`: record explicit reason, NAV/writes unchanged.
+
+CORRECTIVE_VERIFICATION=PASS
