@@ -67,12 +67,12 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from research.data_cost_inventory_002 import (  # noqa: E402
+from research.data_cost_inventory_002 import (
     fingerprint,
     tracked_artifact_hashes,
 )
-from src.backtest.engine import get_cost_params, get_risk_free_rate  # noqa: E402
-from src.evaluation.walkforward import generate_walkforward_splits  # noqa: E402
+from src.backtest.engine import get_cost_params, get_risk_free_rate
+from src.evaluation.walkforward import generate_walkforward_splits
 
 CYCLE = "947"
 
@@ -666,7 +666,7 @@ def _daily_facts(path: Path) -> dict[str, Any]:
     return {
         "kind": "daily_ohlcv",
         "file": str(path.relative_to(REPO_ROOT)),
-        "rows": int(len(frame)),
+        "rows": len(frame),
         "first": str(index.min().date()),
         "last": str(index.max().date()),
         "timezone": str(frame.index.tz),
@@ -707,7 +707,7 @@ def _crypto_facts(path: Path) -> dict[str, Any]:
     return {
         "kind": kind,
         "file": str(path.relative_to(REPO_ROOT)),
-        "rows": int(len(frame)),
+        "rows": len(frame),
         "first": str(stamps.min()),
         "last": str(stamps.max()),
         "timezone": "UTC",
@@ -873,12 +873,12 @@ def measure_segment(segment: dict[str, Any], cost_model: dict[str, Any]) -> dict
         "title": segment["title"],
         "instruments": used,
         "is_reference_only": not symbols,
-        "panel_rows": int(len(panel)),
+        "panel_rows": len(panel),
         "union_rows": int(union_rows),
         "first": first,
         "last": last,
         "churn": float(churn),
-        "folds": int(len(splits)),
+        "folds": len(splits),
         "first_test": splits[0]["test_start"] if splits else "-",
         "last_test": splits[-1]["test_end"] if splits else "-",
         "bets": float(bets),
@@ -1116,10 +1116,10 @@ def feasibility_screen(cost_per_unit: float) -> dict[str, Any]:
 
     return {
         "spec": spec,
-        "panel_rows": int(len(close)),
+        "panel_rows": len(close),
         "first": str(close.index.min().date()),
         "last": str(close.index.max().date()),
-        "rebalances": int(len(month_ends)),
+        "rebalances": len(month_ends),
         "held_set_changes": changed,
         "turnover_sessions": int((turnover > 1e-12).sum()),
         "turnover_units_per_year": float(turnover.sum() / (len(close) / 252.0)),
@@ -1242,9 +1242,7 @@ def render_inventory_table(files: list[dict[str, Any]]) -> str:
     for row in files:
         if row["kind"] == "funding_8h":
             money = "-"
-        elif row["kind"] == "crypto_daily_ohlcv":
-            money = f"${row.get('median_dollar_volume', 0.0):,.0f}"
-        elif row["kind"] == "daily_ohlcv":
+        elif row["kind"] == "crypto_daily_ohlcv" or row["kind"] == "daily_ohlcv":
             money = f"${row.get('median_dollar_volume', 0.0):,.0f}"
         else:
             money = "-"

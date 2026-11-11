@@ -29,24 +29,24 @@ This report is the long-form evidence behind the search record `research/experim
 
 ## 3. Measured inventory of `data/raw/`
 
-35 files, 1856 files under `data/` in total, 19 under `config/`.
+35 files, 1919 files under `data/` in total, 19 under `config/`.
 
 | File | Kind | Rows | First | Last | Modal spacing | Missing close | Duplicate stamps | Non-positive close | Zero-volume rows | Median $/day |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `data/raw/BNO.parquet` | daily_ohlcv | 2964 | 2015-01-02 | 2026-10-15 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $9,290,706 |
+| `data/raw/BNO.parquet` | daily_ohlcv | 4123 | 2010-06-02 | 2026-10-21 | 1 days 00:00:00 | 0 | 0 | 0 | 27 | $5,734,442 |
 | `data/raw/CL-F.parquet` | daily_ohlcv | 2964 | 2015-01-02 | 2026-10-15 | 1 days 00:00:00 | 0 | 0 | 1 | 7 | $25,312,190 |
 | `data/raw/DBC.parquet` | daily_ohlcv | 5201 | 2006-02-06 | 2026-10-08 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $30,236,107 |
-| `data/raw/EEM.parquet` | daily_ohlcv | 5917 | 2003-04-14 | 2026-10-19 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $1,829,988,310 |
-| `data/raw/EFA.parquet` | daily_ohlcv | 6323 | 2001-08-27 | 2026-10-19 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $1,016,781,506 |
+| `data/raw/EEM.parquet` | daily_ohlcv | 5933 | 2003-04-14 | 2026-11-10 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $1,828,158,047 |
+| `data/raw/EFA.parquet` | daily_ohlcv | 6339 | 2001-08-27 | 2026-11-10 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $1,017,613,064 |
 | `data/raw/GC-F.parquet` | daily_ohlcv | 2964 | 2015-01-02 | 2026-10-15 | 1 days 00:00:00 | 0 | 0 | 0 | 36 | $247,865,695 |
-| `data/raw/GLD.parquet` | daily_ohlcv | 5513 | 2004-11-18 | 2026-10-19 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $1,123,132,751 |
+| `data/raw/GLD.parquet` | daily_ohlcv | 5529 | 2004-11-18 | 2026-11-10 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $1,124,907,642 |
 | `data/raw/GSG.parquet` | daily_ohlcv | 2964 | 2015-01-02 | 2026-10-15 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $7,415,521 |
-| `data/raw/IWM.parquet` | daily_ohlcv | 6638 | 2000-05-26 | 2026-10-19 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $3,670,278,526 |
+| `data/raw/IWM.parquet` | daily_ohlcv | 6654 | 2000-05-26 | 2026-11-10 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $3,679,922,174 |
 | `data/raw/NG-F.parquet` | daily_ohlcv | 2965 | 2015-01-02 | 2026-10-15 | 1 days 00:00:00 | 0 | 0 | 0 | 7 | $409,697 |
-| `data/raw/QQQ.parquet` | daily_ohlcv | 6946 | 1999-03-10 | 2026-10-19 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $4,077,909,859 |
-| `data/raw/SPY.parquet` | daily_ohlcv | 8488 | 1993-01-29 | 2026-10-19 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $15,666,613,180 |
-| `data/raw/TLT.parquet` | daily_ohlcv | 6095 | 2002-07-30 | 2026-10-19 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $863,062,225 |
-| `data/raw/UNG.parquet` | daily_ohlcv | 2964 | 2015-01-02 | 2026-10-15 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $86,533,784 |
+| `data/raw/QQQ.parquet` | daily_ohlcv | 6962 | 1999-03-10 | 2026-11-10 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $4,084,068,494 |
+| `data/raw/SPY.parquet` | daily_ohlcv | 8504 | 1993-01-29 | 2026-11-10 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $15,701,800,828 |
+| `data/raw/TLT.parquet` | daily_ohlcv | 6111 | 2002-07-30 | 2026-11-10 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $868,354,326 |
+| `data/raw/UNG.parquet` | daily_ohlcv | 4910 | 2007-04-18 | 2026-10-21 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $99,900,827 |
 | `data/raw/USO.parquet` | daily_ohlcv | 2964 | 2015-01-02 | 2026-10-15 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $290,538,631 |
 | `data/raw/VNQ.parquet` | daily_ohlcv | 5542 | 2004-09-29 | 2026-10-08 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $251,428,409 |
 | `data/raw/XLB.parquet` | daily_ohlcv | 6991 | 1998-12-22 | 2026-10-08 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $257,568,188 |
@@ -59,7 +59,7 @@ This report is the long-form evidence behind the search record `research/experim
 | `data/raw/XLV.parquet` | daily_ohlcv | 6991 | 1998-12-22 | 2026-10-08 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $296,232,152 |
 | `data/raw/XLY.parquet` | daily_ohlcv | 6991 | 1998-12-22 | 2026-10-08 | 1 days 00:00:00 | 0 | 0 | 0 | 0 | $269,253,775 |
 | `data/raw/ZB-F.parquet` | daily_ohlcv | 2964 | 2015-01-02 | 2026-10-15 | 1 days 00:00:00 | 0 | 0 | 0 | 9 | $40,833,384 |
-| `data/raw/^VIX.parquet` | daily_ohlcv | 5515 | 2004-11-18 | 2026-10-19 | 1 days 00:00:00 | 0 | 0 | 0 | 5515 | $0 |
+| `data/raw/^VIX.parquet` | daily_ohlcv | 8525 | 1993-01-04 | 2026-11-10 | 1 days 00:00:00 | 0 | 0 | 0 | 8525 | $0 |
 | `data/raw/crypto/BTCUSDT_perp_1d_binance.parquet` | crypto_daily_ohlcv | 2465 | 2020-01-01 00:00:00+00:00 | 2026-09-30 00:00:00+00:00 | 24h | 0 | 0 | 0 | 0 | $559,202,452,017,726 |
 | `data/raw/crypto/BTCUSDT_spot_1d_binance.parquet` | crypto_daily_ohlcv | 2465 | 2020-01-01 00:00:00+00:00 | 2026-09-30 00:00:00+00:00 | 24h | 0 | 0 | 0 | 0 | $87,420,278,876,318 |
 | `data/raw/crypto/BTC_USDT_USDT_funding.parquet` | funding_8h | 296 | 2026-07-13 16:00:00+00:00 | 2026-10-20 00:00:00+00:00 | 8h | 0 | 0 | 0 | 0 | - |
@@ -74,8 +74,7 @@ This report is the long-form evidence behind the search record `research/experim
 - **Every equity, ETF, index and futures series in the cache is DAILY** (27 files, modal spacing one calendar day). There is no intraday equity or futures bar in the repository.
 - **The only sub-daily series in the repository is the crypto funding rate** (4 files, modal spacing 8h, 296, 7395, 296, 7395 records each). The crypto spot and perpetual files are daily (4 files), so **no intraday price exists to trade the sub-daily funding with**: an intraday rule would have to assume an execution price the cache cannot supply.
 - **9 of the 27 daily files share the identical first session 1998-12-22** (XLB, XLE, XLF, XLI, XLK, XLP, XLU, XLV, XLY). Eight independent instruments do not incept on the same day; a common start across a whole batch is the signature of a **fetch window**, not of instrument history. This is the measured reason the commodity segment cannot be evaluated on the repository's frozen walk-forward design (section 5).
-- **2 of the 27 daily files share the identical first session 2004-11-18** (GLD, ^VIX). Eight independent instruments do not incept on the same day; a common start across a whole batch is the signature of a **fetch window**, not of instrument history. This is the measured reason the commodity segment cannot be evaluated on the repository's frozen walk-forward design (section 5).
-- **8 of the 27 daily files share the identical first session 2015-01-02** (BNO, CL-F, GC-F, GSG, NG-F, UNG, USO, ZB-F). Eight independent instruments do not incept on the same day; a common start across a whole batch is the signature of a **fetch window**, not of instrument history. This is the measured reason the commodity segment cannot be evaluated on the repository's frozen walk-forward design (section 5).
+- **6 of the 27 daily files share the identical first session 2015-01-02** (CL-F, GC-F, GSG, NG-F, USO, ZB-F). Eight independent instruments do not incept on the same day; a common start across a whole batch is the signature of a **fetch window**, not of instrument history. This is the measured reason the commodity segment cannot be evaluated on the repository's frozen walk-forward design (section 5).
 - `^VIX` has a **median volume of 0**: it is an index, not a traded series, and the cache contains no volatility future, option or volatility ETP that could carry a position in it.
 
 ## 4. The pre-declared feasibility screen
@@ -139,28 +138,28 @@ This report is the long-form evidence behind the search record `research/experim
 
 | Segment | Panel | Common sessions | Folds | First test | Bets | Ann. vol | Hurdle | Median $/day |
 |---|---|---|---|---|---|---|---|---|
-| `equity_broad_index` | 2003-04-14 .. 2026-10-19 | 5917 | 27 | 2013-01-08 | 1.34 | 21.46% | 3.3555% | $3,670,278,526 |
-| `session_timing` | 2001-08-27 .. 2026-10-19 | 6323 | 31 | 2011-05-24 | 1.29 | 22.02% | 3.2698% | $3,874,094,192 |
+| `equity_broad_index` | 2003-04-14 .. 2026-11-10 | 5933 | 27 | 2013-01-08 | 1.34 | 21.51% | 3.3465% | $3,679,922,174 |
+| `session_timing` | 2001-08-27 .. 2026-11-10 | 6339 | 31 | 2011-05-24 | 1.29 | 22.04% | 3.2664% | $3,881,995,334 |
 | `real_assets_reit` | 2004-09-29 .. 2026-10-08 | 5542 | 24 | 2014-06-26 | 1.00 | 28.31% | 2.5436% | $251,428,409 |
-| `vol_scaled_overlays` | 2004-11-18 .. 2026-10-19 | 5513 | 24 | 2014-08-15 | 2.26 | 21.02% | 3.4254% | $1,829,988,310 |
+| `vol_scaled_overlays` | 2004-11-18 .. 2026-11-10 | 5529 | 24 | 2014-08-15 | 2.26 | 21.02% | 3.4253% | $1,828,158,047 |
 | `short_leg_relative_value` | 1998-12-22 .. 2026-10-08 | 6991 | 36 | 2008-09-17 | 2.28 | 22.65% | 3.1794% | $296,232,152 |
 | `equity_gics_sectors` | 1998-12-22 .. 2026-10-08 | 6991 | 36 | 2008-09-17 | 2.28 | 22.65% | 3.1794% | $296,232,152 |
-| `equity_volatility` | 2004-11-18 .. 2026-10-19 | 5515 | 24 | 2014-08-15 | 1.00 | 126.32% | 0.5700% | $0 |
+| `equity_volatility` | 1993-01-04 .. 2026-11-10 | 8525 | 49 | 2002-10-01 | 1.00 | 114.94% | 0.6264% | $0 |
 | `commodity_complex` | 2015-01-02 .. 2026-10-08 | 2956 | 3 | 2024-09-30 | 3.29 | 37.95% | 1.8974% | $30,236,107 |
 | `crypto_funding` | 2020-01-01 .. 2026-09-30 | 2465 | 0 | - | 1.19 | 58.61% | 1.2284% | $44,719,097,138,717 |
-| `rates_duration` | 2015-01-02 .. 2026-10-15 | 2961 | 3 | 2024-09-30 | 1.13 | 12.87% | 5.5937% | $451,947,805 |
-| `single_name_equities` | 2000-05-26 .. 2026-10-19 | 6638 | 33 | 2010-02-22 | 1.24 | 23.83% | 3.0212% | $4,077,909,859 |
+| `rates_duration` | 2015-01-02 .. 2026-10-15 | 2961 | 3 | 2024-09-30 | 1.13 | 12.87% | 5.5937% | $454,593,855 |
+| `single_name_equities` | 2000-05-26 .. 2026-11-10 | 6654 | 33 | 2010-02-22 | 1.24 | 23.84% | 3.0205% | $4,084,068,494 |
 
 ### 5.2 Per-segment evidence and disposition
 
 #### `equity_broad_index` -- Broad equity index (US large cap, US small cap, developed, emerging)
 
-- Measured panel: 2003-04-14 .. 2026-10-19, 5917 common sessions, calendar churn 30.29%, **27 folds** of the frozen 10y/12m/6m design (first test 2013-01-08, last test 2026-07-16), 1.34 effective independent bets, median instrument $3,670,278,526/day, annualised volatility 21.46%.
-- (a) *data quality* 5/5 -- >= 20 folds of the frozen 10y/12m/6m design; calendar churn 30.29%
+- Measured panel: 2003-04-14 .. 2026-11-10, 5933 common sessions, calendar churn 30.23%, **27 folds** of the frozen 10y/12m/6m design (first test 2013-01-08, last test 2026-07-16), 1.34 effective independent bets, median instrument $3,679,922,174/day, annualised volatility 21.51%.
+- (a) *data quality* 5/5 -- >= 20 folds of the frozen 10y/12m/6m design; calendar churn 30.23%
 - (b) *mechanism* 2/5 -- declared prior: the mechanism families this segment hosts -- cross-sectional momentum (csmomentum_001), inverse-volatility risk balancing (riskparity_001), turn-of-month timing (calendar_effects_001), overnight capture (overnight_capture_001), macro-regime conditioning (macroregime_001) and time-series momentum (the incumbent) -- are all already measured in this repository, and each of them failed or was falsified; a new rule here is a variant of a closed line
-- (c) *net edge* 2/5 -- measured cost hurdle 3.3555% of the segment's own annualised volatility (worst-case monthly long-only drag 0.7200%/yr at 3.0 bp/unit) -> hurdle score 5/5; declared gross prior 2/5
+- (c) *net edge* 2/5 -- measured cost hurdle 3.3465% of the segment's own annualised volatility (worst-case monthly long-only drag 0.7200%/yr at 3.0 bp/unit) -> hurdle score 5/5; declared gross prior 2/5
 - (d) *robustness* 3/5 -- 27 folds and 1.34 effective independent bets
-- (e) *liquidity* 5/5 -- median instrument $3,670,278,526/day (>= $1bn/day)
+- (e) *liquidity* 5/5 -- median instrument $3,679,922,174/day (>= $1bn/day)
 - (f) *automation* 5/5 -- declared prior: daily bars, one venue, session hours, long-only, no roll, no borrow, no 24/7 operational burden
 - (g) *diversification* 3/5 -- 0 of 5 instruments sit outside every committed book; shared with 2: tsmomentum_spytrend_001 (incumbent), csmomentum_001
 - Eligibility: **closed** -- CLOSED: every mechanism family this segment can host is already a committed line (csmomentum_001, riskparity_001, calendar_effects_001, overnight_capture_001, macroregime_001, the incumbent)
@@ -168,12 +167,12 @@ This report is the long-form evidence behind the search record `research/experim
 
 #### `session_timing` -- Session timing (overnight capture and its intraday mirror)
 
-- Measured panel: 2001-08-27 .. 2026-10-19, 6323 common sessions, calendar churn 25.51%, **31 folds** of the frozen 10y/12m/6m design (first test 2011-05-24, last test 2026-10-19), 1.29 effective independent bets, median instrument $3,874,094,192/day, annualised volatility 22.02%.
-- (a) *data quality* 5/5 -- >= 20 folds of the frozen 10y/12m/6m design; calendar churn 25.51%
+- Measured panel: 2001-08-27 .. 2026-11-10, 6339 common sessions, calendar churn 25.46%, **31 folds** of the frozen 10y/12m/6m design (first test 2011-05-24, last test 2026-11-04), 1.29 effective independent bets, median instrument $3,881,995,334/day, annualised volatility 22.04%.
+- (a) *data quality* 5/5 -- >= 20 folds of the frozen 10y/12m/6m design; calendar churn 25.46%
 - (b) *mechanism* 4/5 -- declared prior: the session split of the equity premium is well documented and is a genuine market-structure effect rather than a price-predictivity effect
-- (c) *net edge* 1/5 -- measured cost hurdle 3.2698% of the segment's own annualised volatility (worst-case monthly long-only drag 0.7200%/yr at 3.0 bp/unit) -> hurdle score 5/5; declared gross prior 1/5
+- (c) *net edge* 1/5 -- measured cost hurdle 3.2664% of the segment's own annualised volatility (worst-case monthly long-only drag 0.7200%/yr at 3.0 bp/unit) -> hurdle score 5/5; declared gross prior 1/5
 - (d) *robustness* 3/5 -- 31 folds and 1.29 effective independent bets
-- (e) *liquidity* 5/5 -- median instrument $3,874,094,192/day (>= $1bn/day)
+- (e) *liquidity* 5/5 -- median instrument $3,881,995,334/day (>= $1bn/day)
 - (f) *automation* 4/5 -- declared prior: daily bars with open and close fields, one venue; the intraday mirror needs an execution at the open that the cache's bars can only approximate
 - (g) *diversification* 3/5 -- 0 of 4 instruments sit outside every committed book; shared with 2: tsmomentum_spytrend_001 (incumbent), csmomentum_001
 - Eligibility: **closed** -- CLOSED: overnight_capture_001 is the committed record for the session split
@@ -194,12 +193,12 @@ This report is the long-form evidence behind the search record `research/experim
 
 #### `vol_scaled_overlays` -- Volatility-scaled and risk-balanced allocation overlays
 
-- Measured panel: 2004-11-18 .. 2026-10-19, 5513 common sessions, calendar churn 35.05%, **24 folds** of the frozen 10y/12m/6m design (first test 2014-08-15, last test 2026-09-10), 2.26 effective independent bets, median instrument $1,829,988,310/day, annualised volatility 21.02%.
-- (a) *data quality* 5/5 -- >= 20 folds of the frozen 10y/12m/6m design; calendar churn 35.05%
+- Measured panel: 2004-11-18 .. 2026-11-10, 5529 common sessions, calendar churn 34.98%, **24 folds** of the frozen 10y/12m/6m design (first test 2014-08-15, last test 2026-09-10), 2.26 effective independent bets, median instrument $1,828,158,047/day, annualised volatility 21.02%.
+- (a) *data quality* 5/5 -- >= 20 folds of the frozen 10y/12m/6m design; calendar churn 34.98%
 - (b) *mechanism* 2/5 -- declared prior: volatility scaling and risk balancing are documented and were already run here (riskparity_001, rejected); the long-sample overlay diagnostic shows the drawdown cut and the gross cap are inert
-- (c) *net edge* 1/5 -- measured cost hurdle 3.4254% of the segment's own annualised volatility (worst-case monthly long-only drag 0.7200%/yr at 3.0 bp/unit) -> hurdle score 5/5; declared gross prior 1/5
+- (c) *net edge* 1/5 -- measured cost hurdle 3.4253% of the segment's own annualised volatility (worst-case monthly long-only drag 0.7200%/yr at 3.0 bp/unit) -> hurdle score 5/5; declared gross prior 1/5
 - (d) *robustness* 3/5 -- 24 folds and 2.26 effective independent bets
-- (e) *liquidity* 5/5 -- median instrument $1,829,988,310/day (>= $1bn/day)
+- (e) *liquidity* 5/5 -- median instrument $1,828,158,047/day (>= $1bn/day)
 - (f) *automation* 5/5 -- declared prior: daily bars, one venue, session hours, long-only
 - (g) *diversification* 3/5 -- 0 of 7 instruments sit outside every committed book; shared with 2: tsmomentum_spytrend_001 (incumbent), csmomentum_001
 - Eligibility: **closed** -- CLOSED: riskparity_001 is the committed record for inverse-volatility allocation
@@ -233,11 +232,11 @@ This report is the long-form evidence behind the search record `research/experim
 
 #### `equity_volatility` -- Equity implied volatility (VIX index)
 
-- Measured panel: 2004-11-18 .. 2026-10-19, 5515 common sessions, calendar churn 0.00%, **24 folds** of the frozen 10y/12m/6m design (first test 2014-08-15, last test 2026-09-10), 1.00 effective independent bets, median instrument $0/day, annualised volatility 126.32%.
+- Measured panel: 1993-01-04 .. 2026-11-10, 8525 common sessions, calendar churn 0.00%, **49 folds** of the frozen 10y/12m/6m design (first test 2002-10-01, last test 2026-11-10), 1.00 effective independent bets, median instrument $0/day, annualised volatility 114.94%.
 - (a) *data quality* 5/5 -- >= 20 folds of the frozen 10y/12m/6m design
 - (b) *mechanism* 3/5 -- declared prior: the variance risk premium is the best-documented volatility mechanism, but it requires a *sold* volatility instrument; the cache contains the VIX index only, and the VIX level as a conditioning variable is the macroregime_001 family, which is falsified
-- (c) *net edge* 2/5 -- measured cost hurdle 0.5700% of the segment's own annualised volatility (worst-case monthly long-only drag 0.7200%/yr at 3.0 bp/unit) -> hurdle score 5/5; declared gross prior 2/5
-- (d) *robustness* 3/5 -- 24 folds and 1.00 effective independent bets
+- (c) *net edge* 2/5 -- measured cost hurdle 0.6264% of the segment's own annualised volatility (worst-case monthly long-only drag 0.7200%/yr at 3.0 bp/unit) -> hurdle score 5/5; declared gross prior 2/5
+- (d) *robustness* 3/5 -- 49 folds and 1.00 effective independent bets
 - (e) *liquidity* 1/5 -- median instrument $0/day (< $10m/day)
 - (f) *automation* 2/5 -- declared prior: the index itself is not tradable, so an implementation needs an instrument the repository does not hold
 - (g) *diversification* 5/5 -- 1 of 1 instruments sit outside every committed book; shared with 0: none
@@ -246,8 +245,8 @@ This report is the long-form evidence behind the search record `research/experim
 
 #### `commodity_complex` -- Commodity complex (broad commodity ETFs, single-commodity ETFs, front-month futures)
 
-- Measured panel: 2015-01-02 .. 2026-10-08, 2956 common sessions, calendar churn 46.41%, **3 folds** of the frozen 10y/12m/6m design (first test 2024-09-30, last test 2026-09-03), 3.29 effective independent bets, median instrument $30,236,107/day, annualised volatility 37.95%.
-- (a) *data quality* 2/5 -- 3-7 folds of the frozen 10y/12m/6m design; calendar churn 46.41%; only 2956 common sessions
+- Measured panel: 2015-01-02 .. 2026-10-08, 2956 common sessions, calendar churn 46.57%, **3 folds** of the frozen 10y/12m/6m design (first test 2024-09-30, last test 2026-09-03), 3.29 effective independent bets, median instrument $30,236,107/day, annualised volatility 37.95%.
+- (a) *data quality* 2/5 -- 3-7 folds of the frozen 10y/12m/6m design; calendar churn 46.57%; only 2956 common sessions
 - (b) *mechanism* 4/5 -- declared prior: commodity time-series momentum is documented and is the strongest trend market in the literature; the segment has never been traded as a book in this repository, so the mechanism family is new here even though the family overlaps the incumbent's
 - (c) *net edge* 3/5 -- measured cost hurdle 1.8974% of the segment's own annualised volatility (worst-case monthly long-only drag 0.7200%/yr at 3.0 bp/unit) -> hurdle score 5/5; declared gross prior 3/5
 - (d) *robustness* 2/5 -- 3 folds and 3.29 effective independent bets
@@ -272,12 +271,12 @@ This report is the long-form evidence behind the search record `research/experim
 
 #### `rates_duration` -- Interest-rate duration (long-duration Treasury ETF and 10-year Treasury futures)
 
-- Measured panel: 2015-01-02 .. 2026-10-15, 2961 common sessions, calendar churn 51.44%, **3 folds** of the frozen 10y/12m/6m design (first test 2024-09-30, last test 2026-09-03), 1.13 effective independent bets, median instrument $451,947,805/day, annualised volatility 12.87%.
-- (a) *data quality* 2/5 -- 3-7 folds of the frozen 10y/12m/6m design; calendar churn 51.44%; only 2961 common sessions
+- Measured panel: 2015-01-02 .. 2026-10-15, 2961 common sessions, calendar churn 51.57%, **3 folds** of the frozen 10y/12m/6m design (first test 2024-09-30, last test 2026-09-03), 1.13 effective independent bets, median instrument $454,593,855/day, annualised volatility 12.87%.
+- (a) *data quality* 2/5 -- 3-7 folds of the frozen 10y/12m/6m design; calendar churn 51.57%; only 2961 common sessions
 - (b) *mechanism* 2/5 -- declared prior: the documented bond-pricing mechanisms need a macro series (yield level, curve slope, inflation expectation) that the committed cache does not contain; the one cache-native route -- the futures roll yield -- is the family futuresbasis_001 was blocked on
 - (c) *net edge* 2/5 -- measured cost hurdle 5.5937% of the segment's own annualised volatility (worst-case monthly long-only drag 0.7200%/yr at 3.0 bp/unit) -> hurdle score 4/5; declared gross prior 2/5
 - (d) *robustness* 2/5 -- 3 folds and 1.13 effective independent bets
-- (e) *liquidity* 4/5 -- median instrument $451,947,805/day (>= $250m/day)
+- (e) *liquidity* 4/5 -- median instrument $454,593,855/day (>= $250m/day)
 - (f) *automation* 3/5 -- declared prior: a futures leg needs a roll window to be detected and excluded on every rebalance
 - (g) *diversification* 3/5 -- 1 of 2 instruments sit outside every committed book; shared with 2: tsmomentum_spytrend_001 (incumbent), csmomentum_001
 - Eligibility: **closed** -- CLOSED and BLOCKED: TLT is inside the incumbent and csmomentum books, and the futures roll yield is the futuresbasis_001 data block
@@ -285,7 +284,7 @@ This report is the long-form evidence behind the search record `research/experim
 
 #### `single_name_equities` -- Single-name equities (cross-section beyond the ETF complex)
 
-- Measured panel: 2000-05-26 .. 2026-10-19, 6638 common sessions, calendar churn 21.80%, **33 folds** of the frozen 10y/12m/6m design (first test 2010-02-22, last test 2026-07-23), 1.24 effective independent bets, median instrument $4,077,909,859/day, annualised volatility 23.83%.
+- Measured panel: 2000-05-26 .. 2026-11-10, 6654 common sessions, calendar churn 21.75%, **33 folds** of the frozen 10y/12m/6m design (first test 2010-02-22, last test 2026-07-23), 1.24 effective independent bets, median instrument $4,084,068,494/day, annualised volatility 23.84%.
 - (a) *data quality* 1/5 -- no instrument of this segment is cached; the panel shown is a reference panel only
 - (b) *mechanism* 3/5 -- declared prior: single-name cross-sectional momentum, value and quality premia are the best-documented equity premia, but each of them needs a point-in-time constituent list and a fundamental series
 - (c) *net edge* 1/5 -- the cost hurdle is NOT measurable for this segment: it has no cached series, so no risk scale exists to express it against -> hurdle score 1/5; declared gross prior 2/5
@@ -314,7 +313,7 @@ This report is the long-form evidence behind the search record `research/experim
 
 **Exactly one candidate is pre-registered by this cycle, and its status is a block, not a verdict.** The selection rule leaves exactly one segment open -- `commodity_complex`, the commodity complex, the only segment the repository has never traded as a book -- and its only instantiation that the committed cache can actually evaluate fails the pre-declared screen of section 4 on both the edge and the trade count. The remaining ten segments are closed by committed records, by the absence of the data their mechanism needs, or by the repository's own cost model; each one's reason is published in section 6.
 
-**Pre-registered candidate: `commoditytrend_001`** -- hypothesis `research/hypotheses/commoditytrend_001.md`, frozen configuration `config/commoditytrend_001.yaml` (SHA-256 `3ddfcf0a7b5ac42f...`, hypothesis `90939438b3cd88d8...`). The tool verifies the committed configuration against the rule this search published and **fails closed** on any drift.
+**Pre-registered candidate: `commoditytrend_001`** -- hypothesis `research/hypotheses/commoditytrend_001.md`, frozen configuration `config/commoditytrend_001.yaml` (SHA-256 `3ddfcf0a7b5ac42f...`, hypothesis `4b9dfc14f3cffc28...`). The tool verifies the committed configuration against the rule this search published and **fails closed** on any drift.
 
 **Its status at the freeze is `FAILED -- blocked by data/infrastructure`.** The cached common inception of its universe (DBC, BNO, UNG, GLD) is 2015-01-02, which supports **3** folds of the frozen 10y/12m/6m design against the **10** the data gate requires. The data gate is therefore not satisfied today, and the candidate is **blocked, not rejected**: no trading verdict is published for it, it is not promoted, not simulated and not paper-traded.
 
