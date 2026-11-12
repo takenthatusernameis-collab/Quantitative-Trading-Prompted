@@ -16,6 +16,12 @@
 #   --force     skips the clock-gate pre-check (testing only).
 #   --read-only runs the verification portion (cmds 1,3,5,6,7,8) and SKIPS the
 #               mutating extend (cmds 2,4). Safe to run before the gate.
+#
+# Both GATE_EPOCH and HANDOFF are env-overridable so this script is reusable for
+# later gates without editing it. Defaults below target the 2026-11-12 gate.
+# Example for the 2026-11-13 gate (22:00 UTC = epoch 1794607200):
+#   GATE_EPOCH=1794607200 HANDOFF=CORRECTIVE_HANDOFF_POSTGATE_20261113.md \
+#     bash scripts/post_gate_orchestrator.sh
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -23,8 +29,8 @@ cd "$REPO_ROOT" || exit 2
 
 PY="${PYTHON:-/tmp/kilo-venv/bin/python}"
 RUFF="${RUFF:-/tmp/kilo-venv/bin/ruff}"
-GATE_EPOCH="${GATE_EPOCH:-1794520800}"   # 2026-11-12T22:00:00Z
-HANDOFF="CORRECTIVE_HANDOFF_POSTGATE_20261112.md"
+GATE_EPOCH="${GATE_EPOCH:-1794520800}"   # 2026-11-12T22:00:00Z (override for later gates)
+HANDOFF="${HANDOFF:-CORRECTIVE_HANDOFF_POSTGATE_20261112.md}"
 PYTEST6="tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py"
 PYTEST7="tests/test_data_cost_inventory_001.py tests/test_data_cost_inventory_002.py"
 RUFF4="research/drift_persistence_report.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py research/verify_gate_time_forward_bar.py"
