@@ -43,13 +43,14 @@ fail() { log "FATAL: $*"; exit 1; }
 
 # --- 0. Clock gate -----------------------------------------------------------
 READ_ONLY=0
+FORCE=0
 for arg in "$@"; do
   case "$arg" in
     --read-only) READ_ONLY=1 ;;
-    --force) : ;;  # consumed below
+    --force) FORCE=1 ;;
   esac
 done
-if [[ "${1:-}" != "--force" ]]; then
+if (( ! FORCE )); then
   now_epoch="$(date +%s)"
   if (( now_epoch < GATE_EPOCH )); then
     log "clock gate NOT released (now=$now_epoch target=$GATE_EPOCH); refusing to run"
