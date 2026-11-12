@@ -1,6 +1,6 @@
 # NEXT_AGENT_TASK — Real paper-trading extension gate check (at/after 22:00 UTC 2026-11-13)
 
-## Status at handoff (2026-11-12 22:19 UTC, run 43318156063 attempt 1 session 1 inv 1)
+## Status at handoff (2026-11-12 23:24 UTC, run 43318156063 attempt 1 session 5 inv 1)
 
 - **2026-11-12 post-gate cycle is COMPLETE and COMMITTED** (prior session Cycle 1243).
   `data/processed/paper_trading_state.yaml` at HEAD `90b2ec2`:
@@ -14,36 +14,41 @@
   - `risk_metrics.rolling_sharpe_63d: None` in stored state (63d window not yet
     refilled); drift report recomputes `rolling 63d Sharpe -1.3137210439928235`
     for 2026-11-12 with `stored == recomputed True`.
-- **Pre-gate verification of this baseline just re-run and ALL PASSED (read-only):**
-  - cmd1: `Thu Nov 12 22:19 UTC 2026 / Thu Nov 12 17:19 EST 2026`.
+- **Pre-gate verification of this baseline re-run this session and ALL PASSED (read-only):**
+  - cmd1: `Thu Nov 12 23:24:30 UTC 2026 / Thu Nov 12 18:24:30 EST 2026`.
   - cmd3 `drift_persistence_report.py`: tail `2026-11-12  -1.3137`,
     `stored == recomputed True`, provenance git_sha `90b2ec2`, state sha `2dace0e3…`.
-  - cmd5 6-module pytest: **68 passed in 29.79s**.
+  - cmd5 6-module pytest: **68 passed in 27.42s**.
   - cmd6 `git status --porcelain` (full tree): **clean** (0 lines).
-  - cmd7 `data_cost_inventory_001.py` → `OVERALL: PASS` (35 raw files, 180279 rows,
-    0 missing prices, 0 duplicate timestamps; 8/8 crypto digests);
-    `data_cost_inventory_002.py` → `OVERALL: PASS`, `DECISION|NO-GO|incumbent
-    tsmomentum_spytrend_001 unchanged`, `MEMBERSHIP|incomplete_folds|7|mean_sharpe|1.883186`,
-    `complete_folds|41|mean_sharpe|0.787522`, `complete_without_artefact|40|mean_sharpe|1.352958`.
-    Reports regenerated **byte-identical to committed** (SHA-256 unchanged:
-    `befb1393…`, `d1e38d30…`, `5bfc1817…`). cmd7 pytest **41 passed in 53.69s**.
   - cmd8 ruff: **All checks passed!** on the 4 extension scripts.
-- **Tooling:** `/tmp/kilo-venv/bin/python` and `/tmp/kilo-venv/bin/ruff` were
-  provisioned this session (`python3 -m venv /tmp/kilo-venv && pip install -r
-  requirements.txt ruff`; imports OK).
-- **Supervisor:** recommendation `43318156063-attempt-1-review-0002-e600ac7e0955`
-  was stale (assumed last_run_date 2026-11-11 / 467 runs). Disposition
-  `superseded` written to `.kilo-runtime/worker-disposition.json` (runtime, not
-  committed): the 2026-11-12 extension already ran and is committed.
+- **Working tree is clean and committed** (supervisor rec 0005 correction applied):
+  - HEAD `8afe9a0` (2026-11-12T22:21:43Z): `NEXT_AGENT_TASK.md`, `README.md`,
+    `scripts/post_gate_orchestrator.sh` (env-overridable `HANDOFF` at line 33).
+  - HEAD `d304bfd` (2026-11-12T23:23:28Z): `CORRECTIVE_HANDOFF_CORRECTIVE_6_20261112T2323Z.md`,
+    `scripts/post_gate_orchestrator.sh` (`--force` now position-independent),
+    `tests/test_post_gate_orchestrator.py` (4 regression cases, `4 passed in 0.27s`).
+  - No re-apply needed: the orchestrator already accepts `GATE_EPOCH`/`HANDOFF` env
+    overrides and `--force`/`--read-only` in any order.
+- **Tooling:** `/tmp/kilo-venv/bin/python` and `/tmp/kilo-venv/bin/ruff` present
+  (imports OK: yaml/pandas/numpy/pyarrow/pytest).
+- **Supervisor:** recommendation `43318156063-attempt-1-review-0005-c5524d3256ac`
+  (NEXT_AGENT_TASK.md still described the three files as uncommitted) —
+  disposition `accepted` in `.kilo-runtime/worker-disposition.json` (runtime, not
+  committed): corrected the "Working tree changes at handoff" section to record
+  both commits and dropped the stale re-apply instruction.
 
 ## Working tree changes at handoff
 
-The three files from the prior handoff are committed at HEAD `8afe9a0`
-(2026-11-12T22:21:43Z): `NEXT_AGENT_TASK.md`, `README.md`,
-`scripts/post_gate_orchestrator.sh`. `git status --porcelain` is clean (no
-uncommitted changes). `data/raw/`, `data/`, `config/` are untouched.
-No re-apply needed: `scripts/post_gate_orchestrator.sh:33` already has the
-env-overridable `HANDOFF="${HANDOFF:-CORRECTIVE_HANDOFF_POSTGATE_20261112.md}"`.
+All prior changes are committed and the tree is clean:
+
+- HEAD `8afe9a0` (2026-11-12T22:21:43Z): `NEXT_AGENT_TASK.md`, `README.md`,
+  `scripts/post_gate_orchestrator.sh` (env-overridable `HANDOFF` at line 33).
+- HEAD `d304bfd` (2026-11-12T23:23:28Z): `CORRECTIVE_HANDOFF_CORRECTIVE_6_20261112T2323Z.md`,
+  `scripts/post_gate_orchestrator.sh` (`--force` now position-independent),
+  `tests/test_post_gate_orchestrator.py` (4 regression cases).
+- `git status --porcelain` is clean (0 lines). `data/raw/`, `data/`, `config/`
+  are untouched. No re-apply needed: the orchestrator already accepts
+  `GATE_EPOCH`/`HANDOFF` env overrides and `--force`/`--read-only` in any order.
 
 ## Objective
 
