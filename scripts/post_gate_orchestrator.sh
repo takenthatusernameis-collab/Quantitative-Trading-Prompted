@@ -31,6 +31,9 @@ PY="${PYTHON:-/tmp/kilo-venv/bin/python}"
 RUFF="${RUFF:-/tmp/kilo-venv/bin/ruff}"
 GATE_EPOCH="${GATE_EPOCH:-1794520800}"   # 2026-11-12T22:00:00Z (override for later gates)
 HANDOFF="${HANDOFF:-CORRECTIVE_HANDOFF_POSTGATE_20261112.md}"
+# Human-readable gate timestamp derived from GATE_EPOCH so the generated handoff
+# is correct for whichever gate is targeted (defaults to the 2026-11-12 gate).
+GATE_HUMAN="$(date -u -d "@$GATE_EPOCH" +%FT%TZ)"
 PYTEST6="tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py"
 PYTEST7="tests/test_data_cost_inventory_001.py tests/test_data_cost_inventory_002.py"
 RUFF4="research/drift_persistence_report.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py research/verify_gate_time_forward_bar.py"
@@ -113,12 +116,12 @@ print(f"{h} last_run={s.get('last_run_date')} nav={s.get('current_nav')} runs={l
 PY
 )"
 cat > "$HANDOFF" <<EOF
-# Post-Gate Handoff — 2026-11-12 cycle (orchestrator scripts/post_gate_orchestrator.sh)
+# Post-Gate Handoff — cycle for gate $GATE_HUMAN (orchestrator scripts/post_gate_orchestrator.sh)
 
 - **Generated:** $(date -u +%FT%TZ) UTC
 - **Mode:** $([ $READ_ONLY -eq 1 ] && echo "read-only verification" || echo "full cycle (extend included)")
 - **State:** $STATE_SHA
-- **Gate epoch:** $GATE_EPOCH (2026-11-12T22:00:00Z)
+- **Gate epoch:** $GATE_EPOCH ($GATE_HUMAN)
 - **Orchestrator:** scripts/post_gate_orchestrator.sh (idempotent, restart-safe)
 - **Cmds run:** 1 date, 2 extend, 3 drift, 4 idempotent re-extend, 5 6-module pytest, 6 git status, 7 data-cost inventory + tests, 8 ruff
 - **Waiter gap closed:** cmd7 now runs inside the cycle and the handoff is written into the repository (not /tmp).
