@@ -36,18 +36,14 @@
   `superseded` written to `.kilo-runtime/worker-disposition.json` (runtime, not
   committed): the 2026-11-12 extension already ran and is committed.
 
-## Working tree changes at handoff (uncommitted — verify before the gate)
+## Working tree changes at handoff
 
-`git status --porcelain` shows exactly these three files (no data/config/raw changes):
-- `M NEXT_AGENT_TASK.md` — this task.
-- `M README.md` — new Cycle 1244 audit entry.
-- `M scripts/post_gate_orchestrator.sh` — `HANDOFF` made env-overridable (default
-  unchanged); header documents the 2026-11-13 override.
-
-They are left uncommitted per the standing "do not commit unless asked" rule; the
-controller checkpoint is expected to persist them. If a fresh checkout no longer
-has them, re-apply: the only code change is `HANDOFF="${HANDOFF:-CORRECTIVE_HANDOFF_POSTGATE_20261112.md}"`
-plus the usage comment. `data/raw/`, `data/`, `config/` are untouched.
+The three files from the prior handoff are committed at HEAD `8afe9a0`
+(2026-11-12T22:21:43Z): `NEXT_AGENT_TASK.md`, `README.md`,
+`scripts/post_gate_orchestrator.sh`. `git status --porcelain` is clean (no
+uncommitted changes). `data/raw/`, `data/`, `config/` are untouched.
+No re-apply needed: `scripts/post_gate_orchestrator.sh:33` already has the
+env-overridable `HANDOFF="${HANDOFF:-CORRECTIVE_HANDOFF_POSTGATE_20261112.md}"`.
 
 ## Objective
 
