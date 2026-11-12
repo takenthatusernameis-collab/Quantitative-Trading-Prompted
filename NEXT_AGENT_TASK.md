@@ -1,57 +1,64 @@
-# NEXT_AGENT_TASK — Verify/complete the 2026-11-12 paper-trading gate extension
+# NEXT_AGENT_TASK — Complete the 2026-11-12 post-gate paper-trading extension
 
-## Status at handoff (2026-11-12 17:24 UTC, run 43256335825 attempt 1 session 4)
+## Status at handoff (2026-11-12 17:27 UTC, run 43256335825 attempt 1 session 5 inv 1)
 
-- **Gate releases 22:00 UTC 2026-11-12.** A detached gate-waiter is already running and
-  will fire automatically at **22:01 UTC**: PID 6726, script
-  `/home/runner/work/_temp/kilo-tmp/kilo/gate_wait_and_run.sh`, target epoch 1794520860,
-  log `/home/runner/work/_temp/kilo-tmp/kilo/gate_run.log`.
-  - Robustness verified: the waiter is its **own session leader** (PGID/SID 6725), so the
-    per-session idle-watchdog `killpg` (which kills only each worker's own process group,
-    e.g. node SID 54025) cannot terminate it. It has already survived 1 h+ across multiple
-    session transitions. It is expected to still be alive at 22:01.
-  - The waiter runs cmds 1,3,2,3,4,5,6,8. It does **NOT** run cmd7
-    (`data_cost_inventory_001/002.py`) and does not write a post-gate handoff.
-- **Pre-gate state (verified fresh this session, unchanged):**
-  SHA256 `5fa67d6395eb9948695e89dfa0349bfe51b15c994b6107214cca1fe9a518e227`,
+- **Gate for 2026-11-12 is NOT released yet.** It releases at **22:00 UTC 2026-11-12**
+  (17:00 ET, per `session_is_complete` close_hour 16 + 1). At handoff the local clock is
+  12:27 ET, i.e. ~4.5 h before the gate. `cmd2` (extend) MUST NOT run before 22:00 UTC.
+- **Readiness diagnosis (read-only, real state, this session):** `last_run_date 2026-11-11`,
+  `clock_gate_released False`, `next_calendar_day 2026-11-12`,
+  `next_expected_session 2026-11-12`, `next_session_already_complete False`,
+  `candidate_available False`, reason
+  *"next session 2026-11-12 has not closed yet (today and still in progress); no completed
+  candidate bar exists to extend into"*. **The sole blocker is the clock — there is no code,
+  data, or provider problem.**
+- **Baseline verified unchanged:** state SHA256
+  `5fa67d6395eb9948695e89dfa0349bfe51b15c994b6107214cca1fe9a518e227` (== committed),
   `last_run_date 2026-11-11`, `current_nav 133688.64116621733`, `run_history 467`,
-  drift tail `2026-11-11 -1.1049` (stored == recomputed), git tree clean.
-- **Forward-path code-path verifier PASSES** (`research/verify_gate_time_forward_bar.py`):
-  target 2026-11-12, `sessions_extended 1`, `state_writes 1`, `fetch_error None`,
-  canonical state/report hashes unchanged. **Caveat:** its `nav_after 133879.62493931194`
-  is computed from a **synthetic flat-extended 2026-11-12 bar** (`synthetic shape … max date
-  2026-11-12`), so it is **not** the real expected NAV. The live 22:01 fetch will produce a
-  different NAV. (Earlier cycles wrongly called 133879.62… "deterministic expected NAV".)
-- **Orchestration (context for why sessions run before the gate):** `main.yml` runs on a
-  `*/5 * * * *` cron and spawns sequential worker sessions until a global 355-min wall-clock
-  cutoff (~22:08 UTC for this run). Pre-22:00 sessions therefore correctly do pre-gate
-  verification only (cmds 1,3,5,6,8); they are not project no-ops by choice, they are
-  blocked by the clock gate.
+  drift `rolling 63d -1.1048756449232449` with `stored == recomputed True`,
+  `git status --porcelain -- data/ config/ src/ tests/ research/` = 0 lines,
+  `0` `*20261112*` artifacts in `data/processed/paper_trading/`.
+- **Pre-gate cmds 1,3,5,6,8 all PASS:** (1) date; (3) drift consistent, unchanged/not
+  worsened; (5) 6 modules **68 passed**; (6) git clean; (8) ruff **All checks passed!**.
+- **Detached gate-waiter is ALIVE and will fire:** PID **6726**, PGID/SID **6725** (its own
+  session leader, so the per-session idle-watchdog `killpg` cannot signal it), target epoch
+  **1794520860 = 2026-11-12T22:01:00Z**, log
+  `/home/runner/work/_temp/kilo-tmp/kilo/gate_run.log`. It runs cmds **1,3,2,3,4,5,6,8**.
+  **Known gap:** it does **NOT** run `cmd7` (data-cost inventory) and does **NOT** write a
+  handoff; its log lives in `/tmp` and is lost on runner teardown. The next session must close
+  that gap (see Case A).
 
 ## Objective
 
-Determine whether the 2026-11-12 gate extension ran, then verify and complete it.
+Complete the 2026-11-12 post-gate cycle. Handle both cases.
 
-- If `last_run_date` is already `2026-11-12` (waiter fired): verify the advance, then run
-  cmd7 (inventory) and confirm the regenerated reports match the new counters. Write the
-  post-gate result.
-- If `last_run_date` is still `2026-11-11` at/after 22:00 UTC (waiter did not fire): run the
-  real extension (cmd2) and the rest of cmds 1–8 in order.
-- Never run cmd2 before 22:00 UTC 2026-11-12.
+**Case A — state already advanced (waiter fired): `last_run_date == 2026-11-12`.**
+1. Verify the advance: NAV changed vs `133688.64116621733`, `state_writes 1`, new
+   `*20261112*.parquet` artifacts present, drift report consistent.
+2. **Close the waiter gap:** run `cmd7` — `research/data_cost_inventory_001.py` and
+   `research/data_cost_inventory_002.py` — then `tests/test_data_cost_inventory_001.py` and
+   `tests/test_data_cost_inventory_002.py`; confirm the regenerated reports match the new
+   counters.
+3. Run the 6-module pytest suite; confirm ruff clean.
+4. Rewrite this file (and add a README cycle line) with the **actual** post-gate NAV, drift,
+   and run_history. Do not carry forward the synthetic `133879.62…` figure from
+   `verify_gate_time_forward_bar.py` — it is a synthetic-bar value, not the real NAV.
+
+**Case B — state NOT advanced (still `2026-11-11` at/after 22:00 UTC; waiter failed).**
+Run `cmd2` now, then `cmd3`, `cmd4`, `cmd5`, `cmd6`, `cmd8`, and `cmd7` only if the state
+advanced. Never run `cmd2` before 22:00 UTC 2026-11-12.
 
 ## Acceptance criteria
 
-- Gate/candidate/sessions_extended/last_run_date/NAV recorded; if `sessions_extended==0`
+- gate/candidate/`sessions_extended`/`last_run_date`/NAV recorded; if `sessions_extended==0`
   record the explicit reason and keep state unchanged (0 writes).
 - If advanced: `last_run_date == 2026-11-12`, NAV changed, write count 1, new
   `*20261112*.parquet` artifacts present.
 - Second invocation idempotent (`sessions_extended==0`, NAV unchanged, 0 writes).
-- `drift_persistence_report` updated/consistent.
+- `drift_persistence_report` updated/consistent (`stored == recomputed True`).
 - `git status --porcelain data/ config/` shows only the expected state/report/artifact update.
 - 6-module pytest suite passes.
-- If state advanced: re-run `research/data_cost_inventory_001.py` and
-  `research/data_cost_inventory_002.py` and confirm the reports match new counters; re-run
-  `tests/test_data_cost_inventory_001.py` and `tests/test_data_cost_inventory_002.py`.
+- If advanced: re-run cmd7 inventory + its tests and confirm the reports match the new counters.
 - Ruff clean on the 4 extension scripts.
 
 ## Verification commands
@@ -73,6 +80,9 @@ Tooling: `/tmp/kilo-venv/bin/python` and `/tmp/kilo-venv/bin/ruff`. If missing:
 - Do not change thresholds/gates/cost model/universe/clock-gate logic.
 - Do not commit unless explicitly asked.
 - Do not modify `data/raw/`.
-- Do NOT run cmd2 (extend) before 22:00 UTC 2026-11-12.
-- Full cycle-by-cycle audit history for this task lives in `README.md` (Cycles 1223–1240)
+- Do NOT run `cmd2` (extend) before 22:00 UTC 2026-11-12.
+- Full cycle-by-cycle audit history for this task lives in `README.md` (Cycles 1223–1241)
   and the `CORRECTIVE_HANDOFF_*.md` files; it is intentionally not repeated here.
+- Pre-staged `NEXT_AGENT_TASK_20261113.md` exists but its Context references an older
+  (2026-11-12T00:35Z) session; refresh its Context from the actual 2026-11-12 post-gate
+  result before promoting it.

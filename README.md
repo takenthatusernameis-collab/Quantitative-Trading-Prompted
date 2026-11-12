@@ -1,3 +1,13 @@
+## Cycle 1241: pre-gate verification + exact readiness diagnosis (2026-11-12 17:27 UTC, run 43256335825 attempt 1 session 5 inv 1) — **PRE-GATE VERIFIED; SOLE BLOCKER = CLOCK**
+
+- **UTC 2026-11-12T17:27:08Z (12:27:08 EST Thu Nov 12).** Gate for 2026-11-12 **NOT released** (releases 22:00 UTC / 17:00 ET; ~4.5h remaining). Cmds 2/4/7 withheld (scope boundary).
+- **NEW — exact readiness diagnosis (read-only, real state):** `build_readiness` → `last_run_date 2026-11-11`, `clock_gate_released False`, `next_expected_session 2026-11-12`, `next_session_already_complete False`, `candidate_available False`, reason *"next session 2026-11-12 has not closed yet (today and still in progress); no completed candidate bar exists to extend into"*. Confirms the **sole blocker is the clock** — no code/data/provider problem.
+- **Pre-gate cmds 1,3,5,6,8 all pass:** (1) date above; (3) drift `rolling 63d -1.1048756449232449`, `stored == recomputed True` (unchanged/not worsened); (5) 6 modules **68 passed**; (6) `git status --porcelain -- data/ config/ src/ tests/ research/` 0 lines; (8) ruff **All checks passed!**.
+- **State unchanged:** SHA256 `5fa67d6395eb9948695e89dfa0349bfe51b15c994b6107214cca1fe9a518e227` (== `git show HEAD:`), `last_run_date 2026-11-11`, NAV `133688.64116621733`, `run_history 467`, `0` `*20261112*` artifacts.
+- **Gate-waiter confirmed ALIVE:** PID 6726, PGID/SID 6725 (own session leader, isolated from per-session `killpg`), target epoch 1794520860 = 2026-11-12T22:01:00Z, elapsed >1h. **Documented gap:** waiter runs cmds 1,3,2,3,4,5,6,8 but NOT cmd7 and writes no handoff; `/tmp` log is lost on teardown — the post-gate session must close this (inventory + handoff).
+- **Handoff rewritten** to a tight post-gate task covering both cases (Case A: state already advanced → verify + run cmd7 + handoff; Case B: not advanced → run cmd2 then rest), with the readiness diagnosis and waiter gap recorded. No new code/infra added (preserve baseline; smallest change).
+- **No commits made; `data/raw/` untouched.** Next real-gate verification: at/after 22:01 UTC 2026-11-12.
+
 ## Cycle 1240: pre-gate verification + gate-execution robustness audit (2026-11-12 17:24 UTC, run 43256335825 attempt 1 session 4 inv 1) — **PRE-GATE VERIFIED; GATE RUN DECOUPLED FROM WORKER LIFECYCLE**
 
 - **UTC 2026-11-12T17:23:34Z (12:23:34 EST Thu Nov 12).** Gate for 2026-11-12 **NOT released** (releases 22:00 UTC 2026-11-12; ~4.6h remaining). Cmds 2/4/7 withheld (scope boundary).
