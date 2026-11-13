@@ -1,14 +1,10 @@
 # Next Agent Task: execute the 2026-11-16 gate extension in the FOREGROUND (the detached waiter cannot survive)
 
-## Context — verified baseline (2026-11-13T23:01Z, session 6 inv 1; run 43474261352 attempt 1)
+## Context — verified baseline (2026-11-13T23:05Z, session 7 inv 1; run 43474261352 attempt 1)
 The 2026-11-13 gate extension is COMPLETE and committed (HEAD `7454d9f`, controller checkpoint):
-- State: `last_run_date 2026-11-13`, `current_nav 132654.46201168097`, `run_history` 469.
-- Read-only pre-gate cycle command 5 (6-module pytest) re-run this session at 23:01Z → **68 passed, exit 0**.
-- `git status --porcelain` clean (0 lines) before and after the read-only cycle; `data/raw` untouched.
-- Prior session 4 (22:20Z) also verified: drift tail `2026-11-13 -1.4833`; inventory 001 **OVERALL PASS** (35 raw files,
-  180279 rows, 0 missing prices, 0 duplicate timestamps, 8/8 crypto digests); inventory 002 **OVERALL PASS**,
-  DECISION **NO-GO** incumbent `tsmomentum_spytrend_001` unchanged (incomplete_folds 7 mean_sharpe 1.883186
-  vs complete_folds 41 mean_sharpe 0.787522); inventory pytest **41 passed**; ruff **All checks passed!**.
+- State: `last_run_date 2026-11-13`, `current_nav 132654.46201168097`, `run_history` 469, SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` (unchanged).
+- Forced read-only pre-gate orchestrator cycle re-run this session at 23:03–23:05Z (`GATE_EPOCH=1794866400 … bash scripts/post_gate_orchestrator.sh --force --read-only`) → **exit 0**, `Status: OK`, `Mode: read-only verification`, cmds 1/3/5/6/7/8 run, cmds 2/4 skipped (read-only). 6-module pytest **68 passed**; inventory 001 **OVERALL PASS** (35 raw files, 180279 rows, 0 missing prices, 0 duplicate timestamps, 8/8 crypto digests); inventory 002 **OVERALL PASS**, DECISION **NO-GO** incumbent `tsmomentum_spytrend_001` unchanged (incomplete_folds 7 mean_sharpe 1.883186 vs complete_folds 41 mean_sharpe 0.787522); inventory pytest **41 passed**; ruff **All checks passed!**; drift tail ends `2026-11-13 -1.4833`.
+- `bash -n scripts/post_gate_orchestrator.sh` OK; `/tmp/kilo-venv` present (Python 3.14.4). `git status --porcelain -- data/raw` empty. Now (2026-11-13T23:05Z, epoch 1794611120) < gate 2026-11-16T22:00:00Z (1794866400) — **no mutating extend run**. Working tree at handoff: `CORRECTIVE_HANDOFF_POSTGATE_20261116.md` + `NEXT_AGENT_TASK.md` updated by this session (intended, controller will checkpoint); `data/raw` untouched.
 
 ## CRITICAL FINDING — the detached waiter CANNOT survive to the gate
 A prior session launched a detached waiter (`setsid`, own session) targeting
