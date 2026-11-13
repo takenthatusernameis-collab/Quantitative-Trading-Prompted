@@ -1,54 +1,43 @@
-# Next Agent Task: run the 2026-11-13 gate extension (gate-active)
+# Next Agent Task: run the next calendar-session gate extension (gate-active)
 
 ## Context
-Pre-gate verification is COMPLETE and re-verified fresh this session (2026-11-13T14:47 UTC, HEAD `d4ebf4f`, working tree clean — cycle-1253 fix committed):
+The 2026-11-13 gate extension is COMPLETE and verified (corrective invocation 2, 2026-11-13T22:05Z):
 
-| Cmd | Result |
-|-----|--------|
-| 0 `post_gate_orchestrator.sh` (no wait) | `clock gate NOT released ...; refusing to run` → **EXIT=3** |
-| 1 `date -u && TZ=America/New_York date` | `Fri Nov 13 14:47 UTC 2026 / 09:47 EST`; gate releases 22:00 UTC (epoch 1794607200), ~7.25h out |
-| 3 `drift_persistence_report.py` | `stored == recomputed: True`; rolling 63d `-1.3137210439928235 (2026-11-12)`; tail ends `2026-11-12 -1.3137`; state sha `2dace0e3…dec88a` matches committed |
-| 5 6-module pytest | **68 passed in 42.00s** |
-| 6 `git status --porcelain data/ config/` | **0 lines** (clean) |
-| 6 `git status --porcelain` | **0 lines** (full tree clean) |
-| 8 `ruff` on 4 extension scripts | **All checks passed!** |
-| 9 `research/verify_monday_extension_path.py` | `RESULT: PASS` (committed 2026-11-10 NAV reproduced bit-for-bit) |
-| 10 `research/verify_gate_time_forward_bar.py` | `RESULT: PASS` (target 2026-11-13, `sessions_extended 1`, `state_writes 1`, `fetch_error None`, canonical state + tracked report unchanged) |
-| Orchestrator suite | **20 passed in 2.35s** |
+- Gate released 2026-11-13T22:00:00Z (epoch 1794607200); orchestrator `scripts/post_gate_orchestrator.sh --wait-until-gate` ran cmds 1–8.
+- Extend: `sessions extended: 1`, `state write count: 1`, NAV `133039.92504076837` → `132654.46201168097`, `data/raw` untouched.
+- Idempotent re-run: `sessions extended: 0`, `state write count: 0`, `ORCH_RC=0`.
+- Drift tail ends `2026-11-13 -1.4833`; 6-module pytest `68 passed`; inventory pytest `41 passed`; ruff clean; inventory 002 `DECISION NO-GO` (incumbent unchanged).
+- State: `last_run_date 2026-11-13`, `current_nav 132654.46201168097`, runs 469, SHA `c438cd71…`.
+- Durable handoff: `CORRECTIVE_HANDOFF_POSTGATE_20261113.md` (full evidence + appended corrective-invocation-2 section). Pre-gate evidence preserved in `CORRECTIVE_HANDOFF_POSTGATE_20261113_pregate_backup.md`.
+- Changes are uncommitted on disk (no commit performed; do not commit unless explicitly asked).
 
-Cycle 1253 fixed a durable-evidence defect in `scripts/post_gate_orchestrator.sh`: overriding only `GATE_EPOCH` used to write the 2026-11-12 handoff file with the new gate's content. The default handoff is now derived from `GATE_EPOCH`, and an explicit `HANDOFF` naming a different gate date fails closed (rc=2). Fix committed at `d4ebf4f`.
-
-Durable handoff: `CORRECTIVE_HANDOFF_POSTGATE_20261113.md` (inv131 section has the full evidence; this session's verification appended).
+Runtime note: the venv `/tmp/kilo-venv` was (re)provisioned this session on Python 3.14 with the full required set. It is ephemeral (`/tmp`); if a future session finds it absent, recreate it before running the cycle:
+```bash
+python3 -m venv /tmp/kilo-venv
+/tmp/kilo-venv/bin/python -m pip install --no-cache-dir numpy pandas scipy statsmodels arch yfinance pyarrow pyyaml pytest ruff
+```
 
 ## Objective (bounded)
-At/after 22:00 UTC 2026-11-13 (epoch 1794607200), run the gate extension:
+At/after the next calendar-session gate, run the same idempotent cycle. The last processed session is 2026-11-13 (Friday); the next weekday session is Monday 2026-11-16. Determine the gate epoch for that session and run:
 ```bash
-GATE_EPOCH=1794607200 bash scripts/post_gate_orchestrator.sh --wait-until-gate
+GATE_EPOCH=<next-session-gate-epoch> PYTHON=/tmp/kilo-venv/bin/python RUFF=/tmp/kilo-venv/bin/ruff \
+  bash scripts/post_gate_orchestrator.sh --wait-until-gate
 ```
-This blocks (60s heartbeat) until release, then runs cmds 1–8. It writes `CORRECTIVE_HANDOFF_POSTGATE_20261113.md` by default. Extends by <=1 session only if a completed bar exists; idempotent (re-run extends 0). `HANDOFF=` may be set only to a filename whose embedded date matches the gate (20261113).
+Because a single invocation is bounded by a 600s idle timeout, launch it detached so it survives teardown (this is the pattern that worked):
+```bash
+setsid env GATE_EPOCH=<epoch> PYTHON=/tmp/kilo-venv/bin/python RUFF=/tmp/kilo-venv/bin/ruff \
+  bash scripts/post_gate_orchestrator.sh --wait-until-gate > /tmp/gate_waiter.log 2>&1 < /dev/null &
+```
+then stay alive with sub-600s heartbeats to verify the post-gate result. Default handoff filename derives from the gate date (`CORRECTIVE_HANDOFF_POSTGATE_<YYYYMMDD>.md`).
 
 ## Acceptance criteria
-- [ ] Gate extension runs at/after 22:00 UTC 2026-11-13 (or correctly exits 3 if invoked before release without `--wait-until-gate`)
-- [ ] Extends by <=1 session only if a completed bar exists; idempotent re-run extends 0 and writes no second state update
-- [ ] `data/raw/` untouched; no threshold/gate/cost/universe/clock-gate changes
-- [ ] Working tree shows only intended state/report changes plus the cycle-1253 fix (script + test); no other code/config changes
-- [ ] Handoff `Status: OK` agrees with process exit code 0
-
-## Validation commands
-```bash
-# Before gate: confirm guard (expect EXIT=3, "clock gate NOT released")
-GATE_EPOCH=1794607200 bash scripts/post_gate_orchestrator.sh
-# At/after 22:00 UTC 2026-11-13 (blocks until release, then runs cmds 1-8):
-GATE_EPOCH=1794607200 bash scripts/post_gate_orchestrator.sh --wait-until-gate
-# Idempotency re-check (expect "sessions extended: 0", state write count 0):
-GATE_EPOCH=1794607200 bash scripts/post_gate_orchestrator.sh
-git status --porcelain
-sha256sum data/processed/paper_trading_state.yaml
-```
-After a real advance also re-run `python research/drift_persistence_report.py` (tail must end on the new session) and the 6-module pytest.
+- [ ] Gate extension runs at/after the next session gate (or correctly exits 3 if invoked early without `--wait-until-gate`).
+- [ ] Extends by <=1 session only if a completed bar exists; idempotent re-run extends 0 with 0 writes.
+- [ ] `data/raw/` untouched; no threshold/gate/cost/universe/clock-gate changes.
+- [ ] Working tree shows only intended state/report/artifact changes; handoff `Status: OK` agrees with exit 0.
 
 ## Scope boundaries
-- Do not run the mutating extend before 22:00 UTC 2026-11-13 (time-gated).
+- Do not run a mutating extend before the target session gate.
 - Do not change thresholds/gates/cost model/universe/clock-gate logic; do not touch `data/raw/`.
-- Extend by <=1 session only if a completed bar exists.
-- Do not rewrite this cycle's history; append evidence only.
+- Do not commit unless explicitly asked.
+- Do not dispatch this workflow or start additional agent sessions.
