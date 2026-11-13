@@ -12,6 +12,14 @@ The last processed session is 2026-11-13 (Friday); the next weekday session is M
   "[2026-11-13T22:10:06Z] clock gate NOT released (now=1794607806 target=1794866400); waiting up to 258594s for release"
 It will survive runner teardown, fire the full post-gate cycle (cmds 1-8) at/after the gate, and write CORRECTIVE_HANDOFF_POSTGATE_20261116.md (handoff filename derived from GATE_EPOCH's date). Log: /tmp/gate_waiter.log.
 
+## Pre-gate verification (this session, 2026-11-13T22:11Z)
+A read-only pre-gate cycle was run to confirm the baseline is intact before the gate:
+- `GATE_EPOCH=1794866400 PYTHON=/tmp/kilo-venv/bin/python RUFF=/tmp/kilo-venv/bin/ruff bash scripts/post_gate_orchestrator.sh --force --read-only` → **exit 0**.
+- Drift tail ends 2026-11-13 -1.4833; 6-module pytest **68 passed**; inventory 001 OVERALL: PASS (35 raw files, 180279 rows, 0 missing prices, 0 duplicate timestamps; 8/8 crypto digests); inventory 002 OVERALL: PASS, DECISION NO-GO incumbent unchanged; inventory pytest **41 passed**; ruff **All checks passed!**.
+- State SHA `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365`, last_run 2026-11-13, nav 132654.46201168097, runs 469 — matches HEAD.
+- `git status --porcelain -- data/raw` empty; only intended artifact `CORRECTIVE_HANDOFF_POSTGATE_20261116.md` (uncommitted).
+- Waiter PID 50620 confirmed alive (own session leader, PGID/SID 50620), still waiting at 22:11Z.
+
 ## Objective (bounded)
 Once the waiter fires at/after 2026-11-16T22:00:00Z, verify the post-gate cycle result. Do NOT run a mutating extend (cmds 2/4) before the target session gate. If the waiter already ran, validate its output; if this session starts before the gate releases, wait (or re-launch the detached waiter) until at/after the gate, then verify.
 
