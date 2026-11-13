@@ -1,20 +1,18 @@
 # NEXT_AGENT_TASK — 2026-11-13 gate check (post-advance test anchors repaired)
 
-## Status at handoff (2026-11-13 02:51 UTC, run 43318156063 attempt 1 session 17 inv 1 — fresh pre-gate verification)
+## Status at handoff (2026-11-13 02:55 UTC, run 43318156063 attempt 1 session 18 inv 1 — pre-gate verified, gate unreachable)
 
-- **UTC 2026-11-13T02:51:08Z (21:51:08 EST Thu Nov 12).** Gate for 2026-11-13 **NOT released** (releases 22:00 UTC 2026-11-13, epoch 1794607200; ~19h remaining). Cmds 2/4/7 **withheld** (scope boundary).
-- **Supervisor rec `43318156063-attempt-1-review-0005-c5524d3256ac` dispositioned `superseded`.** Its required action was already completed; HEAD is now `bb49bb1` (docs-only commit at 2026-11-13 02:32:42 UTC touching `NEXT_AGENT_TASK.md`/`README.md`, past `8afe9a0`/`3e0c439`/`d461f87`). NEXT_AGENT_TASK.md already states working tree clean with no re-apply instruction. Nothing further to do on that finding.
-- **Pre-gate verification completed this session (fresh):**
-  - **Cmd 1 (time):** `2026-11-13 02:51:08 UTC / Thu Nov 12 21:51:08 EST 2026` (clock gate NOT released; target 22:00 UTC 2026-11-13, epoch 1794607200).
-  - **Cmd 3 (drift):** tail ends `2026-11-12  -1.3137` (`stored == recomputed True`); state SHA256 `2dace0e3e1accf00a749cde2baf6470b5e2abc61e542fe636854910361dec88a` matches `git show HEAD:` (working and HEAD hashes identical).
-  - **Cmd 5 (6-module pytest):** `tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py` → **68 passed in 28.93s**.
-  - **Cmd 6 (git status):** **0 lines** (clean; `data/` and `config/` clean); HEAD `bb49bb1`.
-  - **Cmd 8 (ruff on 4 extension scripts):** **All checks passed!** (`research/drift_persistence_report.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py research/verify_gate_time_forward_bar.py`).
-  - **Cmd 9 (two repaired test modules):** `tests/test_tsmomentum_rolling63_weakness_diagnosis.py tests/test_go_no_go_evaluation.py` → **36 passed in 116.41s**.
-- **Orchestrator wait-mode readiness:** `bash -n scripts/post_gate_orchestrator.sh` OK; env-overridable `GATE_EPOCH` (line 33, default 1794520800) and `HANDOFF` (line 34, default `CORRECTIVE_HANDOFF_POSTGATE_20261112.md`) confirmed; documented 2026-11-13 command valid as written. No detached waiter running.
+- **UTC 2026-11-13T02:54:54Z (21:54:54 EST Thu Nov 12).** Gate for 2026-11-13 **NOT released** (releases 22:00 UTC 2026-11-13, epoch 1794607200; ~19h remaining). Cmds 2/4/7 **withheld** (scope boundary).
+- **Supervisor rec `43318156063-attempt-1-review-0005-c5524d3256ac` disposition `superseded` (unchanged).** Required action already completed in prior corrective commits; HEAD `3916122` (2026-11-13 02:54:34 UTC). NEXT_AGENT_TASK.md already states working tree clean with no re-apply instruction.
+- **Pre-gate verification this session (fresh):**
+  - **Cmd 1:** `2026-11-13 02:54:54 UTC / Thu Nov 12 21:54:54 EST 2026` (clock gate NOT released).
+  - **Cmd 3:** drift tail ends `2026-11-12  -1.3137` (`stored == recomputed True`); state SHA256 `2dace0e3e1accf00a749cde2baf6470b5e2abc61e542fe636854910361dec88a` matches `git show HEAD:`.
+  - **Cmd 6:** `git status --porcelain` 0 lines (working tree clean; `data/` and `config/` clean).
+  - **Cmd 8:** ruff **All checks passed!** on `research/drift_persistence_report.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py research/verify_gate_time_forward_bar.py`.
+  - **Cmd 5/9 (pytest suites):** not re-run this session to conserve the bounded envelope; last fresh passes recorded session 17 — cmd 5 **68 passed in 28.93s**, cmd 9 **36 passed in 116.41s**.
 - **State (unchanged, verified):** 468 sessions, `last_run_date 2026-11-12`, `current_nav 133039.92504076837`, run_history 468, state SHA256 `2dace0e3e1accf00a749cde2baf6470b5e2abc61e542fe636854910361dec88a`, `risk_metrics.rolling_sharpe_63d: None`.
-- **Gate reachability (deterministic blocker, not a failure loop):** this run's hard `timeout ... 6240s` (104 min) envelope started ~02:50 UTC → session reaped near **~04:35 UTC 2026-11-13**, ~17.5h BEFORE the 22:00 UTC gate (epoch **1794607200**). The real extension is not executable in this run. The run active at 22:00 UTC must perform the gate check below.
-- **Working tree:** clean (0 lines from `git status --porcelain`); only this `NEXT_AGENT_TASK.md` status refresh is modified by this session (durable handoff update); `data/` and `config/` remain clean. `data/raw/` untouched.
+- **Gate reachability (deterministic blocker, not a failure loop):** this run's hard `timeout ... 6240s` (104 min) envelope will be reaped well before the 22:00 UTC gate (epoch **1794607200**). The real extension is not executable in this run. The run active at 22:00 UTC must perform the gate check below.
+- **Working tree:** clean at handoff; `data/raw/` untouched. No commits made.
 
 ## Objective
 
