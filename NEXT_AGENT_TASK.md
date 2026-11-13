@@ -1,22 +1,24 @@
 # Next Agent Task: run the 2026-11-13 gate extension (gate-active)
 
 ## Context
-Pre-gate verification is COMPLETE and re-verified fresh this session (2026-11-13T14:45 UTC, HEAD `47b1ab2`, working tree contains only the intended cycle-1253 fix):
+Pre-gate verification is COMPLETE and re-verified fresh this session (2026-11-13T14:47 UTC, HEAD `d4ebf4f`, working tree clean — cycle-1253 fix committed):
 
 | Cmd | Result |
 |-----|--------|
 | 0 `post_gate_orchestrator.sh` (no wait) | `clock gate NOT released ...; refusing to run` → **EXIT=3** |
-| 1 `date -u && TZ=America/New_York date` | `Fri Nov 13 14:45 UTC 2026 / 09:45 EST`; gate releases 22:00 UTC (epoch 1794607200), ~7.25h out |
+| 1 `date -u && TZ=America/New_York date` | `Fri Nov 13 14:47 UTC 2026 / 09:47 EST`; gate releases 22:00 UTC (epoch 1794607200), ~7.25h out |
 | 3 `drift_persistence_report.py` | `stored == recomputed: True`; rolling 63d `-1.3137210439928235 (2026-11-12)`; tail ends `2026-11-12 -1.3137`; state sha `2dace0e3…dec88a` matches committed |
-| 5 6-module pytest | **68 passed in 42.04s** |
+| 5 6-module pytest | **68 passed in 42.00s** |
 | 6 `git status --porcelain data/ config/` | **0 lines** (clean) |
+| 6 `git status --porcelain` | **0 lines** (full tree clean) |
 | 8 `ruff` on 4 extension scripts | **All checks passed!** |
 | 9 `research/verify_monday_extension_path.py` | `RESULT: PASS` (committed 2026-11-10 NAV reproduced bit-for-bit) |
 | 10 `research/verify_gate_time_forward_bar.py` | `RESULT: PASS` (target 2026-11-13, `sessions_extended 1`, `state_writes 1`, `fetch_error None`, canonical state + tracked report unchanged) |
+| Orchestrator suite | **20 passed in 2.35s** |
 
-Cycle 1253 fixed a durable-evidence defect in `scripts/post_gate_orchestrator.sh`: overriding only `GATE_EPOCH` used to write the 2026-11-12 handoff file with the new gate's content. The default handoff is now derived from `GATE_EPOCH`, and an explicit `HANDOFF` naming a different gate date fails closed (rc=2). Orchestrator suite **20 passed** (was 16). Those two files are **uncommitted** (no commit requested); `cmd6 git status` will list them until committed — expected, not a scope violation.
+Cycle 1253 fixed a durable-evidence defect in `scripts/post_gate_orchestrator.sh`: overriding only `GATE_EPOCH` used to write the 2026-11-12 handoff file with the new gate's content. The default handoff is now derived from `GATE_EPOCH`, and an explicit `HANDOFF` naming a different gate date fails closed (rc=2). Fix committed at `d4ebf4f`.
 
-Durable handoff: `CORRECTIVE_HANDOFF_POSTGATE_20261113.md` (inv131 section has the full evidence).
+Durable handoff: `CORRECTIVE_HANDOFF_POSTGATE_20261113.md` (inv131 section has the full evidence; this session's verification appended).
 
 ## Objective (bounded)
 At/after 22:00 UTC 2026-11-13 (epoch 1794607200), run the gate extension:

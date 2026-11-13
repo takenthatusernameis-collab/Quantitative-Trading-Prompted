@@ -77,3 +77,11 @@ This runs cmds 1–8 (incl. cmd7) and writes the durable handoff into the reposi
 - **Gate-active command (simplified — HANDOFF now optional):**
   `GATE_EPOCH=1794607200 bash scripts/post_gate_orchestrator.sh --wait-until-gate`
   (writes `CORRECTIVE_HANDOFF_POSTGATE_20261113.md` by default). Expect `cmd6 git status` to list ` M scripts/post_gate_orchestrator.sh` and ` M tests/test_post_gate_orchestrator.py` until this fix is committed — those two files are the intended, verified change, not a scope violation.
+
+## Corrective invocation 132 (2026-11-13T14:47Z) — fresh pre-gate verification at committed fix
+
+- **Context:** pre-gate verification at HEAD `d4ebf4f` (working tree clean, cycle-1253 fix committed) re-confirmed the baseline: gate guard `EXIT=3` (`now=1794581240 target=1794607200`), drift `stored == recomputed: True` (rolling 63d `-1.3137210439928235`, 2026-11-12), 6-module pytest **68 passed in 42.00s**, ruff **All checks passed!**, `git status --porcelain data/ config/` **0 lines**, full `git status --porcelain` **0 lines**, state SHA256 `2dace0e3…dec88a` == HEAD (`last_run 2026-11-12`, NAV 133039.92504076837, runs 468).
+- **Additional verification:** orchestrator suite **20 passed in 2.35s**; `verify_monday_extension_path.py` → `RESULT: PASS` (reproduces committed 2026-11-10 NAV 132498.02732499802 bit-for-bit); `verify_gate_time_forward_bar.py` → `RESULT: PASS` (target 2026-11-13, `sessions_extended 1`, `state_writes 1`, `fetch_error None`, synthetic-bar NAV 133039.92504076837 → 133229.98207654088, canonical state and tracked report unchanged).
+- **No defects found.** Working tree clean. `data/raw/` untouched. No commits made.
+- **Unresolved blocker:** temporal only — gate releases at 22:00 UTC 2026-11-13 (~7.25h after this session); this run's controller cutoff ~16:06 UTC. The gate-active run must execute the extension.
+- **Gate-active command:** `GATE_EPOCH=1794607200 bash scripts/post_gate_orchestrator.sh --wait-until-gate` (writes `CORRECTIVE_HANDOFF_POSTGATE_20261113.md` by default).
