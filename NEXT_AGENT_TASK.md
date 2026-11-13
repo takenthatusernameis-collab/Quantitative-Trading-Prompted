@@ -1,6 +1,21 @@
 # NEXT_AGENT_TASK — 2026-11-13 gate check (post-advance test anchors repaired)
 
-## Status at handoff (2026-11-13 03:35 UTC, corrective invocation 2 — orchestrator durable-evidence defects fixed and verified)
+## Status at handoff (2026-11-13 05:12 UTC, corrective invocation 253 — non-gated verification actually executed)
+
+- **UTC 2026-11-13T05:12:07Z (00:12:07 EST).** Gate for 2026-11-13 **NOT released** (releases 22:00 UTC 2026-11-13, epoch 1794607200; `remaining_s 60472`, ~16.8h). Cmds 2/4/7 **withheld** (scope boundary).
+- **Correction vs. inv 252:** inv 252 wrongly reported `/tmp/kilo-venv` missing and ran no verification. The venv is present and provisioned (pytest 9.2.0, ruff 0.17.5). This invocation **executed** the non-gated commands and captured real output.
+- **Fresh verified evidence (this invocation, HEAD `e768607`):**
+  - **Cmd 3:** drift `stored == recomputed: True`; trailing `-1.3137210439928235 (2026-11-12)`; `git_sha e768607…`; state sha256 `2dace0e3…`.
+  - **Cmd 5:** 6-module pytest **68 passed in 40.39s**.
+  - **Cmd 6:** `git status --porcelain data/ config/` → empty.
+  - **Cmd 8:** ruff **All checks passed!** (4 extension scripts).
+  - **Cmd 9:** two repaired modules **36 passed in 165.61s**.
+  - **Orchestrator suite:** `tests/test_post_gate_orchestrator.py` **13 passed in 1.79s**.
+  - **State:** `last_run_date 2026-11-12`, `current_nav 133039.92504076837`, 468 runs, `rolling_sharpe_63d None` — matches committed record.
+- **No source/data/config defect found; no justified code correction.** Only open item is the clock-gated 2026-11-13 extension (Cmds 2/4) + post-advance Cmd 7.
+- **Working tree:** this handoff + NEXT_AGENT_TASK.md status update only. `data/raw/` untouched. No commits made.
+
+### Prior status (inv 2, 03:35 UTC) — retained for audit
 
 - **UTC 2026-11-13T03:35:17Z (22:35:17 EST Thu Nov 12).** Gate for 2026-11-13 **NOT released** (releases 22:00 UTC 2026-11-13, epoch 1794607200; ~18.4h / 66283s remaining). Cmds 2/4/7 **withheld** (scope boundary).
 - **Supervisor rec `43318156063-attempt-1-review-0005-c5524d3256ac` disposition `superseded` (unchanged).** Required action already completed in prior corrective commits; HEAD `952af16`. NEXT_AGENT_TASK.md already states working tree state with no re-apply instruction.
