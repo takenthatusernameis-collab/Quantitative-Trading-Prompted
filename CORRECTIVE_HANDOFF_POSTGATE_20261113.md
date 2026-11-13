@@ -1,28 +1,24 @@
 # Post-Gate Handoff — cycle for gate 2026-11-13T22:00:00Z (orchestrator scripts/post_gate_orchestrator.sh)
 
-- **Generated:** 2026-11-13T06:42:30Z UTC
+- **Generated:** 2026-11-13T13:02:19Z UTC
 - **Status:** OK — all verification steps passed (gate not yet released; mutating cmds withheld by scope boundary)
 - **Mode:** read-only verification (extend cmds 2/4 withheld; post-advance cmd 7 withheld)
 - **State:** 2dace0e3e1accf00a749cde2baf6470b5e2abc61e542fe636854910361dec88a last_run=2026-11-12 nav=133039.92504076837 runs=468
 - **Gate epoch:** 1794607200 (2026-11-13T22:00:00Z)
 - **Orchestrator:** scripts/post_gate_orchestrator.sh (idempotent, restart-safe)
-- **Cmds run:** 1 date, 3 drift, 5 6-module pytest, 6 git status, 8 ruff, 9 two repaired modules
+- **Cmds run:** 1 date, 3 drift, 5 6-module pytest, 6 git status, 8 ruff
 - **Cmds skipped:** 2 extend (gate not released), 4 idempotent re-extend (gate not released), 7 data-cost inventory + tests (state not advanced)
 - **Waiter gap closed:** cmd7 runs inside the cycle and the handoff is written into the repository (not /tmp).
 
-## Fresh verification evidence (this session, HEAD `38cecd0`, working tree clean)
+## Fresh verification evidence (this session, HEAD `690c9a5`, working tree clean)
 
 | Cmd | Result |
 |-----|--------|
-| **1** `date -u && TZ=America/New_York date` | `Fri Nov 13 06:36:26 UTC 2026 / Fri Nov 13 01:36:26 EST 2026`; gate `remaining_s ~55200` (~15.3h) |
-| **3** `drift_persistence_report.py` | `stored == recomputed: True`; rolling 63d `-1.3137210439928235 (2026-11-12)`; tail ends `2026-11-12 -1.3137`; `git_sha: 38cecd0...`; `paper_trading_state_sha256: 2dace0e3...dec88a` (matches committed) |
-| **5** 6-module pytest | **68 passed in 39.65s** |
+| **1** `date -u && TZ=America/New_York date` | `Fri Nov 13 13:02:19 UTC 2026 / Fri Nov 13 08:02:19 EST 2026`; gate `remaining_s ~32300` (~9.0h) |
+| **3** `drift_persistence_report.py` | `stored == recomputed: True`; rolling 63d `-1.3137210439928235 (2026-11-12)`; tail ends `2026-11-12 -1.3137`; `git_sha: 690c9a5...`; `paper_trading_state_sha256: 2dace0e3...dec88a` (matches committed) |
+| **5** 6-module pytest | **68 passed in 42.41s** |
 | **6** `git status --porcelain data/ config/` | **0 lines** (clean; `data/` and `config/` clean). Full tree: 0 lines |
 | **8** `ruff` on 4 extension scripts | **All checks passed!** |
-| **9** Two repaired modules | **36 passed in 164.20s** |
-| Orchestrator suite | `tests/test_post_gate_orchestrator.py` **13 passed**; `bash -n scripts/post_gate_orchestrator.sh` → `BASH_OK` |
-| State (matches HEAD `38cecd0`) | `last_run_date 2026-11-12`, `current_nav 133039.92504076837`, run_history **468**, `rolling_sharpe_63d None` |
-| `extend_paper_trading_state` readiness | Clock gate **NOT released**; `sessions extended: 0`; NAV unchanged; `candidate reason: next session 2026-11-13 has not closed yet` |
 
 ## No defects found
 - No source/data/config defect found; no justified code correction.

@@ -9,12 +9,14 @@ Verification of the repaired stale anchors is COMPLETE (all acceptance criteria 
 - Full `pytest tests/ -q`: 797 passed, 3 skipped, **0 failed**, exit 0 (3724.45s)
 - Working tree clean at HEAD `499dfcc`; `data/raw/` untouched; no threshold/gate/cost/universe/clock-gate changes.
 
+This session (2026-11-13T13:02 UTC, HEAD `690c9a5`, working tree clean): pre-gate verification re-run fresh — cmd1 date OK; cmd3 drift `stored == recomputed: True`, rolling 63d `-1.3137210439928235 (2026-11-12)`, tail ends `2026-11-12 -1.3137`, state sha `2dace0e3…dec88a` matches committed; cmd5 **68 passed in 42.41s**; cmd6 git status clean (0 lines, `data/` and `config/` clean); cmd8 ruff **All checks passed!** on the 4 extension scripts. State: last_run_date 2026-11-12, current_nav 133039.92504076837, run_history 468, rolling_sharpe_63d None. Gate epoch 1794607200 (22:00 UTC 2026-11-13) is NOT yet released (now ~13:02 UTC, ~9.0h remaining) — deterministic clock blocker, not a failure loop.
+
 The next step is the time-gated gate extension.
 
 ## Objective (next task, bounded)
 At/after 22:00 UTC 2026-11-13 (epoch 1794607200), run the gate extension:
-`GATE_EPOCH=1794607200 HANDOFF=CORRECTIVE_HANDOFF_POSTGATE_20261113.md bash scripts/post_gate_orchestrator.sh`
-Extending by <=1 session only if a completed bar exists. The script is gate-guarded (exits 3 before release) and idempotent (re-run extends 0).
+`GATE_EPOCH=1794607200 HANDOFF=CORRECTIVE_HANDOFF_POSTGATE_20261113.md bash scripts/post_gate_orchestrator.sh --wait-until-gate`
+Extending by <=1 session only if a completed bar exists. The script is gate-guarded (exits 3 before release) and idempotent (re-run extends 0). Use `--wait-until-gate` so the gate-active run blocks until release rather than exiting 3.
 
 ## Acceptance criteria
 - [ ] Gate extension runs at/after 22:00 UTC 2026-11-13 (or correctly exits 3 if invoked before release)
@@ -27,7 +29,7 @@ Extending by <=1 session only if a completed bar exists. The script is gate-guar
 # Before gate: confirm guard (expect EXIT=3, "clock gate NOT released")
 GATE_EPOCH=1794607200 bash scripts/post_gate_orchestrator.sh
 # At/after 22:00 UTC 2026-11-13:
-GATE_EPOCH=1794607200 HANDOFF=CORRECTIVE_HANDOFF_POSTGATE_20261113.md bash scripts/post_gate_orchestrator.sh
+GATE_EPOCH=1794607200 HANDOFF=CORRECTIVE_HANDOFF_POSTGATE_20261113.md bash scripts/post_gate_orchestrator.sh --wait-until-gate
 git status --porcelain
 ```
 
