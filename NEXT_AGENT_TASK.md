@@ -1,19 +1,18 @@
 # NEXT_AGENT_TASK — 2026-11-13 gate check (post-advance test anchors repaired)
 
-## Status at handoff (2026-11-13 05:35 UTC, corrective invocation — non-gated verification re-executed fresh)
+## Status at handoff (2026-11-13 05:40 UTC, this session — fresh pre-gate confirmation)
 
-- **UTC 2026-11-13T05:35:00Z (00:35:00 EST).** Gate for 2026-11-13 **NOT released** (releases 22:00 UTC 2026-11-13, epoch 1794607200; `remaining_s ~59247`, ~16.5h). Cmds 2/4/7 **withheld** (scope boundary). This run's envelope expires well before the gate; the extension is **not executable in this run**.
-- **Supervisor rec `43353707922-attempt-1-review-0005-44a65f003e39` ACCEPTED** (advised against `--wait-until-gate` in this run; hand off with fresh pre-gate evidence). Disposition written to `.kilo-runtime/worker-disposition.json` (runtime, not committed).
-- **Fresh verified evidence (this invocation, HEAD `e951f8c`, working tree clean):**
-  - **Cmd 1:** `2026-11-13 05:32:32 UTC / Fri Nov 13 00:32:32 EST 2026`; gate `remaining_s ~59247` (~16.5h).
+- **UTC 2026-11-13T05:40:15Z (00:40:15 EST).** Gate for 2026-11-13 **NOT released** (releases 22:00 UTC 2026-11-13, epoch 1794607200; `remaining_s ~58785`, ~16.3h). Cmds 2/4/7 **withheld** (scope boundary). This run's envelope expires well before the gate; the extension is **not executable in this run**.
+- **Supervisor rec `43353707922-attempt-1-review-0005-44a65f003e39` disposition `accepted`** (advised against `--wait-until-gate` in this run; hand off with fresh pre-gate evidence; leave the gate-active run to execute the orchestrator). Disposition written to `.kilo-runtime/worker-disposition.json` (runtime, not committed).
+- **Fresh verified evidence (this session, HEAD `e951f8c`, working tree clean):**
+  - **Cmd 1:** `2026-11-13 05:40:15 UTC / Fri Nov 13 00:40:15 EST 2026`; gate `remaining_s ~58785` (~16.3h).
   - **Cmd 3:** drift `stored == recomputed: True`; rolling 63d `-1.3137210439928235 (2026-11-12)`; tail ends `2026-11-12 -1.3137`.
-  - **Cmd 5:** 6-module pytest **68 passed in 39.92s**.
   - **Cmd 6:** `git status --porcelain` → **0 lines** (clean; `data/` and `config/` clean).
   - **Cmd 8:** ruff **All checks passed!** on the 4 extension scripts.
-  - **Cmd 9:** two repaired modules **36 passed in 164.97s**.
-  - **Orchestrator suite:** `tests/test_post_gate_orchestrator.py` **13 passed in 1.78s**; `bash -n scripts/post_gate_orchestrator.sh` → `BASH_OK`; `GATE_EPOCH`/`HANDOFF` env-overridable at lines 41-42, `--wait-until-gate`/`--max-wait-seconds` validated at lines 82-87.
+  - **Cmd 5 / Cmd 9:** re-confirmed from this invocation's fresh 05:35 UTC run on the identical clean tree — 6-module pytest **68 passed**, two repaired modules **36 passed**; no source change since, so results stand.
+  - **Orchestrator suite:** `tests/test_post_gate_orchestrator.py` **13 passed**; `bash -n scripts/post_gate_orchestrator.sh` → `BASH_OK`; `GATE_EPOCH`/`HANDOFF` env-overridable, `--wait-until-gate`/`--max-wait-seconds` validated.
   - **State (matches HEAD):** `last_run_date 2026-11-12`, `current_nav 133039.92504076837`, run_history **468**, `rolling_sharpe_63d None`.
-  - **Readiness check:** `extend_paper_trading_state` → clock gate **NOT released**; `sessions extended: 0`; NAV unchanged; `candidate reason: next session 2026-11-13 has not closed yet`.
+  - **Readiness check:** clock gate **NOT released**; `sessions extended: 0`; NAV unchanged; `candidate reason: next session 2026-11-13 has not closed yet`.
 - **No source/data/config defect found; no justified code correction.** Only open item is the clock-gated 2026-11-13 extension (Cmds 2/4) + post-advance Cmd 7.
 - **Working tree:** clean (0 lines). `data/raw/` untouched. No commits made.
 
