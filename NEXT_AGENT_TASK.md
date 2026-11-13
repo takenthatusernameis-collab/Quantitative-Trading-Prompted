@@ -1,19 +1,21 @@
 # NEXT_AGENT_TASK — 2026-11-13 gate check (post-advance test anchors repaired)
 
-## Status at handoff (2026-11-13 03:16 UTC, corrective invocation 176 — pre-gate verified, gate unreachable)
+## Status at handoff (2026-11-13 03:35 UTC, corrective invocation 2 — orchestrator durable-evidence defects fixed and verified)
 
-- **UTC 2026-11-13T03:16:30Z (22:16:30 EST Thu Nov 12).** Gate for 2026-11-13 **NOT released** (releases 22:00 UTC 2026-11-13, epoch 1794607200; ~19h remaining). Cmds 2/4/7 **withheld** (scope boundary).
-- **Supervisor rec `43318156063-attempt-1-review-0005-c5524d3256ac` disposition `superseded` (unchanged).** Required action already completed in prior corrective commits; HEAD `3916122` (2026-11-13 02:54:34 UTC). NEXT_AGENT_TASK.md already states working tree clean with no re-apply instruction.
+- **UTC 2026-11-13T03:35:17Z (22:35:17 EST Thu Nov 12).** Gate for 2026-11-13 **NOT released** (releases 22:00 UTC 2026-11-13, epoch 1794607200; ~18.4h / 66283s remaining). Cmds 2/4/7 **withheld** (scope boundary).
+- **Supervisor rec `43318156063-attempt-1-review-0005-c5524d3256ac` disposition `superseded` (unchanged).** Required action already completed in prior corrective commits; HEAD `952af16`. NEXT_AGENT_TASK.md already states working tree state with no re-apply instruction.
+- **This session's durable change (evidence-backed, defects reproduced first):** `scripts/post_gate_orchestrator.sh` — (a) handoff-write failure is now fatal (`rc=1`) instead of silently exiting 0 after logging `cycle complete`; (b) the handoff records `Cmds run` / `Cmds skipped` instead of a static string that falsely claimed `2 extend` in read-only mode; (c) `--max-wait-seconds` validated as a positive integer (`rc=2` usage error, was `unbound variable` rc=1). `tests/test_post_gate_orchestrator.py` gains 3 regression tests → **13 passed in 1.79s** (was 10). Proof the tests bite: against `git show HEAD:` script → **3 failed, 10 passed**.
 - **Pre-gate verification this session (fresh):**
-  - **Cmd 1:** `2026-11-13 03:16:30 UTC / Thu Nov 12 22:16:30 EST 2026` (clock gate NOT released).
+  - **Cmd 1:** `2026-11-13 03:35:17 UTC / Thu Nov 12 22:35:17 EST 2026` (clock gate NOT released; 66283s remaining).
   - **Cmd 3:** drift tail ends `2026-11-12  -1.3137` (`stored == recomputed True`); state SHA256 `2dace0e3e1accf00a749cde2baf6470b5e2abc61e542fe636854910361dec88a` matches `git show HEAD:`.
-  - **Cmd 5:** 6-module pytest **68 passed in 28.67s**.
-  - **Cmd 6:** `git status --porcelain` 0 lines (working tree clean; `data/` and `config/` clean).
-  - **Cmd 8:** ruff **All checks passed!** on `research/drift_persistence_report.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py research/verify_gate_time_forward_bar.py`.
-  - **Cmd 9:** two repaired modules **36 passed in 115.36s**.
+  - **Cmd 5:** 6-module pytest **68 passed in 27.54s**.
+  - **Cmd 6:** `git status --porcelain` → 5 intended files (`README.md`, `NEXT_AGENT_TASK.md`, `scripts/post_gate_orchestrator.sh`, `tests/test_post_gate_orchestrator.py`, `CORRECTIVE_HANDOFF_CORRECTIVE_INV2_20261113T0335Z.md`); `data/` and `config/` clean.
+  - **Cmd 8:** ruff **All checks passed!** on the 4 extension scripts **and** the edited test file.
+  - **Cmd 9:** two repaired modules **36 passed in 114.75s**.
+  - `bash -n scripts/post_gate_orchestrator.sh` → `BASH_OK`.
 - **State (unchanged, verified):** 468 sessions, `last_run_date 2026-11-12`, `current_nav 133039.92504076837`, run_history 468, state SHA256 `2dace0e3e1accf00a749cde2baf6470b5e2abc61e542fe636854910361dec88a`, `risk_metrics.rolling_sharpe_63d: None`.
-- **Gate reachability (deterministic blocker, not a failure loop):** this run's hard `timeout ... 6240s` (104 min) envelope will be reaped well before the 22:00 UTC gate (epoch **1794607200**). The real extension is not executable in this run. The run active at 22:00 UTC must perform the gate check below.
-- **Working tree:** clean at handoff; `data/raw/` untouched. No commits made.
+- **Gate reachability (deterministic blocker, not a failure loop):** epoch 1794540917 vs gate 1794607200 → ~18.4h out. This run's envelope is a hard `timeout ~2800s` from ~03:23 UTC → reaped near ~04:10 UTC 2026-11-13, ~18h BEFORE the gate. The real extension is not executable in this run. The run active at 22:00 UTC 2026-11-13 must perform the gate check.
+- **Working tree:** uncommitted intended changes (orchestrator fix + 3 tests + status docs). `data/raw/` untouched. No commits made.
 
 ## Objective
 
@@ -66,4 +68,6 @@ It runs cmds 1–8 in order (incl. cmd7) and writes the durable handoff into the
 
 ## Note for the next session
 
-The 2026-11-12 cycle is complete and committed. The only open item for 2026-11-13 is the gate check above. **If the run is active at 22:00 UTC 2026-11-13, run the orchestrator with `--wait-until-gate`; otherwise hand off immediately with a fresh pre-gate verification and let the gate-active run perform the check. Do not burn the session on repeated pre-gate verification: this run is clock-blocked (observed envelope `timeout 6240s` from ~02:26 UTC → reaped near ~03:30 UTC 2026-11-13), and the previous ~15 pre-gate sessions that did so left the cycle unfinished.**
+The 2026-11-12 cycle is complete and committed. The only open item for 2026-11-13 is the gate check above. **If the run is active at 22:00 UTC 2026-11-13, run the orchestrator with `--wait-until-gate`; otherwise hand off immediately with a fresh pre-gate verification and let the gate-active run perform the check. Do not burn the session on repeated pre-gate verification: this run is clock-blocked (observed envelope `timeout ~2800s` from ~03:23 UTC → reaped near ~04:10 UTC 2026-11-13), and the previous ~15 pre-gate sessions that did so left the cycle unfinished.**
+
+The orchestrator's self-evidencing contract is now enforced (cycle 1251): it exits 1 if it cannot write the handoff, it records `Cmds run` / `Cmds skipped` rather than a static claim, and `--max-wait-seconds` is validated. Trust the handoff's `Status:` line only together with the process exit code; a run that cannot write the handoff now reports `FATAL` instead of `cycle complete`.

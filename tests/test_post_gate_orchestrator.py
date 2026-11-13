@@ -128,3 +128,66 @@ def test_successful_cycle_marks_handoff_ok(tmp_path: Path) -> None:
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert handoff.exists()
     assert "OK" in handoff.read_text()
+
+
+def test_mixed_pass_fail_marks_handoff_failed_and_exit_nonzero(tmp_path: Path) -> None:
+    # Mixed regime (the documented gap): every python step passes (PYTHON=true makes
+    # cmd2/3/4/5/7a/7b/7c no-ops that exit 0) but ruff fails (RUFF=false). The
+    # orchestrator must exit non-zero, mark the handoff FAILED, and report ONLY the
+    # failing step -- it must not collapse to "cycle complete" nor fabricate a pass
+    # for cmd8.
+    handoff = tmp_path / "handoff.md"
+    proc = _run(
+        ["--read-only"],
+        PAST_GATE,
+        handoff,
+        env_extra={"PYTHON": "true", "RUFF": "false"},
+    )
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert handoff.exists()
+    text = handoff.read_text()
+    assert "**Status:** FAILED" in text, text
+    assert "STEP FAILED (rc=1): cmd8 ruff" in proc.stdout, proc.stdout
+    # Only cmd8 must be flagged; the passing steps must not be reported as failures.
+    assert "cmd5 6-module pytest" not in proc.stdout
+    assert "cmd7c inventory pytest" not in proc.stdout
+
+
+def test_read_only_handoff_reports_skipped_extend(tmp_path: Path) -> None:
+    # Fidelity of the durable record: in read-only mode cmds 2/4 do NOT run, so a
+    # handoff claiming "2 extend" would misrepresent the cycle to whoever reads it
+    # after the gate. The handoff must list what ran and what was skipped.
+    handoff = tmp_path / "handoff.md"
+    proc = _run(["--read-only"], PAST_GATE, handoff)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    text = handoff.read_text()
+    assert "- **Cmds run:**" in text, text
+    run_line = text.split("- **Cmds run:**")[1].split("\n")[0]
+    assert "2 extend" not in run_line, text
+    assert "2 extend (read-only)" in text, text
+    assert "4 idempotent re-extend (read-only)" in text, text
+
+
+def test_handoff_write_failure_exits_nonzero(tmp_path: Path) -> None:
+    # The orchestrator exists to leave durable evidence in the repo. If the write
+    # fails (bad path, full disk, teardown), reporting success would let the only
+    # record of the gate check be lost silently.
+    bad = tmp_path / "missing-dir" / "handoff.md"
+    proc = _run(["--read-only"], PAST_GATE, bad)
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "could not write durable handoff" in proc.stdout, proc.stdout
+    assert not bad.exists()
+
+
+def test_max_wait_seconds_rejects_non_integer(tmp_path: Path) -> None:
+    # A non-numeric --max-wait-seconds used to die with "unbound variable" (rc=1)
+    # instead of a usage error; the gate-active run passes this flag.
+    handoff = tmp_path / "handoff.md"
+    proc = _run(
+        ["--read-only", "--wait-until-gate", "--max-wait-seconds", "abc"],
+        FUTURE_GATE,
+        handoff,
+    )
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    assert "requires a positive integer" in proc.stdout, proc.stdout
+    assert not handoff.exists()

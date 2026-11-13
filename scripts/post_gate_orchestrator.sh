@@ -57,6 +57,13 @@ fail() { log "FATAL: $*"; exit 1; }
 # fails. Each verification step records its exit status here; the handoff and the
 # process exit code reflect the aggregate result.
 FAILED=0
+# The durable handoff must record what ACTUALLY ran, not the nominal cycle: in
+# read-only mode cmds 2/4 are skipped, and a handoff that still claims "2 extend"
+# would misrepresent the cycle to whoever reads it after the gate.
+CMDS_RUN=""
+CMDS_SKIPPED=""
+mark_run() { CMDS_RUN="${CMDS_RUN:+$CMDS_RUN, }$1"; }
+mark_skipped() { CMDS_SKIPPED="${CMDS_SKIPPED:+$CMDS_SKIPPED, }$1"; }
 record_rc() {
   local rc="$1" label="$2"
   if (( rc != 0 )); then
@@ -76,6 +83,9 @@ while (( $# > 0 )); do
     --max-wait-seconds)
       shift
       if (( $# == 0 )); then log "FATAL: --max-wait-seconds requires a value"; exit 2; fi
+      case "$1" in
+        ''|*[!0-9]*) log "FATAL: --max-wait-seconds requires a positive integer, got '$1'"; exit 2 ;;
+      esac
       MAX_WAIT_SECONDS="$1"; shift ;;
     *) shift ;;
   esac
@@ -117,6 +127,7 @@ log "clock gate released; starting post-gate cycle (read_only=$READ_ONLY)"
 
 # --- 1. Date -----------------------------------------------------------------
 log "cmd1: date"
+mark_run "1 date"
 date -u
 TZ=America/New_York date
 record_rc $? "cmd1 date"
@@ -124,37 +135,45 @@ record_rc $? "cmd1 date"
 # --- 2. Extend (only if a completed candidate bar exists) --------------------
 if (( READ_ONLY )); then
   log "cmd2: SKIP extend (read-only mode)"
+  mark_skipped "2 extend (read-only)"
 else
   log "cmd2: extend_paper_trading_state"
+  mark_run "2 extend"
   "$PY" research/extend_paper_trading_state.py 2>&1 | tail -25
   record_rc $? "cmd2 extend"
 fi
 
 # --- 3. Drift report ---------------------------------------------------------
 log "cmd3: drift_persistence_report"
+mark_run "3 drift"
 "$PY" research/drift_persistence_report.py 2>&1 | tail -8
 record_rc $? "cmd3 drift"
 
 # --- 4. Idempotency re-run ---------------------------------------------------
 if (( READ_ONLY )); then
   log "cmd4: SKIP idempotency re-extend (read-only mode)"
+  mark_skipped "4 idempotent re-extend (read-only)"
 else
   log "cmd4: extend idempotency check"
+  mark_run "4 idempotent re-extend"
   "$PY" research/extend_paper_trading_state.py 2>&1 | tail -8
   record_rc $? "cmd4 idempotency re-extend"
 fi
 
 # --- 5. 6-module pytest ------------------------------------------------------
 log "cmd5: 6-module pytest"
+mark_run "5 6-module pytest"
 "$PY" -m pytest $PYTEST6 -q 2>&1 | tail -6
 record_rc $? "cmd5 6-module pytest"
 
 # --- 6. Git status -----------------------------------------------------------
 log "cmd6: git status"
+mark_run "6 git status"
 git status --porcelain
 record_rc $? "cmd6 git status"
 
 # --- 7. Data-cost inventory (the waiter gap) ---------------------------------
+mark_run "7 data-cost inventory + tests"
 log "cmd7a: data_cost_inventory_001"
 "$PY" research/data_cost_inventory_001.py 2>&1 | tail -5
 record_rc $? "cmd7a inventory 001"
@@ -167,6 +186,7 @@ record_rc $? "cmd7c inventory pytest"
 
 # --- 8. Ruff -----------------------------------------------------------------
 log "cmd8: ruff"
+mark_run "8 ruff"
 "$RUFF" check $RUFF4 2>&1 | tail -4
 record_rc $? "cmd8 ruff"
 
@@ -182,13 +202,15 @@ print(f"{h} last_run={s.get('last_run_date')} nav={s.get('current_nav')} runs={l
 PY
 )"
 if (( FAILED )); then
-  log "cycle complete WITH FAILURES; see handoff $HANDOFF"
   STATUS="FAILED — one or more verification steps failed (see STEP FAILED lines above)"
 else
-  log "cycle complete"
   STATUS="OK — all verification steps passed"
 fi
-cat > "$HANDOFF" <<EOF
+# A handoff that could not be written is NOT a successful cycle: the whole point
+# of this script is to leave durable evidence in the repo (not /tmp, which is lost
+# on runner teardown). Silently exiting 0 after a failed write would let a
+# teardown kill erase the only record of the gate check.
+if ! cat > "$HANDOFF" <<EOF
 # Post-Gate Handoff — cycle for gate $GATE_HUMAN (orchestrator scripts/post_gate_orchestrator.sh)
 
 - **Generated:** $(date -u +%FT%TZ) UTC
@@ -197,10 +219,17 @@ cat > "$HANDOFF" <<EOF
 - **State:** $STATE_SHA
 - **Gate epoch:** $GATE_EPOCH ($GATE_HUMAN)
 - **Orchestrator:** scripts/post_gate_orchestrator.sh (idempotent, restart-safe)
-- **Cmds run:** 1 date, 2 extend, 3 drift, 4 idempotent re-extend, 5 6-module pytest, 6 git status, 7 data-cost inventory + tests, 8 ruff
+- **Cmds run:** ${CMDS_RUN:-none}
+- **Cmds skipped:** ${CMDS_SKIPPED:-none}
 - **Waiter gap closed:** cmd7 now runs inside the cycle and the handoff is written into the repository (not /tmp).
 EOF
-if (( FAILED )); then
+then
+  log "FATAL: could not write durable handoff to '$HANDOFF' (path unwritable?); refusing to report success"
   exit 1
 fi
+if (( FAILED )); then
+  log "cycle complete WITH FAILURES; see handoff $HANDOFF"
+  exit 1
+fi
+log "cycle complete"
 exit 0
