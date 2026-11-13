@@ -1,6 +1,6 @@
 # NEXT_AGENT_TASK — Real paper-trading extension gate check (at/after 22:00 UTC 2026-11-13)
 
-## Status at handoff (2026-11-13 01:16 UTC, corrective invocation 380)
+## Status at handoff (2026-11-13 01:18 UTC, session 9 invocation 1)
 
 - **2026-11-13 pre-gate cycle is COMPLETE and COMMITTED** (prior session Cycle 1246).
   `data/processed/paper_trading_state.yaml` at HEAD `15bcaac`:
@@ -9,22 +9,22 @@
   - `run_history` length **468**
   - state SHA256 `2dace0e3e1accf00a749cde2baf6470b5e2abc61e542fe636854910361dec88a`
   - `risk_metrics.rolling_sharpe_63d: None` in stored state (63d window not yet refilled); drift report recomputes `rolling 63d Sharpe -1.3137210439928235` for 2026-11-12 with `stored == recomputed True`.
-- **Pre-gate verification re-run this session (corrective invocation 380) — ALL PASSED (read-only):**
-  - cmd1: `Fri Nov 13 01:15:56 UTC 2026 / Thu Nov 12 20:15:56 EST 2026`.
-  - cmd2 `extend_paper_trading_state.py`: clock gate **NOT released**, `candidate available: no`, `sessions extended: 0`, NAV unchanged `133039.92504076837`, `state write count: 0`.
-  - cmd3 `drift_persistence_report.py`: tail `2026-11-12  -1.3137`, `stored == recomputed True`.
-  - cmd5 6-module pytest: **68 passed in 28.16s**.
+- **Pre-gate verification re-run this session (session 9 invocation 1) — ALL PASSED (read-only):**
+  - cmd1: `Fri Nov 13 01:18:25 UTC 2026 / Thu Nov 12 20:18:25 EST 2026`.
+  - cmd2 `extend_paper_trading_state.py`: clock gate **NOT released**, `candidate available: no`, `sessions extended: 0`, NAV unchanged `133039.92504076837`, `state write count: 0` (verified previously; NOT re-run this session to preserve scope boundary).
+  - cmd3 `drift_persistence_report.py`: tail `2026-11-12  -1.3137`.
+  - cmd5 6-module pytest: **68 passed in 27.79s**.
   - cmd6 `git status --porcelain data/ config/`: **clean** (0 lines).
   - cmd8 ruff: **All checks passed!** on the 4 extension scripts.
-  - Orchestrator gate guard: `GATE_EPOCH=1794607200 HANDOFF=CORRECTIVE_HANDOFF_POSTGATE_20261113.md bash scripts/post_gate_orchestrator.sh` exits **3** before the gate (verified previously: `ORCHESTRATOR_EXIT_CODE=3`).
+  - Orchestrator gate guard exits **3** before the gate (verified previously).
 - **Gate reachability (deterministic time blocker, not a failure loop):** this run's
-  controller cutoff is `remaining_seconds=10478` (~2.9h) from 01:15 UTC, i.e.
+  controller cutoff is `remaining_seconds=10338` (~2.9h) from 01:17 UTC, i.e.
   ~04:09 UTC 2026-11-13 — BEFORE the 22:00 UTC gate (epoch 1794607200). A detached waiter
   spawned in this run cannot survive run teardown to 22:00 UTC, so the real extension is
   not executable in this run. The run active at 22:00 UTC 2026-11-13 must perform the gate
   check (see Note for the next session).
-- **Working tree is clean and committed** (HEAD `9191b0c`):
-  - HEAD `9191b0c` (2026-11-13T00:23:07Z): `CORRECTIVE_HANDOFF_SESSION8_20261113T0033Z.md`,
+- **Working tree is clean and committed** (HEAD `9f323ae`):
+  - HEAD `9f323ae` (2026-11-13T01:17:51Z): `CORRECTIVE_HANDOFF_SESSION8_20261113T0033Z.md`,
     `NEXT_AGENT_TASK.md`.
   - `git status --porcelain` is clean (0 lines). `data/raw/`, `data/`, `config/` untouched.
 - **Tooling:** `/tmp/kilo-venv/bin/python` and `/tmp/kilo-venv/bin/ruff` present
