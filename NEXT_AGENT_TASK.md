@@ -1,22 +1,23 @@
 # NEXT_AGENT_TASK — 2026-11-13 gate check (post-advance test anchors repaired)
 
-## Status at handoff (2026-11-13 05:18 UTC, corrective invocation 254 — non-gated verification re-executed)
+## Status at handoff (2026-11-13 05:24 UTC, corrective invocation 255 — non-gated verification re-executed fresh)
 
-- **UTC 2026-11-13T05:16:49Z (00:16:49 EST).** Gate for 2026-11-13 **NOT released** (releases 22:00 UTC 2026-11-13, epoch 1794607200; `remaining_s 60191`, ~16.7h). Cmds 2/4/7 **withheld** (scope boundary).
+- **UTC 2026-11-13T05:24:18Z (00:24:18 EST).** Gate for 2026-11-13 **NOT released** (releases 22:00 UTC 2026-11-13, epoch 1794607200; `remaining_s ~60190`, ~16.7h). Cmds 2/4/7 **withheld** (scope boundary).
 - **Supervisor rec `43353707922-attempt-1-review-0005-44a65f003e39` ACCEPTED** (advised against `--wait-until-gate` in this run; hand off with fresh pre-gate evidence). Disposition written to `.kilo-runtime/worker-disposition.json` (runtime, not committed).
 - **Fresh verified evidence (this invocation, HEAD `e768607`, working tree clean):**
-  - **Cmd 1:** `2026-11-13 05:16:49 UTC / Thu Nov 13 00:16:49 EST 2026`; gate `remaining_s 60191` (~16.7h).
+  - **Cmd 1:** `2026-11-13 05:24:18 UTC / Fri Nov 13 00:24:18 EST 2026`; gate `remaining_s ~60190` (~16.7h).
   - **Cmd 3:** drift `stored == recomputed: True`; rolling 63d `-1.3137210439928235 (2026-11-12)`; tail ends `2026-11-12 -1.3137`.
-  - **Cmd 5:** 6-module pytest **68 passed in 41.46s**.
-  - **Cmd 6:** `git status --porcelain` → **0 lines** (working tree clean; `data/` and `config/` clean).
+  - **Cmd 5:** 6-module pytest **68 passed in 40.45s**.
+  - **Cmd 6:** `git status --porcelain data/ config/` → **0 lines** (clean; `data/` and `config/` clean).
   - **Cmd 8:** ruff **All checks passed!** on the 4 extension scripts.
-  - **Cmd 9:** two repaired modules **36 passed in 166.56s**.
-  - **Orchestrator suite:** `tests/test_post_gate_orchestrator.py` **13 passed in 1.86s**; `bash -n scripts/post_gate_orchestrator.sh` → `BASH_OK`; `GATE_EPOCH`/`HANDOFF` env-overridable at lines 41-42, `--wait-until-gate`/`--max-wait-seconds` validated at lines 82-87.
+  - **Cmd 9:** two repaired modules **36 passed in 163.53s**.
+  - **Orchestrator suite:** `tests/test_post_gate_orchestrator.py` **13 passed in 1.78s**; `bash -n scripts/post_gate_orchestrator.sh` → `BASH_OK`; `GATE_EPOCH`/`HANDOFF` env-overridable at lines 41-42, `--wait-until-gate`/`--max-wait-seconds` validated at lines 82-87.
   - **State (matches HEAD):** `last_run_date 2026-11-12`, `current_nav 133039.92504076837`, run_history **468**, `rolling_sharpe_63d None`.
+  - **Readiness check:** `extend_paper_trading_state` → clock gate **NOT released**; `sessions extended: 0`; NAV unchanged; `candidate reason: next session 2026-11-13 has not closed yet`.
 - **No source/data/config defect found; no justified code correction.** Only open item is the clock-gated 2026-11-13 extension (Cmds 2/4) + post-advance Cmd 7.
 - **Working tree:** clean (0 lines). `data/raw/` untouched. No commits made.
 
-### Prior status (inv 2, 03:35 UTC) — retained for audit
+### Prior status (inv 254, 05:18 UTC) — retained for audit
 
 - **UTC 2026-11-13T03:35:17Z (22:35:17 EST Thu Nov 12).** Gate for 2026-11-13 **NOT released** (releases 22:00 UTC 2026-11-13, epoch 1794607200; ~18.4h / 66283s remaining). Cmds 2/4/7 **withheld** (scope boundary).
 - **Supervisor rec `43318156063-attempt-1-review-0005-c5524d3256ac` disposition `superseded` (unchanged).** Required action already completed in prior corrective commits; HEAD `952af16`. NEXT_AGENT_TASK.md already states working tree state with no re-apply instruction.
@@ -88,4 +89,4 @@ The 2026-11-12 cycle is complete and committed. The only open item for 2026-11-1
 
 The orchestrator's self-evidencing contract is now enforced (cycle 1251): it exits 1 if it cannot write the handoff, it records `Cmds run` / `Cmds skipped` rather than a static claim, and `--max-wait-seconds` is validated. Trust the handoff's `Status:` line only together with the process exit code; a run that cannot write the handoff now reports `FATAL` instead of `cycle complete`.
 
-**This session (inv 254) re-executed the non-gated commands fresh and found no defect.** Durable handoff: `CORRECTIVE_HANDOFF_CORRECTIVE_INV254_20261113T0518Z.md`. Supervisor rec `43353707922-attempt-1-review-0005-44a65f003e39` was accepted (disposition in `.kilo-runtime/worker-disposition.json`, runtime, not committed).
+**This session (inv 255) re-executed the non-gated commands fresh and found no defect.** Durable handoff: `CORRECTIVE_HANDOFF_CORRECTIVE_INV255_20261113T0524Z.md`. Supervisor rec `43353707922-attempt-1-review-0005-44a65f003e39` was accepted (disposition in `.kilo-runtime/worker-disposition.json`, runtime, not committed).
