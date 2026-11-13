@@ -1,6 +1,6 @@
 # NEXT_AGENT_TASK — Real paper-trading extension gate check (at/after 22:00 UTC 2026-11-13)
 
-## Status at handoff (2026-11-12 23:24 UTC, run 43318156063 attempt 1 session 5 inv 1)
+## Status at handoff (2026-11-12 23:30 UTC, run 43318156063 attempt 1 session 6 inv 1)
 
 - **2026-11-12 post-gate cycle is COMPLETE and COMMITTED** (prior session Cycle 1243).
   `data/processed/paper_trading_state.yaml` at HEAD `90b2ec2`:
@@ -14,13 +14,21 @@
   - `risk_metrics.rolling_sharpe_63d: None` in stored state (63d window not yet
     refilled); drift report recomputes `rolling 63d Sharpe -1.3137210439928235`
     for 2026-11-12 with `stored == recomputed True`.
-- **Pre-gate verification of this baseline re-run this session and ALL PASSED (read-only):**
-  - cmd1: `Thu Nov 12 23:24:30 UTC 2026 / Thu Nov 12 18:24:30 EST 2026`.
+- **Pre-gate verification re-run this session (session 6) — ALL PASSED (read-only):**
+  - cmd1: `Thu Nov 12 23:28:20 UTC 2026 / Thu Nov 12 18:28:20 EST 2026`.
   - cmd3 `drift_persistence_report.py`: tail `2026-11-12  -1.3137`,
-    `stored == recomputed True`, provenance git_sha `90b2ec2`, state sha `2dace0e3…`.
-  - cmd5 6-module pytest: **68 passed in 27.42s**.
+    `stored == recomputed True`, provenance git_sha `b6c083b`, state sha `2dace0e3…`.
+  - cmd5 6-module pytest: **68 passed in 27.63s**.
   - cmd6 `git status --porcelain` (full tree): **clean** (0 lines).
   - cmd8 ruff: **All checks passed!** on the 4 extension scripts.
+  - `tests/test_post_gate_orchestrator.py`: **7 passed** (4 original + 3 new
+    wait-mode regression cases).
+- **Gate reachability (deterministic time blocker, not a failure loop):** this run's
+  controller cutoff is `remaining_seconds=16974` (~4.7h) from 23:27 UTC, i.e.
+  ~04:10 UTC 2026-11-13 — BEFORE the 2026-11-13 gate (22:00 UTC, epoch 1794607200).
+  A detached waiter spawned in this run cannot survive run teardown to 22:00 UTC, so
+  the real extension is not executable in this run. The run active at 22:00 UTC
+  2026-11-13 must perform the gate check (see Note for the next session).
 - **Working tree is clean and committed** (supervisor rec 0005 correction applied):
   - HEAD `8afe9a0` (2026-11-12T22:21:43Z): `NEXT_AGENT_TASK.md`, `README.md`,
     `scripts/post_gate_orchestrator.sh` (env-overridable `HANDOFF` at line 33).
@@ -90,13 +98,15 @@ Tooling: `/tmp/kilo-venv/bin/python` and `/tmp/kilo-venv/bin/ruff`. If missing:
 `python3 -m venv /tmp/kilo-venv && /tmp/kilo-venv/bin/pip install -q -r requirements.txt ruff`.
 
 **Preferred execution path** — the durable, restart-safe, gate-guarded orchestrator
-now accepts per-gate overrides (no file edit needed):
+now accepts per-gate overrides and an optional bounded wait (no file edit needed):
 ```
 GATE_EPOCH=1794607200 HANDOFF=CORRECTIVE_HANDOFF_POSTGATE_20261113.md \
-  bash scripts/post_gate_orchestrator.sh
+  bash scripts/post_gate_orchestrator.sh --wait-until-gate
 ```
 It runs cmds 1–8 in order (incl. cmd7) and writes the durable handoff into the
-repository. It exits 3 before the gate (verified this session). If you run the
+repository. It exits 3 before the gate (verified this session) unless
+`--wait-until-gate` is given, in which case it blocks (60s heartbeat, bounded by the
+run's own 355-minute cutoff) until the gate releases and then runs. If you run the
 orchestrator, the manual list above is the fallback / independent record.
 
 ## Scope boundaries
@@ -115,8 +125,16 @@ orchestrator, the manual list above is the fallback / independent record.
 ## Note for the next session
 
 The previous ~15 pre-gate sessions ended before their gate and left the cycle
-unfinished. The 2026-11-12 cycle was completed by **staying alive in-session
-across the gate** (bounded liveness checks) and then verifying the detached
-waiter's work. If a gate is hours away and the runner survives across sessions,
-prefer that stay-alive approach, and prefer `scripts/post_gate_orchestrator.sh`
-(when present) because it writes a durable, in-repo handoff instead of `/tmp`.
+unfinished; the 2026-11-12 cycle was completed by **staying alive in-session
+across the gate** and verifying the detached waiter's work. Session 6 (this one) is
+clock-blocked: its run cutoff (~04:10 UTC 2026-11-13) is ~18h before the gate, so
+do NOT burn the session on repeated pre-gate verification. Instead:
+- If the current run will still be active at 22:00 UTC 2026-11-13 (check the
+  controller `remaining_seconds` in `$RUNNER_TEMP/kilo-progress-state-*.txt`), run
+  `GATE_EPOCH=1794607200 HANDOFF=CORRECTIVE_HANDOFF_POSTGATE_20261113.md bash
+  scripts/post_gate_orchestrator.sh --wait-until-gate` so the extension fires
+  exactly at the gate (the run's 355-minute cutoff bounds the wait).
+- Otherwise hand off immediately with a fresh pre-gate verification and let the run
+  that is active at the gate perform the check.
+Prefer `scripts/post_gate_orchestrator.sh` because it writes a durable, in-repo
+handoff instead of `/tmp`.
