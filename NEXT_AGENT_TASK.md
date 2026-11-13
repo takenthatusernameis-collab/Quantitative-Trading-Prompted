@@ -1,19 +1,20 @@
 # NEXT_AGENT_TASK — 2026-11-13 gate check (post-advance test anchors repaired)
 
-## Status at handoff (2026-11-13 05:12 UTC, corrective invocation 253 — non-gated verification actually executed)
+## Status at handoff (2026-11-13 05:18 UTC, corrective invocation 254 — non-gated verification re-executed)
 
-- **UTC 2026-11-13T05:12:07Z (00:12:07 EST).** Gate for 2026-11-13 **NOT released** (releases 22:00 UTC 2026-11-13, epoch 1794607200; `remaining_s 60472`, ~16.8h). Cmds 2/4/7 **withheld** (scope boundary).
-- **Correction vs. inv 252:** inv 252 wrongly reported `/tmp/kilo-venv` missing and ran no verification. The venv is present and provisioned (pytest 9.2.0, ruff 0.17.5). This invocation **executed** the non-gated commands and captured real output.
-- **Fresh verified evidence (this invocation, HEAD `e768607`):**
-  - **Cmd 3:** drift `stored == recomputed: True`; trailing `-1.3137210439928235 (2026-11-12)`; `git_sha e768607…`; state sha256 `2dace0e3…`.
-  - **Cmd 5:** 6-module pytest **68 passed in 40.39s**.
-  - **Cmd 6:** `git status --porcelain data/ config/` → empty.
-  - **Cmd 8:** ruff **All checks passed!** (4 extension scripts).
-  - **Cmd 9:** two repaired modules **36 passed in 165.61s**.
-  - **Orchestrator suite:** `tests/test_post_gate_orchestrator.py` **13 passed in 1.79s**.
-  - **State:** `last_run_date 2026-11-12`, `current_nav 133039.92504076837`, 468 runs, `rolling_sharpe_63d None` — matches committed record.
+- **UTC 2026-11-13T05:16:49Z (00:16:49 EST).** Gate for 2026-11-13 **NOT released** (releases 22:00 UTC 2026-11-13, epoch 1794607200; `remaining_s 60191`, ~16.7h). Cmds 2/4/7 **withheld** (scope boundary).
+- **Supervisor rec `43353707922-attempt-1-review-0005-44a65f003e39` ACCEPTED** (advised against `--wait-until-gate` in this run; hand off with fresh pre-gate evidence). Disposition written to `.kilo-runtime/worker-disposition.json` (runtime, not committed).
+- **Fresh verified evidence (this invocation, HEAD `e768607`, working tree clean):**
+  - **Cmd 1:** `2026-11-13 05:16:49 UTC / Thu Nov 13 00:16:49 EST 2026`; gate `remaining_s 60191` (~16.7h).
+  - **Cmd 3:** drift `stored == recomputed: True`; rolling 63d `-1.3137210439928235 (2026-11-12)`; tail ends `2026-11-12 -1.3137`.
+  - **Cmd 5:** 6-module pytest **68 passed in 41.46s**.
+  - **Cmd 6:** `git status --porcelain` → **0 lines** (working tree clean; `data/` and `config/` clean).
+  - **Cmd 8:** ruff **All checks passed!** on the 4 extension scripts.
+  - **Cmd 9:** two repaired modules **36 passed in 166.56s**.
+  - **Orchestrator suite:** `tests/test_post_gate_orchestrator.py` **13 passed in 1.86s**; `bash -n scripts/post_gate_orchestrator.sh` → `BASH_OK`; `GATE_EPOCH`/`HANDOFF` env-overridable at lines 41-42, `--wait-until-gate`/`--max-wait-seconds` validated at lines 82-87.
+  - **State (matches HEAD):** `last_run_date 2026-11-12`, `current_nav 133039.92504076837`, run_history **468**, `rolling_sharpe_63d None`.
 - **No source/data/config defect found; no justified code correction.** Only open item is the clock-gated 2026-11-13 extension (Cmds 2/4) + post-advance Cmd 7.
-- **Working tree:** this handoff + NEXT_AGENT_TASK.md status update only. `data/raw/` untouched. No commits made.
+- **Working tree:** clean (0 lines). `data/raw/` untouched. No commits made.
 
 ### Prior status (inv 2, 03:35 UTC) — retained for audit
 
@@ -83,6 +84,8 @@ It runs cmds 1–8 in order (incl. cmd7) and writes the durable handoff into the
 
 ## Note for the next session
 
-The 2026-11-12 cycle is complete and committed. The only open item for 2026-11-13 is the gate check above. **If the run is active at 22:00 UTC 2026-11-13, run the orchestrator with `--wait-until-gate`; otherwise hand off immediately with a fresh pre-gate verification and let the gate-active run perform the check. Do not burn the session on repeated pre-gate verification: this run is clock-blocked (observed envelope `timeout ~2800s` from ~03:23 UTC → reaped near ~04:10 UTC 2026-11-13), and the previous ~15 pre-gate sessions that did so left the cycle unfinished.**
+The 2026-11-12 cycle is complete and committed. The only open item for 2026-11-13 is the gate check above. **If the run is active at 22:00 UTC 2026-11-13, run the orchestrator with `--wait-until-gate`; otherwise hand off immediately with a fresh pre-gate verification and let the gate-active run perform the check. Do not burn the session on repeated pre-gate verification: this run is clock-blocked (observed envelope reaped ~05:2x UTC), and the previous ~15 pre-gate sessions that did so left the cycle unfinished.**
 
 The orchestrator's self-evidencing contract is now enforced (cycle 1251): it exits 1 if it cannot write the handoff, it records `Cmds run` / `Cmds skipped` rather than a static claim, and `--max-wait-seconds` is validated. Trust the handoff's `Status:` line only together with the process exit code; a run that cannot write the handoff now reports `FATAL` instead of `cycle complete`.
+
+**This session (inv 254) re-executed the non-gated commands fresh and found no defect.** Durable handoff: `CORRECTIVE_HANDOFF_CORRECTIVE_INV254_20261113T0518Z.md`. Supervisor rec `43353707922-attempt-1-review-0005-44a65f003e39` was accepted (disposition in `.kilo-runtime/worker-disposition.json`, runtime, not committed).
