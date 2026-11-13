@@ -1,47 +1,78 @@
-# Next Agent Task: verify the 2026-11-16 gate extension (gate-active waiter launched)
+# Next Agent Task: execute the 2026-11-16 gate extension in the FOREGROUND (the detached waiter cannot survive)
 
-## Context
-The 2026-11-13 gate extension is COMPLETE and verified (corrective invocation 2, 2026-11-13T22:05Z):
-- Gate released 2026-11-13T22:00:00Z (epoch 1794607200); orchestrator ran cmds 1-8.
-- Extend: sessions extended: 1, state write count: 1, NAV 133039.92504076837 -> 132654.46201168097, data/raw untouched.
-- Idempotent re-run: sessions extended: 0, state write count: 0, ORCH_RC=0.
-- Drift tail ends 2026-11-13 -1.4833; 6-module pytest 68 passed; inventory pytest 41 passed; ruff clean; inventory 002 DECISION NO-GO (incumbent unchanged).
-- State: last_run_date 2026-11-13, current_nav 132654.46201168097, runs 469, state SHA c438cd71….
+## Context — verified baseline (2026-11-13T22:20Z, session 4 inv 1)
+The 2026-11-13 gate extension is COMPLETE and committed (HEAD `d7a95dd`):
+- State: `last_run_date 2026-11-13`, `current_nav 132654.46201168097`, `run_history` 469,
+  state SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` (== HEAD).
+- Read-only pre-gate cycle re-run this session at 22:18–22:20Z → **exit 0**: drift tail ends
+  `2026-11-13 -1.4833`; 6-module pytest **68 passed**; inventory 001 **OVERALL PASS** (35 raw files,
+  180279 rows, 0 missing prices, 0 duplicate timestamps, 8/8 crypto digests); inventory 002
+  **OVERALL PASS**, DECISION **NO-GO** incumbent `tsmomentum_spytrend_001` unchanged
+  (incomplete_folds 7 mean_sharpe 1.883186 vs complete_folds 41 mean_sharpe 0.787522);
+  inventory pytest **41 passed**; ruff **All checks passed!**.
+- `git status --porcelain -- data/raw` empty; state SHA unchanged after the cycle.
 
-The last processed session is 2026-11-13 (Friday); the next weekday session is Monday 2026-11-16. A detached, persistent waiter has been launched targeting GATE_EPOCH=1794866400 (2026-11-16T22:00:00Z) with --wait-until-gate (pid 50620, persistent, own session). It is confirmed waiting:
-  "[2026-11-13T22:10:06Z] clock gate NOT released (now=1794607806 target=1794866400); waiting up to 258594s for release"
-It will survive runner teardown, fire the full post-gate cycle (cmds 1-8) at/after the gate, and write CORRECTIVE_HANDOFF_POSTGATE_20261116.md (handoff filename derived from GATE_EPOCH's date). Log: /tmp/gate_waiter.log.
-
-## Pre-gate verification (this session, 2026-11-13T22:11Z)
-A read-only pre-gate cycle was run to confirm the baseline is intact before the gate:
-- `GATE_EPOCH=1794866400 PYTHON=/tmp/kilo-venv/bin/python RUFF=/tmp/kilo-venv/bin/ruff bash scripts/post_gate_orchestrator.sh --force --read-only` → **exit 0**.
-- Drift tail ends 2026-11-13 -1.4833; 6-module pytest **68 passed**; inventory 001 OVERALL: PASS (35 raw files, 180279 rows, 0 missing prices, 0 duplicate timestamps; 8/8 crypto digests); inventory 002 OVERALL: PASS, DECISION NO-GO incumbent unchanged; inventory pytest **41 passed**; ruff **All checks passed!**.
-- State SHA `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365`, last_run 2026-11-13, nav 132654.46201168097, runs 469 — matches HEAD.
-- `git status --porcelain -- data/raw` empty; only intended artifact `CORRECTIVE_HANDOFF_POSTGATE_20261116.md` (uncommitted).
-- Waiter PID 50620 confirmed alive (own session leader, PGID/SID 50620), still waiting at 22:11Z.
+## CRITICAL FINDING — the detached waiter CANNOT survive to the gate
+A prior session launched a detached waiter (`setsid`, own session) targeting
+`GATE_EPOCH=1794866400` (2026-11-16T22:00:00Z) with `--wait-until-gate`. It is currently alive and has
+survived this job's worker-session teardown (all sessions share one container), **but it is a child of
+this CI job's container and will be killed when the job ends.** Evidence:
+- Controller progress state `kilo-progress-state-43474261352-1.txt`: `elapsed 16775s`,
+  `remaining 4525s` (~75 min) → this container is torn down ~2026-11-13T23:30Z, ~72h BEFORE the gate.
+- `.github/scripts/kilo-controller.sh` has **no** waiter/setsid/background-spawn logic.
+- `.github/workflows/main.yml` runs a fresh `actions/checkout` then `kilo-refresh-default-branch.sh`
+  (`git fetch` + `git reset --hard` + `git clean -fd`) on every run; each job is a new container.
+- **Therefore the waiter will NOT fire on 2026-11-16.** Do NOT launch or rely on another background
+  waiter. (If a stale waiter ever did survive, the foreground cycle below is idempotent and would
+  simply extend 0 — no harm.)
 
 ## Objective (bounded)
-Once the waiter fires at/after 2026-11-16T22:00:00Z, verify the post-gate cycle result. Do NOT run a mutating extend (cmds 2/4) before the target session gate. If the waiter already ran, validate its output; if this session starts before the gate releases, wait (or re-launch the detached waiter) until at/after the gate, then verify.
+The agent whose run is active **at/after 2026-11-16T22:00:00Z (epoch 1794866400)** must perform the
+2026-11-16 gate extension in the **FOREGROUND**. This is allowed: the gate is released by then; the
+scope boundary only forbids mutating **before** the gate. A `*/5` cron plus the `kilo-repository`
+concurrency group (cancel-in-progress false) keeps a job running across the gate, so a foreground
+session will exist to do this.
+
+## Step 1 — foreground idempotent check (first action)
+Read `data/processed/paper_trading_state.yaml` → `last_run_date`:
+- If already `2026-11-16`: the extension already ran (a stale waiter or a prior session). **Verify
+  only** — run the idempotency re-run in Step 2's command a second time; expect
+  `sessions extended: 0`, `state write count: 0`.
+- If `2026-11-13` (not advanced) **and** now ≥ 2026-11-16T22:00:00Z: run the full cycle (Step 2).
+- If now < 2026-11-16T22:00:00Z: **do NOT mutate.** Run the read-only pre-gate cycle (validation
+  command 5) and end the session.
+
+## Step 2 — full gate cycle (only at/after the gate, state not yet advanced)
+```
+GATE_EPOCH=1794866400 PYTHON=/tmp/kilo-venv/bin/python RUFF=/tmp/kilo-venv/bin/ruff \
+  bash scripts/post_gate_orchestrator.sh
+```
+(No `--wait-until-gate` — the gate is already released.) This runs cmds 1–8 including the mutating
+extend (cmd2) and idempotency re-run (cmd4), and writes `CORRECTIVE_HANDOFF_POSTGATE_20261116.md`
+with `Mode: full cycle (extend included)`. Then run the **same command once more** to confirm
+idempotency (expect `sessions extended: 0`).
 
 ## Acceptance criteria
-- [ ] Gate extension ran at/after the next session gate (2026-11-16, 22:00 UTC).
+- [ ] Gate extension ran at/after the next session gate (2026-11-16, 22:00 UTC), in the foreground.
 - [ ] Extends by <=1 session only if a completed bar exists; idempotent re-run extends 0 with 0 writes.
-- [ ] data/raw untouched; no threshold/gate/cost/universe/clock-gate changes.
-- [ ] Working tree shows only intended state/report/artifact changes; handoff CORRECTIVE_HANDOFF_POSTGATE_20261116.md Status: OK agrees with exit 0.
+- [ ] `data/raw` untouched; no threshold/gate/cost/universe/clock-gate changes.
+- [ ] Working tree shows only intended state/report/artifact changes; `CORRECTIVE_HANDOFF_POSTGATE_20261116.md` `Status: OK` agrees with exit 0.
 
 ## Validation commands
-- tail -n 30 /tmp/gate_waiter.log        (expect "cycle complete", all steps passed, exit 0)
-- cat CORRECTIVE_HANDOFF_POSTGATE_20261116.md   (expect Status: OK, sessions extended <=1)
-- git status --porcelain -- data/raw    (expect empty)
-- git status --porcelain                (only intended state/report/artifact + handoff changes)
-- (if gate not yet released, no mutation) GATE_EPOCH=1794866400 PYTHON=/tmp/kilo-venv/bin/python RUFF=/tmp/kilo-venv/bin/ruff bash scripts/post_gate_orchestrator.sh --read-only   (expect exit 0)
+- `cat CORRECTIVE_HANDOFF_POSTGATE_20261116.md` (post-gate: expect `Status: OK`, `Mode: full cycle (extend included)`, Cmds run includes `2 extend`; the current pre-gate copy shows `Mode: read-only verification` and `last_run=2026-11-13`)
+- `tail -n 30 /tmp/gate_waiter.log` (only meaningful if a waiter somehow survived; otherwise ignore)
+- `git status --porcelain -- data/raw` (expect empty)
+- `git status --porcelain` (only intended state/report/artifact + handoff changes)
+- (if before the gate) `GATE_EPOCH=1794866400 PYTHON=/tmp/kilo-venv/bin/python RUFF=/tmp/kilo-venv/bin/ruff bash scripts/post_gate_orchestrator.sh --force --read-only` (expect exit 0)
 
 ## Scope boundaries
 - Do not run a mutating extend before the target session gate.
-- Do not change thresholds/gates/cost model/universe/clock-gate logic; do not touch data/raw/.
-- Do not commit unless explicitly asked.
-- Do not dispatch this workflow or start additional agent sessions.
+- Do not change thresholds/gates/cost model/universe/clock-gate logic; do not touch `data/raw/`.
+- Do not commit manually; the controller checkpoints working-tree changes at session boundaries.
+- Do not dispatch this workflow, start additional agent sessions, or launch a background waiter.
 
-Runtime note: the venv /tmp/kilo-venv was provisioned on Python 3.14 with the full required set. It is ephemeral (/tmp); if a future session finds it absent, recreate it before running the cycle:
-  python3 -m venv /tmp/kilo-venv
-  /tmp/kilo-venv/bin/python -m pip install --no-cache-dir numpy pandas scipy statsmodels arch yfinance pyarrow pyyaml pytest ruff
+Runtime note: `/tmp/kilo-venv` is ephemeral. If absent, recreate before running the cycle:
+```
+python3 -m venv /tmp/kilo-venv
+/tmp/kilo-venv/bin/python -m pip install --no-cache-dir numpy pandas scipy statsmodels arch yfinance pyarrow pyyaml pytest ruff
+```
