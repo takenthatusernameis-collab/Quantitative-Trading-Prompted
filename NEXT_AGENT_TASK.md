@@ -1,6 +1,53 @@
 # NEXT_AGENT_TASK — Real paper-trading extension gate check (at/after 22:00 UTC 2026-11-13)
 
-## Status at handoff (2026-11-12 23:30 UTC, run 43318156063 attempt 1 session 6 inv 1)
+## Status at handoff (2026-11-13 00:23 UTC, run 43318156063 attempt 1 session 7 inv 1)
+
+- **2026-11-13 pre-gate cycle is COMPLETE and COMMITTED** (prior session Cycle 1246).
+  `data/processed/paper_trading_state.yaml` at HEAD `15bcaac`:
+  - `last_run_date == 2026-11-12`
+  - `current_nav == 133039.92504076837`
+  - `run_history` length **468**
+  - state SHA256 `2dace0e3e1accf00a749cde2baf6470b5e2abc61e542fe636854910361dec88a`
+  - `risk_metrics.rolling_sharpe_63d: None` in stored state (63d window not yet refilled); drift report recomputes `rolling 63d Sharpe -1.3137210439928235` for 2026-11-12 with `stored == recomputed True`.
+- **Pre-gate verification re-run this session (session 7) — ALL PASSED (read-only):**
+  - cmd1: `Fri Nov 13 00:19:05 UTC 2026 / Thu Nov 12 19:19:05 EST 2026`.
+  - cmd3 `drift_persistence_report.py`: tail `2026-11-12  -1.3137`, `stored == recomputed True`, provenance git_sha `15bcaac`, state sha `2dace0e3…`.
+  - cmd5 6-module pytest: **68 passed in 28.43s**.
+  - cmd6 `git status --porcelain` (full tree): **clean** (0 lines).
+  - cmd8 ruff: **All checks passed!** on the 4 extension scripts.
+  - `tests/test_post_gate_orchestrator.py`: **9 passed** (4 original + 3 wait-mode + 2 new pass/fail-capture cases).
+- **Gate reachability (deterministic time blocker, not a failure loop):** this run's
+  controller cutoff is `remaining_seconds=13922` (~3.9h) from 00:18 UTC, i.e.
+  ~03:52 UTC 2026-11-13 — BEFORE the 2026-11-13 gate (22:00 UTC, epoch 1794607200).
+  A detached waiter spawned in this run cannot survive run teardown to 22:00 UTC, so
+  the real extension is not executable in this run. The run active at 22:00 UTC
+  2026-11-13 must perform the gate check (see Note for the next session).
+- **Working tree is clean and committed** (HEAD `15bcaac`):
+  - HEAD `15bcaac` (2026-11-13T00:18:07Z): `CORRECTIVE_HANDOFF_CORRECTIVE_393_20261113T0017Z.md`,
+    `NEXT_AGENT_TASK.md`, `README.md`, `scripts/post_gate_orchestrator.sh`
+    (per-step pass/fail capture + `Status:` line + non-zero exit on failure),
+    `tests/test_post_gate_orchestrator.py` (2 new pass/fail-capture regression cases).
+  - `git status --porcelain` is clean (0 lines). `data/raw/`, `data/`, `config/`
+    untouched. No re-apply needed: the orchestrator already accepts `GATE_EPOCH`/`HANDOFF`
+    env overrides, `--force`/`--read-only` in any order, and `--wait-until-gate`
+    `--max-wait-seconds N`.
+- **Tooling:** `/tmp/kilo-venv/bin/python` and `/tmp/kilo-venv/bin/ruff` present
+  (imports OK: yaml/pandas/numpy/pyarrow/pytest).
+- **Supervisor:** recommendation `43318156063-attempt-1-review-0005-c5524d3256ac`
+  (already applied in session 5/6) — disposition `verified` in `.kilo-runtime/worker-disposition.json`
+  (runtime, not committed): re-verified the corrected baseline independently.
+
+## Working tree changes at handoff
+
+All prior changes are committed and the tree is clean:
+
+- HEAD `15bcaac` (2026-11-13T00:18:07Z): `CORRECTIVE_HANDOFF_CORRECTIVE_393_20261113T0017Z.md`,
+  `NEXT_AGENT_TASK.md`, `README.md`, `scripts/post_gate_orchestrator.sh` (per-step
+  pass/fail capture, `Status:` line, non-zero exit on any failed check), `tests/test_post_gate_orchestrator.py`
+  (2 new pass/fail-capture regression cases).
+- `git status --porcelain` is clean (0 lines). `data/raw/`, `data/`, `config/` untouched.
+  No re-apply needed: the orchestrator already accepts `GATE_EPOCH`/`HANDOFF` env
+  overrides, `--force`/`--read-only` in any order, and `--wait-until-gate` `--max-wait-seconds N`.
 
 - **2026-11-12 post-gate cycle is COMPLETE and COMMITTED** (prior session Cycle 1243).
   `data/processed/paper_trading_state.yaml` at HEAD `90b2ec2`:
@@ -14,49 +61,47 @@
   - `risk_metrics.rolling_sharpe_63d: None` in stored state (63d window not yet
     refilled); drift report recomputes `rolling 63d Sharpe -1.3137210439928235`
     for 2026-11-12 with `stored == recomputed True`.
-- **Pre-gate verification re-run this session (session 6) — ALL PASSED (read-only):**
-  - cmd1: `Thu Nov 12 23:28:20 UTC 2026 / Thu Nov 12 18:28:20 EST 2026`.
+- **Pre-gate verification re-run this session (session 7) — ALL PASSED (read-only):**
+  - cmd1: `Fri Nov 13 00:19:05 UTC 2026 / Thu Nov 12 19:19:05 EST 2026`.
   - cmd3 `drift_persistence_report.py`: tail `2026-11-12  -1.3137`,
-    `stored == recomputed True`, provenance git_sha `b6c083b`, state sha `2dace0e3…`.
-  - cmd5 6-module pytest: **68 passed in 27.63s**.
+    `stored == recomputed True`, provenance git_sha `15bcaac`, state sha `2dace0e3…`.
+  - cmd5 6-module pytest: **68 passed in 28.43s**.
   - cmd6 `git status --porcelain` (full tree): **clean** (0 lines).
   - cmd8 ruff: **All checks passed!** on the 4 extension scripts.
-  - `tests/test_post_gate_orchestrator.py`: **7 passed** (4 original + 3 new
-    wait-mode regression cases).
+  - `tests/test_post_gate_orchestrator.py`: **9 passed** (4 original + 3 new
+    wait-mode + 2 new pass/fail-capture regression cases).
 - **Gate reachability (deterministic time blocker, not a failure loop):** this run's
-  controller cutoff is `remaining_seconds=16974` (~4.7h) from 23:27 UTC, i.e.
-  ~04:10 UTC 2026-11-13 — BEFORE the 2026-11-13 gate (22:00 UTC, epoch 1794607200).
+  controller cutoff is `remaining_seconds=13922` (~3.9h) from 00:18 UTC, i.e.
+  ~03:52 UTC 2026-11-13 — BEFORE the 2026-11-13 gate (22:00 UTC, epoch 1794607200).
   A detached waiter spawned in this run cannot survive run teardown to 22:00 UTC, so
   the real extension is not executable in this run. The run active at 22:00 UTC
   2026-11-13 must perform the gate check (see Note for the next session).
-- **Working tree is clean and committed** (supervisor rec 0005 correction applied):
-  - HEAD `8afe9a0` (2026-11-12T22:21:43Z): `NEXT_AGENT_TASK.md`, `README.md`,
-    `scripts/post_gate_orchestrator.sh` (env-overridable `HANDOFF` at line 33).
-  - HEAD `d304bfd` (2026-11-12T23:23:28Z): `CORRECTIVE_HANDOFF_CORRECTIVE_6_20261112T2323Z.md`,
-    `scripts/post_gate_orchestrator.sh` (`--force` now position-independent),
-    `tests/test_post_gate_orchestrator.py` (4 regression cases, `4 passed in 0.27s`).
-  - No re-apply needed: the orchestrator already accepts `GATE_EPOCH`/`HANDOFF` env
-    overrides and `--force`/`--read-only` in any order.
+- **Working tree is clean and committed** (HEAD `15bcaac`):
+  - HEAD `15bcaac` (2026-11-13T00:18:07Z): `CORRECTIVE_HANDOFF_CORRECTIVE_393_20261113T0017Z.md`,
+    `NEXT_AGENT_TASK.md`, `README.md`, `scripts/post_gate_orchestrator.sh`
+    (per-step pass/fail capture + `Status:` line + non-zero exit on failure),
+    `tests/test_post_gate_orchestrator.py` (2 new pass/fail-capture regression cases).
+  - `git status --porcelain` is clean (0 lines). `data/raw/`, `data/`, `config/`
+    untouched. No re-apply needed: the orchestrator already accepts `GATE_EPOCH`/`HANDOFF`
+    env overrides, `--force`/`--read-only` in any order, and `--wait-until-gate`
+    `--max-wait-seconds N`.
 - **Tooling:** `/tmp/kilo-venv/bin/python` and `/tmp/kilo-venv/bin/ruff` present
   (imports OK: yaml/pandas/numpy/pyarrow/pytest).
 - **Supervisor:** recommendation `43318156063-attempt-1-review-0005-c5524d3256ac`
-  (NEXT_AGENT_TASK.md still described the three files as uncommitted) —
-  disposition `accepted` in `.kilo-runtime/worker-disposition.json` (runtime, not
-  committed): corrected the "Working tree changes at handoff" section to record
-  both commits and dropped the stale re-apply instruction.
+  (already applied in session 5/6) — disposition `verified` in `.kilo-runtime/worker-disposition.json`
+  (runtime, not committed): re-verified the corrected baseline independently.
 
 ## Working tree changes at handoff
 
 All prior changes are committed and the tree is clean:
 
-- HEAD `8afe9a0` (2026-11-12T22:21:43Z): `NEXT_AGENT_TASK.md`, `README.md`,
-  `scripts/post_gate_orchestrator.sh` (env-overridable `HANDOFF` at line 33).
-- HEAD `d304bfd` (2026-11-12T23:23:28Z): `CORRECTIVE_HANDOFF_CORRECTIVE_6_20261112T2323Z.md`,
-  `scripts/post_gate_orchestrator.sh` (`--force` now position-independent),
-  `tests/test_post_gate_orchestrator.py` (4 regression cases).
-- `git status --porcelain` is clean (0 lines). `data/raw/`, `data/`, `config/`
-  are untouched. No re-apply needed: the orchestrator already accepts
-  `GATE_EPOCH`/`HANDOFF` env overrides and `--force`/`--read-only` in any order.
+- HEAD `15bcaac` (2026-11-13T00:18:07Z): `CORRECTIVE_HANDOFF_CORRECTIVE_393_20261113T0017Z.md`,
+  `NEXT_AGENT_TASK.md`, `README.md`, `scripts/post_gate_orchestrator.sh` (per-step
+  pass/fail capture, `Status:` line, non-zero exit on any failed check), `tests/test_post_gate_orchestrator.py`
+  (2 new pass/fail-capture regression cases).
+- `git status --porcelain` is clean (0 lines). `data/raw/`, `data/`, `config/` untouched.
+  No re-apply needed: the orchestrator already accepts `GATE_EPOCH`/`HANDOFF` env
+  overrides, `--force`/`--read-only` in any order, and `--wait-until-gate` `--max-wait-seconds N`.
 
 ## Objective
 
@@ -126,9 +171,10 @@ orchestrator, the manual list above is the fallback / independent record.
 
 The previous ~15 pre-gate sessions ended before their gate and left the cycle
 unfinished; the 2026-11-12 cycle was completed by **staying alive in-session
-across the gate** and verifying the detached waiter's work. Session 6 (this one) is
-clock-blocked: its run cutoff (~04:10 UTC 2026-11-13) is ~18h before the gate, so
-do NOT burn the session on repeated pre-gate verification. Instead:
+across the gate** and verifying the detached waiter's work. Session 7 (this one) is
+clock-blocked: its run cutoff (~03:52 UTC 2026-11-13, `remaining_seconds=13922`
+at 00:18 UTC) is ~18h before the gate, so do NOT burn the session on repeated pre-gate
+verification. Instead:
 - If the current run will still be active at 22:00 UTC 2026-11-13 (check the
   controller `remaining_seconds` in `$RUNNER_TEMP/kilo-progress-state-*.txt`), run
   `GATE_EPOCH=1794607200 HANDOFF=CORRECTIVE_HANDOFF_POSTGATE_20261113.md bash
@@ -137,4 +183,5 @@ do NOT burn the session on repeated pre-gate verification. Instead:
 - Otherwise hand off immediately with a fresh pre-gate verification and let the run
   that is active at the gate perform the check.
 Prefer `scripts/post_gate_orchestrator.sh` because it writes a durable, in-repo
-handoff instead of `/tmp`.
+handoff instead of `/tmp`, and now exits non-zero + marks the handoff `FAILED` on any
+failed sub-check (verified this session with negative/positive controls).
