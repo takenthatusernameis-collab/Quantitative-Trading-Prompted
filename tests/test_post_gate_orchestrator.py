@@ -191,3 +191,37 @@ def test_max_wait_seconds_rejects_non_integer(tmp_path: Path) -> None:
     assert proc.returncode == 2, proc.stdout + proc.stderr
     assert "requires a positive integer" in proc.stdout, proc.stdout
     assert not handoff.exists()
+
+
+def test_unknown_flag_is_a_usage_error(tmp_path: Path) -> None:
+    # An unknown flag used to be silently ignored (`*) shift ;;`), so a typo'd
+    # `--wait-until-gate` would still exit 3 "gate NOT released" before the gate
+    # and the durable record would never reveal the mis-invocation. Fail closed.
+    handoff = tmp_path / "handoff.md"
+    proc = _run(["--read-only", "--bogus-flag"], PAST_GATE, handoff)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    assert "unknown argument" in proc.stdout, proc.stdout
+    assert not handoff.exists()
+
+
+def test_max_wait_seconds_rejects_zero(tmp_path: Path) -> None:
+    # 0 is not a usable wait budget: it degrades to "do not wait" and exits 3
+    # exactly like the no-wait path, indistinguishable from a mis-invocation.
+    # The help text and prior fix claim "positive integer"; enforce strictly > 0.
+    handoff = tmp_path / "handoff.md"
+    proc = _run(
+        ["--read-only", "--wait-until-gate", "--max-wait-seconds", "0"],
+        FUTURE_GATE,
+        handoff,
+    )
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    assert "requires a positive integer" in proc.stdout, proc.stdout
+    assert not handoff.exists()
+
+
+def test_help_exits_zero(tmp_path: Path) -> None:
+    handoff = tmp_path / "handoff.md"
+    proc = _run(["--help"], FUTURE_GATE, handoff)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "usage:" in proc.stdout, proc.stdout
+    assert not handoff.exists()

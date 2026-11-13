@@ -86,8 +86,20 @@ while (( $# > 0 )); do
       case "$1" in
         ''|*[!0-9]*) log "FATAL: --max-wait-seconds requires a positive integer, got '$1'"; exit 2 ;;
       esac
+      # 0 is not a usable wait budget: it silently degrades to "do not wait" and
+      # exits 3 exactly like the no-wait path, which is indistinguishable from a
+      # mis-invocation in the durable record. Require strictly positive.
+      if (( $1 == 0 )); then log "FATAL: --max-wait-seconds requires a positive integer, got '$1'"; exit 2; fi
       MAX_WAIT_SECONDS="$1"; shift ;;
-    *) shift ;;
+    -h|--help)
+      log "usage: post_gate_orchestrator.sh [--read-only] [--force] [--wait-until-gate] [--max-wait-seconds N]"
+      exit 0 ;;
+    *)
+      # A silently-ignored flag is a durable-evidence hazard for the gate-active
+      # run: e.g. a typo'd --wait-until-gate would exit 3 before the gate and the
+      # operator would see only "gate NOT released", never "unknown flag". Fail
+      # closed with a usage error so mis-invocation is visible.
+      log "FATAL: unknown argument '$1' (see --help)"; exit 2 ;;
   esac
 done
 if (( ! FORCE )); then

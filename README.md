@@ -1,3 +1,13 @@
+## Cycle 1252: orchestrator CLI fail-closed hardening (2026-11-13 13:10 UTC, corrective invocation 1) — **3 CLI DEFECTS FIXED, VERIFIED; GATE UNREACHABLE THIS RUN**
+
+- **UTC 2026-11-13T13:09:00Z (08:09 EST).** Gate for 2026-11-13 **NOT released** (releases 22:00 UTC 2026-11-13, epoch 1794607200; ~8.8h remaining). Cmds 2/4 **withheld** (scope boundary).
+- **Why this invocation differs from prior no-op/failed sessions:** prior sessions re-verified the clean baseline, added mixed-regime/pass-fail tests, or merely wrote handoffs. This invocation audited the gate-active orchestrator's **argument parser** for fail-closed defects and fixed three that silently corrupted the durable record on mis-invocation — each reproduced empirically against the pre-fix script (`git show HEAD:`) first.
+- **Defects (observed old → fixed new):** (A) unknown flags silently ignored (`*) shift ;;`) → `--bogus-flag` **rc=0** "cycle complete" with a fabricated handoff → now **rc=2** `FATAL: unknown argument`; (B) `--max-wait-seconds 0` accepted despite the "positive integer" claim → **rc=3** no-wait (indistinguishable from mis-invocation) → now **rc=2**; (C) no `--help`/usage → `--help` treated as unknown (**rc=3** "gate NOT released") → now **rc=0** usage line.
+- **Impact:** a typo'd `--wait-until-gate` would have been silently ignored; the gate-active run would exit 3 "clock gate NOT released" and the durable record would never reveal the mis-invocation — the exact durable-evidence failure class the orchestrator exists to prevent.
+- **Changes:** `scripts/post_gate_orchestrator.sh` (arg loop `*)` → exit 2; `-h|--help`; `--max-wait-seconds` strictly positive) and `tests/test_post_gate_orchestrator.py` (+3 regression tests). No gate-clock/extend/cost/universe/cmd-behavior change.
+- **Verification:** `bash -n` → `BASH_OK`; orchestrator suite **16 passed** (was 13); 6-module + orchestrator **84 passed in 43.88s**; ruff on the test file `All checks passed!`; documented read-only cycle exit 0 `Status: OK`; pre-gate extend offline no-op (`sessions extended: 0`, 0 writes); state sha256 `2dace0e3…dec88a` == HEAD (`last_run_date 2026-11-12`, NAV 133039.92504076837, run_history 468). `data/raw/` untouched.
+- **Handoff:** `CORRECTIVE_HANDOFF_CORR1_20261113T1310Z.md` (durable, in repo). No commits made (not requested).
+
 ## Cycle 1251: orchestrator durable-evidence defects (2026-11-13 03:35 UTC, corrective invocation 2) — **3 DEFECTS FIXED, VERIFIED; GATE UNREACHABLE THIS RUN**
 
 - **UTC 2026-11-13T03:35:17Z (22:35:17 EST Thu Nov 12).** Gate for 2026-11-13 **NOT released** (releases 22:00 UTC 2026-11-13, epoch 1794607200; ~18.4h / 66283s remaining). Cmds 2/4/7 **withheld** (scope boundary).
