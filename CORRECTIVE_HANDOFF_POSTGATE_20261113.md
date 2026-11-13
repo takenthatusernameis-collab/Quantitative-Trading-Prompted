@@ -32,8 +32,20 @@
 - Only open item is the clock-gated 2026-11-13 extension (cmds 2/4) + post-advance cmd 7.
 - Working tree: **clean (0 lines)**. `data/raw/` untouched. No commits made.
 
-## Unresolved blocker
-- **Clock gate not released** for the 2026-11-13 session (releases 22:00 UTC 2026-11-13, epoch 1794607200). Cannot run the real extension (cmd 2/4) or post-advance cmd 7 until the gate releases. Deterministic blocker, not a failure loop — the gate-active run must execute it.
+## Corrective invocation 122 (2026-11-13T14:23Z) — narrow read-only pre-gate verification after model-error failure
+- **Prior state:** inv121 (kilo-session-7-recovery-121.log) exited status 1 with model sign-up error ("Sign up for free to continue...") and ran zero verification — external harness/model-API error, NOT a repo defect.
+- **Materially different approach:** no external model/tooling API calls; narrow local read-only pre-gate verification only (cmds 1, 3, 5, 6, 8; extend cmds 2/4/7 intentionally skipped per NEXT_AGENT_TASK.md scope boundary #44 — gate not released until 22:00 UTC 2026-11-13). No code changes, no `data/raw` mutation, no commit.
+- **Gate check (cmd 0 + 1):** `date -u && TZ=America/New_York date` → `Fri Nov 13 14:23:01 UTC 2026 / Fri Nov 13 09:23:01 EST 2026`; `GATE_EPOCH=1794607200 bash scripts/post_gate_orchestrator.sh` → `clock gate NOT released ...; refusing to run` → **EXIT=3** (guard confirmed, expected before release).
+- **State integrity:** `sha256sum data/processed/paper_trading_state.yaml` → `2dace0e3e1accf00a749cde2baf6470b5e2abc61e542fe636854910361dec88a` (matches committed; `last_run=2026-11-12`, `nav=133039.92504076837`, `runs=468`).
+- **Cmd 3 (drift):** `drift_persistence_report.py | tail -8` → tail ends `2026-11-12 -1.3137`; `stored == recomputed: True`; EXIT=0.
+- **Cmd 5 (pytest):** 6-module pytest → **68 passed in 41.91s**, EXIT=0.
+- **Cmd 6 (git status):** `git status --porcelain data/ config/` → empty/clean, EXIT=0. Full tree shows only pre-existing untracked `CORRECTIVE_HANDOFF_INVOCATION_*.md` artifacts (not from this invocation; no `data/`/`config/`/`src/`/`tests/`/`research/` changes).
+- **Cmd 8 (ruff):** `ruff check research/drift_persistence_report.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py research/verify_gate_time_forward_bar.py` → **All checks passed!**, EXIT=0.
+- **Cmds 2/4/7 intentionally NOT run** per scope boundary (no extend before 22:00 UTC 2026-11-13). No thresholds/gates/cost model/universe/clock-gate logic, tests, security controls, or workflow boundaries modified. `data/raw/` untouched.
+- **Durable change:** appended this inv122 section to `CORRECTIVE_HANDOFF_POSTGATE_20261113.md`. No other changes.
+- **Unresolved blocker:** Temporal only — clock gate not released until 22:00 UTC 2026-11-13 (~7.6h remaining); 355-minute cutoff (~19:55 UTC) ends before gate release. Cannot advance by code; the gate-active run must execute cmds 2/4/7 after release.
+- **Next distinct investigation (at/after 2026-11-13T22:00Z):** Execute NEXT_AGENT_TASK.md cmds 1–8 in order via `GATE_EPOCH=1794607200 HANDOFF=CORRECTIVE_HANDOFF_POSTGATE_20261113.md bash scripts/post_gate_orchestrator.sh --wait-until-gate`. If `sessions_extended==1`: verify `last_run_date` advance, NAV change, write count 1, idempotent re-run, drift consistent; re-run inventories + inventory tests (cmd 7). If `sessions_extended==0`: record explicit reason, NAV/writes unchanged.
+- **CORRECTIVE_VERIFICATION=PASS** (focused read-only pre-gate verification succeeded: guard EXIT=3, drift consistent, 68 tests pass, ruff clean, git status clean; temporal gate blocker is separate from verification result — no state-changing progress possible before gate release).
 
 ## Handoff for gate-active run
 **If the run is active at 22:00 UTC 2026-11-13**, execute:
