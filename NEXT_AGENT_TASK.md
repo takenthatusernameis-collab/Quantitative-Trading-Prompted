@@ -1,13 +1,17 @@
 # NEXT_AGENT_TASK — 2026-11-13 gate check (post-advance test anchors repaired)
 
-## Status at handoff (2026-11-13 05:42 UTC, invocation 256 — final pre-gate confirmation)
+## Status at handoff (2026-11-13 05:44 UTC, invocation 257 — final pre-gate confirmation)
 
-- **UTC 2026-11-13T05:42:34Z (00:42:34 EST).** Gate for 2026-11-13 **NOT released** (epoch 1794607200; `remaining_s ~58646`, ~16.3h). Cmds 2/4/7 **withheld** (scope boundary). This run's envelope reaps ~06:2x UTC — well before the gate; the extension is **not executable in this run**.
+- **UTC 2026-11-13T05:44:06Z (00:44:06 EST).** Gate for 2026-11-13 **NOT released** (epoch 1794607200; `remaining_s ~58554`, ~16.3h). Cmds 2/4/7 **withheld** (scope boundary). This run's envelope reaps ~06:2x UTC — well before the gate; the extension is **not executable in this run**.
 - **Supervisor rec `43353707922-attempt-1-review-0005-44a65f003e39` disposition `accepted`** (advised against `--wait-until-gate` in this run; hand off with fresh pre-gate evidence; leave the gate-active run to execute the orchestrator). Disposition written to `.kilo-runtime/worker-disposition.json` (runtime, not committed).
-- **Fresh minimal evidence (this session, HEAD `44a51a4`, working tree clean):**
-  - **Cmd 1:** `2026-11-13 05:42:34 UTC / Fri Nov 13 00:42:34 EST 2026`; gate `remaining_s ~58646` (~16.3h).
+- **Fresh pre-gate verification (this session, HEAD `12409ca`, working tree clean):**
+  - **Cmd 1:** `2026-11-13 05:44:06 UTC / Fri Nov 13 00:44:06 EST 2026`; gate `remaining_s ~58554` (~16.3h).
   - **Tooling:** `/tmp/kilo-venv/bin/python` Python 3.14.4; `/tmp/kilo-venv/bin/ruff` ruff 0.17.5 — both present and usable.
-  - **Cmd 6:** `git status --porcelain` → **0 lines** (clean; `data/` and `config/` clean). HEAD `44a51a4`.
+  - **Cmd 3:** drift `stored == recomputed: True`; rolling 63d `-1.3137210439928235 (2026-11-12)`; tail ends `2026-11-12 -1.3137`.
+  - **Cmd 5:** 6-module pytest **68 passed in 42.28s**.
+  - **Cmd 6:** `git status --porcelain` → **0 lines** (clean; `data/` and `config/` clean). HEAD `12409ca`.
+  - **Cmd 8:** ruff **All checks passed!** on the 4 extension scripts.
+  - **Cmd 9:** two repaired modules **36 passed in 167.62s**.
 - **No source/data/config defect found; no justified code correction.** Only open item is the clock-gated 2026-11-13 extension (Cmds 2/4) + post-advance Cmd 7.
 - **Working tree:** clean (0 lines). `data/raw/` untouched. No commits made.
 
