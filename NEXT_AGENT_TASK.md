@@ -1,15 +1,16 @@
 # NEXT_AGENT_TASK — 2026-11-13 gate check (post-advance test anchors repaired)
 
-## Status at handoff (2026-11-13 02:55 UTC, run 43318156063 attempt 1 session 18 inv 1 — pre-gate verified, gate unreachable)
+## Status at handoff (2026-11-13 03:16 UTC, corrective invocation 176 — pre-gate verified, gate unreachable)
 
-- **UTC 2026-11-13T02:54:54Z (21:54:54 EST Thu Nov 12).** Gate for 2026-11-13 **NOT released** (releases 22:00 UTC 2026-11-13, epoch 1794607200; ~19h remaining). Cmds 2/4/7 **withheld** (scope boundary).
+- **UTC 2026-11-13T03:16:30Z (22:16:30 EST Thu Nov 12).** Gate for 2026-11-13 **NOT released** (releases 22:00 UTC 2026-11-13, epoch 1794607200; ~19h remaining). Cmds 2/4/7 **withheld** (scope boundary).
 - **Supervisor rec `43318156063-attempt-1-review-0005-c5524d3256ac` disposition `superseded` (unchanged).** Required action already completed in prior corrective commits; HEAD `3916122` (2026-11-13 02:54:34 UTC). NEXT_AGENT_TASK.md already states working tree clean with no re-apply instruction.
 - **Pre-gate verification this session (fresh):**
-  - **Cmd 1:** `2026-11-13 02:54:54 UTC / Thu Nov 12 21:54:54 EST 2026` (clock gate NOT released).
+  - **Cmd 1:** `2026-11-13 03:16:30 UTC / Thu Nov 12 22:16:30 EST 2026` (clock gate NOT released).
   - **Cmd 3:** drift tail ends `2026-11-12  -1.3137` (`stored == recomputed True`); state SHA256 `2dace0e3e1accf00a749cde2baf6470b5e2abc61e542fe636854910361dec88a` matches `git show HEAD:`.
+  - **Cmd 5:** 6-module pytest **68 passed in 28.67s**.
   - **Cmd 6:** `git status --porcelain` 0 lines (working tree clean; `data/` and `config/` clean).
   - **Cmd 8:** ruff **All checks passed!** on `research/drift_persistence_report.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py research/verify_gate_time_forward_bar.py`.
-  - **Cmd 5/9 (pytest suites):** not re-run this session to conserve the bounded envelope; last fresh passes recorded session 17 — cmd 5 **68 passed in 28.93s**, cmd 9 **36 passed in 116.41s**.
+  - **Cmd 9:** two repaired modules **36 passed in 115.36s**.
 - **State (unchanged, verified):** 468 sessions, `last_run_date 2026-11-12`, `current_nav 133039.92504076837`, run_history 468, state SHA256 `2dace0e3e1accf00a749cde2baf6470b5e2abc61e542fe636854910361dec88a`, `risk_metrics.rolling_sharpe_63d: None`.
 - **Gate reachability (deterministic blocker, not a failure loop):** this run's hard `timeout ... 6240s` (104 min) envelope will be reaped well before the 22:00 UTC gate (epoch **1794607200**). The real extension is not executable in this run. The run active at 22:00 UTC must perform the gate check below.
 - **Working tree:** clean at handoff; `data/raw/` untouched. No commits made.
