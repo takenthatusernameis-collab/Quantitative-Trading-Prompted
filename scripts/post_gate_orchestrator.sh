@@ -28,9 +28,12 @@
 #
 # Both GATE_EPOCH and HANDOFF are env-overridable so this script is reusable for
 # later gates without editing it. Defaults below target the 2026-11-12 gate.
+# HANDOFF defaults to the date of GATE_EPOCH (not a hard-coded filename), so a
+# partial override of GATE_EPOCH alone cannot overwrite a different gate's record.
 # Example for the 2026-11-13 gate (22:00 UTC = epoch 1794607200):
-#   GATE_EPOCH=1794607200 HANDOFF=CORRECTIVE_HANDOFF_POSTGATE_20261113.md \
-#     bash scripts/post_gate_orchestrator.sh --wait-until-gate
+#   GATE_EPOCH=1794607200 bash scripts/post_gate_orchestrator.sh --wait-until-gate
+#   # writes CORRECTIVE_HANDOFF_POSTGATE_20261113.md; override HANDOFF only for
+#   # a custom filename, which must name the same gate date as GATE_EPOCH.
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -39,18 +42,34 @@ cd "$REPO_ROOT" || exit 2
 PY="${PYTHON:-/tmp/kilo-venv/bin/python}"
 RUFF="${RUFF:-/tmp/kilo-venv/bin/ruff}"
 GATE_EPOCH="${GATE_EPOCH:-1794520800}"   # 2026-11-12T22:00:00Z (override for later gates)
-HANDOFF="${HANDOFF:-CORRECTIVE_HANDOFF_POSTGATE_20261112.md}"
 WAIT_UNTIL_GATE=0
 MAX_WAIT_SECONDS=""
 # Human-readable gate timestamp derived from GATE_EPOCH so the generated handoff
 # is correct for whichever gate is targeted (defaults to the 2026-11-12 gate).
 GATE_HUMAN="$(date -u -d "@$GATE_EPOCH" +%FT%TZ)"
+GATE_DATE="$(date -u -d "@$GATE_EPOCH" +%Y%m%d)"
+# Default the durable handoff to the gate being run. Previously this was the
+# hard-coded 2026-11-12 filename, so overriding only GATE_EPOCH (the natural
+# partial invocation) silently overwrote the 2026-11-12 record with 2026-11-13
+# content -- the same durable-evidence hazard class as an ignored flag.
+HANDOFF="${HANDOFF:-CORRECTIVE_HANDOFF_POSTGATE_${GATE_DATE}.md}"
 PYTEST6="tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py"
 PYTEST7="tests/test_data_cost_inventory_001.py tests/test_data_cost_inventory_002.py"
 RUFF4="research/drift_persistence_report.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py research/verify_gate_time_forward_bar.py"
 
 log() { echo "[$(date -u +%FT%TZ)] $*"; }
 fail() { log "FATAL: $*"; exit 1; }
+
+# Fail closed when an explicit HANDOFF names a different gate date than
+# GATE_EPOCH. Writing one gate's cycle into another gate's durable record is the
+# mis-invocation hazard this script exists to prevent; the date must match.
+if [[ "$(basename "$HANDOFF")" =~ (20[0-9]{6}) ]]; then
+  HANDOFF_DATE="${BASH_REMATCH[1]}"
+  if [[ "$HANDOFF_DATE" != "$GATE_DATE" ]]; then
+    log "FATAL: HANDOFF '$HANDOFF' names gate date $HANDOFF_DATE but GATE_EPOCH is $GATE_HUMAN ($GATE_DATE); refusing to write another gate's durable record"
+    exit 2
+  fi
+fi
 
 # --- Step-failure tracking (self-evidencing) ---------------------------------
 # The orchestrator must not claim "cycle complete" (or exit 0) when any sub-check

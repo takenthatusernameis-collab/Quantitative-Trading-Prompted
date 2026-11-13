@@ -18,6 +18,8 @@ SCRIPT = REPO_ROOT / "scripts" / "post_gate_orchestrator.sh"
 FUTURE_GATE = "4102444800"
 # Past gate (2026-11-12T22:00:00Z) that is already released.
 PAST_GATE = "1794520800"
+# The next real gate (2026-11-13T22:00:00Z), used to test gate-derived handoff names.
+GATE_20261113 = "1794607200"
 
 
 def _run(
@@ -40,6 +42,37 @@ def _run(
     return subprocess.run(
         ["bash", str(SCRIPT), *extra_args],
         cwd=REPO_ROOT,
+        check=False,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+
+
+def _run_script_copy(
+    tmp_path: Path,
+    extra_args: list[str],
+    gate_epoch: str,
+    handoff: str | None = None,
+    env_extra: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Run a copy of the script rooted in ``tmp_path`` so its default HANDOFF
+    (which is written next to the script's repo root) cannot touch the real repo."""
+    scripts_dir = tmp_path / "scripts"
+    scripts_dir.mkdir()
+    script = scripts_dir / "post_gate_orchestrator.sh"
+    script.write_text(SCRIPT.read_text())
+    env = dict(os.environ)
+    env.update({"PYTHON": "true", "RUFF": "true", "GATE_EPOCH": gate_epoch})
+    env.pop("HANDOFF", None)
+    if handoff is not None:
+        env["HANDOFF"] = handoff
+    if env_extra:
+        env.update(env_extra)
+    return subprocess.run(
+        ["bash", str(script), *extra_args],
+        cwd=tmp_path,
         check=False,
         env=env,
         capture_output=True,
@@ -225,3 +258,43 @@ def test_help_exits_zero(tmp_path: Path) -> None:
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "usage:" in proc.stdout, proc.stdout
     assert not handoff.exists()
+
+def test_default_handoff_follows_gate_epoch(tmp_path: Path) -> None:
+    # A partial invocation that overrides only GATE_EPOCH (the natural way to
+    # target the next gate) used to write the hard-coded 2026-11-12 handoff with
+    # the new gate's content, destroying the prior gate's durable record. The
+    # default HANDOFF must be derived from GATE_EPOCH.
+    proc = _run_script_copy(tmp_path, ["--force", "--read-only"], GATE_20261113)
+    derived = tmp_path / "CORRECTIVE_HANDOFF_POSTGATE_20261113.md"
+    stale = tmp_path / "CORRECTIVE_HANDOFF_POSTGATE_20261112.md"
+    assert derived.exists(), proc.stdout + proc.stderr
+    assert not stale.exists(), proc.stdout + proc.stderr
+    assert "gate 2026-11-13T22:00:00Z" in derived.read_text()
+
+
+def test_default_handoff_for_default_gate_epoch_is_unchanged(tmp_path: Path) -> None:
+    # Backwards compatibility: with no overrides the script must still write the
+    # 2026-11-12 handoff (GATE_EPOCH default 1794520800).
+    proc = _run_script_copy(tmp_path, ["--force", "--read-only"], PAST_GATE)
+    derived = tmp_path / "CORRECTIVE_HANDOFF_POSTGATE_20261112.md"
+    assert derived.exists(), proc.stdout + proc.stderr
+    assert "gate 2026-11-12T22:00:00Z" in derived.read_text()
+
+
+def test_handoff_gate_date_mismatch_is_usage_error(tmp_path: Path) -> None:
+    # An explicit HANDOFF naming a different gate date must fail closed (rc=2)
+    # before any cycle runs, not silently write into the other gate's record.
+    handoff = tmp_path / "CORRECTIVE_HANDOFF_POSTGATE_20261113.md"
+    proc = _run(["--read-only"], PAST_GATE, handoff)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    assert "names gate date" in proc.stdout, proc.stdout
+    assert not handoff.exists()
+
+
+def test_matching_gate_date_handoff_proceeds(tmp_path: Path) -> None:
+    # An explicit HANDOFF whose date matches GATE_EPOCH must still work.
+    handoff = tmp_path / "CORRECTIVE_HANDOFF_POSTGATE_20261113.md"
+    proc = _run(["--read-only", "--force"], GATE_20261113, handoff)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert handoff.exists()
+    assert "gate 2026-11-13T22:00:00Z" in handoff.read_text()
