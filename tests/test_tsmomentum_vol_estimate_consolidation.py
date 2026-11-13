@@ -253,7 +253,7 @@ def test_anchor_reproduces_the_published_walk_forward(payload):
     anchor = payload["anchor"]
     assert anchor["reproduced_wf_mean"] == PUBLISHED_WF_MEAN
     assert anchor["n_folds"] == PUBLISHED_WF_FOLDS
-    assert anchor["committed_sessions"] == 450
+    assert anchor["committed_sessions"] == 466
     assert anchor["record_max_abs_diff"] <= 1e-12
 
 

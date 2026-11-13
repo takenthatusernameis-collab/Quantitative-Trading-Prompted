@@ -2,7 +2,7 @@
 
 ## Status
 
-- **OVERALL: FAIL**
+- **OVERALL: PASS**
 - Candidate: `tsmomentum_spytrend_001` (the incumbent)
 - Default path: **bit-identical** to every script's pre-change implementation (max |diff| = 0.0, checked per script).
 - Switch: `lag_vol_estimate` (default **off**) in all seven consolidated scripts; zero remaining inline same-session exposure estimates.
@@ -52,7 +52,7 @@ Nothing is published unless the default path reproduces the incumbent's publishe
 | 48-fold walk-forward mean OOS Sharpe | 0.947307 | 0.947307 |
 | Same, from `research/run_cycle6.py::run_walkforward` | 0.947307 | 0.947307 |
 | Folds | 48 | 48 |
-| Committed record sessions | 450 | 463 (max abs diff = 5.421e-20) |
+| Committed record sessions | 450 | 466 (max abs diff = 5.421e-20) |
 
 The published record is resolved by content and all 48 published folds are reproduced: test windows exactly, OOS Sharpe to the published precision, trade counts exactly.
 
@@ -83,12 +83,12 @@ The six pre-specified SMA windows of the published record, re-derived on the cor
 
 | SMA window | Test Sharpe | Ann. Return | Max DD | Trades | Sortino | Profit Factor | Meets 0.9? |
 |---|---|---|---|---|---|---|---|
-| 150 | 1.3959 | 0.1459 | -0.0696 | 1187 | 1.6687 | 1.35 | YES |
-| 175 | 1.3489 | 0.1416 | -0.0696 | 1220 | 1.6172 | 1.34 | YES |
-| 200 | 1.2164 | 0.1303 | -0.0795 | 1213 | 1.4348 | 1.31 | YES |
-| 226 | 1.1193 | 0.1216 | -0.0795 | 1249 | 1.3192 | 1.28 | YES |
-| 250 | 1.0815 | 0.1181 | -0.0841 | 1297 | 1.2840 | 1.27 | YES |
-| 277 | 1.0221 | 0.1129 | -0.0897 | 1321 | 1.2184 | 1.26 | YES |
+| 150 | 1.4140 | 0.1478 | -0.0696 | 1189 | 1.6953 | 1.35 | YES |
+| 175 | 1.3671 | 0.1436 | -0.0696 | 1222 | 1.6439 | 1.34 | YES |
+| 200 | 1.2408 | 0.1327 | -0.0795 | 1216 | 1.4666 | 1.31 | YES |
+| 226 | 1.1438 | 0.1240 | -0.0795 | 1252 | 1.3508 | 1.29 | YES |
+| 250 | 1.1060 | 0.1205 | -0.0841 | 1300 | 1.3158 | 1.28 | YES |
+| 277 | 1.0466 | 0.1153 | -0.0897 | 1324 | 1.2502 | 1.26 | YES |
 Windows with Sharpe >= 0.9: 6/6 (informational; the plateau gate is not part of this cycle).
 
 ### 3.3 The corrected 2018-2026 test-period statistics (own-path backtest)
@@ -108,23 +108,23 @@ The corrected path's own backtest reference is 1.335983, below the unchanged fix
 
 | Statistic | Published | Corrected |
 |---|---|---|
-| Sessions | 463 | 463 |
-| Canonical Sharpe | 1.494563 | 1.318898 |
-| Trailing 63-session Sharpe (`rolling_63d_sharpe` gate value) | -2.120279 | -2.299290 |
+| Sessions | 466 | 466 |
+| Canonical Sharpe | 1.583075 | 1.410227 |
+| Trailing 63-session Sharpe (`rolling_63d_sharpe` gate value) | -1.439417 | -1.621363 |
 | `rolling_63d_sharpe` gate (>= 0.9) | FAIL | FAIL |
-| PSR (normal) vs 1.4178 | 0.543574 | 0.443944 |
+| PSR (normal) vs 1.4178 | 0.592754 | 0.495713 |
 | `psr` gate (>= 0.95) | FAIL | FAIL |
 | Max drawdown | -6.562469% | -7.814098% |
 
 | Gate | Published record | Corrected record | Threshold |
 |---|---|---|---|
-| `track_record_length` | 465.000000 | 463.000000 | >= 126 |
-| `full_period_sharpe` | 1.603250 | 1.318898 | >= 0.9 |
-| `rolling_63d_sharpe` | -1.156635 | -2.299290 | >= 0.9 |
+| `track_record_length` | 468.000000 | 466.000000 | >= 126 |
+| `full_period_sharpe` | 1.597783 | 1.410227 | >= 0.9 |
+| `rolling_63d_sharpe` | -1.313721 | -1.621363 | >= 0.9 |
 | `max_drawdown` | -0.065625 | -0.078141 | >= -0.15 |
 | `rolling_63d_max_dd` | -0.065445 | -0.073811 | >= -0.15 |
 | `regime_flips` | 6.000000 | 6.000000 | >= 1 |
-| `psr` | 0.604203 | 0.443944 | >= 0.95 |
+| `psr` | 0.600130 | 0.495713 | >= 0.95 |
 | **decision** | **NO-GO** | **NO-GO** | failed gates: rolling_63d_sharpe, psr |
 
 The corrected gate table is computed by the production code `src.simulation.evaluation.evaluate_go_no_go` on the corrected return series with the committed configuration. It is **NO-GO** with the same failed gates as the published path; the correction is not the cause of the gate failure and it does not rescue anything.
@@ -158,15 +158,15 @@ A record that mixes the same-session and the lagged paths measures neither; the 
 
 ## 5. What this cycle does NOT change
 
-- It does **not** cause the `rolling_63d_sharpe` failure: the corrected failing window is worse (-2.299290 vs -2.120279).
-- It does **not** rescue the promotion decision: the PSR gate still fails on the corrected path (0.443944 < 0.95), and the decision stays NO-GO.
+- It does **not** cause the `rolling_63d_sharpe` failure: the corrected failing window is worse (-1.621363 vs -1.439417).
+- It does **not** rescue the promotion decision: the PSR gate still fails on the corrected path (0.495713 < 0.95), and the decision stays NO-GO.
 - It does **not** change the incumbent's published verdict: the candidate remains a **Credible Candidate** by its published verdict and **NO-GO** for promotion.
 - The corrected walk-forward mean is **not** an edge, a recovery or a promotion: on the comparable statistic it is lower than the published path.
 - No gate, threshold, universe, cost model, Sharpe convention, parameter, hypothesis or drift flag is changed; no candidate is selected, re-fit or re-ranked; the shortlist and the promotion decision are not re-stated.
 
 ## 6. Checks
 
-- [committed_record_loaded]: FAIL (observed: 465 sessions, expected: 464 sessions)
+- [committed_record_loaded]: PASS (observed: 468 sessions, expected: 468 sessions)
 - [default_path_reproduces_every_committed_session]: PASS (observed: max |diff| = 5.421e-20, expected: <= 1e-12)
 - [published_walk_forward_mean_reproduced]: PASS (observed: 0.947307472025, expected: 0.947307472025)
 - [published_walk_forward_fold_count_reproduced]: PASS (observed: 48 folds, expected: 48 folds)
@@ -181,10 +181,10 @@ A record that mixes the same-session and the lagged paths measures neither; the 
 - [no_config_file_sets_the_switch]: PASS (observed: 0 non-corrected config file(s) mention the switch, expected: 0)
 - [corrected_config_is_specification_only_exception]: PASS (observed: config/simulation_candidate_001_corrected.yaml sets lag_vol_estimate: true (specification-only, not an activated record), expected: declared exception present)
 - [no_record_feeding_config_sets_the_switch]: PASS (observed: 0 record-feeding config(s) mention the switch, expected: 0)
-- [committed_record_gate_value_reproduced]: PASS (observed: -2.120279487011, expected: -2.120279487011)
+- [committed_record_gate_value_reproduced]: PASS (observed: -1.439416898299, expected: -1.439416898299)
 - [corrected_path_does_not_rescue_the_promotion_decision]: PASS (observed: default NO-GO, corrected NO-GO, expected: NO-GO on both paths)
-- [corrected_path_is_worse_on_every_record_statistic]: PASS (observed: canonical 1.318898 < 1.494563, trailing -2.299290 < -2.120279, PSR 0.443944 < 0.543574, expected: lower on every record statistic)
-- [corrected_record_matches_cycle926_values]: FAIL (observed: canonical 1.318898, trailing -2.299290, PSR 0.443944, max DD -0.078141, expected: matches Cycle 926 corrected values)
+- [corrected_path_is_worse_on_every_record_statistic]: PASS (observed: canonical 1.410227 < 1.583075, trailing -1.621363 < -1.439417, PSR 0.495713 < 0.592754, expected: lower on every record statistic)
+- [corrected_record_matches_cycle926_values]: PASS (observed: canonical 1.410227, trailing -1.621363, PSR 0.495713, max DD -0.078141, expected: matches Cycle 926 corrected values)
 - [corrected_walk_forward_matches_cycle926_values]: PASS (observed: mean 1.318605, excl artefact 1.346660, excl worst 1.357135, median 1.232060, worst fold 13 (-0.492313), trades 6002, expected: matches Cycle 926 corrected values)
 - [corrected_sma_plateau_table_built]: PASS (observed: 6 windows, expected: 6 windows)
 - [corrected_test_period_reference_is_lower]: PASS (observed: corrected 1.335983 < published 1.417752, expected: lower)

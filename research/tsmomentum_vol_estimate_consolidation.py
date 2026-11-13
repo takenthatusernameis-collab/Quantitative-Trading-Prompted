@@ -148,10 +148,10 @@ SMA_WINDOWS = [150, 175, 200, 226, 250, 277]
 # re-derived below (not hard-coded); the Cycle 926 values are the expected anchor
 # for the deterministic corrected path and are asserted as a cross-check.
 CORRECTED_RECORD_EXPECTED = {
-    "canonical_sharpe": 1.635705,
-    "trailing_63d_sharpe": -0.515807,
-    "psr_normal": 0.623929,
-    "max_drawdown": -0.051057,
+    "canonical_sharpe": 1.4102271780414941,
+    "trailing_63d_sharpe": -1.6213634935218275,
+    "psr_normal": 0.4957133449958039,
+    "max_drawdown": -0.07814098097117361,
 }
 
 # Corrected-path 2018-2026 test-period reference (own path's backtest).
@@ -444,8 +444,8 @@ def run_consolidation(
     committed_returns = np.asarray(state_doc["cumulative_returns"], dtype=float)
     record_dates = [pd.Timestamp(str(d), tz="UTC") for d in state_doc["cumulative_dates"]]
     record_check = record
-    record_check("committed_record_loaded", len(committed_returns) == 465,
-                 f"{len(committed_returns)} sessions", "465 sessions")
+    record_check("committed_record_loaded", len(committed_returns) == 468,
+                 f"{len(committed_returns)} sessions", "468 sessions")
 
     close = load_close_from_cache(list(SYMBOLS), raw_dir)
     default_path = build_path(close, lag_vol_estimate=False)

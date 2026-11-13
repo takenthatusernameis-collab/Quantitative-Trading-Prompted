@@ -1,106 +1,54 @@
-# NEXT_AGENT_TASK — 2026-11-13 gate check (post-advance test anchors repaired)
+# Next Agent Task: finish stale-anchor repair verification, then resume the 2026-11-13 gate
 
-## Status at handoff (2026-11-13 05:44 UTC, invocation 257 — final pre-gate confirmation)
+## Context
+Cycle 1252 (2026-11-13, run 43353707922 attempt 1 session 11 inv 1) ran the FULL 800-test
+suite for the first time. Prior gate cycles only ever ran ~104 tests and never saw this.
+Result at HEAD: **14 failed, 783 passed, 3 skipped in 55:45**.
 
-- **UTC 2026-11-13T05:44:06Z (00:44:06 EST).** Gate for 2026-11-13 **NOT released** (epoch 1794607200; `remaining_s ~58554`, ~16.3h). Cmds 2/4/7 **withheld** (scope boundary). This run's envelope reaps ~06:2x UTC — well before the gate; the extension is **not executable in this run**.
-- **Supervisor rec `43353707922-attempt-1-review-0005-44a65f003e39` disposition `accepted`** (advised against `--wait-until-gate` in this run; hand off with fresh pre-gate evidence; leave the gate-active run to execute the orchestrator). Disposition written to `.kilo-runtime/worker-disposition.json` (runtime, not committed).
-- **Fresh pre-gate verification (this session, HEAD `12409ca`, working tree clean):**
-  - **Cmd 1:** `2026-11-13 05:44:06 UTC / Fri Nov 13 00:44:06 EST 2026`; gate `remaining_s ~58554` (~16.3h).
-  - **Tooling:** `/tmp/kilo-venv/bin/python` Python 3.14.4; `/tmp/kilo-venv/bin/ruff` ruff 0.17.5 — both present and usable.
-  - **Cmd 3:** drift `stored == recomputed: True`; rolling 63d `-1.3137210439928235 (2026-11-12)`; tail ends `2026-11-12 -1.3137`.
-  - **Cmd 5:** 6-module pytest **68 passed in 42.28s**.
-  - **Cmd 6:** `git status --porcelain` → **0 lines** (clean; `data/` and `config/` clean). HEAD `12409ca`.
-  - **Cmd 8:** ruff **All checks passed!** on the 4 extension scripts.
-  - **Cmd 9:** two repaired modules **36 passed in 167.62s**.
-- **No source/data/config defect found; no justified code correction.** Only open item is the clock-gated 2026-11-13 extension (Cmds 2/4) + post-advance Cmd 7.
-- **Working tree:** clean (0 lines). `data/raw/` untouched. No commits made.
+Root cause: stale historical anchors not updated when the committed paper-trading record
+advanced (2026-11-09 -> 2026-11-12). The committed state now has **468** sessions
+(cache-overlap **466**), trailing 63d Sharpe **-1.4394 / -1.6214**, canonical Sharpe
+**1.4102**, PSR **0.9028** — but the tools/tests still pinned 450/465 sessions and older
+metric values. These are maintenance anchors, not gate/threshold/cost/universe logic.
 
-### Prior status (inv 255, 05:24 UTC) — retained for audit
+## What changed this session (uncommitted working tree)
+Repaired all 14 stale anchors (no gate/threshold/cost/universe/clock-gate/raw changes):
+- `research/tsmomentum_same_session_vol_correction.py`: `COMMITTED_TRAILING_SHARPE`
+  -1.1566354312981708 -> -1.4394168982987599; `committed_record_loaded` 465 -> 468.
+- `tests/test_tsmomentum_same_session_vol_correction.py`: `committed_sessions` 450 -> 466.
+- `research/tsmomentum_vol_estimate_consolidation.py`: `committed_record_loaded` 465 -> 468;
+  `CORRECTED_RECORD_EXPECTED` -> canonical 1.4102271780414941, trailing -1.6213634935218275,
+  PSR 0.4957133449958039, maxDD -0.07814098097117361.
+- `tests/test_tsmomentum_vol_estimate_consolidation.py`: `committed_sessions` 450 -> 466.
+- `tests/test_tsmomentum_sma175_promotion_gate_eval.py`: PSR anchor 0.8958075181188366 -> 0.9028798778337083.
+- `README.md`: restored the reversal-erratum measured figures (0.752318, 4.2843%, erratum filename).
+- Regenerated `same_session` + `vol_estimate` report/experiment artifacts.
 
-- **UTC 2026-11-13T05:40:15Z (00:40:15 EST).** Gate for 2026-11-13 **NOT released** (releases 22:00 UTC 2026-11-13, epoch 1794607200; `remaining_s ~58785`, ~16.3h). Cmds 2/4/7 **withheld** (scope boundary). This run's envelope expires well before the gate; the extension is **not executable in this run**.
-- **Supervisor rec `43353707922-attempt-1-review-0005-44a65f003e39` disposition `accepted`** (advised against `--wait-until-gate` in this run; hand off with fresh pre-gate evidence; leave the gate-active run to execute the orchestrator). Disposition written to `.kilo-runtime/worker-disposition.json` (runtime, not committed).
-- **Fresh verified evidence (this session, HEAD `e951f8c`, working tree clean):**
-  - **Cmd 1:** `2026-11-13 05:40:15 UTC / Fri Nov 13 00:40:15 EST 2026`; gate `remaining_s ~58785` (~16.3h).
-  - **Cmd 3:** drift `stored == recomputed: True`; rolling 63d `-1.3137210439928235 (2026-11-12)`; tail ends `2026-11-12 -1.3137`.
-  - **Cmd 6:** `git status --porcelain` → **0 lines** (clean; `data/` and `config/` clean).
-  - **Cmd 8:** ruff **All checks passed!** on the 4 extension scripts.
-  - **Cmd 5 / Cmd 9:** re-confirmed from this invocation's fresh 05:35 UTC run on the identical clean tree — 6-module pytest **68 passed**, two repaired modules **36 passed**; no source change since, so results stand.
-  - **Orchestrator suite:** `tests/test_post_gate_orchestrator.py` **13 passed**; `bash -n scripts/post_gate_orchestrator.sh` → `BASH_OK`; `GATE_EPOCH`/`HANDOFF` env-overridable, `--wait-until-gate`/`--max-wait-seconds` validated.
-  - **State (matches HEAD):** `last_run_date 2026-11-12`, `current_nav 133039.92504076837`, run_history **468**, `rolling_sharpe_63d None`.
-  - **Readiness check:** clock gate **NOT released**; `sessions extended: 0`; NAV unchanged; `candidate reason: next session 2026-11-13 has not closed yet`.
-- **No source/data/config defect found; no justified code correction.** Only open item is the clock-gated 2026-11-13 extension (Cmds 2/4) + post-advance Cmd 7.
-- **Working tree:** clean (0 lines). `data/raw/` untouched. No commits made.
+Verified so far: `same_session` module **27 passed** (0 failed); `reversal_001_erratum_001` **4 passed, 1 skipped**; both tools pass standalone (`RC=0`). The `vol_estimate`/`sma175` module run was still in progress at session end (no failure observed through 29 tests).
 
-### Prior status (inv 254, 05:18 UTC) — retained for audit
-
-- **UTC 2026-11-13T03:35:17Z (22:35:17 EST Thu Nov 12).** Gate for 2026-11-13 **NOT released** (releases 22:00 UTC 2026-11-13, epoch 1794607200; ~18.4h / 66283s remaining). Cmds 2/4/7 **withheld** (scope boundary).
-- **Supervisor rec `43318156063-attempt-1-review-0005-c5524d3256ac` disposition `superseded` (unchanged).** Required action already completed in prior corrective commits; HEAD `952af16`. NEXT_AGENT_TASK.md already states working tree state with no re-apply instruction.
-- **This session's durable change (evidence-backed, defects reproduced first):** `scripts/post_gate_orchestrator.sh` — (a) handoff-write failure is now fatal (`rc=1`) instead of silently exiting 0 after logging `cycle complete`; (b) the handoff records `Cmds run` / `Cmds skipped` instead of a static string that falsely claimed `2 extend` in read-only mode; (c) `--max-wait-seconds` validated as a positive integer (`rc=2` usage error, was `unbound variable` rc=1). `tests/test_post_gate_orchestrator.py` gains 3 regression tests → **13 passed in 1.79s** (was 10). Proof the tests bite: against `git show HEAD:` script → **3 failed, 10 passed**.
-- **Pre-gate verification this session (fresh):**
-  - **Cmd 1:** `2026-11-13 03:35:17 UTC / Thu Nov 12 22:35:17 EST 2026` (clock gate NOT released; 66283s remaining).
-  - **Cmd 3:** drift tail ends `2026-11-12  -1.3137` (`stored == recomputed True`); state SHA256 `2dace0e3e1accf00a749cde2baf6470b5e2abc61e542fe636854910361dec88a` matches `git show HEAD:`.
-  - **Cmd 5:** 6-module pytest **68 passed in 27.54s**.
-  - **Cmd 6:** `git status --porcelain` → 5 intended files (`README.md`, `NEXT_AGENT_TASK.md`, `scripts/post_gate_orchestrator.sh`, `tests/test_post_gate_orchestrator.py`, `CORRECTIVE_HANDOFF_CORRECTIVE_INV2_20261113T0335Z.md`); `data/` and `config/` clean.
-  - **Cmd 8:** ruff **All checks passed!** on the 4 extension scripts **and** the edited test file.
-  - **Cmd 9:** two repaired modules **36 passed in 114.75s**.
-  - `bash -n scripts/post_gate_orchestrator.sh` → `BASH_OK`.
-- **State (unchanged, verified):** 468 sessions, `last_run_date 2026-11-12`, `current_nav 133039.92504076837`, run_history 468, state SHA256 `2dace0e3e1accf00a749cde2baf6470b5e2abc61e542fe636854910361dec88a`, `risk_metrics.rolling_sharpe_63d: None`.
-- **Gate reachability (deterministic blocker, not a failure loop):** epoch 1794540917 vs gate 1794607200 → ~18.4h out. This run's envelope is a hard `timeout ~2800s` from ~03:23 UTC → reaped near ~04:10 UTC 2026-11-13, ~18h BEFORE the gate. The real extension is not executable in this run. The run active at 22:00 UTC 2026-11-13 must perform the gate check.
-- **Working tree:** uncommitted intended changes (orchestrator fix + 3 tests + status docs). `data/raw/` untouched. No commits made.
-
-## Objective
-
-At/after **22:00 UTC 2026-11-13** (gate epoch **1794607200**), run the real extension and persistence checks for the 2026-11-13 session. Extend by at most one session to 2026-11-13 only if a completed bar exists; otherwise record `sessions_extended==0` with the explicit reason and keep state unchanged. No alpha/promotion claims.
+## Objective (next task, bounded)
+1. Finish the repair verification: run the 4 repaired modules and confirm 0 failures.
+2. If green, run the FULL suite once (`pytest tests/ -q`, ~55 min) and confirm 0 failed; fix any residual.
+3. Then resume the primary gate task: at/after 22:00 UTC 2026-11-13 (epoch 1794607200) run the gate extension (`scripts/post_gate_orchestrator.sh`), extending by <=1 session only if a completed bar exists.
 
 ## Acceptance criteria
+- [ ] `tests/test_tsmomentum_same_session_vol_correction.py` all pass
+- [ ] `tests/test_tsmomentum_vol_estimate_consolidation.py` all pass
+- [ ] `tests/test_tsmomentum_sma175_promotion_gate_eval.py` all pass
+- [ ] `tests/test_reversal_001_erratum_001.py` all pass
+- [ ] Full `pytest tests/ -q` reports 0 failed
+- [ ] `data/raw/` untouched; no threshold/gate/cost/universe/clock-gate changes
 
-- Run verification commands in order; record gate / candidate / `sessions_extended` / `last_run_date` / NAV, and the explicit reason if `sessions_extended==0`.
-- If a completed 2026-11-13 session exists: `sessions_extended==1`, `last_run_date` advances to 2026-11-13, NAV changes, `state write count 1`.
-- If not: `sessions_extended==0`, NAV unchanged, 0 writes.
-- Second invocation idempotent (0 writes, NAV unchanged).
-- `drift_persistence_report` updated/consistent (`stored == recomputed True`).
-- `git status --porcelain data/ config/` shows only the expected state/report/artifact update.
-- 6-module pytest suite passes.
-- **New (post-advance):** the two repaired modules (`tests/test_tsmomentum_rolling63_weakness_diagnosis.py`, `tests/test_go_no_go_evaluation.py`) still pass, and the regenerated rolling63 report/experiment match the committed record (468 sessions, trailing `-1.3137210439928235`, 406 windows). If the state advances to 2026-11-13, update those record anchors again from the new committed state before re-running.
-- If state advanced: re-run `research/data_cost_inventory_001.py` and `research/data_cost_inventory_002.py` and confirm the regenerated reports match the new counters; re-run `tests/test_data_cost_inventory_001.py` and `tests/test_data_cost_inventory_002.py`.
-- Ruff clean on the 4 extension scripts (and no new findings on the two test modules).
-
-## Verification commands
-
-1. `date -u && TZ=America/New_York date`
-2. `/tmp/kilo-venv/bin/python research/extend_paper_trading_state.py 2>&1 | tail -25`
-3. `/tmp/kilo-venv/bin/python research/drift_persistence_report.py 2>&1 | tail -8`
-4. `/tmp/kilo-venv/bin/python research/extend_paper_trading_state.py 2>&1 | tail -8`
-5. `/tmp/kilo-venv/bin/python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py -q`
-6. `git status --porcelain data/ config/`
-7. (only if state advanced) `/tmp/kilo-venv/bin/python research/data_cost_inventory_001.py && /tmp/kilo-venv/bin/python research/data_cost_inventory_002.py && /tmp/kilo-venv/bin/python -m pytest tests/test_data_cost_inventory_001.py tests/test_data_cost_inventory_002.py -q`
-8. `/tmp/kilo-venv/bin/ruff check research/drift_persistence_report.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py research/verify_gate_time_forward_bar.py`
-9. `/tmp/kilo-venv/bin/python -m pytest tests/test_tsmomentum_rolling63_weakness_diagnosis.py tests/test_go_no_go_evaluation.py -q`
-
-Tooling: `/tmp/kilo-venv/bin/python` and `/tmp/kilo-venv/bin/ruff`. If missing:
-`python3 -m venv /tmp/kilo-venv && /tmp/kilo-venv/bin/pip install -q -r requirements.txt ruff`.
-
-**Preferred execution path** — the durable, restart-safe, gate-guarded orchestrator accepts per-gate overrides and an optional bounded wait (no file edit needed):
+## Validation commands
 ```
-GATE_EPOCH=1794607200 HANDOFF=CORRECTIVE_HANDOFF_POSTGATE_20261113.md \
-  bash scripts/post_gate_orchestrator.sh --wait-until-gate
+/tmp/kilo-venv/bin/python -m pytest tests/test_tsmomentum_same_session_vol_correction.py tests/test_tsmomentum_vol_estimate_consolidation.py tests/test_tsmomentum_sma175_promotion_gate_eval.py tests/test_reversal_001_erratum_001.py -q
+/tmp/kilo-venv/bin/python -m pytest tests/ -q
+git status --porcelain
 ```
-It runs cmds 1–8 in order (incl. cmd7) and writes the durable handoff into the repository. It exits 3 before the gate unless `--wait-until-gate` is given, in which case it blocks (60s heartbeat, bounded by the run's own cutoff) until the gate releases and then runs. The manual list above is the fallback / independent record.
 
 ## Scope boundaries
-
-- Do not change thresholds/gates/cost model/universe/clock-gate logic.
-- Do not commit unless explicitly asked.
-- Do not modify `data/raw/`.
-- Do NOT run `cmd2` (extend) before 22:00 UTC 2026-11-13.
-- Do NOT re-extend to 2026-11-12: that session is complete and committed.
-- Do not "fix" the pre-existing `RUF100`/`PLW1510` lint findings in the two test modules; they predate this task and are outside its scope.
-- Full cycle-by-cycle audit history lives in `README.md` and the `CORRECTIVE_HANDOFF_*.md` files; it is intentionally not repeated here.
-
-## Note for the next session
-
-The 2026-11-12 cycle is complete and committed. The only open item for 2026-11-13 is the gate check above. **If the run is active at 22:00 UTC 2026-11-13, run the orchestrator with `--wait-until-gate`; otherwise hand off immediately with a fresh pre-gate verification and let the gate-active run perform the check. Do not burn the session on repeated pre-gate verification: this run is clock-blocked (observed envelope reaped ~05:2x UTC), and the previous ~15 pre-gate sessions that did so left the cycle unfinished.**
-
-The orchestrator's self-evidencing contract is now enforced (cycle 1251): it exits 1 if it cannot write the handoff, it records `Cmds run` / `Cmds skipped` rather than a static claim, and `--max-wait-seconds` is validated. Trust the handoff's `Status:` line only together with the process exit code; a run that cannot write the handoff now reports `FATAL` instead of `cycle complete`.
-
-**This session re-executed the non-gated commands fresh at 2026-11-13T05:35 UTC and found no defect.** Durable handoff: fresh pre-gate evidence recorded above and in `.kilo-runtime/worker-disposition.json` (runtime, not committed). Supervisor rec `43353707922-attempt-1-review-0005-44a65f003e39` was accepted.
+- Do not change thresholds/gates/cost model/universe/clock-gate logic; do not touch `data/raw/`.
+- The repaired anchors are tied to the current 468-session committed record. They will drift
+  again on the next state/cache advance; re-derive values before re-pinning (do not guess).
+- Gate remains time-gated: this run's envelope (started ~07:18 UTC, hard timeout 9983s) ends
+  ~10:05 UTC, before the 22:00 UTC gate. Leave the gate extension to the gate-active run.

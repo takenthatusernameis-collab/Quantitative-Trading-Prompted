@@ -125,7 +125,7 @@ PSR_SEED = 20240101
 # constant was from a stale data vintage and matched
 # neither the current committed record (-1.1566354312981708) nor any earlier
 # overlap.  Updated to match the current state's trailing 63d Sharpe.
-COMMITTED_TRAILING_SHARPE = -1.1566354312981708
+COMMITTED_TRAILING_SHARPE = -1.4394168982987599
 
 # The published backtest baseline of the incumbent on the 2018-2026 test period
 # (research/run_cycle7.py::DOCUMENTED), the fixed PSR reference 1.4178.  The
@@ -648,7 +648,7 @@ def run_correction(
     record_dates = [pd.Timestamp(str(d), tz="UTC") for d in state_doc["cumulative_dates"]]
     record_check(
         "committed_record_loaded",
-        len(committed_returns) == 465,
+        len(committed_returns) == 468,
         f"{len(committed_returns)} sessions",
         "465 sessions",
     )
