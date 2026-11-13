@@ -1,18 +1,20 @@
 # NEXT_AGENT_TASK — 2026-11-13 gate check (post-advance test anchors repaired)
 
-## Status at handoff (2026-11-13 02:25 UTC, corrective invocation 2 — pre-gate re-verification)
+## Status at handoff (2026-11-13 02:27 UTC, run 43318156063 attempt 1 session 15 inv 1 — pre-gate verification + supervisor rec-0005 disposition)
 
-- **Recovery log inspected:** `/home/runner/work/_temp/kilo-session-14-recovery-1.log` (prior invocation ran pre-gate verification but produced no durable project changes).
-- **Pre-gate verification completed this corrective session (bounded, evidence-based):**
-  - **Cmd 1 (time):** `2026-11-13 02:21:44 UTC / Thu Nov 12 21:21:44 EST 2026` (clock gate for 2026-11-13 session NOT released; target 22:00 UTC 2026-11-13, epoch 1794607200).
-  - **Cmd 3 (drift):** tail ends `2026-11-12  -1.3137` (`stored == recomputed True`).
-  - **Cmd 5 (6-module pytest):** `tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py` → **68 passed in 28.07s**.
-  - **Cmd 6 (git status data/config):** **0 lines** (clean; state SHA256 `2dace0e3e1accf00a749cde2baf6470b5e2abc61e542fe636854910361dec88a` matches HEAD).
+- **UTC 2026-11-13T02:27:41Z (21:27:41 EST Thu Nov 12).** Gate for 2026-11-13 **NOT released** (releases 22:00 UTC 2026-11-13, epoch 1794607200; ~19.5h remaining). Cmds 2/4/7 **withheld** (scope boundary).
+- **Supervisor rec `43318156063-attempt-1-review-0005-c5524d3256ac` dispositioned `superseded`.** Its required action (rewrite NEXT_AGENT_TASK.md's "Working tree changes at handoff" to record the three files as committed at 8afe9a0 and drop the re-apply instruction) was already completed by corrective session 14 (committed at d461f87, then 3e0c439). HEAD is now 3e0c439, past 8afe9a0; NEXT_AGENT_TASK.md already states "Working tree: clean" with no re-apply instruction. Nothing further to do on that finding.
+- **Pre-gate verification completed this session (fresh):**
+  - **Cmd 1 (time):** `2026-11-13 02:27:41 UTC / Thu Nov 12 21:27:41 EST 2026` (clock gate for 2026-11-13 session NOT released; target 22:00 UTC 2026-11-13, epoch 1794607200).
+  - **Cmd 3 (drift):** tail ends `2026-11-12  -1.3137` (`stored == recomputed True`); state SHA256 `2dace0e3e1accf00a749cde2baf6470b5e2abc61e542fe636854910361dec88a` matches `git show HEAD:`.
+  - **Cmd 5 (6-module pytest):** `tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py` → **68 passed in 29.38s**.
+  - **Cmd 6 (git status):** **0 lines** (clean; `data/` and `config/` clean).
   - **Cmd 8 (ruff on 4 extension scripts):** **All checks passed!** (`research/drift_persistence_report.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py research/verify_gate_time_forward_bar.py`).
-  - **Cmd 9 (two repaired test modules):** `tests/test_tsmomentum_rolling63_weakness_diagnosis.py tests/test_go_no_go_evaluation.py` → **36 passed in 113.80s**.
-- **State (unchanged, verified):** 468 sessions, `last_run_date 2026-11-12`, `current_nav 133039.92504076837`, run_history 468, state SHA256 `2dace0e3e1accf00a749cde2baf6470b5e2abc61e542fe636854910361dec88a`.
-- **Gate reachability (deterministic time blocker, not a failure loop):** this run's controller cutoff is ~04:10 UTC 2026-11-13 — **before** the 22:00 UTC 2026-11-13 gate (epoch **1794607200**). The real extension is not executable in this run. The run active at 22:00 UTC must perform the gate check below.
-- **Working tree:** only this `NEXT_AGENT_TASK.md` status refresh is modified by this corrective session (durable handoff update); `data/` and `config/` remain clean. `CORRECTIVE_HANDOFF_POSTGATE_20261113.md` is present as an untracked artifact from prior work.
+  - **Cmd 9 (two repaired test modules):** `tests/test_tsmomentum_rolling63_weakness_diagnosis.py tests/test_go_no_go_evaluation.py` → **36 passed in 115.42s**.
+- **Orchestrator wait-mode readiness re-verified:** `bash -n scripts/post_gate_orchestrator.sh` OK; env-overridable `GATE_EPOCH` (line 33, default 1794520800) and `HANDOFF` (line 34, default `CORRECTIVE_HANDOFF_POSTGATE_20261112.md`) confirmed; the documented 2026-11-13 command is valid as written. No detached waiter process is running (only supervisor loop PID 2370 and this session's own wrapper PID 253281).
+- **State (unchanged, verified):** 468 sessions, `last_run_date 2026-11-12`, `current_nav 133039.92504076837`, run_history 468, state SHA256 `2dace0e3e1accf00a749cde2baf6470b5e2abc61e542fe636854910361dec88a`, `risk_metrics.rolling_sharpe_63d: None`.
+- **Gate reachability (deterministic blocker, not a failure loop):** this run's wrapper is `--idle-timeout-seconds 600` under a hard `timeout --signal=TERM --kill-after=10s 6240s` (104 min) envelope started ~02:26 UTC → session reaped near **~03:30 UTC 2026-11-13**, ~18.5h BEFORE the 22:00 UTC gate (epoch **1794607200**). The real extension is not executable in this run. The run active at 22:00 UTC must perform the gate check below.
+- **Working tree:** clean (0 lines from `git status --porcelain`); only this `NEXT_AGENT_TASK.md` status refresh is modified by this session (durable handoff update); `data/` and `config/` remain clean. `data/raw/` untouched.
 
 ## Objective
 
@@ -65,4 +67,4 @@ It runs cmds 1–8 in order (incl. cmd7) and writes the durable handoff into the
 
 ## Note for the next session
 
-The 2026-11-12 cycle is complete and committed. The only open item for 2026-11-13 is the gate check above. **If the run is active at 22:00 UTC 2026-11-13, run the orchestrator with `--wait-until-gate`; otherwise hand off immediately with a fresh pre-gate verification and let the gate-active run perform the check. Do not burn the session on repeated pre-gate verification: this run is clock-blocked (cutoff ~04:10 UTC), and the previous ~15 pre-gate sessions that did so left the cycle unfinished.**
+The 2026-11-12 cycle is complete and committed. The only open item for 2026-11-13 is the gate check above. **If the run is active at 22:00 UTC 2026-11-13, run the orchestrator with `--wait-until-gate`; otherwise hand off immediately with a fresh pre-gate verification and let the gate-active run perform the check. Do not burn the session on repeated pre-gate verification: this run is clock-blocked (observed envelope `timeout 6240s` from ~02:26 UTC → reaped near ~03:30 UTC 2026-11-13), and the previous ~15 pre-gate sessions that did so left the cycle unfinished.**
