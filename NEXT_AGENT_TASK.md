@@ -1,17 +1,18 @@
 # NEXT_AGENT_TASK — 2026-11-13 gate check (post-advance test anchors repaired)
 
-## Status at handoff (2026-11-13 01:43 UTC, session 12 invocation 1)
+## Status at handoff (2026-11-13 02:15 UTC, session 13 pre-gate verification)
 
 - **Pre-gate verification completed this session (bounded, evidence-based):**
-  - **Cmd 1 (time):** `2026-11-13 01:43:54 UTC / Thu Nov 12 20:43:54 EST 2026`
+  - **Cmd 1 (time):** `2026-11-13 02:15:55 UTC / Thu Nov 12 21:15:55 EST 2026`
   - **Cmd 3 (drift):** tail ends `2026-11-12  -1.3137` (stored == recomputed True)
-  - **Cmd 5 (6-module pytest):** `tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py` → **68 passed in 28.24s**
+  - **Cmd 5 (6-module pytest):** `tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py` → **68 passed in 27.70s**
   - **Cmd 6 (git status data/config):** **0 lines** (clean; state SHA256 `2dace0e3e1accf00a749cde2baf6470b5e2abc61e542fe636854910361dec88a` matches HEAD)
   - **Cmd 8 (ruff on 4 extension scripts):** **All checks passed!**
-  - **Cmd 9 (two repaired test modules):** `tests/test_tsmomentum_rolling63_weakness_diagnosis.py tests/test_go_no_go_evaluation.py` → **36 passed in 114.21s**
+  - **Cmd 9 (two repaired test modules):** `tests/test_tsmomentum_rolling63_weakness_diagnosis.py tests/test_go_no_go_evaluation.py` → **36 passed in 113.69s**
 - **State (unchanged, verified):** 468 sessions, `last_run_date 2026-11-12`, `current_nav 133039.92504076837`, run_history 468, state SHA256 `2dace0e3e1accf00a749cde2baf6470b5e2abc61e542fe636854910361dec88a`
 - **Gate reachability (deterministic time blocker, not a failure loop):** this run's controller cutoff is ~04:10 UTC 2026-11-13 — **before** the 22:00 UTC 2026-11-13 gate (epoch **1794607200**). The real extension is not executable in this run. The run active at 22:00 UTC must perform the gate check below.
 - **Working tree:** clean (no uncommitted changes from this session; previous session's test anchor repairs were not persisted per user instruction).
+- **Handoff artifact:** `CORRECTIVE_HANDOFF_POSTGATE_20261113.md` written with full pre-gate evidence.
 
 ## Objective
 
@@ -64,4 +65,4 @@ It runs cmds 1–8 in order (incl. cmd7) and writes the durable handoff into the
 
 ## Note for the next session
 
-The 2026-11-12 cycle is complete and committed. The only open item for 2026-11-13 is the gate check above. If the run is active at 22:00 UTC 2026-11-13, run the orchestrator with `--wait-until-gate`; otherwise hand off immediately with a fresh pre-gate verification and let the gate-active run perform the check. Do not burn the session on repeated pre-gate verification: this run is clock-blocked (cutoff ~04:10 UTC), and the previous ~15 pre-gate sessions that did so left the cycle unfinished.
+The 2026-11-12 cycle is complete and committed. The only open item for 2026-11-13 is the gate check above. **If the run is active at 22:00 UTC 2026-11-13, run the orchestrator with `--wait-until-gate`; otherwise hand off immediately with a fresh pre-gate verification and let the gate-active run perform the check. Do not burn the session on repeated pre-gate verification: this run is clock-blocked (cutoff ~04:10 UTC), and the previous ~15 pre-gate sessions that did so left the cycle unfinished.**
