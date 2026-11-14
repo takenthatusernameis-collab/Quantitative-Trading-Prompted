@@ -1,10 +1,11 @@
 # Next Agent Task: execute the 2026-11-16 gate extension in the FOREGROUND (the detached waiter cannot survive)
 
-## Context — verified baseline (2026-11-14T02:48Z, session 20 inv 1; run 43522470160 attempt 1)
-The 2026-11-13 gate extension is COMPLETE and committed; HEAD `6799001` (the last three commits were pure handoff-timestamp churn — see "Change made this session").
-- State: `last_run_date 2026-11-13`, `current_nav 132654.46201168097`, `run_history` 469, SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` — re-verified unchanged at 02:48Z.
-- `date -u +%s` = 1794624516 < gate 1794866400 (2026-11-16T22:00:00Z): **~67h (T-241884s) before the gate**. `data/raw` untouched. `/tmp/kilo-venv` present. No background waiter running.
-- Pre-gate cheap verification this session (02:48Z): `scripts/pre_gate_check.sh` → exit 0 (hash matches, `data/raw` clean). Did NOT re-run the full read-only cycle.
+## Context — verified baseline (2026-11-14T03:43Z, session 22 inv 1; run 43522470160 attempt 1)
+The 2026-11-13 gate extension is COMPLETE and committed; HEAD `eedcb11` (the last three commits were pure handoff-timestamp churn — see "Change made this session").
+- State: `last_run_date 2026-11-13`, `current_nav 132654.46201168097`, `run_history` 469, SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` — re-verified unchanged at 03:43Z.
+- `date -u +%s` = 1794627808 < gate 1794866400 (2026-11-16T22:00:00Z): **~66h (T-238592s) before the gate**. `data/raw` untouched. `/tmp/kilo-venv` present. No background waiter running.
+- Pre-gate cheap verification this session (03:43Z): `scripts/pre_gate_check.sh` → exit 0 (hash matches, `data/raw` clean). Did NOT re-run the full read-only cycle.
+- Validation: `pytest tests/test_pre_gate_check.py tests/test_post_gate_orchestrator.py` → 30 passed. `bash -n` on both orchestrator scripts → OK. All imports in `/tmp/kilo-venv` OK.
 
 ## Change made this session (only non-handoff change)
 The pre-gate cheap path was **prose-only and unenforced**, so three consecutive sessions
