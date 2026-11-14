@@ -1,5 +1,11 @@
 # Next Agent Task: execute the 2026-11-16 gate extension in the FOREGROUND
 
+## State verified this session (2026-11-14T18:57Z, run 43613004745 session 5 inv 1) — **PRE-GATE VERIFIED; GATE UNREACHABLE THIS RUN**
+- **Pre-gate cheap path exit 0 (STOP):** `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1794682620 (2026-11-14T18:57:00Z) < gate 1794866400 (2026-11-16T22:00:00Z); T-183780s remaining. state sha256 matches (c438cd71…); data/raw clean. STOP — do not re-run the cycle.` EXIT=0. No full read-only cycle re-run, no handoff rewrite, no commit.
+- **Focused regression suite:** `/tmp/kilo-venv/bin/python -m pytest -q tests/test_pre_gate_check.py tests/test_post_gate_orchestrator.py` → **41 passed in 3.67s**.
+- **State unchanged:** SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` == HEAD `1a5586f`; `last_run_date 2026-11-13`; NAV `132654.46201168097`; `run_history` 469. `git status --porcelain` → **0 lines** (working tree clean); `git status --porcelain -- data/raw` → **0 lines**. `/tmp/kilo-venv` present.
+- **Gate reachability (deterministic blocker, not a failure loop):** now epoch 1794682620 vs gate 1794866400 → ~2.13 days / T-183780s out. This run's controller envelope ends well before the gate; the run active at/after 2026-11-16T22:00:00Z must run Step 2.
+
 ## State verified this session (2026-11-14T17:33Z, run 43613004745 session 3 inv 1) — **PRE-GATE VERIFIED; GATE UNREACHABLE THIS RUN**
 - **Pre-gate cheap path exit 0 (STOP):** `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1794677585 (2026-11-14T17:33:05Z) < gate 1794866400 (2026-11-16T22:00:00Z); T-188815s remaining. state sha256 matches (c438cd71…); data/raw clean. STOP — do not re-run the cycle.` EXIT=0. No full read-only cycle re-run, no handoff rewrite, no commit.
 - **Focused regression suite:** `/tmp/kilo-venv/bin/python -m pytest -q tests/test_pre_gate_check.py tests/test_post_gate_orchestrator.py` → **41 passed in 3.35s**.
