@@ -1,8 +1,8 @@
 # Next Agent Task: execute the 2026-11-16 gate extension in the FOREGROUND
 
-## State verified this session (2026-11-14T15:43Z, session 8 inv 1; run 43580735630 attempt 1)
+## State verified this session (2026-11-14T15:43Z, session 9 inv 1; run 43580735630 attempt 1)
 - `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 bash scripts/pre_gate_check.sh` → **exit 0**
-  (now=1794670896 < gate 1794866400, T-195504s remaining; state SHA256 matches; `data/raw` clean).
+  (now=1794670971 < gate 1794866400, T-195429s remaining; state SHA256 matches; `data/raw` clean).
   **STOP — do not re-run the read-only cycle, do not launch a waiter, do not commit.**
 - Gate reachability: deterministic blocker, not a failure loop — gate releases 2026-11-16T22:00:00Z
   (~2.27 days / T-195504s out); this run's controller envelope ends well before the gate. The full
