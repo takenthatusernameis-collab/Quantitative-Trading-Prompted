@@ -52,7 +52,7 @@ Nothing is published unless the default path reproduces the incumbent's publishe
 | 48-fold walk-forward mean OOS Sharpe | 0.947307 | 0.947307 |
 | Same, from `research/run_cycle6.py::run_walkforward` | 0.947307 | 0.947307 |
 | Folds | 48 | 48 |
-| Committed record sessions | 450 | 466 (max abs diff = 5.421e-20) |
+| Committed sessions overlapping the price cache | 466 of 469 (max abs diff = 5.421e-20) |
 
 The published record is resolved by content and all 48 published folds are reproduced: test windows exactly, OOS Sharpe to the published precision, trade counts exactly.
 
@@ -118,13 +118,13 @@ The corrected path's own backtest reference is 1.335983, below the unchanged fix
 
 | Gate | Published record | Corrected record | Threshold |
 |---|---|---|---|
-| `track_record_length` | 468.000000 | 466.000000 | >= 126 |
-| `full_period_sharpe` | 1.597783 | 1.410227 | >= 0.9 |
-| `rolling_63d_sharpe` | -1.313721 | -1.621363 | >= 0.9 |
+| `track_record_length` | 469.000000 | 466.000000 | >= 126 |
+| `full_period_sharpe` | 1.579855 | 1.410227 | >= 0.9 |
+| `rolling_63d_sharpe` | -1.483269 | -1.621363 | >= 0.9 |
 | `max_drawdown` | -0.065625 | -0.078141 | >= -0.15 |
 | `rolling_63d_max_dd` | -0.065445 | -0.073811 | >= -0.15 |
 | `regime_flips` | 6.000000 | 6.000000 | >= 1 |
-| `psr` | 0.600130 | 0.495713 | >= 0.95 |
+| `psr` | 0.590923 | 0.495713 | >= 0.95 |
 | **decision** | **NO-GO** | **NO-GO** | failed gates: rolling_63d_sharpe, psr |
 
 The corrected gate table is computed by the production code `src.simulation.evaluation.evaluate_go_no_go` on the corrected return series with the committed configuration. It is **NO-GO** with the same failed gates as the published path; the correction is not the cause of the gate failure and it does not rescue anything.
@@ -140,7 +140,7 @@ No live record is started in this cycle, no state file is written, and the fetch
 
 ### 4.2 New state file path
 
-- Start a **new** state file (e.g. `data/processed/paper_trading_state_corrected_001.yaml`) with its own drift flags and gate table; do **not** append to or modify `data/processed/paper_trading_state.yaml` (the committed 450-session record).
+- Start a **new** state file (e.g. `data/processed/paper_trading_state_corrected_001.yaml`) with its own drift flags and gate table; do **not** append to or modify `data/processed/paper_trading_state.yaml` (the committed record).
 
 ### 4.3 Re-initialised drift flags and gate table
 
@@ -166,7 +166,9 @@ A record that mixes the same-session and the lagged paths measures neither; the 
 
 ## 6. Checks
 
-- [committed_record_loaded]: PASS (observed: 468 sessions, expected: 468 sessions)
+- [committed_record_loaded]: PASS (observed: 469 sessions (state paper_trading_state.yaml, last 2026-11-13), expected: >= 126 sessions and >= 126-session gate)
+- [committed_record_series_are_length_consistent]: PASS (observed: returns 469, dates 469, run_history 469, expected: all equal)
+- [excluded_sessions_are_only_the_post_cache_tail]: PASS (observed: 3 excluded session(s) after cache end 2026-11-10: ['2026-11-11', '2026-11-12', '2026-11-13'], expected: every excluded date strictly after the cache's last session)
 - [default_path_reproduces_every_committed_session]: PASS (observed: max |diff| = 5.421e-20, expected: <= 1e-12)
 - [published_walk_forward_mean_reproduced]: PASS (observed: 0.947307472025, expected: 0.947307472025)
 - [published_walk_forward_fold_count_reproduced]: PASS (observed: 48 folds, expected: 48 folds)

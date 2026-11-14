@@ -127,6 +127,12 @@ PSR_SEED = 20240101
 # overlap.  Updated to match the current state's trailing 63d Sharpe.
 COMMITTED_TRAILING_SHARPE = -1.4394168982987599
 
+# The committed paper-trading record is append-only, so its length grows by one per
+# completed session and a pinned equality goes stale with the clock.  The floor is
+# the promotion gate's own `track_record_length` minimum; the structural check is the
+# exact reproduction of every session whose bar is in the committed cache (below).
+COMMITTED_RECORD_MIN_SESSIONS = 126
+
 # The published backtest baseline of the incumbent on the 2018-2026 test period
 # (research/run_cycle7.py::DOCUMENTED), the fixed PSR reference 1.4178.  The
 # measurement is taken on the **Cycle 7 data vintage** (panel truncated at
@@ -646,11 +652,18 @@ def run_correction(
         state_doc = yaml.safe_load(fh) or {}
     committed_returns = np.asarray(state_doc["cumulative_returns"], dtype=float)
     record_dates = [pd.Timestamp(str(d), tz="UTC") for d in state_doc["cumulative_dates"]]
+    run_history = state_doc.get("run_history") or []
     record_check(
         "committed_record_loaded",
-        len(committed_returns) == 468,
-        f"{len(committed_returns)} sessions",
-        "465 sessions",
+        len(committed_returns) >= COMMITTED_RECORD_MIN_SESSIONS,
+        f"{len(committed_returns)} sessions (last {record_dates[-1].date() if record_dates else 'n/a'})",
+        f">= {COMMITTED_RECORD_MIN_SESSIONS} sessions",
+    )
+    record_check(
+        "committed_record_series_are_length_consistent",
+        len({len(committed_returns), len(record_dates), len(run_history)}) == 1,
+        f"returns {len(committed_returns)}, dates {len(record_dates)}, run_history {len(run_history)}",
+        "all equal",
     )
 
     close = load_close_from_cache(list(SYMBOLS), raw_dir)
@@ -658,6 +671,15 @@ def run_correction(
     corrected_path = build_path(close, lag_vol_estimate=True)
 
     available = set(default_path["net_ret"].index)
+    cache_last = default_path["net_ret"].index.max()
+    excluded = [d for d in record_dates if d not in available]
+    record_check(
+        "excluded_sessions_are_only_the_post_cache_tail",
+        all(d > cache_last for d in excluded),
+        f"{len(excluded)} excluded session(s) after cache end {cache_last.date()}: "
+        f"{[str(d.date()) for d in excluded] or 'none'}",
+        "every excluded date strictly after the cache's last session",
+    )
     _mask = [d in available for d in record_dates]
     record_dates = [d for d, m in zip(record_dates, _mask) if m]
     committed_returns = committed_returns[_mask]

@@ -97,13 +97,13 @@ PSR settings (the repository's own): `n_bootstrap=1000`, `block_size=22`, `seed=
 
 | Gate | Published record | Corrected record | Threshold |
 |---|---|---|---|
-| `track_record_length` | 468.000000 | 466.000000 | >= 126 |
-| `full_period_sharpe` | 1.597783 | 1.410227 | >= 0.9 |
-| `rolling_63d_sharpe` | -1.313721 | -1.621363 | >= 0.9 |
+| `track_record_length` | 469.000000 | 466.000000 | >= 126 |
+| `full_period_sharpe` | 1.579855 | 1.410227 | >= 0.9 |
+| `rolling_63d_sharpe` | -1.483269 | -1.621363 | >= 0.9 |
 | `max_drawdown` | -0.065625 | -0.078141 | >= -0.15 |
 | `rolling_63d_max_dd` | -0.065445 | -0.073811 | >= -0.15 |
 | `regime_flips` | 6.000000 | 6.000000 | >= 1 |
-| `psr` | 0.600130 | 0.495713 | >= 0.95 |
+| `psr` | 0.590923 | 0.495713 | >= 0.95 |
 | **decision** | **NO-GO** | **NO-GO** | failed gates: rolling_63d_sharpe, psr |
 
 The corrected record's gate table is computed by the production code (`src/simulation/evaluation.py::evaluate_go_no_go`) on the corrected return series with the committed configuration; only the return series and the dates are substituted, because the promotion gates consume only the returns, the dates, the run-history turnover and the run-history regime exposure.
@@ -262,7 +262,9 @@ The same-session estimate is a point-in-time error in the live path, so a new li
 
 ## 8. Checks
 
-- [committed_record_loaded]: PASS (observed: 468 sessions, expected: 465 sessions)
+- [committed_record_loaded]: PASS (observed: 469 sessions (last 2026-11-13), expected: >= 126 sessions)
+- [committed_record_series_are_length_consistent]: PASS (observed: returns 469, dates 469, run_history 469, expected: all equal)
+- [excluded_sessions_are_only_the_post_cache_tail]: PASS (observed: 3 excluded session(s) after cache end 2026-11-10: ['2026-11-11', '2026-11-12', '2026-11-13'], expected: every excluded date strictly after the cache's last session)
 - [default_path_reproduces_every_committed_session]: PASS (observed: max |diff| = 5.421e-20 over 466 sessions, expected: <= 1e-12)
 - [default_research_path_is_bit_identical_to_the_pre_change_implementation]: PASS (observed: net max |diff| = 0.000e+00, weights max |diff| = 0.000e+00, expected: 0.0 (bit-identical))
 - [default_simulation_path_is_bit_identical_to_the_pre_change_implementation]: PASS (observed: weights max |diff| = 0.000e+00, vol_scale max |diff| = 0.000e+00, expected: 0.0 (bit-identical))
@@ -505,9 +507,21 @@ git status --porcelain data/ config/
   "candidate": "tsmomentum_spytrend_001",
   "checks": [
     {
-      "expected": "465 sessions",
+      "expected": ">= 126 sessions",
       "name": "committed_record_loaded",
-      "observed": "468 sessions",
+      "observed": "469 sessions (last 2026-11-13)",
+      "pass": true
+    },
+    {
+      "expected": "all equal",
+      "name": "committed_record_series_are_length_consistent",
+      "observed": "returns 469, dates 469, run_history 469",
+      "pass": true
+    },
+    {
+      "expected": "every excluded date strictly after the cache's last session",
+      "name": "excluded_sessions_are_only_the_post_cache_tail",
+      "observed": "3 excluded session(s) after cache end 2026-11-10: ['2026-11-11', '2026-11-12', '2026-11-13']",
       "pass": true
     },
     {
@@ -733,15 +747,15 @@ git status --porcelain data/ config/
         "psr"
       ],
       "gates": {
-        "full_period_sharpe": 1.597782797754609,
+        "full_period_sharpe": 1.5798553171996923,
         "max_drawdown": -0.06562469374042079,
-        "psr": 0.6001297379951103,
+        "psr": 0.59092349443744,
         "regime_flips": 6.0,
-        "rolling_63d_max_dd": -0.06544463769225384,
-        "rolling_63d_sharpe": -1.3137210439928235,
-        "track_record_length": 468.0
+        "rolling_63d_max_dd": -0.06544463769225395,
+        "rolling_63d_sharpe": -1.4832687549946837,
+        "track_record_length": 469.0
       },
-      "psr_normal": 0.6001297379951103
+      "psr_normal": 0.59092349443744
     },
     "psr_settings": {
       "block_size": 22,

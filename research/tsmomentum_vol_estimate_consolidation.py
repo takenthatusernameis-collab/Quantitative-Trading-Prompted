@@ -141,6 +141,12 @@ GATE_ROLLING_SHARPE = 0.9
 GATE_PSR = 0.95
 ANNUAL = 252
 
+# The committed paper-trading record is append-only; its length is whatever the
+# last completed session left behind, not a constant this tool may pin.  This
+# floor is the promotion gate's own minimum (`track_record_length` >= 126), so the
+# load check fails closed only when the record is too short to be a record at all.
+COMMITTED_RECORD_MIN_SESSIONS = 126
+
 # The six pre-specified SMA windows of the published record (run_cycle6.SMA_WINDOWS).
 SMA_WINDOWS = [150, 175, 200, 226, 250, 277]
 
@@ -443,15 +449,40 @@ def run_consolidation(
         state_doc = yaml.safe_load(fh) or {}
     committed_returns = np.asarray(state_doc["cumulative_returns"], dtype=float)
     record_dates = [pd.Timestamp(str(d), tz="UTC") for d in state_doc["cumulative_dates"]]
+    total_committed_sessions = len(committed_returns)
     record_check = record
-    record_check("committed_record_loaded", len(committed_returns) == 468,
-                 f"{len(committed_returns)} sessions", "468 sessions")
+    # The committed paper-trading state is append-only, so its session count grows
+    # by one each completed session.  A hard-coded expectation therefore goes stale
+    # as soon as the record is extended and reports a false FAIL that measures the
+    # clock, not the code.  The check that matters is structural: the three parallel
+    # series (returns, dates, run history) must agree in length, and every session
+    # whose bar is present in the committed price cache must be reproduced exactly
+    # (checked below).  Sessions newer than the cache vintage are legitimately
+    # unreproducible and are excluded by the availability mask, not counted as
+    # failures.  The expected length is recorded, never enforced as a constant.
+    record_check("committed_record_loaded", len(committed_returns) >= COMMITTED_RECORD_MIN_SESSIONS,
+                 f"{len(committed_returns)} sessions (state {STATE_PATH.name}, last "
+                 f"{record_dates[-1].date() if record_dates else 'n/a'})",
+                 f">= {COMMITTED_RECORD_MIN_SESSIONS} sessions and >= 126-session gate")
+    run_history = state_doc.get("run_history") or []
+    record_check("committed_record_series_are_length_consistent",
+                 len({len(committed_returns), len(record_dates), len(run_history)}) == 1,
+                 f"returns {len(committed_returns)}, dates {len(record_dates)}, "
+                 f"run_history {len(run_history)}",
+                 "all equal")
 
     close = load_close_from_cache(list(SYMBOLS), raw_dir)
     default_path = build_path(close, lag_vol_estimate=False)
     corrected_path = build_path(close, lag_vol_estimate=True)
 
     available = set(default_path["net_ret"].index)
+    cache_last = default_path["net_ret"].index.max()
+    excluded = [d for d in record_dates if d not in available]
+    record_check("excluded_sessions_are_only_the_post_cache_tail",
+                 all(d > cache_last for d in excluded),
+                 f"{len(excluded)} excluded session(s) after cache end {cache_last.date()}: "
+                 f"{[str(d.date()) for d in excluded] or 'none'}",
+                 "every excluded date strictly after the cache's last session")
     _mask = [d in available for d in record_dates]
     record_dates = [d for d, m in zip(record_dates, _mask) if m]
     committed_returns = committed_returns[_mask]
@@ -718,6 +749,7 @@ def run_consolidation(
             "machinery_wf_mean": machinery_mean,
             "n_folds": default_folds["n_folds"],
             "committed_sessions": len(committed_returns),
+            "committed_total_sessions": int(total_committed_sessions),
             "record_max_abs_diff": record_diff,
         },
         "walk_forward": {
@@ -863,7 +895,8 @@ def render_report(payload: dict[str, Any]) -> str:
         )
     lines.append(f"| Folds | {PUBLISHED_WF_FOLDS} | {anchor['n_folds']} |")
     lines.append(
-        f"| Committed record sessions | 450 | {anchor['committed_sessions']} "
+        f"| Committed sessions overlapping the price cache | "
+        f"{anchor['committed_sessions']} of {anchor['committed_total_sessions']} "
         f"(max abs diff = {anchor['record_max_abs_diff']:.3e}) |"
     )
     lines.append("")
@@ -1054,7 +1087,7 @@ def render_report(payload: dict[str, Any]) -> str:
     lines.append("- Start a **new** state file (e.g. "
                  "`data/processed/paper_trading_state_corrected_001.yaml`) with its own drift "
                  "flags and gate table; do **not** append to or modify "
-                 "`data/processed/paper_trading_state.yaml` (the committed 450-session record).")
+                 "`data/processed/paper_trading_state.yaml` (the committed record).")
     lines.append("")
     lines.append("### 4.3 Re-initialised drift flags and gate table")
     lines.append("")
