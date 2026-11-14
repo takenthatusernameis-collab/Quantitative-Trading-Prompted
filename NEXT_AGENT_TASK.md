@@ -1,20 +1,14 @@
 # Next Agent Task: execute the 2026-11-16 gate extension in the FOREGROUND
 
-## State verified this session (2026-11-14T15:37Z, session 7 inv 361; run 43580735630 attempt 1)
+## State verified this session (2026-11-14T15:43Z, session 8 inv 1; run 43580735630 attempt 1)
 - `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 bash scripts/pre_gate_check.sh` → **exit 0**
-  (now=1794670042 < gate 1794866400, T-196358s remaining; state SHA256 matches; `data/raw` clean).
+  (now=1794670896 < gate 1794866400, T-195504s remaining; state SHA256 matches; `data/raw` clean).
   **STOP — do not re-run the read-only cycle, do not launch a waiter, do not commit.**
-- Focused pytest `tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py
-  tests/test_paper_trading_extend.py tests/test_verify_monday_extension_path.py` → **65 passed in 14.79s**
-- Broader pre-gate suite (6 cmd5/7 modules + the 2 gate test files) → **148 passed in 82.50s**
-- `ruff check scripts/` and `ruff check tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py` →
-  All checks passed. `ruff check research/drift_persistence_report.py research/extend_paper_trading_state.py
-  research/verify_monday_extension_path.py research/verify_gate_time_forward_bar.py` → All checks passed.
-- Read-only orchestrator cycle (cmd1,3,5,6,7,8,9) → **exit 0**, `Status: OK`, non-empty
-  `- **State:**` line (`c438...b6365 last_run=2026-11-13 nav=132654.46201168097 runs=469`), `Mode: read-only
-  verification`, `Gate state: NOT released`. `git status --porcelain -- data/raw` → 0 lines.
+- Gate reachability: deterministic blocker, not a failure loop — gate releases 2026-11-16T22:00:00Z
+  (~2.27 days / T-195504s out); this run's controller envelope ends well before the gate. The full
+  gate cycle (Step 2) cannot execute in this run; the run active at/after 2026-11-16T22:00:00Z must run it.
 - State unchanged: `last_run_date 2026-11-13`, NAV `132654.46201168097`, `run_history` 469,
-  SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365`.
+  SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365`. `git status --porcelain` → 0 lines.
 
 ## Change made this session (only non-handoff change)
 `scripts/post_gate_orchestrator.sh` cmd9 malformed-fingerprint guard (Cycle 1259) anchored `last_run`
