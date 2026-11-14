@@ -140,3 +140,16 @@ python3 -m venv /tmp/kilo-venv
 - `/tmp/kilo-venv` present
 - **Action taken**: STOP on pre-gate exit 0 (no full cycle re-run, no handoff churn, no commit).
   Supervisor rec `43547986902-attempt-1-review-0004-9649ce2ce584` dispositioned `verified`.
+## Session 9 verification summary (2026-11-14T06:40Z)
+- Pre-gate check: **exit 0** (gate not released, state SHA256 matches, `data/raw` clean)
+- Tests: **56 passed** (`test_pre_gate_check.py` + `test_post_gate_orchestrator.py` +
+  `test_paper_trading_extend.py` + `test_verify_monday_extension_path.py`), 14.04s
+- `git status --porcelain -- data/raw`: **empty**; `git status --porcelain`: **empty** (clean)
+- Current time: 1794638424 (2026-11-14T06:40:24Z) vs gate 1794866400 (2026-11-16T22:00:00Z) →
+  **T-227976s (~63.3h)**
+- State unchanged: `last_run_date 2026-11-13`, NAV `132654.46201168097`, run_history 469,
+  SHA256 `c438cd71...`
+- `/tmp/kilo-venv` present; all 5 orchestrator research scripts present; ruff on the 4
+  cmd8 targets → **All checks passed!** (exit 0)
+- **Action taken**: STOP on pre-gate exit 0 (no full cycle re-run, no handoff churn, no commit).
+  Supervisor rec `43547986902-attempt-1-review-0026-7a7eaf9b3b63` dispositioned `verified`.
