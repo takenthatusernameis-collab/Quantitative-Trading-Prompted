@@ -1,11 +1,11 @@
 # Next Agent Task: execute the 2026-11-16 gate extension in the FOREGROUND
 
-## State verified this session (2026-11-14T07:50Z, session 14 inv 1; run 43547986902 attempt 1)
+## State verified this session (2026-11-14T09:47Z, session 17 inv 1; run 43547986902 attempt 1)
 - `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71… bash scripts/pre_gate_check.sh` → **exit 0**
-  (now=1794642609 < gate 1794866400, T-223791s; state SHA256 matches; `data/raw` clean).
+  (now=1794649629 < gate 1794866400, T-216771s; state SHA256 matches; `data/raw` clean).
   **STOP — do not re-run the read-only cycle, do not launch a waiter, do not commit.**
 - Focused pytest `tests/test_pre_gate_check.py tests/test_post_gate_orchestrator.py
-  tests/test_paper_trading_extend.py tests/test_verify_monday_extension_path.py` → **59 passed in 14.68s**
+  tests/test_paper_trading_extend.py tests/test_verify_monday_extension_path.py` → **59 passed in 14.09s**
   (includes session-13 full-cycle/read-only orchestrator regression coverage, 24 orchestrator tests total).
 - `git status --porcelain` → 0 lines (clean). `-- data/raw` → 0 lines. `/tmp/kilo-venv` present.
 - State unchanged: `last_run_date 2026-11-13`, NAV `132654.46201168097`, `run_history` 469,
