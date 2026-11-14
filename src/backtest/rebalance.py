@@ -31,7 +31,7 @@ default so that every committed artifact stays reproducible.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
