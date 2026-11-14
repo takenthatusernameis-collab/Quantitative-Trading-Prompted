@@ -1,5 +1,12 @@
 # Next Agent Task: execute the 2026-11-16 gate extension in the FOREGROUND
 
+## State verified this session (2026-11-14T22:25Z, run 43613004745 session 10 inv 1) — **PRE-GATE VERIFIED; GATE UNREACHABLE THIS RUN**
+- **Pre-gate cheap path exit 0 (STOP):** `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1794695104 (2026-11-14T22:25:04Z) < gate 1794866400 (2026-11-16T22:00:00Z); T-171296s remaining. state sha256 matches (c438cd71…); data/raw clean. STOP` **EXIT=0**.
+- **Focused regression suite:** `/tmp/kilo-venv/bin/python -m pytest -q tests/test_pre_gate_check.py tests/test_post_gate_orchestrator.py` → **44 passed in 4.08s**.
+- **State unchanged:** SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` == HEAD `0eda986`; `last_run_date 2026-11-13`; NAV `132654.46201168097`; `run_history` 469. `git status --porcelain` → 0 lines (working tree clean); `git status --porcelain -- data/raw` → 0 lines. `/tmp/kilo-venv` present. No threshold/gate/cost/universe/clock-gate value changed; no production code touched; no commit.
+- **Gate reachability (deterministic blocker, not a failure loop):** now epoch 1794695104 vs gate 1794866400 → ~1.98 days / T-171296s out. This run's controller envelope ends well before the gate; the run active at/after 2026-11-16T22:00:00Z must run Step 2.
+- **Next distinct investigation (bounded, non-recursive):** none outstanding. Both documented residual failures (inv-473) are fixed and verified; the supervisor's only open item (rec-0003) is superseded by the Cycle-915 decision record. The sole remaining blocker to Step 2 is the clock, which no code change can resolve.
+
 ## State verified this session (2026-11-14T22:00Z, run 43613004745 session 8 inv 1) — **PRE-GATE VERIFIED; BOTH INV-473 RESIDUAL FIXES RE-CONFIRMED ON CLEAN TREE; SUPERVISOR REC-0003 SUPERSEDED**
 - **Pre-gate cheap path exit 0 (STOP):** `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1794693642 (2026-11-14T22:00:42Z) < gate 1794866400 (2026-11-16T22:00:00Z); T-172758s remaining. state sha256 matches (c438cd71…); data/raw clean. STOP` **EXIT=0**.
 - **Inv-473 residual fixes re-verified on the clean tree (HEAD 0eda986, working tree clean):** `/tmp/kilo-venv/bin/python -m pytest -q tests/test_shortlist_gross_edge_001.py tests/test_tsmomentum_same_session_vol_correction.py` → **33 passed in 398.18s** (no regression). Both fixes hold; no orphaned FAIL markers remain anywhere in `research/reports/` (`grep -rc "committed_artifacts_unchanged: FAIL\|overall: FAIL" research/reports/` → none).
@@ -38,87 +45,6 @@
 - **State unchanged:** SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` == HEAD; `last_run_date 2026-11-13`; NAV `132654.46201168097`; `run_history` 469. `data/raw` untouched. No threshold/gate/cost/universe/clock-gate value changed.
 - **Gate reachability (deterministic blocker, not a failure loop):** now epoch ~1794685000 vs gate 1794866400 → ~2.1 days / T-181000s out. This run's controller envelope ends well before the gate; the run active at/after 2026-11-16T22:00:00Z must run Step 2.
 
-## State verified this session (2026-11-14T19:00Z, run 43613004745 session 7 inv 1) — **PRE-GATE VERIFIED; GATE UNREACHABLE THIS RUN**
-- **Pre-gate cheap path exit 0 (STOP):** `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1794682852 (2026-11-14T19:00:52Z) < gate 1794866400 (2026-11-16T22:00:00Z); T-183548s remaining. state sha256 matches (c438cd71…); data/raw clean. STOP — do not re-run the cycle.` EXIT=0. No full read-only cycle re-run, no handoff rewrite beyond this context refresh, no commit — the durable pre-gate evidence already exists.
-- **Focused regression suite:** `/tmp/kilo-venv/bin/python -m pytest -q tests/test_pre_gate_check.py tests/test_post_gate_orchestrator.py` → **41 passed in 3.75s**.
-- **State unchanged:** SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` == HEAD `16f0971`; `last_run_date 2026-11-13`; NAV `132654.46201168097`; `run_history` 469. `git status --porcelain` → **0 lines** (working tree clean); `git status --porcelain -- data/raw` → **0 lines**. `/tmp/kilo-venv` present.
-- **Gate reachability (deterministic blocker, not a failure loop):** now epoch 1794682852 vs gate 1794866400 → ~2.13 days / T-183548s out. This run's controller envelope ends well before the gate; the run active at/after 2026-11-16T22:00:00Z must run Step 2.
-- **Supervisor:** rec `43613004745-attempt-1-review-0003-1de0742de395` (STATUS: ATTENTION; SMA-175 promotion-gate scope conflation) **accepted**; disposition refreshed in `.kilo-runtime/worker-disposition.json` (runtime, not committed). The advice correctly scopes `promotion_gates.yaml` to `tsmomentum_spytrend_001` only; this session's task is the paper-trading gate extension, outside SMA-175 promotion scope — no code change required.
-
-## State verified this session (2026-11-14T18:59Z, run 43613004745 session 6 inv 1) — **PRE-GATE VERIFIED; GATE UNREACHABLE THIS RUN**
-- **Pre-gate cheap path exit 0 (STOP):** `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1794682743 (2026-11-14T18:59:03Z) < gate 1794866400 (2026-11-16T22:00:00Z); T-183657s remaining. state sha256 matches (c438cd71…); data/raw clean. STOP — do not re-run the cycle.` EXIT=0. No full read-only cycle re-run, no handoff rewrite, no commit — the durable pre-gate evidence already exists.
-- **Focused regression suite:** `/tmp/kilo-venv/bin/python -m pytest -q tests/test_pre_gate_check.py tests/test_post_gate_orchestrator.py` → **41 passed in 3.50s**.
-- **State unchanged:** SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` == HEAD `16f0971`; `last_run_date 2026-11-13`; NAV `132654.46201168097`; `run_history` 469. `git status --porcelain` → **0 lines** (working tree clean); `git status --porcelain -- data/raw` → **0 lines**. `/tmp/kilo-venv` present.
-- **Gate reachability (deterministic blocker, not a failure loop):** now epoch 1794682743 vs gate 1794866400 → ~2.13 days / T-183657s out. This run's controller envelope ends well before the gate; the run active at/after 2026-11-16T22:00:00Z must run Step 2.
-- **Supervisor:** rec `43613004745-attempt-1-review-0003-1de0742de395` (STATUS: ATTENTION; SMA-175 promotion-gate scope conflation) **accepted**; disposition refreshed in `.kilo-runtime/worker-disposition.json` (runtime, not committed). The advice correctly scopes `promotion_gates.yaml` to `tsmomentum_spytrend_001` only; this session's task is the paper-trading gate extension, outside SMA-175 promotion scope — no code change required.
-
-## State verified this session (2026-11-14T18:57Z, run 43613004745 session 5 inv 1) — **PRE-GATE VERIFIED; GATE UNREACHABLE THIS RUN**
-- **Pre-gate cheap path exit 0 (STOP):** `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1794682620 (2026-11-14T18:57:00Z) < gate 1794866400 (2026-11-16T22:00:00Z); T-183780s remaining. state sha256 matches (c438cd71…); data/raw clean. STOP — do not re-run the cycle.` EXIT=0. No full read-only cycle re-run, no handoff rewrite, no commit.
-- **Focused regression suite:** `/tmp/kilo-venv/bin/python -m pytest -q tests/test_pre_gate_check.py tests/test_post_gate_orchestrator.py` → **41 passed in 3.67s**.
-- **State unchanged:** SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` == HEAD `1a5586f`; `last_run_date 2026-11-13`; NAV `132654.46201168097`; `run_history` 469. `git status --porcelain` → **0 lines** (working tree clean); `git status --porcelain -- data/raw` → **0 lines**. `/tmp/kilo-venv` present.
-- **Gate reachability (deterministic blocker, not a failure loop):** now epoch 1794682620 vs gate 1794866400 → ~2.13 days / T-183780s out. This run's controller envelope ends well before the gate; the run active at/after 2026-11-16T22:00:00Z must run Step 2.
-
-## State verified this session (2026-11-14T17:33Z, run 43613004745 session 3 inv 1) — **PRE-GATE VERIFIED; GATE UNREACHABLE THIS RUN**
-- **Pre-gate cheap path exit 0 (STOP):** `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1794677585 (2026-11-14T17:33:05Z) < gate 1794866400 (2026-11-16T22:00:00Z); T-188815s remaining. state sha256 matches (c438cd71…); data/raw clean. STOP — do not re-run the cycle.` EXIT=0. No full read-only cycle re-run, no handoff rewrite, no commit.
-- **Focused regression suite:** `/tmp/kilo-venv/bin/python -m pytest -q tests/test_pre_gate_check.py tests/test_post_gate_orchestrator.py` → **41 passed in 3.35s**.
-- **State unchanged:** SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` == HEAD `1a5586f`; `last_run_date 2026-11-13`; NAV `132654.46201168097`; `run_history` 469. `git status --porcelain` → **0 lines** (working tree clean); `git status --porcelain -- data/raw` → **0 lines**. `/tmp/kilo-venv` present.
-- **Supervisor:** rec `43613004745-attempt-1-review-0003-1de0742de395` (STATUS: ATTENTION; SMA-175 promotion-gate scope conflation) **accepted**; disposition written to `.kilo-runtime/worker-disposition.json` (runtime, not committed). The advice correctly scopes `promotion_gates.yaml` to `tsmomentum_spytrend_001` only; this session's task is the paper-trading gate extension, outside SMA-175 promotion scope — no code change required.
-- **Gate reachability (deterministic blocker, not a failure loop):** now epoch 1794677585 vs gate 1794866400 → ~2.19 days / T-188815s out. This run's controller envelope ends well before the gate; the run active at/after 2026-11-16T22:00:00Z must run Step 2.
-
-## State verified this session (2026-11-14T17:30Z, run 43613004745)
-- `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 bash scripts/pre_gate_check.sh` → **exit 0**
-  (now=1794677458 < gate 1794866400, T-188942s remaining; state SHA256 matches; `data/raw` clean).
-  **STOP — do not re-run the read-only cycle, do not launch a waiter, do not commit.**
-- Gate reachability: deterministic blocker, not a failure loop — gate releases 2026-11-16T22:00:00Z
-  (~2.19 days / T-188942s out); this run's controller envelope ends well before the gate. The full
-  gate cycle (Step 2) cannot execute in this run; the run active at/after 2026-11-16T22:00:00Z must run it.
-- State unchanged: `last_run_date 2026-11-13`, NAV `132654.46201168097`, `run_history` 469,
-  SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365`. `data/raw` clean.
-- Validation: `/tmp/kilo-venv/bin/python -m pytest -q tests/test_pre_gate_check.py tests/test_post_gate_orchestrator.py` → **41 passed in 3.49s**.
-- `git status --porcelain -- data/raw` → **empty**; `git status --porcelain` → **empty** (working tree clean).
-
-## Change made this session (corrective inv 1, only non-handoff change)
-`scripts/post_gate_orchestrator.sh` now fails closed on a malformed `GATE_EPOCH`
-(`^[0-9]+$` guard placed before any `date -u -d "@$GATE_EPOCH"` call or gate arithmetic).
-Previously a typo (`17948_66400`, `-1`, blank) silently evaluated as 0 in bash arithmetic
-(gate looks permanently open) and produced a bogus `GATE_HUMAN`/`GATE_DATE`-derived handoff
-filename. Two tests added in `tests/test_post_gate_orchestrator.py`:
-- `test_non_numeric_gate_epoch_is_usage_error` (`17948_66400` → rc=2, no handoff)
-- `test_negative_gate_epoch_is_usage_error` (`-1` → rc=2, no handoff)
-Mutation check: guard block deleted → 2 failed / 30 passed; restored → 41 passed (was 39).
-No threshold, gate value, cost model, universe, or clock-gate value touched; `data/raw` untouched.
-
-## Change made this session (only non-handoff change)
-`scripts/post_gate_orchestrator.sh` cmd9 malformed-fingerprint guard (Cycle 1259) anchored `last_run`
-to the free alternative `[^[:space:]]+`, which matches the literal token `None`. A state whose
-`last_run_date` key is absent prints `last_run=None` with a valid numeric nav, so it passed the guard
-and yielded `Status: OK` with no verifiable session date — the guard's own documented target
-("missing/None last_run") was unenforced. Fixed by anchoring `last_run` to `20[0-9]{2}-[0-9]{2}-[0-9]{2}`.
-Two tests added in `tests/test_post_gate_orchestrator.py`:
-- `test_last_run_none_fingerprint_marks_handoff_failed` (`last_run=None` stub → rc=1, Status FAILED)
-- `test_valid_session_date_fingerprint_still_passes` (real YYYY-MM-DD stub → rc=0, Status OK)
-Mutation check: replacing the `record_rc` line with `true` → 1 failed / 29 passed; restoring → 30 passed.
-Tightened regex verified to accept the real production state line and reject `last_run=None` / `nav=None`.
-No threshold, gate, cost model, universe, or clock-gate logic touched; `data/raw` untouched.
-
-## Failure history — do not repeat
-- Twelve pre-gate sessions produced **zero project progress**: each re-ran the read-only cycle and
-  committed only a fresh `Context — verified baseline` timestamp (e.g. `5be09e6`, `b5403fc`, `6799001`).
-- **Refuted theory (do not re-attempt):** "each subcommand is piped to `tail` so `$?` is tail's exit
-  0 and failures are masked." False — line 39 sets `set -uo pipefail`, and the proof run with a
-  failing PYTHON/RUFF stub produced 6 `STEP FAILED` lines and exit 1. The masking hypothesis is closed.
-- **Refuted theory (do not re-attempt):** hard-failing on empty `STATE_SHA` via `-z`. Over-reach: it
-  broke 11 legitimate tests that use silent-success stubs (a stub printing nothing is not a failure).
-- **Cycle 1260 hole (closed this session):** the Cycle-1259 malformed-fingerprint guard anchored
-  `last_run` to the free alternative `[^[:space:]]+`, which matches the literal token `None`. A state
-  whose `last_run_date` key is absent prints `last_run=None` with a valid numeric nav, passed the
-  guard, and yielded `Status: OK` with no verifiable session date — the guard's own documented target
-  ("missing/None last_run") was unenforced. Fixed by anchoring `last_run` to `20[0-9]{2}-[0-9]{2}-[0-9]{2}`.
-  Added `test_last_run_none_fingerprint_marks_handoff_failed` and
-  `test_valid_session_date_fingerprint_still_passes`. Mutation check: replacing `record_rc` with
-  `true` → 1 failed / 29 passed; restored → 30 passed. Tightened regex verified to accept the real
-  production state line and to reject `last_run=None` / `nav=None`.
-
 ## Step 1 — pre-gate cheap path (now < 2026-11-16T22:00:00Z)
 ```
 GATE_EPOCH=1794866400 STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 \
@@ -156,7 +82,7 @@ single state write.
 - `cat CORRECTIVE_HANDOFF_POSTGATE_20261116.md` (pre-gate: `Status: OK`, `Mode: pre-gate verification (extend withheld — gate not released)`, `Gate state: NOT released`, `Cmds skipped` includes `2 extend (gate not released)` and `4 idempotent re-extend (gate not released)`; post-gate: `Status: OK`, `Mode: full cycle (extend included)`, `Gate state: released`, `Cmds run` includes `2 extend` and `9 state fingerprint`)
 - `git status --porcelain -- data/raw` (expect empty)
 - `git status --porcelain` (only intended state/handoff changes)
-- `/tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py` (>=41 passed; corrective inv 182 added 3 tests and updated 1)
+- `/tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py` (>=44 passed; corrective inv 182 added 3 tests and updated 1)
 
 ## Scope boundaries
 - Do not run a mutating extend before the target session gate.
