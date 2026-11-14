@@ -247,6 +247,14 @@ s = yaml.safe_load(p.read_text()) or {}
 print(f"{h} last_run={s.get('last_run_date')} nav={s.get('current_nav')} runs={len(s.get('run_history') or [])}")
 PY
 )"
+# The State line is the evidence anchor for the whole cycle (hash + last_run +
+# nav + run count): without it the handoff cannot prove which state the cycle
+# ran against. A silent failure here (python error, missing yaml, missing
+# dependency) produced an empty "- **State:** " while the script still reported
+# "Status: OK" and exited 0 -- a false-assurance record that reads as a passing
+# cycle. Fail the cycle instead (Cycle 1258).
+record_rc $? "9 state fingerprint (State line)"
+mark_run "9 state fingerprint"
 if (( FAILED )); then
   STATUS="FAILED — one or more verification steps failed (see STEP FAILED lines above)"
 else

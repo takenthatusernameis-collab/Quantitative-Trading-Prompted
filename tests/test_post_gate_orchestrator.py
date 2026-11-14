@@ -396,3 +396,43 @@ def test_matching_gate_date_handoff_proceeds(tmp_path: Path) -> None:
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert handoff.exists()
     assert "gate 2026-11-13T22:00:00Z" in handoff.read_text()
+
+
+def test_state_fingerprint_failure_marks_handoff_failed(tmp_path: Path) -> None:
+    # Evidence-integrity defect (Cycle 1258): the State line is the only anchor
+    # proving which paper-trading state the cycle ran against (hash + last_run +
+    # nav + run count). It was produced by an unguarded `$(...)` subshell, so a
+    # failing interpreter (python error, missing yaml, missing dependency) left
+    # "- **State:** " empty while the cycle still reported "Status: OK" and
+    # exited 0 -- an OK-looking handoff with no verifiable state evidence.
+    # Reproduce with a stub that prints nothing and exits non-zero: every other
+    # step is a no-op pass, so ONLY the fingerprint can fail.
+    handoff = tmp_path / "handoff.md"
+    py = tmp_path / "py_state_fail.sh"
+    py.write_text("#!/usr/bin/env bash\nexit 1\n")
+    py.chmod(0o755)
+    proc = _run(["--read-only"], PAST_GATE, handoff, env_extra={"PYTHON": str(py)})
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "STEP FAILED" in proc.stdout, proc.stdout
+    assert "state fingerprint" in proc.stdout, proc.stdout
+    text = handoff.read_text()
+    assert "**Status:** FAILED" in text, text
+    assert "9 state fingerprint" in text, text
+
+
+def test_populated_state_fingerprint_is_recorded(tmp_path: Path) -> None:
+    # Positive complement: a working interpreter that prints a fingerprint must
+    # still yield Status OK and a non-empty State line, so the new check cannot
+    # be satisfied by a handoff that merely omits the evidence.
+    handoff = tmp_path / "handoff.md"
+    py = tmp_path / "py_state_ok.sh"
+    py.write_text('#!/usr/bin/env bash\nprintf "%s last_run=2026-11-13 nav=1.0 runs=3\\n" "$(printf \'a%.0s\' {1..64})"\nexit 0\n')
+    py.chmod(0o755)
+    proc = _run(["--read-only"], PAST_GATE, handoff, env_extra={"PYTHON": str(py)})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    text = handoff.read_text()
+    assert "**Status:** OK" in text, text
+    state_line = text.split("- **State:**")[1].split("\n")[0]
+    assert "last_run=2026-11-13" in state_line, text
+    assert "runs=3" in state_line, text
+    assert "9 state fingerprint" in text, text
