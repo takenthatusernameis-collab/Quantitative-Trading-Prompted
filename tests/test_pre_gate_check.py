@@ -173,6 +173,45 @@ def test_dirty_raw_exits_3(tmp_path: Path) -> None:
     assert "data/raw" in proc.stderr, proc.stderr
 
 
+def test_git_status_failure_is_not_reported_clean(tmp_path: Path) -> None:
+    """A failing `git status` must fail closed, not report data/raw as clean.
+
+    Reproduces the defect: outside a git repository `git status --porcelain`
+    exits 128 with empty stdout. Treating that empty stdout as "clean" is a
+    false assurance that defeats the check; the script must exit 3.
+    """
+    scripts_dir = tmp_path / "scripts"
+    scripts_dir.mkdir(parents=True, exist_ok=True)
+    (scripts_dir / "pre_gate_check.sh").write_text(SCRIPT.read_text())
+    # No `git init`: `git status` will fail with rc 128.
+    sha = _sha256(_make_state(tmp_path))
+    proc = _run_no_git(tmp_path, FUTURE_GATE, sha)
+    assert proc.returncode == 3, proc.stdout + proc.stderr
+    assert "git status" in proc.stderr, proc.stderr
+    assert "do NOT take the cheap path" in proc.stderr, proc.stderr
+
+
+def _run_no_git(
+    tmp_path: Path,
+    gate_epoch: str,
+    state_sha: str,
+) -> subprocess.CompletedProcess[str]:
+    """Run the script in tmp_path WITHOUT initialising a git repo."""
+    scripts_dir = tmp_path / "scripts"
+    script = scripts_dir / "pre_gate_check.sh"
+    env = dict(os.environ)
+    env.update({"GATE_EPOCH": gate_epoch, "STATE_SHA256": state_sha})
+    return subprocess.run(
+        ["bash", str(script)],
+        cwd=tmp_path,
+        check=False,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+
+
 def _snapshot(root: Path) -> dict[str, str]:
     """Map every file under root (excluding .git) to its sha256."""
     snap: dict[str, str] = {}

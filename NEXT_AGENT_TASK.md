@@ -1,5 +1,26 @@
 # Next Agent Task: execute the 2026-11-16 gate extension in the FOREGROUND (the detached waiter cannot survive)
 
+## Context — verified baseline (2026-11-14T07:46Z, session 12 inv 1; run 43547986902 attempt 1)
+Pre-gate: `scripts/pre_gate_check.sh` → **exit 0** (now=1794642349 < gate 1794866400, T-224051s;
+state SHA256 `c438cd71…` matches; `data/raw` clean). STOP — no cycle re-run, no handoff churn, no commit.
+Focused pytest `tests/test_pre_gate_check.py tests/test_post_gate_orchestrator.py
+tests/test_paper_trading_extend.py tests/test_verify_monday_extension_path.py` → **57 passed in
+14.13s** (was 56; +1 new). `git status --porcelain` → only ` M scripts/pre_gate_check.sh`,
+` M tests/test_pre_gate_check.py` (intended fix, uncommitted); `-- data/raw` → 0 lines. `/tmp/kilo-venv` present.
+Supervisor rec `43547986902-attempt-1-review-0026-7a7eaf9b3b63` (review cycle 26, `STATUS: CONTINUE`)
+dispositioned `verified` in `.kilo-runtime/worker-disposition.json` (runtime, not committed).
+
+**Defect fixed this session (materially different from prior no-op cycles):** `pre_gate_check.sh` step 3
+captured `git status --porcelain -- data/raw` but ignored git's exit code. Outside a git repo (or when
+git is otherwise unavailable) `git status` exits **128** with **empty stdout**, which the script treated
+as "data/raw clean" and returned **exit 0** — a false assurance that silently defeats the whole point of
+the cheap-path check. Reproduced in a throwaway non-git tmp tree (rc 128 → exit 0 "data/raw clean").
+Fix: fail closed on any nonzero `git status` rc → exit 3 with an explicit message. Regression test
+`test_git_status_failure_is_not_reported_clean` (no `git init`, dirty `data/raw`) asserts exit 3 and the
+"do NOT take the cheap path" message. `bash -n` OK; `ruff` on the edited test → `All checks passed!`;
+live `pre_gate_check.sh` still exits 0 in the real repo. No gate/threshold/cost/universe/clock-gate or
+state/data/config change.
+
 ## Context — verified baseline (2026-11-14T06:34Z, session 8 inv 1; run 43547986902 attempt 1)
 Pre-gate: `scripts/pre_gate_check.sh` → **exit 0** (now=1794638063 < gate 1794866400, T-228337s;
 state SHA256 `c438cd71…` matches; `data/raw` clean). STOP — no cycle re-run, no handoff churn, no commit.

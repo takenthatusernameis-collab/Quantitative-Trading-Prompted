@@ -76,8 +76,19 @@ if [[ "$actual_sha" != "$STATE_SHA256" ]]; then
   exit 3
 fi
 
-# 3. data/raw must be untouched.
-raw_dirty="$(git status --porcelain -- data/raw)"
+# 3. data/raw must be untouched. Capture git's own exit code: a `git status`
+#    invocation that fails (exit 128, e.g. run outside a git repo) produces
+#    empty stdout, which would otherwise be indistinguishable from a genuinely
+#    clean tree and reported as "data/raw clean" -- a false assurance that
+#    defeats the purpose of this check. Fail closed instead (Cycle 1257).
+raw_dirty="$(git status --porcelain -- data/raw 2>/dev/null)"
+git_rc=$?
+if (( git_rc != 0 )); then
+  echo "CHECK FAILED: 'git status --porcelain -- data/raw' failed (rc=$git_rc);" >&2
+  echo "  cannot verify data/raw is clean (not a git repo, or git is unavailable);" >&2
+  echo "  do NOT take the cheap path; inspect the working tree." >&2
+  exit 3
+fi
 if [[ -n "$raw_dirty" ]]; then
   echo "CHECK FAILED: data/raw has uncommitted changes:" >&2
   printf '%s\n' "$raw_dirty" >&2
