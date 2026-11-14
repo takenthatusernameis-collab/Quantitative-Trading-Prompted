@@ -1,29 +1,32 @@
 # Next Agent Task: execute the 2026-11-16 gate extension in the FOREGROUND
 
-## State verified this session (2026-11-14T11:46Z, session 3 inv 1; run 43580735630 attempt 1)
+## State verified this session (2026-11-14T15:37Z, session 7 inv 361; run 43580735630 attempt 1)
 - `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 bash scripts/pre_gate_check.sh` → **exit 0**
-  (now=1794656775 < gate 1794866400, T-209625s remaining; state SHA256 matches; `data/raw` clean).
+  (now=1794670042 < gate 1794866400, T-196358s remaining; state SHA256 matches; `data/raw` clean).
   **STOP — do not re-run the read-only cycle, do not launch a waiter, do not commit.**
 - Focused pytest `tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py
-  tests/test_paper_trading_extend.py tests/test_verify_monday_extension_path.py` → **61 passed in 16.66s**
-- Broader pre-gate suite (6 cmd5/7 modules + the 2 gate test files) → **103 passed in 33.05s**
-- `ruff check scripts/` → All checks passed. `ruff check tests/test_post_gate_orchestrator.py
-  tests/test_pre_gate_check.py` → All checks passed.
-- `git status --porcelain` → only `scripts/post_gate_orchestrator.sh`, `tests/test_post_gate_orchestrator.py`.
-  `-- data/raw` → 0 lines. `/tmp/kilo-venv` present.
+  tests/test_paper_trading_extend.py tests/test_verify_monday_extension_path.py` → **65 passed in 14.79s**
+- Broader pre-gate suite (6 cmd5/7 modules + the 2 gate test files) → **148 passed in 82.50s**
+- `ruff check scripts/` and `ruff check tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py` →
+  All checks passed. `ruff check research/drift_persistence_report.py research/extend_paper_trading_state.py
+  research/verify_monday_extension_path.py research/verify_gate_time_forward_bar.py` → All checks passed.
+- Read-only orchestrator cycle (cmd1,3,5,6,7,8,9) → **exit 0**, `Status: OK`, non-empty
+  `- **State:**` line (`c438...b6365 last_run=2026-11-13 nav=132654.46201168097 runs=469`), `Mode: read-only
+  verification`, `Gate state: NOT released`. `git status --porcelain -- data/raw` → 0 lines.
 - State unchanged: `last_run_date 2026-11-13`, NAV `132654.46201168097`, `run_history` 469,
   SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365`.
 
 ## Change made this session (only non-handoff change)
-`scripts/post_gate_orchestrator.sh` cmd9 (the `STATE_SHA` state-fingerprint subshell) had **no
-`record_rc`**. Proven defect: with a PYTHON that errors, the script still wrote `- **State:** `
-(empty) and reported `Status: OK` / exit 0 — a handoff that looks like a passing cycle but carries
-no verifiable state evidence. Fixed by routing the subshell's exit status through the existing
-`record_rc` and adding `mark_run "9 state fingerprint"` so the durable `Cmds run` list is faithful.
+`scripts/post_gate_orchestrator.sh` cmd9 malformed-fingerprint guard (Cycle 1259) anchored `last_run`
+to the free alternative `[^[:space:]]+`, which matches the literal token `None`. A state whose
+`last_run_date` key is absent prints `last_run=None` with a valid numeric nav, so it passed the guard
+and yielded `Status: OK` with no verifiable session date — the guard's own documented target
+("missing/None last_run") was unenforced. Fixed by anchoring `last_run` to `20[0-9]{2}-[0-9]{2}-[0-9]{2}`.
 Two tests added in `tests/test_post_gate_orchestrator.py`:
-- `test_state_fingerprint_failure_marks_handoff_failed` (failing stub → rc=1, Status FAILED, cmd9 named)
-- `test_populated_state_fingerprint_is_recorded` (working stub → rc=0, Status OK, populated State line)
-Mutation check: replacing the `record_rc` line with `true` → 1 failed / 25 passed; restoring → 26 passed.
+- `test_last_run_none_fingerprint_marks_handoff_failed` (`last_run=None` stub → rc=1, Status FAILED)
+- `test_valid_session_date_fingerprint_still_passes` (real YYYY-MM-DD stub → rc=0, Status OK)
+Mutation check: replacing the `record_rc` line with `true` → 1 failed / 29 passed; restoring → 30 passed.
+Tightened regex verified to accept the real production state line and reject `last_run=None` / `nav=None`.
 No threshold, gate, cost model, universe, or clock-gate logic touched; `data/raw` untouched.
 
 ## Failure history — do not repeat
@@ -34,6 +37,15 @@ No threshold, gate, cost model, universe, or clock-gate logic touched; `data/raw
   failing PYTHON/RUFF stub produced 6 `STEP FAILED` lines and exit 1. The masking hypothesis is closed.
 - **Refuted theory (do not re-attempt):** hard-failing on empty `STATE_SHA` via `-z`. Over-reach: it
   broke 11 legitimate tests that use silent-success stubs (a stub printing nothing is not a failure).
+- **Cycle 1260 hole (closed this session):** the Cycle-1259 malformed-fingerprint guard anchored
+  `last_run` to the free alternative `[^[:space:]]+`, which matches the literal token `None`. A state
+  whose `last_run_date` key is absent prints `last_run=None` with a valid numeric nav, passed the
+  guard, and yielded `Status: OK` with no verifiable session date — the guard's own documented target
+  ("missing/None last_run") was unenforced. Fixed by anchoring `last_run` to `20[0-9]{2}-[0-9]{2}-[0-9]{2}`.
+  Added `test_last_run_none_fingerprint_marks_handoff_failed` and
+  `test_valid_session_date_fingerprint_still_passes`. Mutation check: replacing `record_rc` with
+  `true` → 1 failed / 29 passed; restored → 30 passed. Tightened regex verified to accept the real
+  production state line and to reject `last_run=None` / `nav=None`.
 
 ## Step 1 — pre-gate cheap path (now < 2026-11-16T22:00:00Z)
 ```
@@ -72,7 +84,7 @@ single state write.
 - `cat CORRECTIVE_HANDOFF_POSTGATE_20261116.md` (post-gate: `Status: OK`, `Mode: full cycle (extend included)`, `Gate state: released`, `Cmds run` includes `2 extend` and `9 state fingerprint`)
 - `git status --porcelain -- data/raw` (expect empty)
 - `git status --porcelain` (only intended state/handoff changes)
-- `/tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py` (26 passed)
+- `/tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py` (30 passed)
 
 ## Scope boundaries
 - Do not run a mutating extend before the target session gate.

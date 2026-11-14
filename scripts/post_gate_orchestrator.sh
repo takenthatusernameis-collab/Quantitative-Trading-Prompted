@@ -266,8 +266,12 @@ mark_run "9 state fingerprint"
 # exit-code check so the 11 silent-success stubs (PYTHON=true, no output, exit
 # 0) keep passing -- they are legitimately "no state to fingerprint" in tests,
 # not a malformed production record.
+# last_run is anchored to the YYYY-MM-DD session date, not a free string: the
+# free `[^[:space:]]+` alternative accepted the literal token "None" (a state
+# whose last_run_date key is absent prints last_run=None), which is exactly the
+# semantically-empty fingerprint this guard exists to reject (Cycle 1260).
 if [[ -n "$STATE_SHA" ]] \
-   && ! [[ "$STATE_SHA" =~ ^[0-9a-fA-F]{64}\ last_run=[^[:space:]]+\ nav=[0-9]+\.?[0-9]*\ runs=[0-9]+$ ]]; then
+   && ! [[ "$STATE_SHA" =~ ^[0-9a-fA-F]{64}\ last_run=20[0-9]{2}-[0-9]{2}-[0-9]{2}\ nav=[0-9]+\.?[0-9]*\ runs=[0-9]+$ ]]; then
   log "STEP FAILED (rc=1): 9 state fingerprint malformed (got: '$STATE_SHA')"
   FAILED=1
 fi

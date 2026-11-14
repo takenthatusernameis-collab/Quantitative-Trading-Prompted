@@ -478,3 +478,41 @@ def test_silent_success_fingerprint_still_passes(tmp_path: Path) -> None:
     assert "**Status:** OK" in text, text
     assert "STEP FAILED" not in proc.stdout, proc.stdout
     assert "9 state fingerprint" in text, text
+
+
+def test_last_run_none_fingerprint_marks_handoff_failed(tmp_path: Path) -> None:
+    # Cycle 1260: the malformed-fingerprint guard's last_run alternative was a
+    # free `[^[:space:]]+`, which matches the literal token "None" -- so a state
+    # whose last_run_date key is absent (prints last_run=None) with a valid
+    # numeric nav passed the guard and yielded "Status: OK" with no verifiable
+    # session date. The documented target of the guard ("missing/None last_run")
+    # was therefore not enforced. last_run is now anchored to YYYY-MM-DD.
+    handoff = tmp_path / "handoff.md"
+    py = tmp_path / "py_state_lastrun_none.sh"
+    py.write_text(
+        '#!/usr/bin/env bash\n'
+        'printf "%s last_run=None nav=1.0 runs=3\\n" "$(printf \'a%.0s\' {1..64})"\n'
+        'exit 0\n'
+    )
+    py.chmod(0o755)
+    proc = _run(["--read-only"], PAST_GATE, handoff, env_extra={"PYTHON": str(py)})
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "STEP FAILED" in proc.stdout, proc.stdout
+    assert "malformed" in proc.stdout, proc.stdout
+    text = handoff.read_text()
+    assert "**Status:** FAILED" in text, text
+    assert "9 state fingerprint" in text, text
+
+
+def test_valid_session_date_fingerprint_still_passes(tmp_path: Path) -> None:
+    # Positive complement for the tightened last_run anchor: a real YYYY-MM-DD
+    # session date (the production form) must still yield Status OK, so the
+    # stricter pattern is not a net regression on legitimate fingerprints.
+    handoff = tmp_path / "handoff.md"
+    py = tmp_path / "py_state_ok.sh"
+    py.write_text('#!/usr/bin/env bash\nprintf "%s last_run=2026-11-13 nav=1.0 runs=3\\n" "$(printf \'a%.0s\' {1..64})"\nexit 0\n')
+    py.chmod(0o755)
+    proc = _run(["--read-only"], PAST_GATE, handoff, env_extra={"PYTHON": str(py)})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    text = handoff.read_text()
+    assert "**Status:** OK" in text, text
