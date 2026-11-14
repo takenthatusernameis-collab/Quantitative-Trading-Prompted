@@ -1,8 +1,8 @@
 # Next Agent Task: execute the 2026-11-16 gate extension in the FOREGROUND
 
-## State verified this session (2026-11-14T11:44Z, session 21 inv 1; run 43580735630 attempt 1)
-- `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71… bash scripts/pre_gate_check.sh` → **exit 0**
-  (now=1794656277 < gate 1794866400, T-210123s remaining; state SHA256 matches; `data/raw` clean).
+## State verified this session (2026-11-14T11:46Z, session 3 inv 1; run 43580735630 attempt 1)
+- `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 bash scripts/pre_gate_check.sh` → **exit 0**
+  (now=1794656775 < gate 1794866400, T-209625s remaining; state SHA256 matches; `data/raw` clean).
   **STOP — do not re-run the read-only cycle, do not launch a waiter, do not commit.**
 - Focused pytest `tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py
   tests/test_paper_trading_extend.py tests/test_verify_monday_extension_path.py` → **61 passed in 16.66s**
