@@ -1,5 +1,15 @@
 # Next Agent Task: execute the 2026-11-16 gate extension in the FOREGROUND (the detached waiter cannot survive)
 
+## Context — verified baseline (2026-11-14T06:34Z, session 8 inv 1; run 43547986902 attempt 1)
+Pre-gate: `scripts/pre_gate_check.sh` → **exit 0** (now=1794638063 < gate 1794866400, T-228337s;
+state SHA256 `c438cd71…` matches; `data/raw` clean). STOP — no cycle re-run, no handoff churn, no commit.
+Focused pytest `tests/test_pre_gate_check.py tests/test_post_gate_orchestrator.py` → **30 passed in
+2.55s**. `git status --porcelain` (and `-- data/raw`) → 0 lines. `/tmp/kilo-venv` present.
+Supervisor rec `43547986902-attempt-1-review-0026-7a7eaf9b3b63` (review cycle 26, `STATUS: CONTINUE`)
+dispositioned `verified` in `.kilo-runtime/worker-disposition.json` (runtime, not committed).
+Its advice — keep pre-gate sessions to `pre_gate_check.sh` + focused test set, no live no-op runs,
+no new machinery before gate release — matched observed evidence exactly and required no code change.
+
 ## Context — verified baseline (2026-11-14T06:33Z, session 7 inv 1; run 43547986902 attempt 1)
 Pre-gate: `scripts/pre_gate_check.sh` → **exit 0** (now=1794637979 < gate 1794866400, T-228421s;
 state SHA256 `c438cd71…` matches; `data/raw` clean). STOP — no cycle re-run, no handoff churn, no commit.
