@@ -1,10 +1,10 @@
 # Next Agent Task: execute the 2026-11-16 gate extension in the FOREGROUND (the detached waiter cannot survive)
 
-## Context — verified baseline (2026-11-14T03:43Z, session 22 inv 1; run 43522470160 attempt 1)
+## Context — verified baseline (2026-11-14T03:49Z, session 23 inv 1; run 43522470160 attempt 1)
 The 2026-11-13 gate extension is COMPLETE and committed; HEAD `eedcb11` (the last three commits were pure handoff-timestamp churn — see "Change made this session").
-- State: `last_run_date 2026-11-13`, `current_nav 132654.46201168097`, `run_history` 469, SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` — re-verified unchanged at 03:43Z.
-- `date -u +%s` = 1794627808 < gate 1794866400 (2026-11-16T22:00:00Z): **~66h (T-238592s) before the gate**. `data/raw` untouched. `/tmp/kilo-venv` present. No background waiter running.
-- Pre-gate cheap verification this session (03:43Z): `scripts/pre_gate_check.sh` → exit 0 (hash matches, `data/raw` clean). Did NOT re-run the full read-only cycle.
+- State: `last_run_date 2026-11-13`, `current_nav 132654.46201168097`, `run_history` 469, SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` — re-verified unchanged at 03:49Z.
+- `date -u +%s` = 1794628187 < gate 1794866400 (2026-11-16T22:00:00Z): **~66h (T-238213s) before the gate**. `data/raw` untouched. `/tmp/kilo-venv` present. No background waiter running.
+- Pre-gate cheap verification this session (03:49Z): `scripts/pre_gate_check.sh` → exit 0 (hash matches, `data/raw` clean). Did NOT re-run the full read-only cycle.
 - Validation: `pytest tests/test_pre_gate_check.py tests/test_post_gate_orchestrator.py` → 30 passed. `bash -n` on both orchestrator scripts → OK. All imports in `/tmp/kilo-venv` OK.
 
 ## Change made this session (only non-handoff change)
@@ -65,8 +65,17 @@ Expect exactly one session appended and a single state write.
 - Do not dispatch this workflow, start additional agent sessions, or launch a background waiter.
 - Do not add another handoff per pre-gate session; the cheap path above exists precisely to stop that churn.
 
-Runtime note: `/tmp/kilo-venv` is ephemeral. If absent, recreate before running the cycle:
+## Runtime note: `/tmp/kilo-venv` is ephemeral. If absent, recreate before running the cycle:
 ```
 python3 -m venv /tmp/kilo-venv
 /tmp/kilo-venv/bin/python -m pip install --no-cache-dir numpy pandas scipy statsmodels arch yfinance pyarrow pyyaml pytest ruff
 ```
+
+## Session 23 verification summary (2026-11-14T03:49Z)
+- Pre-gate check: **exit 0** (gate not released, state SHA256 matches, data/raw clean)
+- Tests: **30 passed** (test_pre_gate_check.py + test_post_gate_orchestrator.py)
+- `git status --porcelain -- data/raw`: **empty**
+- `git status --porcelain`: **empty** (working tree clean)
+- Current time: 1794628187 (2026-11-14T03:49:47Z) vs gate 1794866400 (2026-11-16T22:00:00Z) → **T-238213s (~66h)**
+- State unchanged: `last_run_date 2026-11-13`, NAV `132654.46201168097`, run_history 469, SHA256 `c438cd71...`
+- **Action taken**: STOP on pre-gate exit 0 (no full cycle re-run, no handoff churn)
