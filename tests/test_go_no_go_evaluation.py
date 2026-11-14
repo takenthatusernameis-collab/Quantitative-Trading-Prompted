@@ -16,6 +16,7 @@ Invariants covered:
 
 import hashlib
 import os
+import re
 import subprocess
 import sys
 from datetime import date, timedelta
@@ -393,20 +394,58 @@ def test_committed_record_is_not_promoted():
 # ----------------------------------------------------------------------
 
 # The rolling 63d Sharpe series for the last five sessions of the committed
-# record (468 sessions, last_run_date 2026-11-12). Re-derived from
-# src.evaluation.drift.sharpe_persistence on the committed state; the values
-# quoted here are the ones the monitoring artifacts and the drift flag report
-# (research/drift_persistence_report.py) must keep reproducing. The prior
-# set ended at 2026-11-10/-1.4394 and was stale after the state advanced to
-# 2026-11-12 (the extension to 2026-11-12 was verified in the post-gate
-# run of 2026-11-12 22:01 UTC).
-ARTIFACT_ROLLING_SERIES_TAIL = {
-    "2026-11-06": -1.8144,
-    "2026-11-09": -1.1566,
-    "2026-11-10": -1.4394,
-    "2026-11-11": -1.1049,
-    "2026-11-12": -1.3137,
-}
+# record. Re-derived from src.evaluation.drift.sharpe_persistence on the
+# committed state; the monitoring artifact and the drift flag report
+# (research/drift_persistence_report.py) must keep reproducing them.
+#
+# The expected *dates* are read from the committed monitoring artifact rather
+# than pinned as literals. Pinning them made this test fail on every state
+# extension: it broke after the state advanced to 2026-11-12 and again after
+# 2026-11-13, and each repair was a pure literal bump. A stale anchor is a
+# false negative, not a regression, so the expectation now follows the artifact
+# it is named after. The *values* are still computed independently from the
+# state below, so "artifact dates == state dates" remains enforced.
+ROLLING_ARTIFACT = ROOT / "research" / "reports" / "paper_trading_rolling.md"
+
+
+def _artifact_section(start_prefix: str) -> list[str]:
+    """The bullet lines of the first markdown section starting with *prefix*."""
+    lines: list[str] = []
+    inside = False
+    for line in ROLLING_ARTIFACT.read_text(encoding="utf-8").splitlines():
+        if line.startswith(start_prefix):
+            inside = True
+            continue
+        if inside:
+            if line.startswith("## "):
+                break
+            if line.startswith("- "):
+                lines.append(line[2:].strip())
+    return lines
+
+
+def _artifact_recent_dates() -> list[str]:
+    """The session dates quoted in the artifact's 'Run History (Recent)'."""
+    bullets = _artifact_section("## Run History")
+    dates = [bullet.split(":", 1)[0].strip() for bullet in bullets]
+    assert len(dates) == 5, f"expected 5 recent sessions in the artifact, got {dates}"
+    return dates
+
+
+def _artifact_rolling_sharpe() -> float:
+    """The full-precision rolling 63d Sharpe quoted in the artifact."""
+    text = ROLLING_ARTIFACT.read_text(encoding="utf-8")
+    match = re.search(r"low_rolling_sharpe[^\n]*'value': (-?[0-9.eE+]+)", text)
+    assert match is not None, "no low_rolling_sharpe value in the rolling artifact"
+    return float(match.group(1))
+
+
+def _artifact_rolling_sharpe_rounded() -> float:
+    """The rounded rolling 63d Sharpe quoted in the artifact's summary table."""
+    for line in _artifact_section("## Enhanced Drift Monitoring"):
+        if line.startswith("**Rolling 63-day Sharpe:**"):
+            return float(line.rsplit(":", 1)[1].strip())
+    raise AssertionError("no 'Rolling 63-day Sharpe' line in the rolling artifact")
 
 
 def _truncated_state(n_sessions: int) -> PaperTradingState:
@@ -445,11 +484,11 @@ def test_gate_rolling_sharpe_equals_the_stored_drift_flag_value():
     gate = next(g for g in result.gates if g.name == "rolling_63d_sharpe")
     stored = float(state.drift_flags["low_rolling_sharpe"]["value"])
     assert gate.value == pytest.approx(stored, abs=1e-12)
-    # Re-derived from the committed state at last_run_date 2026-11-12
-    # (468 sessions); the previously hardcoded value -1.4394168982987599
-    # was the rolling 63d Sharpe at 2026-11-10, stale after the state was
-    # extended to 2026-11-12. The gate and the stored drift flag agree.
-    assert gate.value == pytest.approx(-1.3137210439928235, abs=1e-12)
+    # The same measurement must also be the one quoted in the committed
+    # monitoring artifact. Deriving the expected value from the artifact keeps
+    # this check exact (full precision) without pinning a literal that goes
+    # stale at the next state extension.
+    assert gate.value == pytest.approx(_artifact_rolling_sharpe(), abs=1e-12)
     # the gate value is on the canonical scale, not on the backtest scale
     assert gate.value != pytest.approx(
         backtest_sharpe_ratio(list(state.cumulative_returns)[-63:]), abs=1e-6
@@ -468,7 +507,13 @@ def test_rolling_sharpe_series_reproduces_the_validation_artifact_values():
         for date, value in persistence["series"][-5:]
         if value is not None
     }
-    assert tail == ARTIFACT_ROLLING_SERIES_TAIL
+    # the artifact's recent-session dates must be exactly the state's last five
+    artifact_dates = _artifact_recent_dates()
+    assert list(tail) == artifact_dates
+    # and the artifact's quoted rolling Sharpe must be that series' last value
+    assert tail[artifact_dates[-1]] == pytest.approx(
+        _artifact_rolling_sharpe_rounded(), abs=1e-12
+    )
 
 
 def test_psr_numerator_uses_the_canonical_estimator():

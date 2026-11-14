@@ -35,8 +35,10 @@ from research.tsmomentum_rolling63_weakness_diagnosis import (  # noqa: E402
     spearman,
 )
 from src.evaluation.sharpe import sharpe_ratio  # noqa: E402
+from src.simulation.paper_trading import PaperTradingState  # noqa: E402
 
 TOOL = "research/tsmomentum_rolling63_weakness_diagnosis.py"
+STATE = REPO / "data" / "processed" / "paper_trading_state.yaml"
 REPORT = REPO / "research" / "reports" / "tsmomentum_rolling63_weakness_diagnosis_001.md"
 EXPERIMENT = REPO / "research" / "experiments" / "tsmomentum_rolling63_weakness_diagnosis_001.md"
 
@@ -157,8 +159,15 @@ def test_block_bootstrap_indices_are_in_range():
 # ----------------------------------------------------------------------
 def test_anchor_is_reproduced(payload):
     record = payload["record"]
-    assert record["n_sessions"] == 468
-    assert record["trailing_63d_sharpe"] == pytest.approx(-1.3137210439928235, abs=1e-12)
+    # Anchors are derived from the committed state instead of pinned literals:
+    # the pinned values (468 sessions / -1.3137) went stale at the 2026-11-13
+    # extension and produced false negatives. The tool is a separate code path
+    # that must reproduce the committed record, so this stays a real check.
+    state = PaperTradingState.from_yaml(STATE)
+    assert record["n_sessions"] == len(state.run_history)
+    assert record["trailing_63d_sharpe"] == pytest.approx(
+        sharpe_ratio(list(state.cumulative_returns)[-WINDOW:]), abs=1e-12
+    )
     assert float(record["stored_drift_flag"]) == pytest.approx(
         record["trailing_63d_sharpe"], abs=1e-12
     )
@@ -174,7 +183,10 @@ def test_all_internal_checks_pass(payload):
 
 def test_rolling_distribution_is_ordered(payload):
     dist = payload["distribution"]
-    assert dist["n_windows"] == 406
+    state = PaperTradingState.from_yaml(STATE)
+    # rolling windows over the record: n sessions - WINDOW + 1 (the tool
+    # asserts the same identity internally); derived, not pinned.
+    assert dist["n_windows"] == len(state.run_history) - WINDOW + 1
     assert dist["min"] < dist["p10"] < dist["p25"] < dist["median"] < dist["p75"] < dist["max"]
     assert 0.0 < dist["base_rate"] < 1.0
     assert dist["n_pass"] + dist["n_fail"] == dist["n_windows"]
