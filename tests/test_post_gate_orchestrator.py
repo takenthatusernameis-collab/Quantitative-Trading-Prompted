@@ -132,6 +132,76 @@ def test_wait_until_gate_past_gate_proceeds(tmp_path: Path) -> None:
     assert handoff.exists()
 
 
+def _stub_python(tmp_path: Path) -> tuple[Path, Path]:
+    """A fake interpreter that records every invocation and exits 0.
+
+    The real ``/tmp/kilo-venv/bin/python`` is absent in a fresh runner, and a
+    ``true`` stub makes every step an indistinguishable no-op -- so the existing
+    tests could only assert the handoff's *text*, never which steps actually ran
+    or in what order. This stub logs ``$*`` so the mutating extend (cmd2) and the
+    idempotency re-run (cmd4) can be proven to execute, exactly once each, in the
+    right position -- without touching live state.
+    """
+    log = tmp_path / "python_calls.log"
+    stub = tmp_path / "fake_python.sh"
+    stub.write_text(f'#!/usr/bin/env bash\nprintf \'%s\\n\' "$*" >> "{log}"\nexit 0\n')
+    stub.chmod(0o755)
+    return stub, log
+
+
+def _calls(log: Path) -> list[str]:
+    if not log.exists():
+        return []
+    return [line for line in log.read_text().splitlines() if line.strip()]
+
+
+def test_full_cycle_runs_extend_in_order_and_reports_full_mode(tmp_path: Path) -> None:
+    # The gate-release acceptance criteria are stated for the FULL cycle
+    # ("Mode: full cycle (extend included)", "Cmds run" includes "2 extend"), but
+    # every prior test forced --read-only, so a regression that silently skipped
+    # the mutating extend would still exit 0 and write an "OK" handoff. Prove the
+    # real ordering: extend -> drift -> idempotent re-extend -> pytest -> cmd7.
+    handoff = tmp_path / "handoff.md"
+    py, log = _stub_python(tmp_path)
+    proc = _run([], PAST_GATE, handoff, env_extra={"PYTHON": str(py), "RUFF": str(py)})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    calls = _calls(log)
+    # Only the direct interpreter calls; cmd8's ruff target list also names the
+    # script but is a lint invocation, not an execution of it.
+    extend_calls = [c for c in calls if c.startswith("research/extend_paper_trading_state.py")]
+    assert len(extend_calls) == 2, calls
+    assert "extend_paper_trading_state.py" in calls[0], calls
+    assert "drift_persistence_report.py" in calls[1], calls
+    assert "extend_paper_trading_state.py" in calls[2], calls
+    assert "data_cost_inventory_001.py" in " ".join(calls), calls
+    assert "data_cost_inventory_002.py" in " ".join(calls), calls
+
+    text = handoff.read_text()
+    assert "- **Mode:** full cycle (extend included)" in text, text
+    assert "- **Gate state:** released (gate epoch reached)" in text, text
+    assert "**Status:** OK" in text, text
+    run_line = text.split("- **Cmds run:**")[1].split("\n")[0]
+    assert "2 extend" in run_line, text
+    assert "4 idempotent re-extend" in run_line, text
+    assert "- **Cmds skipped:** none" in text, text
+
+
+def test_read_only_cycle_never_invokes_the_extend(tmp_path: Path) -> None:
+    # Behavioral complement to test_read_only_handoff_reports_skipped_extend: the
+    # handoff text says cmds 2/4 were skipped, but nothing proved the script did
+    # not invoke the mutating extend anyway. The stub log is the evidence.
+    handoff = tmp_path / "handoff.md"
+    py, log = _stub_python(tmp_path)
+    proc = _run(["--read-only"], PAST_GATE, handoff, env_extra={"PYTHON": str(py), "RUFF": str(py)})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    calls = _calls(log)
+    assert calls, "the stub was never invoked; the test proves nothing"
+    assert not [c for c in calls if c.startswith("research/extend_paper_trading_state.py")], calls
+    # Read-only still runs the verification portion (drift, pytest, inventory).
+    assert [c for c in calls if c.startswith("research/drift_persistence_report.py")], calls
+    assert "- **Cmds skipped:**" in handoff.read_text()
+
+
 def test_max_wait_seconds_requires_value(tmp_path: Path) -> None:
     handoff = tmp_path / "handoff.md"
     proc = _run(["--read-only", "--max-wait-seconds"], FUTURE_GATE, handoff)
