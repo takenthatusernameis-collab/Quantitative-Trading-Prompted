@@ -435,4 +435,46 @@ def test_populated_state_fingerprint_is_recorded(tmp_path: Path) -> None:
     state_line = text.split("- **State:**")[1].split("\n")[0]
     assert "last_run=2026-11-13" in state_line, text
     assert "runs=3" in state_line, text
+
+
+def test_malformed_state_fingerprint_marks_handoff_failed(tmp_path: Path) -> None:
+    # Evidence-integrity gap (Cycle 1259): the Cycle-1258 guard only caught the
+    # *empty* fingerprint (python error -> empty output -> rc!=0). A python that
+    # exits 0 but loads a state whose current_nav/last_run_date key is absent
+    # prints `nav=None` / `last_run=None` -- a syntactically present but
+    # semantically empty fingerprint that passed record_rc and yielded
+    # "Status: OK" with no verifiable NAV. Reproduce with a stub that prints a
+    # well-formed-looking line whose nav is None and exits 0: every other step is
+    # a no-op pass, so ONLY the fingerprint can fail.
+    handoff = tmp_path / "handoff.md"
+    py = tmp_path / "py_state_malformed.sh"
+    py.write_text(
+        '#!/usr/bin/env bash\n'
+        'printf "%s last_run=2026-11-13 nav=None runs=0\\n" "$(printf \'a%.0s\' {1..64})"\n'
+        'exit 0\n'
+    )
+    py.chmod(0o755)
+    proc = _run(["--read-only"], PAST_GATE, handoff, env_extra={"PYTHON": str(py)})
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "STEP FAILED" in proc.stdout, proc.stdout
+    assert "malformed" in proc.stdout, proc.stdout
+    text = handoff.read_text()
+    assert "**Status:** FAILED" in text, text
+    assert "9 state fingerprint" in text, text
+
+
+def test_silent_success_fingerprint_still_passes(tmp_path: Path) -> None:
+    # The malformed-fingerprint guard must not over-reach into the empty-output
+    # case. Eleven legitimate tests use silent-success stubs (PYTHON=true: no
+    # output, exit 0) to keep the cycle fast and side-effect free; a guard that
+    # hard-failed on *any* non-matching State line (including empty) broke them
+    # (Cycle 1258 reverted exactly that). An empty fingerprint is left to
+    # record_rc's exit-code check, so a silent-success stub must still yield
+    # Status OK -- only a *malformed non-empty* fingerprint fails.
+    handoff = tmp_path / "handoff.md"
+    proc = _run(["--read-only"], PAST_GATE, handoff, env_extra={"PYTHON": "true"})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    text = handoff.read_text()
+    assert "**Status:** OK" in text, text
+    assert "STEP FAILED" not in proc.stdout, proc.stdout
     assert "9 state fingerprint" in text, text

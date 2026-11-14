@@ -255,6 +255,22 @@ PY
 # cycle. Fail the cycle instead (Cycle 1258).
 record_rc $? "9 state fingerprint (State line)"
 mark_run "9 state fingerprint"
+# Evidence-integrity gap (Cycle 1259): the Cycle-1258 guard only caught the
+# *empty* fingerprint (python error -> empty output -> rc!=0). A python that
+# exits 0 but loads a state whose ``current_nav``/``last_run_date`` key is
+# absent prints ``nav=None`` / ``last_run=None`` -- a syntactically present but
+# semantically empty fingerprint that passed ``record_rc`` and yielded
+# "Status: OK" with no verifiable NAV. Fail the cycle on a *malformed
+# non-empty* fingerprint (missing/None nav, missing/None last_run, non-hex
+# hash, non-integer run count). An empty fingerprint is left to record_rc's
+# exit-code check so the 11 silent-success stubs (PYTHON=true, no output, exit
+# 0) keep passing -- they are legitimately "no state to fingerprint" in tests,
+# not a malformed production record.
+if [[ -n "$STATE_SHA" ]] \
+   && ! [[ "$STATE_SHA" =~ ^[0-9a-fA-F]{64}\ last_run=[^[:space:]]+\ nav=[0-9]+\.?[0-9]*\ runs=[0-9]+$ ]]; then
+  log "STEP FAILED (rc=1): 9 state fingerprint malformed (got: '$STATE_SHA')"
+  FAILED=1
+fi
 if (( FAILED )); then
   STATUS="FAILED — one or more verification steps failed (see STEP FAILED lines above)"
 else
