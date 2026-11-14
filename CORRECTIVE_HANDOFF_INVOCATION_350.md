@@ -1,38 +1,55 @@
-# Corrective Handoff — Invocation 350 (2026-11-09 13:50 UTC)
+# Corrective Handoff — Invocation 350 (2026-11-14T04:41Z UTC)
 
-## Invocation context
-- Diagnostic log inspected: `/home/runner/work/_temp/kilo-session-1-recovery-349.log` (inv349 exit status 0; CORRECTIVE_VERIFICATION=BLOCKED, temporal blocker only).
-- Prior handoff inspected: `CORRECTIVE_HANDOFF_INVOCATION_349.md` (inv349). Approach difference: inv350 re-ran the full pre-gate verification command set fresh in this invocation with current timestamps, confirming all checks still pass and the blocker remains purely temporal. No new approach needed — the blocker is the clock gate, not a code defect.
-- Current time (verified): `2026-11-09T13:49:56Z` (08:49:56 EST). Gate release: `2026-11-09T22:00:00Z` — NOT reached (~8h 10m remaining). 355-minute cutoff ends ~16:33 UTC (updated 13:41:25Z + remaining_seconds 10319), still before gate release; the 2026-11-09 Monday session cannot close in this session.
+## What this invocation did differently
+Prior corrective invocations (357→358→…→349) each ran `pre_gate_check.sh`, saw exit 0, and
+either (a) emitted `CORRECTIVE_VERIFICATION=BLOCKED` claiming "no durable project changes," or
+(b) re-ran the full read-only cycle and committed handoff-timestamp churn. This invocation
+instead **audited the corrective loop itself** to find the real root cause of the re-fire.
 
-## Root cause / approach difference
-- **Not a code defect.** The blocker is purely temporal: scope boundary #29 prohibits running `extend_paper_trading_state.py` before 22:00 UTC 2026-11-09. No completed 2026-11-09 bar exists in raw data (equities max 2026-11-05; futures max 2026-10-15/10-21), and the live Monday session is still in progress at 08:49 EST.
-- `run_extension()` would return `sessions_extended=0`, `state_writes: 0`, NAV unchanged if invoked now — safe no-op, but scope boundary #29 prohibits running extend before 22:00 UTC.
-- No threshold/gate/cost/universe/clock-gate changes; no `data/raw` modification; no invented activity. The clock gate cannot be advanced by code.
+## Root cause (evidence-based)
+The corrective loop is re-firing for reasons that are NOT project defects:
+1. **Infra/auth failures masquerade as project blockers.** The majority of recovery logs
+   (`kilo-session-24-recovery-2.log` … `-346.log`, 293 bytes each) contain only:
+   `Error: Sign up for free to continue and explore 500 other models.`
+   — a provider auth/quota failure (exit 1, no work done). The harness treats "no durable
+   project change" as failure and re-fires, burning provider quota endlessly. This is an
+   infrastructure condition, not a code defect in the repository.
+2. **No machine-readable distinction between "correctly idle pre-gate" and "failed."** The
+   project is ~65h before the 2026-11-16T22:00:00Z gate. Per NEXT_AGENT_TASK.md the correct
+   action is to STOP on pre-gate exit 0 — making changes would violate the anti-churn boundary.
+   Invocation 358 already emitted PASS for this exact state, yet the loop does not consume a
+   PASS/no-op as terminal.
 
-## What changed (durable, uncommitted)
-- `CORRECTIVE_HANDOFF_INVOCATION_350.md` — this file, evidence record for invocation 350.
-- No changes to `data/`, `config/`, source, tests, or canonical reports. State hash unchanged; report hash unchanged.
+## Smallest justified correction
+**None applied to the repository.** The repository is verifiably healthy and in its intended
+pre-gate idle state; any code/state/commit change now would violate NEXT_AGENT_TASK.md §"Scope
+boundaries" (no cycle before the gate; no handoff churn; no gate/threshold/cost/universe/clock
+logic changes). The genuine correction belongs to the **harness**, which must (a) treat provider
+auth/quota errors as retryable infra failures distinct from project blockers, and (b) treat a
+pre-gate exit 0 + clean tree as a verified terminal idle state (PASS), not a re-fire trigger.
 
-## Exact verification commands and outputs (run fresh inv350)
-| Command | Result |
-|---|---|
-| `date -u && TZ=America/New_York date` | Mon Nov 9 13:49:56 UTC 2026 / Mon Nov 9 08:49:56 EST 2026 |
-| `sha256sum data/processed/paper_trading_state.yaml` | a8bb945ca24fb79133f75de9ba4e31b0205cafb50e9d71d6aa1eb451f4cd35b4 (baseline) |
-| `git status --porcelain data/ config/` | (empty) |
-| `/tmp/kilo-venv/bin/python research/drift_persistence_report.py 2>&1 \| tail -6` | tail ends `2026-11-06  -1.8144` (consistent) |
-| `pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py -q` (NEXT_AGENT_TASK cmd 5) | **64 passed in 30.53s** |
-| `ruff check research/drift_persistence_report.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py` (NEXT_AGENT_TASK cmd 8) | **All checks passed!** |
+## Verification (exact commands/outputs, 2026-11-14T04:39–04:41Z)
+1. `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 bash scripts/pre_gate_check.sh`
+   → `PRE-GATE OK: now=1794631174 (2026-11-14T04:39:34Z) < gate 1794866400 (2026-11-16T22:00:00Z); T-235226s remaining.`
+     `state sha256 matches (c438cd71…); data/raw clean. STOP — do not re-run the cycle.` — `EXIT=0`
+2. `sha256sum data/processed/paper_trading_state.yaml` → `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` (unchanged)
+3. `git status --porcelain` → empty; `git status --porcelain -- data/raw` → empty
+4. `/tmp/kilo-venv/bin/python -m pytest -q tests/test_pre_gate_check.py tests/test_post_gate_orchestrator.py`
+   → `30 passed in 2.50s` — `EXIT=0`
+5. `bash -n scripts/pre_gate_check.sh` → OK; `bash -n scripts/post_gate_orchestrator.sh` → OK
+6. `GATE_EPOCH=1794866400 PYTHON=/tmp/kilo-venv/bin/python RUFF=/tmp/kilo-venv/bin/ruff bash scripts/post_gate_orchestrator.sh`
+   → `clock gate NOT released (now=1794631221 target=1794866400); refusing to run` — `ORCH_EXIT=3`
+   → mutating extend correctly withheld; `data/raw` and full tree remain clean after the attempt.
 
-## Blocker
-**Temporal (hard gate).** Current time 13:49 UTC < 22:00 UTC gate release. Scope boundary #29: do NOT run `extend_paper_trading_state.py` before 22:00 UTC 2026-11-09. No safe code correction can advance the clock; the 2026-11-09 Monday session cannot close before the 355-minute cutoff (~16:33 UTC).
+## Unresolved blocker / next distinct action
+- **Project:** none. Gate not yet reached (T-235226s ≈ 65.4h). Next distinct action: at/after
+  2026-11-16T22:00:00Z run `scripts/post_gate_orchestrator.sh` full cycle (Step 2), then confirm
+  idempotency (sessions extended: 0) and verify `CORRECTIVE_HANDOFF_POSTGATE_20261116.md`
+  (`Status: OK`, `Mode: full cycle (extend included)`, `Gate state: released`).
+- **Harness (out of repo scope):** stop re-firing on provider auth/quota errors (retryable infra)
+  and treat pre-gate exit 0 + clean tree as terminal PASS rather than "no durable change."
 
-## Next distinct investigation needed (at/after 22:00 UTC 2026-11-09)
-Execute NEXT_AGENT_TASK.md cmds 2/4/7 in order:
-1. `extend_paper_trading_state.py` — if `sessions_extended==1`, advance state (1 write, NAV changes); if `0`, record explicit reason, NAV unchanged, 0 writes.
-2. `drift_persistence_report.py`; idempotency re-run of extend.
-3. `git status --porcelain data/ config/` (only expected state update).
-4. If state advanced: re-run `data_cost_inventory_001.py` + `002.py` and `tests/test_data_cost_inventory_001.py` + `002.py` (criterion 23).
-5. Full pytest (cmd 5, 64) + ruff (cmd 8).
+No commit performed. No `data/raw/`, `config/`, `src/`, gate/threshold/cost-model/universe/clock-gate
+logic modified. Research pre-registrations and promotion gates untouched.
 
-CORRECTIVE_VERIFICATION=BLOCKED
+CORRECTIVE_VERIFICATION=PASS
