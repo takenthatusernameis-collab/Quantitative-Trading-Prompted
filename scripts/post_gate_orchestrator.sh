@@ -180,8 +180,39 @@ else
   PRE_GATE=0
   GATE_STATE="released (gate epoch reached)"
 fi
+# The mutating extend (cmd2) and its idempotency re-run (cmd4) must NEVER run
+# before the gate is released, whatever the flags. --force overrides only the
+# exit-3 refusal so a pre-gate verification cycle can run; it does NOT
+# re-enable the mutating extend, which would advance the paper-trading state
+# before the target session is complete (NEXT_AGENT_TASK.md scope boundary:
+# "Do not run a mutating extend before the target session gate").
+#
+# A --force FULL run before the gate previously ran the extend (cmd2 + cmd4)
+# and then wrote a handoff claiming "full cycle (extend included)" /
+# "Cmds skipped: none" while its OWN "Gate state" line said "NOT released ...
+# mutating extend withheld" -- a self-contradictory durable record that is
+# worse than either honest label, and exactly the class of false-evidence
+# hazard this orchestrator exists to prevent (cf. Cycle 1258/1259/1260, where
+# a handoff that reads "OK" but does not match what ran was the recurring
+# defect). The extend is now gated on the clock, not on --read-only.
+EXTEND_DISABLED=0
+if (( READ_ONLY || PRE_GATE )); then
+  EXTEND_DISABLED=1
+fi
+# The Mode line must describe what ACTUALLY ran. A pre-gate full run is NOT a
+# "full cycle (extend included)"; claiming so would misrepresent the cycle to
+# whoever reads the handoff after the gate (the acceptance criteria's expected
+# "Mode: full cycle (extend included)" is produced only by the real post-gate
+# run, i.e. the else branch here).
+if (( READ_ONLY )); then
+  MODE="read-only verification"
+elif (( PRE_GATE )); then
+  MODE="pre-gate verification (extend withheld — gate not released)"
+else
+  MODE="full cycle (extend included)"
+fi
 log "gate state: $GATE_STATE"
-log "starting post-gate cycle (read_only=$READ_ONLY)"
+log "starting post-gate cycle (read_only=$READ_ONLY, extend_disabled=$EXTEND_DISABLED)"
 
 # --- 1. Date -----------------------------------------------------------------
 log "cmd1: date"
@@ -191,9 +222,9 @@ TZ=America/New_York date
 record_rc $? "cmd1 date"
 
 # --- 2. Extend (only if a completed candidate bar exists) --------------------
-if (( READ_ONLY )); then
-  log "cmd2: SKIP extend (read-only mode)"
-  mark_skipped "2 extend (read-only)"
+if (( EXTEND_DISABLED )); then
+  log "cmd2: SKIP extend (gate not released: $MODE)"
+  mark_skipped "2 extend (gate not released)"
 else
   log "cmd2: extend_paper_trading_state"
   mark_run "2 extend"
@@ -208,9 +239,9 @@ mark_run "3 drift"
 record_rc $? "cmd3 drift"
 
 # --- 4. Idempotency re-run ---------------------------------------------------
-if (( READ_ONLY )); then
-  log "cmd4: SKIP idempotency re-extend (read-only mode)"
-  mark_skipped "4 idempotent re-extend (read-only)"
+if (( EXTEND_DISABLED )); then
+  log "cmd4: SKIP idempotency re-extend (gate not released: $MODE)"
+  mark_skipped "4 idempotent re-extend (gate not released)"
 else
   log "cmd4: extend idempotency check"
   mark_run "4 idempotent re-extend"
@@ -301,7 +332,7 @@ if ! cat > "$HANDOFF" <<EOF
 
 - **Generated:** $(date -u +%FT%TZ) UTC
 - **Status:** $STATUS
-- **Mode:** $([ $READ_ONLY -eq 1 ] && echo "read-only verification" || echo "full cycle (extend included)")
+- **Mode:** $MODE
 - **Gate state:** $GATE_STATE
 - **State:** $STATE_SHA
 - **Gate epoch:** $GATE_EPOCH ($GATE_HUMAN)

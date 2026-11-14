@@ -288,8 +288,69 @@ def test_read_only_handoff_reports_skipped_extend(tmp_path: Path) -> None:
     assert "- **Cmds run:**" in text, text
     run_line = text.split("- **Cmds run:**")[1].split("\n")[0]
     assert "2 extend" not in run_line, text
-    assert "2 extend (read-only)" in text, text
-    assert "4 idempotent re-extend (read-only)" in text, text
+    assert "2 extend (gate not released)" in text, text
+    assert "4 idempotent re-extend (gate not released)" in text, text
+
+
+def test_force_full_before_gate_withholds_extend_and_labels_pre_gate(tmp_path: Path) -> None:
+    # Root-cause fix for a self-contradictory durable record: a `--force` FULL run
+    # (no --read-only) BEFORE the gate previously invoked the mutating extend
+    # (cmd2 + cmd4) and then wrote "full cycle (extend included)" /
+    # "Cmds skipped: none" while its OWN "Gate state" line said "NOT released ...
+    # mutating extend withheld". The extend is now gated on the clock, not on
+    # --read-only: --force only overrides the exit-3 refusal, it does NOT
+    # re-enable the mutating extend before the target session is complete.
+    #
+    # The stub log is the proof: the extend must NOT be invoked, and the Mode
+    # line must describe what actually ran (pre-gate verification with the
+    # extend withheld), not the nominal "full cycle".
+    handoff = tmp_path / "handoff.md"
+    py, log = _stub_python(tmp_path)
+    proc = _run(["--force"], FUTURE_GATE, handoff, env_extra={"PYTHON": str(py), "RUFF": str(py)})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    calls = _calls(log)
+    assert not [c for c in calls if c.startswith("research/extend_paper_trading_state.py")], calls
+    # Verification portion still runs (drift, inventory), so the probe is not vacuous.
+    assert [c for c in calls if c.startswith("research/drift_persistence_report.py")], calls
+    text = handoff.read_text()
+    assert "- **Gate state:** NOT released" in text, text
+    assert "pre-gate verification" in text, text
+    assert "extend withheld" in text, text
+    assert "- **Mode:** pre-gate verification (extend withheld — gate not released)" in text, text
+    assert "full cycle (extend included)" not in text, text
+    assert "2 extend" not in text.split("- **Cmds run:**")[1].split("\n")[0], text
+    assert "2 extend (gate not released)" in text, text
+    assert "4 idempotent re-extend (gate not released)" in text, text
+
+
+def test_force_read_only_before_gate_still_withholds_extend(tmp_path: Path) -> None:
+    # Regression guard: the pre-gate path that already existed (--force
+    # --read-only) must still withhold the extend and keep its Mode label.
+    handoff = tmp_path / "handoff.md"
+    py, log = _stub_python(tmp_path)
+    proc = _run(["--force", "--read-only"], FUTURE_GATE, handoff, env_extra={"PYTHON": str(py), "RUFF": str(py)})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    calls = _calls(log)
+    assert not [c for c in calls if c.startswith("research/extend_paper_trading_state.py")], calls
+    text = handoff.read_text()
+    assert "- **Mode:** read-only verification" in text, text
+    assert "2 extend (gate not released)" in text, text
+
+
+def test_released_gate_full_mode_still_runs_extend_and_reports_full_mode(tmp_path: Path) -> None:
+    # Positive complement: the real post-gate full run must STILL run the
+    # extend and report "full cycle (extend included)" -- the fix must not
+    # have disabled the extend for the case it exists for.
+    handoff = tmp_path / "handoff.md"
+    py, log = _stub_python(tmp_path)
+    proc = _run([], PAST_GATE, handoff, env_extra={"PYTHON": str(py), "RUFF": str(py)})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    calls = _calls(log)
+    extend_calls = [c for c in calls if c.startswith("research/extend_paper_trading_state.py")]
+    assert len(extend_calls) == 2, calls
+    text = handoff.read_text()
+    assert "- **Mode:** full cycle (extend included)" in text, text
+    assert "- **Cmds skipped:** none" in text, text
 
 
 def test_handoff_write_failure_exits_nonzero(tmp_path: Path) -> None:

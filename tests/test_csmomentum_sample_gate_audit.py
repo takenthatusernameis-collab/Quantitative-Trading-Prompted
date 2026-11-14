@@ -234,3 +234,28 @@ def test_two_runs_agree_bit_for_bit(tool_run):
     assert second.returncode == 0, second.stderr
     assert REPORT.read_bytes() == first_bytes
     assert second.stdout == first_stdout
+
+
+def test_changed_paths_names_added_removed_and_modified():
+    """The FAIL-path diagnostic must name exactly what changed.
+
+    A read-only audit that writes nothing under data/ or config/ must be able to
+    distinguish its own (non-existent) write from a concurrent external write by
+    naming the changed paths, so a spurious FAIL is diagnosable rather than
+    ambiguous. This exercises the pure helper used on that path.
+    """
+    sys.path.insert(0, str(REPO))
+    from research.csmomentum_sample_gate_audit import changed_paths
+
+    before = {
+        "data/a.parquet": "h1",
+        "data/b.parquet": "h2",
+        "data/gone.parquet": "h3",
+    }
+    after = {
+        "data/a.parquet": "h1",  # unchanged -> excluded
+        "data/b.parquet": "h2-changed",  # modified -> included
+        "data/new.parquet": "h4",  # added -> included
+    }
+    assert changed_paths(before, after) == ["data/b.parquet", "data/gone.parquet", "data/new.parquet"]
+    assert changed_paths(before, before) == []

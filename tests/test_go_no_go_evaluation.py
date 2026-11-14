@@ -444,7 +444,7 @@ def _artifact_rolling_sharpe_rounded() -> float:
     """The rounded rolling 63d Sharpe quoted in the artifact's summary table."""
     for line in _artifact_section("## Enhanced Drift Monitoring"):
         if line.startswith("**Rolling 63-day Sharpe:**"):
-            return float(line.rsplit(":", 1)[1].strip())
+            return float(line.rsplit(":", 1)[1].strip(" *"))
     raise AssertionError("no 'Rolling 63-day Sharpe' line in the rolling artifact")
 
 

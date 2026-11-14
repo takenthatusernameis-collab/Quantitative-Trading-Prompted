@@ -143,6 +143,19 @@ def decimals_of(text: str) -> int:
     return len(text.split(".")[1]) if "." in text else 0
 
 
+def changed_paths(before: dict[str, str], after: dict[str, str]) -> list[str]:
+    """Paths added, removed or modified between two ``fingerprint`` snapshots.
+
+    Used only for diagnostics on the ``data_and_config_unchanged`` FAIL path, so
+    the record can tell apart an audit read-only violation (a path this tool
+    writes -- there are none under ``data/`` or ``config/``) from a benign
+    concurrent external write (e.g. the paper-trading loop or another research
+    process appending the raw cache while this read-only audit runs). Naming the
+    paths does not weaken the check: it still fails closed on any change.
+    """
+    return sorted(p for p in set(before) | set(after) if before.get(p) != after.get(p))
+
+
 def compare_published(observed: float, published_text: str) -> dict[str, Any]:
     """Compare one observed number with a published one.
 
@@ -792,10 +805,19 @@ def main(argv: list[str] | None = None) -> int:
     data_after = fingerprint(REPO_ROOT / "data")
     config_after = fingerprint(REPO_ROOT / "config")
     artifacts_after = {rel: sha256_file(REPO_ROOT / rel) for rel in COMMITTED_ARTIFACTS}
+    data_same = data_before == data_after
+    config_same = config_before == config_after
+    integrity_observed: dict[str, Any] = {"data": data_same, "config": config_same}
+    if not (data_same and config_same):
+        # On failure, name the exact paths that changed so the record can be
+        # diagnosed: this read-only tool writes nothing under data/ or config/,
+        # so a change here is an external/concurrent write, not this audit's.
+        integrity_observed["changed_data"] = changed_paths(data_before, data_after)
+        integrity_observed["changed_config"] = changed_paths(config_before, config_after)
     check(
         "data_and_config_unchanged",
-        data_before == data_after and config_before == config_after,
-        observed={"data": data_before == data_after, "config": config_before == config_after},
+        data_same and config_same,
+        observed=integrity_observed,
         expected={"data": True, "config": True},
     )
     check(
