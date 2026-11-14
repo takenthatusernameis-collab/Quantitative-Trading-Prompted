@@ -1,42 +1,70 @@
-# Corrective invocation 2 - Handoff
+# Corrective Handoff — invocation 5 (2026-11-14T09:43Z)
 
-## Invocation context
-- Diagnostic log: /home/runner/work/_temp/kilo-session-12-recovery-1.log (prior corrective invocation exited status 124 / idle watchdog timeout while waiting for clock gate)
-- This invocation takes a materially different approach: bounded sleep until gate release (22:00 UTC), then immediately run output-producing verification commands to avoid idle watchdog, instead of passive waiting.
+## Context
+Corrective invocation 5 for the ongoing Kilo task. Prior corrective invocations (1-4) ran only the pre-gate cheap path (`pre_gate_check.sh`) and focused tests, reporting clock-gate blockage. This invocation takes a materially different action: executed the full post-gate verification path (cmds 1,3,5,6,7,8) via `post_gate_orchestrator.sh --force --read-only` to prove the verification pipeline works end-to-end, while respecting the clock gate by withholding the mutating extend (cmds 2,4).
 
-## Root cause / approach difference
-- Not a code defect. The blocker was a genuine time gate: extension gate releases at 22:00 UTC (17:00 ET) on 2026-11-05. Prior invocation timed out (status 124) via idle watchdog while passively waiting, making no durable changes.
-- No code change warranted or safe under scope boundaries (do not change thresholds/gates/cost model/universe/clock-gate logic; do not modify data/raw).
+## Diagnostics inspected
+- `/home/runner/work/_temp/kilo-session-16-recovery-4.log` (previous corrective session)
+- `NEXT_AGENT_TASK.md`, `scripts/pre_gate_check.sh`, `scripts/post_gate_orchestrator.sh`, `research/extend_paper_trading_state.py`
+- Current state/config and test suite
 
-## What changed
-- Nothing in source/config/tests. Extension state was advanced to 2026-11-05 by a prior scheduled wakeup (not by this invocation).
-- Git status --porcelain data/ config/ shows only expected state update:
-  - M data/processed/paper_trading_state.yaml (last_run_date 2026-11-04 -> 2026-11-05, NAV 133995.4210085515 -> 129990.36021343581)
-  - ?? data/processed/paper_trading/daily_pnl_20261105.parquet
-  - ?? data/processed/paper_trading/positions_20261105.parquet
-  - ?? data/processed/paper_trading/regime_20261105.parquet
-  - ?? data/processed/paper_trading/risk_state_20261105.parquet
-- data/raw/ untouched. config/ untouched.
+## State verified (this session)
+- Time: 2026-11-14T09:43Z (epoch ~1794649400), gate `1794866400` (2026-11-16T22:00:00Z), T-217,000s remaining.
+- `git status --porcelain` → `M CORRECTIVE_HANDOFF_CORRECTIVE_2.md`, `M CORRECTIVE_HANDOFF_POSTGATE_20261116.md`; `git status --porcelain -- data/raw` clean.
+- State: `data/processed/paper_trading_state.yaml` SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365`, `last_run_date=2026-11-13`, NAV `132654.46201168097`, `run_history` 469.
+- `/tmp/kilo-venv` present and functional.
 
-## Exact verification commands and outputs (run at/after 22:00 UTC)
-1. `date -u && TZ=America/New_York date` -> Thu Nov  5 22:00:18 UTC 2026 / 17:00:18 EST 2026 (gate released)
-2. `python3 research/extend_paper_trading_state.py 2>&1 | tail -25` -> state already at last_run_date 2026-11-05; candidate available: no (2026-11-06 in future); sessions extended: 0; NAV before/after 129990.36021343581; state write count: 0; raw cache: scratch
-3. `python3 research/drift_persistence_report.py 2>&1 | tail -6` -> series tail shows 2026-11-05 -2.1203; stored == recomputed consistent
-4. `python3 research/extend_paper_trading_state.py 2>&1 | tail -8` (idempotency) -> sessions extended: 0; NAV before/after 129990.36021343581; state write count: 0
-5. `python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py -q` -> 47 passed in 24.33s
-6. `git status --porcelain data/ config/` -> only expected state update under data/processed/ (listed above)
+## Verification (exact commands and observed results)
 
-## Acceptance criteria (all met)
-- Extension ran / state advanced to 2026-11-05 with NAV change (by prior wakeup); this invocation confirmed idempotent no-op on second run
-- sessions_extended: 0 on idempotent re-run, write count 0, NAV unchanged
-- drift_persistence_report.py reports drift metrics updated/consistent
-- git status --porcelain data/ config/ shows only expected state update
-- pytest: 47 passed
+1. **Pre-gate cheap path** (baseline):
+   ```
+   GATE_EPOCH=1794866400 STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 bash scripts/pre_gate_check.sh
+   ```
+   Result: **exit 0** — `PRE-GATE OK: now=1794649092 (2026-11-14T09:38:12Z) < gate 1794866400 (2026-11-16T22:00:00Z); T-217308s remaining. state sha256 matches; data/raw clean. STOP`
 
-## Unresolved blockers
-- None.
+2. **Full verification path (read-only, forced)** — materially different from prior invocations:
+   ```
+   GATE_EPOCH=1794866400 PYTHON=/tmp/kilo-venv/bin/python RUFF=/tmp/kilo-venv/bin/ruff bash scripts/post_gate_orchestrator.sh --force --read-only
+   ```
+   Result: **exit 0** — all 6 verification commands executed and passed:
+   - cmd1: date ✓
+   - cmd2: SKIP extend (read-only) ✓
+   - cmd3: drift_persistence_report ✓ (8 rows, 2026-11-04 through 2026-11-13)
+   - cmd4: SKIP idempotent re-extend (read-only) ✓
+   - cmd5: 6-module pytest ✓ (68 passed in 28.71s)
+   - cmd6: git status ✓ (only handoff files modified)
+   - cmd7a: data_cost_inventory_001 ✓ (35 raw files, 180279 rows, crypto manifest 8/8 digests match)
+   - cmd7b: data_cost_inventory_002 ✓ (DECISION: NO-GO, incumbent unchanged)
+   - cmd7c: inventory pytest ✓ (41 passed in 52.83s)
+   - cmd8: ruff ✓ (All checks passed)
+   - Durable handoff written: `CORRECTIVE_HANDOFF_POSTGATE_20261116.md` with `Status: OK`, `Mode: read-only verification`, `Gate state: NOT released`
 
-## Next distinct investigation needed
-- None; task complete.
+3. **Focused regression tests**:
+   ```
+   /tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py
+   ```
+   Result: **33 passed in 6.34s** (includes 2 new tests simulating full-cycle command sequencing via `_stub_python`)
 
-CORRECTIVE_VERIFICATION=PASS
+4. **Integrity checks**:
+   - `git status --porcelain -- data/raw` → empty (clean)
+   - `sha256sum data/processed/paper_trading_state.yaml` → `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` (matches baseline)
+
+## Changes made (durable)
+- Updated `CORRECTIVE_HANDOFF_CORRECTIVE_2.md` with this invocation's evidence.
+- Created `CORRECTIVE_HANDOFF_POSTGATE_20261116.md` via read-only orchestrator run (verification path only).
+- No source logic, thresholds/gates/cost model/universe/clock-gate logic, or `data/raw/` changes.
+
+## Unresolved blocker
+**Clock gate**: The acceptance criteria require the **full cycle (mutating extend included)** to run at/after `2026-11-16T22:00:00Z` (GATE_EPOCH 1794866400). Current time is `2026-11-14T09:43Z` (~2.5 days before gate). Per NEXT_AGENT_TASK.md scope boundaries: "Do not run a mutating extend before the target session gate." The `extend_paper_trading_state.py` script internally gates on `session_is_complete(next_session, now_et)`, which only returns true once the candidate session (2026-11-16, Monday) has closed at ≥17:00 ET (22:00 UTC). This cannot be satisfied until the gate epoch is reached.
+
+The verification path (cmds 1,3,5,6,7,8) is **fully validated and working** — proven by the `--force --read-only` run and the 33 passing tests (including full-cycle simulation tests). The mutating extend (cmds 2,4) is the only unexecuted component, blocked solely by wall-clock time.
+
+## Next distinct investigation (at/after gate, one bounded task)
+Run at/after `2026-11-16T22:00:00Z`:
+```
+GATE_EPOCH=1794866400 PYTHON=/tmp/kilo-venv/bin/python RUFF=/tmp/kilo-venv/bin/ruff \
+  bash scripts/post_gate_orchestrator.sh
+```
+Re-run once for idempotency (expect `sessions extended: 0`, 0 writes). Verify `CORRECTIVE_HANDOFF_POSTGATE_20261116.md` shows `Status: OK`, `Mode: full cycle (extend included)`, `Gate state: released`, `Cmds run` includes `2 extend`; `git status --porcelain -- data/raw` empty; focused pytest as specified in NEXT_AGENT_TASK.md.
+
+CORRECTIVE_VERIFICATION=BLOCKED
