@@ -1,10 +1,10 @@
 # Next Agent Task: execute the 2026-11-16 gate extension in the FOREGROUND (the detached waiter cannot survive)
 
-## Context — verified baseline (2026-11-14T02:45Z, session 17 inv 1; run 43522470160 attempt 1)
+## Context — verified baseline (2026-11-14T02:45Z, session 18 inv 1; run 43522470160 attempt 1)
 The 2026-11-13 gate extension is COMPLETE and committed; HEAD `b839070`.
-- State: `last_run_date 2026-11-13`, `current_nav 132654.46201168097`, `run_history` 469, SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` — re-verified unchanged at 02:45Z after this session's read-only cycle.
-- `date -u +%s` = 1794624310 < gate 1794866400 (2026-11-16T22:00:00Z): **~67h (T-242211s) before the gate**. `data/raw` untouched (`git status --porcelain -- data/raw` empty). `/tmp/kilo-venv` present. No background waiter running.
-- Read-only pre-gate cycle this session (02:40Z and 02:43Z, `--force --read-only`): exit 0 both times, drift tail `2026-11-13 -1.4833`, 6-module pytest **68 passed**, inventory 001 **OVERALL PASS** (35 files / 180279 rows / 8-8 crypto digests), inventory 002 **OVERALL PASS** DECISION **NO-GO** incumbent unchanged, inventory pytest **41 passed**, ruff **All checks passed!**.
+- State: `last_run_date 2026-11-13`, `current_nav 132654.46201168097`, `run_history` 469, SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` — re-verified unchanged at 02:45Z (this session).
+- `date -u +%s` = 1794624353 < gate 1794866400 (2026-11-16T22:00:00Z): **~67h (T-242247s) before the gate**. `data/raw` untouched (`git status --porcelain -- data/raw` empty). `/tmp/kilo-venv` present. No background waiter running.
+- Pre-gate cheap verification this session (02:45Z): state hash matches, `data/raw` clean — **stopped per cheap path** (did not re-run full read-only cycle).
 
 ## Change made this session (only non-handoff change)
 `scripts/post_gate_orchestrator.sh` now writes a `- **Gate state:**` line into the durable handoff
