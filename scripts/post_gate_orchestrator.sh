@@ -46,6 +46,18 @@ RUFF="${RUFF:-/tmp/kilo-venv/bin/ruff}"
 GATE_EPOCH="${GATE_EPOCH:-1794520800}"   # 2026-11-12T22:00:00Z (override for later gates)
 WAIT_UNTIL_GATE=0
 MAX_WAIT_SECONDS=""
+# Validate the clock-gate variable itself before anything derives a date or
+# filename from it. A typo'd/empty/non-numeric GATE_EPOCH (e.g.
+# GATE_EPOCH=17948_66400 or a quoted blank) previously flowed into `date -d "@"`
+# and the `(( now_epoch < GATE_EPOCH ))` arithmetic: GNU date prints a bogus
+# human date and arithmetic silently evaluates a non-numeric string as 0, so the
+# gate would appear permanently open. Fail closed as a usage error (mirrors the
+# GATE_EPOCH guard in scripts/pre_gate_check.sh).
+if ! [[ "$GATE_EPOCH" =~ ^[0-9]+$ ]]; then
+  echo "FATAL: GATE_EPOCH must be a non-negative integer epoch, got '$GATE_EPOCH'" >&2
+  exit 2
+fi
+
 # Human-readable gate timestamp derived from GATE_EPOCH so the generated handoff
 # is correct for whichever gate is targeted (defaults to the 2026-11-12 gate).
 GATE_HUMAN="$(date -u -d "@$GATE_EPOCH" +%FT%TZ)"

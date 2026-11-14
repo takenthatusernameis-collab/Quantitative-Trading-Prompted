@@ -1,14 +1,25 @@
 # Next Agent Task: execute the 2026-11-16 gate extension in the FOREGROUND
 
-## State verified this session (2026-11-14T15:43Z, session 9 inv 1; run 43580735630 attempt 1)
+## State verified this session (2026-11-14T16:34Z, corrective inv 1; run 43580735630)
 - `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 bash scripts/pre_gate_check.sh` → **exit 0**
-  (now=1794670971 < gate 1794866400, T-195429s remaining; state SHA256 matches; `data/raw` clean).
+  (now=1794674082 < gate 1794866400, T-192318s remaining; state SHA256 matches; `data/raw` clean).
   **STOP — do not re-run the read-only cycle, do not launch a waiter, do not commit.**
 - Gate reachability: deterministic blocker, not a failure loop — gate releases 2026-11-16T22:00:00Z
-  (~2.27 days / T-195504s out); this run's controller envelope ends well before the gate. The full
+  (~2.22 days / T-192318s out); this run's controller envelope ends well before the gate. The full
   gate cycle (Step 2) cannot execute in this run; the run active at/after 2026-11-16T22:00:00Z must run it.
 - State unchanged: `last_run_date 2026-11-13`, NAV `132654.46201168097`, `run_history` 469,
-  SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365`. `git status --porcelain` → 0 lines.
+  SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365`. `data/raw` clean.
+
+## Change made this session (corrective inv 1, only non-handoff change)
+`scripts/post_gate_orchestrator.sh` now fails closed on a malformed `GATE_EPOCH`
+(`^[0-9]+$` guard placed before any `date -u -d "@$GATE_EPOCH"` call or gate arithmetic).
+Previously a typo (`17948_66400`, `-1`, blank) silently evaluated as 0 in bash arithmetic
+(gate looks permanently open) and produced a bogus `GATE_HUMAN`/`GATE_DATE`-derived handoff
+filename. Two tests added in `tests/test_post_gate_orchestrator.py`:
+- `test_non_numeric_gate_epoch_is_usage_error` (`17948_66400` → rc=2, no handoff)
+- `test_negative_gate_epoch_is_usage_error` (`-1` → rc=2, no handoff)
+Mutation check: guard block deleted → 2 failed / 30 passed; restored → 41 passed (was 39).
+No threshold, gate value, cost model, universe, or clock-gate value touched; `data/raw` untouched.
 
 ## Change made this session (only non-handoff change)
 `scripts/post_gate_orchestrator.sh` cmd9 malformed-fingerprint guard (Cycle 1259) anchored `last_run`

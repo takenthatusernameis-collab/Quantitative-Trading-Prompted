@@ -110,6 +110,27 @@ def test_released_gate_default_proceeds_read_only(tmp_path: Path) -> None:
     assert handoff.exists()
 
 
+def test_non_numeric_gate_epoch_is_usage_error(tmp_path: Path) -> None:
+    # A typo'd GATE_EPOCH (e.g. a stray underscore) must fail closed as a usage
+    # error, not silently degrade to arithmetic-as-zero (gate appears always
+    # open) and emit a bogus handoff date/filename.
+    handoff = tmp_path / "handoff.md"
+    proc = _run(["--read-only"], "17948_66400", handoff)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    assert "GATE_EPOCH must be a non-negative integer" in proc.stderr, proc.stderr
+    assert not handoff.exists()
+
+
+def test_negative_gate_epoch_is_usage_error(tmp_path: Path) -> None:
+    # A negative integer is not a usable epoch; reject before `date -d` and the
+    # gate arithmetic can consume it.
+    handoff = tmp_path / "handoff.md"
+    proc = _run(["--read-only", "--force"], "-1", handoff)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    assert "GATE_EPOCH must be a non-negative integer" in proc.stderr, proc.stderr
+    assert not handoff.exists()
+
+
 def test_wait_until_gate_times_out_before_release(tmp_path: Path) -> None:
     # A far-future gate with a 1s wait budget must block, then exit 3 without
     # writing the handoff (the run cutoff is the real bound in production).
