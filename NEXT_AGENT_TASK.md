@@ -1,5 +1,20 @@
 # Next Agent Task: execute the 2026-11-16 gate extension in the FOREGROUND (the detached waiter cannot survive)
 
+## Context — verified baseline (2026-11-14T06:33Z, session 6 inv 1; run 43547986902 attempt 1)
+Pre-gate: `scripts/pre_gate_check.sh` → **exit 0** (now=1794637906 < gate 1794866400, T-228494s;
+state SHA256 `c438cd71…` matches; `data/raw` clean). STOP — no cycle re-run, no handoff churn, no commit.
+Focused pytest `tests/test_paper_trading_extend.py tests/test_pre_gate_check.py
+tests/test_post_gate_orchestrator.py tests/test_verify_monday_extension_path.py` → **56 passed in
+13.86s**. `git status --porcelain` (and `-- data/raw`) → 0 lines. `/tmp/kilo-venv` present.
+Supervisor rec `43547986902-attempt-1-review-0004-9649ce2ce584` dispositioned `verified` in
+`.kilo-runtime/worker-disposition.json` (runtime, not committed).
+
+**Idempotency gap closed:** the acceptance criterion "re-run extends 0 with 0 writes" is no longer
+asserted-only. `tests/test_paper_trading_extend.py::test_extension_writes_once_and_is_idempotent`
+(second invocation: `target is None`, `state_writes == 0`, update stub not re-invoked) and
+`::test_extension_is_noop_without_completed_session` (state SHA256 unchanged) demonstrate it
+deterministically, without touching live state or `data/raw`.
+
 ## Context — verified baseline (2026-11-14T05:39Z, session 4 inv 1; run 43547986902 attempt 1)
 This session: `scripts/pre_gate_check.sh` → **exit 0** (now=1794634743 < gate 1794866400, T-231657s; state SHA256 `c438cd71…` matches; `data/raw` clean). STOP — no cycle re-run, no handoff churn, no commit. Focused pytest `tests/test_pre_gate_check.py tests/test_post_gate_orchestrator.py` → **30 passed in 2.52s**. `git status --porcelain` → 0 lines (clean). `/tmp/kilo-venv` present. Supervisor rec `43547986902-attempt-1-review-0004-9649ce2ce584` dispositioned `accepted` in `.kilo-runtime/worker-disposition.json` (runtime, not committed).
 
@@ -74,6 +89,19 @@ Expect exactly one session appended and a single state write.
 python3 -m venv /tmp/kilo-venv
 /tmp/kilo-venv/bin/python -m pip install --no-cache-dir numpy pandas scipy statsmodels arch yfinance pyarrow pyyaml pytest ruff
 ```
+
+## Session 6 verification summary (2026-11-14T06:33Z)
+- Pre-gate check: **exit 0** (gate not released, state SHA256 matches, `data/raw` clean)
+- Tests: **56 passed** (`test_paper_trading_extend.py` + `test_pre_gate_check.py` +
+  `test_post_gate_orchestrator.py` + `test_verify_monday_extension_path.py`), 13.86s
+- `git status --porcelain -- data/raw`: **empty**; `git status --porcelain`: **empty** (clean)
+- Current time: 1794637906 (2026-11-14T06:31:46Z) vs gate 1794866400 (2026-11-16T22:00:00Z) →
+  **T-228494s (~63.5h)**
+- State unchanged: `last_run_date 2026-11-13`, NAV `132654.46201168097`, run_history 469,
+  SHA256 `c438cd71...`
+- `/tmp/kilo-venv` present
+- **Action taken**: STOP on pre-gate exit 0 (no full cycle re-run, no handoff churn, no commit).
+  Supervisor rec `43547986902-attempt-1-review-0004-9649ce2ce584` dispositioned `verified`.
 
 ## Session 4 verification summary (2026-11-14T05:39Z)
 - Pre-gate check: **exit 0** (gate not released, state SHA256 matches, data/raw clean)
