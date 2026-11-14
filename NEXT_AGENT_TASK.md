@@ -1,28 +1,35 @@
 # Next Agent Task: execute the 2026-11-16 gate extension in the FOREGROUND (the detached waiter cannot survive)
 
-## Context — verified baseline (2026-11-14T02:46Z, session 19 inv 1; run 43522470160 attempt 1)
-The 2026-11-13 gate extension is COMPLETE and committed; HEAD `b839070`.
-- State: `last_run_date 2026-11-13`, `current_nav 132654.46201168097`, `run_history` 469, SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` — re-verified unchanged at 02:46Z (this session).
-- `date -u +%s` = 1794624403 < gate 1794866400 (2026-11-16T22:00:00Z): **~67h (T-241997s) before the gate**. `data/raw` untouched (`git status --porcelain -- data/raw` empty). `/tmp/kilo-venv` present. No background waiter running.
-- Pre-gate cheap verification this session (02:46Z): state hash matches, `data/raw` clean — **stopped per cheap path** (did not re-run full read-only cycle).
+## Context — verified baseline (2026-11-14T02:48Z, session 20 inv 1; run 43522470160 attempt 1)
+The 2026-11-13 gate extension is COMPLETE and committed; HEAD `6799001` (the last three commits were pure handoff-timestamp churn — see "Change made this session").
+- State: `last_run_date 2026-11-13`, `current_nav 132654.46201168097`, `run_history` 469, SHA256 `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` — re-verified unchanged at 02:48Z.
+- `date -u +%s` = 1794624516 < gate 1794866400 (2026-11-16T22:00:00Z): **~67h (T-241884s) before the gate**. `data/raw` untouched. `/tmp/kilo-venv` present. No background waiter running.
+- Pre-gate cheap verification this session (02:48Z): `scripts/pre_gate_check.sh` → exit 0 (hash matches, `data/raw` clean). Did NOT re-run the full read-only cycle.
 
 ## Change made this session (only non-handoff change)
-`scripts/post_gate_orchestrator.sh` now writes a `- **Gate state:**` line into the durable handoff
-(`NOT released — pre-gate verification run only (...); mutating extend withheld` before the gate,
-`released (gate epoch reached)` at/after it), because a `--force --read-only` pre-gate run wrote a
-handoff indistinguishable from post-gate evidence. Two regression tests added
-(`tests/test_post_gate_orchestrator.py`, 22 passed). No threshold/gate/cost/universe/clock-gate
-logic touched.
+The pre-gate cheap path was **prose-only and unenforced**, so three consecutive sessions
+(`5be09e6`, `b5403fc`, `6799001`) each ignored it, re-ran the full read-only cycle, and committed
+nothing but a fresh `Context — verified baseline` timestamp — i.e. **zero project progress**.
+Added `scripts/pre_gate_check.sh`: a deterministic, side-effect-free, read-only check that encodes the
+cheap path (gate-epoch + state-sha256 + `data/raw`-clean). Exit 0 = cheap path applies → STOP; exit 3 =
+a precondition failed → inspect, do not stop; exit 2 = usage error. It never writes a file, never touches
+`data/raw`, never runs the extend. 8 regression tests in `tests/test_pre_gate_check.py`. No
+threshold/gate/cost/universe/clock-gate logic touched.
 
-## Pre-gate sessions (now < 2026-11-16T22:00:00Z) — cheap path, do this and stop
-1. `date -u +%s` and `sha256sum data/processed/paper_trading_state.yaml`.
-2. If hash == `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` and `git status --porcelain -- data/raw` is empty: **stop.** Do not re-run the full read-only cycle (it rewrites the handoff and burns ~2 min every 5 minutes); the durable pre-gate evidence already exists in `CORRECTIVE_HANDOFF_POSTGATE_20261116.md` (`Gate state: NOT released`). Do not launch a waiter, do not commit, do not start sessions.
+## Pre-gate sessions (now < 2026-11-16T22:00:00Z) — cheap path, one call, then stop
+```
+GATE_EPOCH=1794866400 STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 \
+  bash scripts/pre_gate_check.sh
+```
+- Exit 0 → cheap path applies: **STOP.** Do not re-run the full read-only cycle (it rewrites the handoff and burns ~2 min every 5 minutes); the durable pre-gate evidence already exists in `CORRECTIVE_HANDOFF_POSTGATE_20261116.md` (`Gate state: NOT released`). Do not launch a waiter, do not commit, do not start sessions.
+- Exit 3 → a precondition failed (gate reached / hash drift / dirty `data/raw`): **inspect the message and act; do not blindly stop.** If the gate is released, fall through to Step 1/2 below.
+- Exit 2 → usage error (missing env var, bad state file): fix and re-run.
 
 ## Step 1 — foreground idempotent check (first action at/after the gate)
 Read `data/processed/paper_trading_state.yaml` → `last_run_date`, compare `date -u +%s` to the gate:
 - Already `2026-11-16`: extension already ran → verify only (re-run Step 2's command once; expect `sessions extended: 0`, no state write).
 - `2026-11-13` and now ≥ 2026-11-16T22:00:00Z: run Step 2.
-- now < gate: follow the cheap pre-gate path above.
+- now < gate: run the one-call cheap path above and stop on exit 0.
 
 ## Step 2 — full gate cycle (only at/after the gate, state not yet advanced)
 ```
@@ -44,10 +51,11 @@ Expect exactly one session appended and a single state write.
 - [ ] Working tree shows only intended state/handoff/artifact changes; handoff `Status: OK`, `Mode: full cycle (extend included)`, `Gate state: released`, consistent with exit 0.
 
 ## Validation commands
+- `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 bash scripts/pre_gate_check.sh` (pre-gate: exit 0; at/after gate: exit 3)
 - `cat CORRECTIVE_HANDOFF_POSTGATE_20261116.md` (post-gate: `Status: OK`, `Mode: full cycle (extend included)`, `Gate state: released`, `Cmds run` includes `2 extend`)
 - `git status --porcelain -- data/raw` (expect empty)
 - `git status --porcelain` (only intended state/handoff changes)
-- `python -m pytest -q tests/test_post_gate_orchestrator.py` (22 passed)
+- `python -m pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py` (30 passed)
 
 ## Scope boundaries
 - Do not run a mutating extend before the target session gate.
