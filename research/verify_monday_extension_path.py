@@ -42,7 +42,10 @@ import pandas as pd
 import pytest
 import yaml
 
-ROOT = Path("/home/runner/work/Quantitative-Trading-Prompted/Quantitative-Trading-Prompted")
+# Derive the repository root from this file's location rather than a
+# hard-coded absolute path (Cycle 1256). A hard-coded worktree path breaks if
+# the repository is ever checked out at a different path.
+ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 import research.extend_paper_trading_state as ext

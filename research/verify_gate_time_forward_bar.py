@@ -35,7 +35,11 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import yaml
 
-ROOT = Path("/home/runner/work/Quantitative-Trading-Prompted/Quantitative-Trading-Prompted")
+# Derive the repository root from this file's location rather than a
+# hard-coded absolute path. verify_live_extension_path.py already does this;
+# a hard-coded worktree path here would break if the repository is ever
+# checked out at a different path (Cycle 1256).
+ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 import research.extend_paper_trading_state as ext
