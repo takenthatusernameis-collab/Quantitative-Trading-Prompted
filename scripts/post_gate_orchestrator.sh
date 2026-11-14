@@ -14,7 +14,9 @@
 #
 # Usage: scripts/post_gate_orchestrator.sh [--force] [--read-only]
 #                                        [--wait-until-gate [--max-wait-seconds N]]
-#   --force     skips the clock-gate pre-check (testing only).
+#   --force     skips the clock-gate pre-check (testing only). The handoff then
+#               records "Gate state: NOT released" so a forced pre-gate run can
+#               never be mistaken for post-gate evidence.
 #   --read-only runs the verification portion (cmds 1,3,5,6,7,8) and SKIPS the
 #               mutating extend (cmds 2,4). Safe to run before the gate.
 #   --wait-until-gate
@@ -121,8 +123,8 @@ while (( $# > 0 )); do
       log "FATAL: unknown argument '$1' (see --help)"; exit 2 ;;
   esac
 done
+now_epoch="$(date +%s)"
 if (( ! FORCE )); then
-  now_epoch="$(date +%s)"
   if (( now_epoch < GATE_EPOCH )); then
     if (( WAIT_UNTIL_GATE )); then
       wait_seconds=$(( GATE_EPOCH - now_epoch ))
@@ -154,7 +156,20 @@ if (( ! FORCE )); then
     fi
   fi
 fi
-log "clock gate released; starting post-gate cycle (read_only=$READ_ONLY)"
+# The durable record must be unambiguous about WHICH side of the gate produced
+# it. A `--force --read-only` run before the gate writes the same handoff file
+# as the post-gate cycle, so "Status: OK" alone reads like post-gate evidence to
+# the next session. Record the gate state explicitly instead.
+now_epoch="$(date +%s)"
+if (( now_epoch < GATE_EPOCH )); then
+  PRE_GATE=1
+  GATE_STATE="NOT released — pre-gate verification run only (T-$(( GATE_EPOCH - now_epoch ))s remaining; mutating extend withheld)"
+else
+  PRE_GATE=0
+  GATE_STATE="released (gate epoch reached)"
+fi
+log "gate state: $GATE_STATE"
+log "starting post-gate cycle (read_only=$READ_ONLY)"
 
 # --- 1. Date -----------------------------------------------------------------
 log "cmd1: date"
@@ -247,6 +262,7 @@ if ! cat > "$HANDOFF" <<EOF
 - **Generated:** $(date -u +%FT%TZ) UTC
 - **Status:** $STATUS
 - **Mode:** $([ $READ_ONLY -eq 1 ] && echo "read-only verification" || echo "full cycle (extend included)")
+- **Gate state:** $GATE_STATE
 - **State:** $STATE_SHA
 - **Gate epoch:** $GATE_EPOCH ($GATE_HUMAN)
 - **Orchestrator:** scripts/post_gate_orchestrator.sh (idempotent, restart-safe)

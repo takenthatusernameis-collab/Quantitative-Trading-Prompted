@@ -291,6 +291,34 @@ def test_handoff_gate_date_mismatch_is_usage_error(tmp_path: Path) -> None:
     assert not handoff.exists()
 
 
+def test_pre_gate_forced_run_is_marked_pre_gate(tmp_path: Path) -> None:
+    # Evidence-integrity hazard: a `--force --read-only` run BEFORE the gate
+    # writes the same durable handoff file as the real post-gate cycle, so
+    # "Status: OK" alone reads like post-gate evidence to the next session (the
+    # handoff has already been mistaken for exactly that once). The handoff must
+    # state that the gate was not released and that the mutating extend was
+    # withheld.
+    handoff = tmp_path / "handoff.md"
+    proc = _run(["--force", "--read-only"], FUTURE_GATE, handoff)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    text = handoff.read_text()
+    assert "- **Gate state:** NOT released" in text, text
+    assert "pre-gate verification run only" in text, text
+    assert "mutating extend withheld" in text, text
+    assert "released (gate epoch reached)" not in text, text
+
+
+def test_released_gate_is_marked_released(tmp_path: Path) -> None:
+    # The complementary case: a real post-gate cycle must NOT be labelled
+    # pre-gate, otherwise the marker carries no information.
+    handoff = tmp_path / "handoff.md"
+    proc = _run(["--read-only"], PAST_GATE, handoff)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    text = handoff.read_text()
+    assert "- **Gate state:** released (gate epoch reached)" in text, text
+    assert "NOT released" not in text, text
+
+
 def test_matching_gate_date_handoff_proceeds(tmp_path: Path) -> None:
     # An explicit HANDOFF whose date matches GATE_EPOCH must still work.
     handoff = tmp_path / "CORRECTIVE_HANDOFF_POSTGATE_20261113.md"
