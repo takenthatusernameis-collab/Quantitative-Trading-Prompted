@@ -610,3 +610,47 @@ def test_readiness_candidate_available_for_fresh_state():
     r = ext.build_readiness(state, now, close_hour=16, tz=TZ)
     assert r["candidate_available"] is True
     assert "fresh state" in r["candidate_reason"]
+
+
+# ---------------------------------------------------------------------------
+# Gate-epoch / session-close alignment (durable invariant)
+# ---------------------------------------------------------------------------
+
+# The documented 2026-11-16 gate (NEXT_AGENT_TASK.md, scripts/*.sh, tests/
+# test_pre_gate_check.py) is 2026-11-16T22:00:00Z. The extend refuses to run
+# until session_is_complete(target, now, close_hour=config) flips True, i.e.
+# close_hour+1 on the session date in the configured exchange timezone. These
+# two clocks must agree EXACTLY for the target session. If they drift, a
+# released gate can still no-op (cheap path stopped, extend withheld) or, worse,
+# fire into a not-yet-closed (partial) session. This pins the alignment against
+# the LIVE config so a market_close_hour change that silently breaks it fails
+# here instead of in the post-gate production run.
+DOCUMENTED_GATE_20261116 = 1794866400  # 2026-11-16T22:00:00Z
+
+
+def test_gate_epoch_matches_configured_session_close_boundary():
+    cfg = yaml.safe_load((ROOT / "config" / "paper_trading_config.yaml").read_text())
+    close_hour = cfg["data_refresh"]["market_close_hour"]
+    tz = ZoneInfo(cfg["data_refresh"]["timezone"])
+
+    gate_dt = datetime.fromtimestamp(DOCUMENTED_GATE_20261116, tz=UTC)
+    # The gate instant must be exactly close_hour+1 on the target session date.
+    assert gate_dt.astimezone(tz) == datetime(
+        2026, 11, 16, close_hour + 1, 0, tzinfo=tz
+    ), "documented gate epoch is not close_hour+1 on 2026-11-16 in the exchange tz"
+
+    # Exactly at the gate the target session is complete (extend may run)...
+    assert (
+        session_is_complete(
+            "2026-11-16", gate_dt, close_hour=close_hour, tz=tz
+        )
+        is True
+    )
+    # ...and one second earlier it is NOT (no early extend into a partial bar).
+    before = datetime.fromtimestamp(DOCUMENTED_GATE_20261116 - 1, tz=UTC)
+    assert (
+        session_is_complete(
+            "2026-11-16", before, close_hour=close_hour, tz=tz
+        )
+        is False
+    )
