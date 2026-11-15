@@ -18,6 +18,7 @@
 - **inv-228:** cmd9 state-fingerprint accepts optional leading minus (`nav=-?[0-9]+\.?[0-9]*`); 4 regression tests.
 - **inv-1:** orchestrator fails closed (rc=2) with actionable "recreate /tmp/kilo-venv" when `PYTHON`/`RUFF` missing; 3 regression tests.
 - **session 12:** `tests/test_post_gate_handoff_consistency.py` pins committed `CORRECTIVE_HANDOFF_POSTGATE_20261116.md` State/Mode/Gate/Cmds against real state and gate.
+- **session 9 (run 43722618751):** `tests/test_post_gate_handoff_consistency.py` also pins the handoff's `Gate epoch` (integer + human timestamp) and enforces `Cmds run` truthfulness — the read-only steps (1/3/5/6/7/8/9) must always be recorded, and `2 extend`/`4 idempotent re-extend` may appear iff the gate is released. Closes the last self-contradiction gap: a handoff could claim `2 extend` ran while its own `Gate state` said `NOT released` (the corrective-inv-182 defect class), because `Cmds run` was never checked. Test-only; no production code, threshold, gate, cost model, universe, or `data/raw` touched. 3 new tests (module 11 passed; focused suite 65 passed); mutation-checked (a false `2 extend` claim and a stale `1794520800` epoch are both rejected; the real handoff passes).
 
 ## Step 1 — pre-gate cheap path (now < 2026-11-16T22:00:00Z)
 ```

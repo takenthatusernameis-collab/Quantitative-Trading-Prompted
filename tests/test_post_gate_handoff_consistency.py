@@ -34,6 +34,8 @@ STATE = REPO_ROOT / "data" / "processed" / "paper_trading_state.yaml"
 # Same gate the current cycle targets; kept here so the test states its own
 # assumption rather than silently depending on wall-clock layout.
 GATE_20261116 = datetime(2026, 11, 16, 22, 0, 0, tzinfo=UTC)
+CANONICAL_GATE_EPOCH = int(GATE_20261116.timestamp())
+CANONICAL_GATE_HUMAN = GATE_20261116.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 # nav allows an optional leading minus (nav=-?[0-9]+(?:\.[0-9]+)?): current_nav is
 # a float and a paper account can legitimately fall below zero after losses. This
@@ -157,6 +159,88 @@ def test_status_ok_for_pre_gate_verification() -> None:
     assert _field(lines, "Status").startswith("OK"), _field(lines, "Status")
     assert _field(lines, "Mode") == "pre-gate verification (extend withheld — gate not released)"
     assert _field(lines, "Gate state").startswith("NOT released")
+
+
+# Read-only verification steps the orchestrator always runs (cmds 1,3,5,6,7,8,9).
+# Kept as an explicit tuple so the truthfulness guard fails closed if a step
+# silently disappears from ``Cmds run`` rather than only checking the extend.
+_VERIFY_TOKENS = (
+    "1 date",
+    "3 drift",
+    "5 6-module pytest",
+    "6 git status",
+    "7 data-cost inventory + tests",
+    "8 ruff",
+    "9 state fingerprint",
+)
+
+
+def _assert_cmds_run_truthful(cmds_run: str, gate_state: str) -> None:
+    """Assert ``Cmds run`` matches what the clock gate actually allows.
+
+    The recorded defect class (corrective inv 182) is a durable record that
+    contradicts itself: ``Mode``/``Gate state`` said the extend was withheld while
+    ``Cmds run``/``Cmds skipped`` disagreed. The existing guards pin ``Cmds
+    skipped`` but never ``Cmds run`` -- so a handoff could falsely claim
+    ``2 extend``/``4 idempotent re-extend`` ran while its own ``Gate state`` said
+    ``NOT released``. Assert the read-only steps are always recorded and the
+    mutating extend appears iff the gate is released.
+    """
+    for token in _VERIFY_TOKENS:
+        assert token in cmds_run, (
+            f"'Cmds run' is missing the read-only verification step {token!r}: {cmds_run!r}"
+        )
+    if gate_state.startswith("NOT released"):
+        assert "2 extend" not in cmds_run, (
+            f"unreleased gate but 'Cmds run' claims the extend ran: {cmds_run!r}"
+        )
+        assert "4 idempotent" not in cmds_run, (
+            f"unreleased gate but 'Cmds run' claims the re-extend ran: {cmds_run!r}"
+        )
+    elif gate_state.startswith("released"):
+        assert "2 extend" in cmds_run, f"released gate but 'Cmds run' omits the extend: {cmds_run!r}"
+        assert "4 idempotent" in cmds_run, (
+            f"released gate but 'Cmds run' omits the re-extend: {cmds_run!r}"
+        )
+    else:
+        pytest.fail(f"unrecognized 'Gate state' value: {gate_state!r}")
+
+
+def test_gate_epoch_matches_canonical_gate() -> None:
+    """The handoff must name the gate it was produced for, not a stale one.
+
+    ``scripts/post_gate_orchestrator.sh`` writes ``Gate epoch: <epoch> (<human>)``
+    derived from ``GATE_EPOCH``. A stale or malformed epoch would misattribute the
+    record to the wrong gate (e.g. the 2026-11-12 default) and mislead the
+    gate-active run. Pin both the integer epoch and the human timestamp.
+    """
+    raw = _field(_handoff_lines(), "Gate epoch")
+    match = re.match(r"(?P<epoch>[0-9]+)\s+\((?P<human>[^)]+)\)$", raw)
+    assert match, f"malformed 'Gate epoch' line: {raw!r}"
+    assert int(match.group("epoch")) == CANONICAL_GATE_EPOCH, raw
+    assert match.group("human") == CANONICAL_GATE_HUMAN, raw
+
+
+def test_cmds_run_is_truthful_for_gate_state() -> None:
+    """``Cmds run`` must record what actually ran for the current gate state."""
+    lines = _handoff_lines()
+    _assert_cmds_run_truthful(_field(lines, "Cmds run"), _field(lines, "Gate state"))
+
+
+def test_false_extend_claim_is_rejected_when_gate_unreleased() -> None:
+    """Anti-vacuity: a handoff claiming the extend ran before the gate must fail.
+
+    This is the exact self-contradiction class of corrective inv 182: ``Gate
+    state`` says the extend was withheld while ``Cmds run`` claims it ran. The
+    guard must reject it so the committed consistency check cannot pass on a
+    record that misrepresents the cycle.
+    """
+    false_claim = (
+        "1 date, 2 extend, 3 drift, 4 idempotent re-extend, 5 6-module pytest, "
+        "6 git status, 7 data-cost inventory + tests, 8 ruff, 9 state fingerprint"
+    )
+    with pytest.raises(AssertionError):
+        _assert_cmds_run_truthful(false_claim, "NOT released — pre-gate verification run only")
 
 
 def _make_handoff_with_nav(nav: str, tmp_path: Path) -> Path:
