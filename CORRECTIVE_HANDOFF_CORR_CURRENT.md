@@ -402,3 +402,36 @@ Full `pytest tests/` collects **858 tests across 67 files** and exceeded a 300s 
 Execute Step 2 of `NEXT_AGENT_TASK.md`: `GATE_EPOCH=1794866400 PYTHON=/tmp/kilo-venv/bin/python RUFF=/tmp/kilo-venv/bin/ruff bash scripts/post_gate_orchestrator.sh` (full cycle, foreground), then idempotency re-run (expect 0 extends, 0 writes). Confirm `CORRECTIVE_HANDOFF_POSTGATE_20261116.md` shows `Status: OK`, `Mode: full cycle (extend included)`, `Gate state: released`, non-empty `State:` line. If `/tmp/kilo-venv` absent, recreate per runtime note before Step 2.
 
 CORRECTIVE_VERIFICATION=PASS
+
+---
+
+## Corrective invocation 7 (2026-11-15T19:27Z) — pre-gate cheap path; temporal blocker persists, cutoff ends before gate release
+
+### Prior state
+kilo-session-10.log (diagnostic, 2026-11-15T19:25:54Z) ran `scripts/pre_gate_check.sh` (exit 0), `pytest` (65 passed), `ruff check` (all passed), `bash -n` on both scripts (ORCH_BASH_OK/PREGATE_BASH_OK), `git status --porcelain` (clean). All verification succeeded; gate NOT reached. Gate releases at 2026-11-16T22:00:00Z (~26.5h / T-95585s remaining). 355-minute cutoff (~2026-11-16T00:42Z) ends before gate release. Acceptance criteria (gate extension ran at/after 2026-11-16T22:00:00Z) cannot be satisfied within this session. This is NOT a code defect — no source/test/data/config/gate/threshold change is warranted.
+
+### Materially different approach (vs inv6)
+Independent re-verification of the exact diagnostic-log commands against the live worktree at 2026-11-15T19:27Z, confirming the blocker persists unchanged ~12 minutes after the diagnostic. No external API calls, no code changes, no `data/raw` mutation, no commit.
+
+### Fresh verification (all passed)
+| Command | Result |
+|---|---|
+| `date -u` / epoch | 2026-11-15T19:26:54Z / 1794770814 (T-95585s to gate 1794866400 = 2026-11-16T22:00:00Z) |
+| `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71... bash scripts/pre_gate_check.sh` | **EXIT 0** — `PRE-GATE OK … T-95585s remaining … state sha256 matches; data/raw clean. STOP` |
+| `sha256sum data/processed/paper_trading_state.yaml` | `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` (unchanged; last_run=2026-11-13, nav=132654.46201168097, runs=469) |
+| `git status --porcelain -- data/raw` | empty (clean) |
+| `git status --porcelain` | empty (clean) |
+| `pytest tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` | **65 passed in 7.74s** (EXIT 0) |
+| `ruff check tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` | **All checks passed!** (EXIT 0) |
+| `bash -n scripts/post_gate_orchestrator.sh scripts/pre_gate_check.sh` | ORCH_BASH_OK / PREGATE_BASH_OK |
+
+### What changed (durable)
+- `CORRECTIVE_HANDOFF_CORR_CURRENT.md`: appended this inv7 record (durable evidence of diagnosis + verification). No `data/`, `config/`, source, test, threshold, gate, cost model, universe, workflow, or `data/raw` changes.
+
+### Unresolved blocker
+**Temporal / gate not released** (unchanged, not a code defect): current time 2026-11-15T19:27Z is T-95585s before gate 2026-11-16T22:00:00Z (epoch 1794866400). `pre_gate_check.sh` correctly returns exit 0 (STOP). Mutating extend (Step 2) must run only at/after the gate via `scripts/post_gate_orchestrator.sh` per `NEXT_AGENT_TASK.md`; state remains `last_run_date=2026-11-13`. No safe correction can advance the clock gate. 355-minute cutoff ends ~2026-11-16T00:42Z, well before gate release.
+
+### Next distinct investigation (at/after 2026-11-16T22:00:00Z)
+Execute Step 2 of `NEXT_AGENT_TASK.md`: `GATE_EPOCH=1794866400 PYTHON=/tmp/kilo-venv/bin/python RUFF=/tmp/kilo-venv/bin/ruff bash scripts/post_gate_orchestrator.sh` (full cycle, foreground), then idempotency re-run (expect 0 extends, 0 writes). Confirm `CORRECTIVE_HANDOFF_POSTGATE_20261116.md` shows `Status: OK`, `Mode: full cycle (extend included)`, `Gate state: released`, non-empty `State:` line.
+
+CORRECTIVE_VERIFICATION=PASS
