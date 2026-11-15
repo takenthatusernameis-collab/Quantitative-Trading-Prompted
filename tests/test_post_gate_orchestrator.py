@@ -223,6 +223,56 @@ def test_read_only_cycle_never_invokes_the_extend(tmp_path: Path) -> None:
     assert "- **Cmds skipped:**" in handoff.read_text()
 
 
+def test_missing_python_interpreter_is_preflight_usage_error(tmp_path: Path) -> None:
+    # ``/tmp/kilo-venv`` is ephemeral (recreated per job; NEXT_AGENT_TASK.md
+    # "Runtime note"). If the run active at/after the gate is a fresh container
+    # without it, PYTHON/RUFF point at missing paths and every step fails with an
+    # opaque ``No such file or directory`` (rc=127) -- in the real (non-read-only)
+    # cycle that aborts the mutating extend (cmd2) *mid-cycle*, after the script
+    # already logged "starting post-gate cycle". The preflight must detect the
+    # missing interpreter up front, fail closed (rc=2), and write no handoff.
+    handoff = tmp_path / "handoff.md"
+    proc = _run(
+        ["--read-only"],
+        PAST_GATE,
+        handoff,
+        env_extra={"PYTHON": str(tmp_path / "no-such-python"), "RUFF": "true"},
+    )
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    assert "required interpreter" in proc.stdout, proc.stdout
+    assert "is missing or not executable" in proc.stdout, proc.stdout
+    assert "starting post-gate cycle" not in proc.stdout, proc.stdout
+    assert not handoff.exists()
+
+
+def test_missing_ruff_interpreter_is_preflight_usage_error(tmp_path: Path) -> None:
+    # Symmetric guard: a present PYTHON but missing RUFF must also fail closed
+    # before any step runs (cmd8 would otherwise abort mid-cycle).
+    handoff = tmp_path / "handoff.md"
+    proc = _run(
+        ["--read-only"],
+        PAST_GATE,
+        handoff,
+        env_extra={"PYTHON": "true", "RUFF": str(tmp_path / "no-such-ruff")},
+    )
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    assert "required interpreter" in proc.stdout, proc.stdout
+    assert "starting post-gate cycle" not in proc.stdout, proc.stdout
+    assert not handoff.exists()
+
+
+def test_present_interpreters_pass_preflight(tmp_path: Path) -> None:
+    # Positive complement: resolvable interpreters (the ``true``/``false`` builtins
+    # the rest of the suite uses, and PATH commands) must pass the preflight so
+    # the check cannot be satisfied only by rejecting everything.
+    handoff = tmp_path / "handoff.md"
+    proc = _run(["--read-only"], PAST_GATE, handoff, env_extra={"PYTHON": "true", "RUFF": "true"})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "required interpreter" not in proc.stdout, proc.stdout
+    assert "starting post-gate cycle" in proc.stdout, proc.stdout
+    assert handoff.exists()
+
+
 def test_max_wait_seconds_requires_value(tmp_path: Path) -> None:
     handoff = tmp_path / "handoff.md"
     proc = _run(["--read-only", "--max-wait-seconds"], FUTURE_GATE, handoff)

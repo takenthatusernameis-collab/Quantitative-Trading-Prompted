@@ -136,6 +136,28 @@ while (( $# > 0 )); do
   esac
 done
 now_epoch="$(date +%s)"
+# --- Preflight: the interpreters must exist before any step runs ---------------
+# ``/tmp/kilo-venv`` is ephemeral (recreated per job; see NEXT_AGENT_TASK.md
+# "Runtime note"). If the run that is active at/after the gate is a fresh
+# container without it, PYTHON/RUFF point at missing paths and EVERY step fails
+# with an opaque ``No such file or directory`` (rc=127) -- and in the real
+# (non-read-only) cycle that is the mutating extend (cmd2), which would abort
+# mid-cycle after the script already logged "starting post-gate cycle". Detect
+# the missing prerequisites up front and fail closed with an actionable message,
+# before the clock wait or any step, so the operator re-creates the venv instead
+# of reading a mid-cycle failure. Uses the same PY/RUFF the cycle invokes, so a
+# pass here guarantees every later step can execute its interpreter.
+# ``command -v`` resolves a PATH command, an explicit path, or a shell builtin
+# (the test suite uses ``true``/``false`` as no-op interpreters), so it validates
+# exactly what a later step can execute without rejecting a bare command name.
+for _prog in "$PY" "$RUFF"; do
+  if ! command -v "$_prog" >/dev/null 2>&1; then
+    log "FATAL: required interpreter '$_prog' is missing or not executable; the gate cycle cannot run."
+    log "       /tmp/kilo-venv is ephemeral -- recreate it, then re-run:"
+    log "       python3 -m venv /tmp/kilo-venv && /tmp/kilo-venv/bin/python -m pip install --no-cache-dir numpy pandas scipy statsmodels arch yfinance pyarrow pyyaml pytest ruff"
+    exit 2
+  fi
+done
 if (( ! FORCE )); then
   if (( now_epoch < GATE_EPOCH )); then
     if (( WAIT_UNTIL_GATE )); then
