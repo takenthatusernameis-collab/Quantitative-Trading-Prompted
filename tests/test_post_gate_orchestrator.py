@@ -153,6 +153,41 @@ def test_wait_until_gate_past_gate_proceeds(tmp_path: Path) -> None:
     assert handoff.exists()
 
 
+def test_wait_until_gate_blocks_then_releases_and_runs_cycle(tmp_path: Path) -> None:
+    """The --wait-until-gate happy path: block until the gate releases, then run.
+
+    Every other --wait-until-gate test uses a FUTURE_GATE (never reached within
+    the budget -> exit 3) or a PAST_GATE (already released -> no wait). Neither
+    exercises the actual wait-then-release branch, so a regression that broke
+    the wait loop (e.g. sleeping past the deadline, or exiting before running)
+    would pass the suite. Pin the gate to a few seconds ahead with a matching
+    wait budget so the wait loop terminates at the gate and the cycle runs.
+
+    The gate epoch is derived at call time (not fixed) so the test cannot go
+    stale as wall-clock time advances; the wait budget is set to the same
+    remaining span plus a small margin.
+    """
+    import time as _time
+
+    handoff = tmp_path / "handoff.md"
+    now = int(_time.time())
+    gate_epoch = str(now + 3)
+    budget = str(max(5, (now + 3) - now + 2))
+    proc = _run(
+        ["--read-only", "--wait-until-gate", "--max-wait-seconds", budget],
+        gate_epoch,
+        handoff,
+        env_extra={"PYTHON": "true", "RUFF": "true"},
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "waiting up to" in proc.stdout, proc.stdout
+    assert "clock gate released after wait" in proc.stdout, proc.stdout
+    assert handoff.exists()
+    text = handoff.read_text()
+    assert "- **Gate state:** released (gate epoch reached)" in text, text
+    assert f"**Gate epoch:** {gate_epoch}" in text, text
+
+
 def _stub_python(tmp_path: Path) -> tuple[Path, Path]:
     """A fake interpreter that records every invocation and exits 0.
 
