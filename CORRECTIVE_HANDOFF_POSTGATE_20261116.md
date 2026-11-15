@@ -1,15 +1,36 @@
 # Post-Gate Handoff — cycle for gate 2026-11-16T22:00:00Z (orchestrator scripts/post_gate_orchestrator.sh)
 
-- **Generated:** 2026-11-15T00:47:00Z UTC
+- **Generated:** 2026-11-15T02:20:00Z UTC
 - **Status:** OK — all verification steps passed
 - **Mode:** pre-gate verification (extend withheld — gate not released)
-- **Gate state:** NOT released — pre-gate verification run only (T-162942s remaining; mutating extend withheld)
+- **Gate state:** NOT released — pre-gate verification run only (T-157000s remaining; mutating extend withheld)
 - **State:** c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 last_run=2026-11-13 nav=132654.46201168097 runs=469
 - **Gate epoch:** 1794866400 (2026-11-16T22:00:00Z)
 - **Orchestrator:** scripts/post_gate_orchestrator.sh (idempotent, restart-safe)
 - **Cmds run:** 1 date, 3 drift, 5 6-module pytest, 6 git status, 7 data-cost inventory + tests, 8 ruff, 9 state fingerprint
 - **Cmds skipped:** 2 extend (gate not released), 4 idempotent re-extend (gate not released)
 - **Waiter gap closed:** cmd7 now runs inside the cycle and the handoff is written into the repository (not /tmp).
+
+## Corrective invocation 403 — verified-success evidence (2026-11-15T02:17–02:20Z)
+
+The prior corrective invocation was blocked for "no verified-success evidence". This run
+supplies it with a reproducible, focused verification chain against the clean tree at
+HEAD `c12c8d2` (the commit that added the STATE_FILE-override tests). No production
+code, threshold, gate, cost model, universe, or `data/raw` was touched.
+
+- **Pre-gate cheap path (exit 0, STOP), re-verified this run:**
+  `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 bash scripts/pre_gate_check.sh`
+  → `PRE-GATE OK: now=1794709072 (2026-11-15T02:17:52Z) < gate 1794866400 (2026-11-16T22:00:00Z); T-157328s remaining. state sha256 matches (c438cd71…); data/raw clean. STOP` — **EXIT=0**.
+- **Focused verification this run:**
+  `/tmp/kilo-venv/bin/python -m pytest -q tests/test_pre_gate_check.py tests/test_post_gate_orchestrator.py` → **46 passed in 3.75s** (matches the task's `>=46 passed` criterion; baseline 44 + 2 STATE_FILE-override tests).
+- **Mutation check proving the 2 committed tests are genuine regression guards:**
+  In a throwaway copy, the `STATE_FILE` override at `scripts/pre_gate_check.sh:39` was
+  reverted to always use the default path (simulating a regression that ignores the env
+  override). Both new tests then FAILED as designed:
+  - `test_state_file_override_matching_hash_exits_0` → `assert 3 == 0` (script hashed the wrong default file → false hash mismatch)
+  - `test_state_file_override_missing_exits_2` → `assert 3 == 2` (override ignored → did not fail-closed on the missing override path)
+  The real `scripts/pre_gate_check.sh` was not modified; `git status --porcelain` after the
+  check is **0 lines** and line 39 still reads `STATE_FILE="${STATE_FILE:-data/processed/paper_trading_state.yaml}"`.
 
 ## Bounded pre-gate verification (corrective inv 76, 2026-11-15T00:44–00:47Z)
 All gate-cycle verification commands re-ran with bounded timeouts against the clean tree
