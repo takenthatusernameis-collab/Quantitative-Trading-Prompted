@@ -9,6 +9,7 @@
 - **Provider-noise note:** corrective inv 392 (2026-11-15T07:12Z) recovery logs 389–391 showed model-provider `Sign up for free…` aborts before any project command (623 occurrences over 392 recovery logs in `/home/runner/work/_temp/kilo-session-13-recovery-*.log`). This is **not** a project-layer defect; do not treat provider exit-1 as a code/test/gate failure.
 
 ## Prior verified fixes at HEAD (preserved, do not re-open)
+- **inv-386-recovery:** `tests/test_post_gate_handoff_consistency.py` nav pattern loosened to `nav=-?[0-9]+(?:\.[0-9]+)?` to match `scripts/post_gate_orchestrator.sh:345`; 4 regression tests (negative float/int NAV accepted, `--123` and `-abc` still rejected). The two committed guards previously disagreed: the orchestrator accepted a negative-NAV handoff while its own consistency guard rejected it. Test-only; no production code, threshold, gate, cost model, universe, or `data/raw` touched.
 - **inv-473:** `tests/test_shortlist_gross_edge_001.py` write-scope check diffs harness-only changes; `research/reports/tsmomentum_same_session_vol_correction_001.md` refreshed.
 - **inv-230:** go_no_go parser strips markdown bullets (`.strip(" *")`) for rolling Sharpe in `src/simulation/paper_trading.py:590`.
 - **inv-182:** `scripts/post_gate_orchestrator.sh` gates mutating extend on `PRE_GATE` (clock), not `--read-only`; `Mode` derived from what actually ran.

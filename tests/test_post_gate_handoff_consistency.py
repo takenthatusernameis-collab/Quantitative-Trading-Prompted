@@ -35,10 +35,20 @@ STATE = REPO_ROOT / "data" / "processed" / "paper_trading_state.yaml"
 # assumption rather than silently depending on wall-clock layout.
 GATE_20261116 = datetime(2026, 11, 16, 22, 0, 0, tzinfo=UTC)
 
+# nav allows an optional leading minus (nav=-?[0-9]+(?:\.[0-9]+)?): current_nav is
+# a float and a paper account can legitimately fall below zero after losses. This
+# mirrors the fingerprint guard in scripts/post_gate_orchestrator.sh:345
+# (nav=-?[0-9]+\.?[0-9]*), which was loosened in inv-228 after a valid negative
+# NAV was rejected as "malformed" and failed an otherwise-successful cycle. This
+# guard was NOT loosened at the same time, so the two committed guards disagreed:
+# the orchestrator would ACCEPT a negative-NAV handoff and then the very next
+# gate cycle's consistency check would REJECT it, failing the acceptance
+# verification of a handoff the orchestrator itself produced. A negative NAV must
+# be accepted here too; a double minus or a non-numeric token must still fail.
 _STATE_LINE = re.compile(
     r"(?P<sha>[0-9a-f]{64}) "
     r"last_run=(?P<last_run>\d{4}-\d{2}-\d{2}) "
-    r"nav=(?P<nav>[0-9]+(?:\.[0-9]+)?) "
+    r"nav=(?P<nav>-?[0-9]+(?:\.[0-9]+)?) "
     r"runs=(?P<runs>[0-9]+)$"
 )
 
@@ -147,3 +157,54 @@ def test_status_ok_for_pre_gate_verification() -> None:
     assert _field(lines, "Status").startswith("OK"), _field(lines, "Status")
     assert _field(lines, "Mode") == "pre-gate verification (extend withheld — gate not released)"
     assert _field(lines, "Gate state").startswith("NOT released")
+
+
+def _make_handoff_with_nav(nav: str, tmp_path: Path) -> Path:
+    """Build a throwaway handoff copy whose State line carries ``nav``."""
+    text = HANDOFF.read_text()
+    state_line = f"{'a' * 64} last_run=2026-11-13 nav={nav} runs=469"
+    out = tmp_path / "probe_handoff.md"
+    out.write_text(re.sub(r"- \*\*State:\*\*.*$", f"- **State:** {state_line}", text, flags=re.MULTILINE))
+    return out
+
+
+def test_negative_float_nav_handoff_is_consistent(tmp_path: Path) -> None:
+    """A negative float NAV must pass the committed consistency guard.
+
+    Mirrors test_negative_nav_fingerprint_is_not_malformed in the orchestrator
+    suite: current_nav is a float and a paper account can legitimately fall
+    below zero. The guard must accept it so a real post-gate cycle whose NAV has
+    gone negative does not fail its own committed consistency check.
+    """
+    out = _make_handoff_with_nav("-1234.56", tmp_path)
+    lines = out.read_text().splitlines()
+    match = _STATE_LINE.match(_field(lines, "State"))
+    assert match, f"negative float NAV rejected by the consistency guard: {_field(lines, 'State')!r}"
+    assert match.group("nav") == "-1234.56"
+
+
+def test_negative_integer_nav_handoff_is_consistent(tmp_path: Path) -> None:
+    """A negative integer NAV must pass the committed consistency guard."""
+    out = _make_handoff_with_nav("-500", tmp_path)
+    lines = out.read_text().splitlines()
+    match = _STATE_LINE.match(_field(lines, "State"))
+    assert match, f"negative integer NAV rejected by the consistency guard: {_field(lines, 'State')!r}"
+    assert match.group("nav") == "-500"
+
+
+def test_double_minus_nav_handoff_is_rejected(tmp_path: Path) -> None:
+    """Anti-vacuity: `--123.45` is not a valid number and must still fail."""
+    out = _make_handoff_with_nav("--123.45", tmp_path)
+    lines = out.read_text().splitlines()
+    assert _STATE_LINE.match(_field(lines, "State")) is None, (
+        f"double-minus NAV wrongly accepted: {_field(lines, 'State')!r}"
+    )
+
+
+def test_non_numeric_nav_handoff_is_rejected(tmp_path: Path) -> None:
+    """The loosened nav pattern must not accept a non-numeric token."""
+    out = _make_handoff_with_nav("-abc", tmp_path)
+    lines = out.read_text().splitlines()
+    assert _STATE_LINE.match(_field(lines, "State")) is None, (
+        f"non-numeric NAV wrongly accepted: {_field(lines, 'State')!r}"
+    )
