@@ -1,14 +1,16 @@
 # Post-Gate Handoff — cycle for gate 2026-11-16T22:00:00Z (orchestrator scripts/post_gate_orchestrator.sh)
 
-- **Generated:** 2026-11-15T02:20:00Z UTC
+- **Generated:** 2026-11-15T03:30:00Z UTC (refreshed session 9 inv 1; prior generation 2026-11-15T02:20:00Z UTC)
 - **Status:** OK — all verification steps passed
 - **Mode:** pre-gate verification (extend withheld — gate not released)
-- **Gate state:** NOT released — pre-gate verification run only (T-157000s remaining; mutating extend withheld)
+- **Gate state:** NOT released — pre-gate verification run only (T-152968s remaining; mutating extend withheld)
 - **State:** c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 last_run=2026-11-13 nav=132654.46201168097 runs=469
 - **Gate epoch:** 1794866400 (2026-11-16T22:00:00Z)
 - **Orchestrator:** scripts/post_gate_orchestrator.sh (idempotent, restart-safe)
 - **Cmds run:** 1 date, 3 drift, 5 6-module pytest, 6 git status, 7 data-cost inventory + tests, 8 ruff, 9 state fingerprint
 - **Cmds skipped:** 2 extend (gate not released), 4 idempotent re-extend (gate not released)
+- **Session 9 inv 1 (2026-11-15T03:30Z) re-verification:** pre-gate cheap path `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71… bash scripts/pre_gate_check.sh` → **EXIT=0** (`PRE-GATE OK`, `state sha256 matches`, `data/raw clean`, STOP). `pytest -q tests/test_pre_gate_check.py tests/test_post_gate_orchestrator.py` → **46 passed in 3.79s**. `ruff check tests/test_pre_gate_check.py` → **All checks passed!**. State fingerprint re-read from YAML: `last_run_date 2026-11-13`, `current_nav 132654.46201168097`, `run_history 469`, `rolling_sharpe_63d None`; `sha256sum` matches `c438cd71…`. `git status --porcelain` → 0 lines; `git ls-files --others --exclude-standard` → 0 lines; `git status --porcelain -- data/raw` → 0 lines. HEAD `6339f93`.
+- **Supervisor rec-0038 re-dispositioned `verified`:** the rec's claim of four untracked `CORRECTIVE_HANDOFF_CORRECTIVE_{1..4}_*.md` artifacts is factually wrong — `git ls-files --others --exclude-standard` returns 0 lines and `git ls-files` confirms `CORRECTIVE_HANDOFF_CORRECTIVE_1.md` (and all ~300 sibling files) are **git-tracked** historical project records, not untracked artifacts. Disposition written to `.kilo-runtime/worker-disposition.json` (runtime, not committed).
 - **Waiter gap closed:** cmd7 now runs inside the cycle and the handoff is written into the repository (not /tmp).
 
 ## Corrective invocation 403 — verified-success evidence (2026-11-15T02:17–02:20Z)
