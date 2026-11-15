@@ -142,6 +142,49 @@ def test_before_gate_matching_hash_clean_raw_exits_0(tmp_path: Path) -> None:
     assert _snapshot(tmp_path) == before
 
 
+def test_state_file_override_matching_hash_exits_0(tmp_path: Path) -> None:
+    """The STATE_FILE override selects a non-default state file for hashing.
+
+    The script honors a STATE_FILE env override (scripts/pre_gate_check.sh:39) so
+    callers can check a state file at a path other than the default
+    data/processed/paper_trading_state.yaml. This path was previously untested:
+    a regression that ignored STATE_FILE (always hashing the default) would have
+    silently produced a false "hash matches" against the wrong file. Pin it.
+    """
+    custom = tmp_path / "alt" / "state.yaml"
+    custom.parent.mkdir(parents=True, exist_ok=True)
+    custom.write_text("last_run_date: '2026-11-13'\ncurrent_nav: 2.0\n")
+    # A *different* default state file must exist so a regression that ignores
+    # STATE_FILE and hashes the default would produce a different hash and fail.
+    default = _make_state(tmp_path)
+    sha = _sha256(custom)
+    scripts_dir = tmp_path / "scripts"
+    scripts_dir.mkdir(parents=True, exist_ok=True)
+    (scripts_dir / "pre_gate_check.sh").write_text(SCRIPT.read_text())
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    proc = _run(tmp_path, FUTURE_GATE, sha, extra_env={"STATE_FILE": "alt/state.yaml"})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "PRE-GATE OK" in proc.stderr, proc.stderr
+    assert default.exists(), "default state file must still be present"
+
+
+def test_state_file_override_missing_exits_2(tmp_path: Path) -> None:
+    """A STATE_FILE override pointing at a missing path fails closed with exit 2."""
+    _make_state(tmp_path)  # default exists; the override does not
+    scripts_dir = tmp_path / "scripts"
+    scripts_dir.mkdir(parents=True, exist_ok=True)
+    (scripts_dir / "pre_gate_check.sh").write_text(SCRIPT.read_text())
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    proc = _run(
+        tmp_path,
+        FUTURE_GATE,
+        DUMMY_SHA,
+        extra_env={"STATE_FILE": "alt/does_not_exist.yaml"},
+    )
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    assert "state file not found" in proc.stderr, proc.stderr
+
+
 def test_gate_reached_exits_3(tmp_path: Path) -> None:
     sha = _sha256(_make_state(tmp_path))
     proc = _run(tmp_path, PAST_GATE, sha)
