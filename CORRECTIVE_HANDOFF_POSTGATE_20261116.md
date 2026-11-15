@@ -56,5 +56,52 @@ All gate-cycle verification commands re-ran with bounded timeouts against the cl
 - **cmd9 state fingerprint:** `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 last_run=2026-11-13 nav=132654.46201168097 runs=469` — matches expected, well-formed
 - **Orchestrator gate guard re-confirmed:** `GATE_EPOCH=1794866400 … bash scripts/post_gate_orchestrator.sh --read-only` → `clock gate NOT released (now=1794703622 target=1794866400); refusing to run`, **exit 3**. The orchestrator correctly refuses before the gate; it is the intended producer of this file and cannot regenerate it until the gate is released.
 
+## Corrective invocation 2 — verified-success evidence (2026-11-15T07:16Z)
+
+Fresh verification against the clean tree at HEAD `1a7dc05`. No production code, threshold,
+gate, cost model, universe, or `data/raw` changed; no project defect exists to fix.
+
+- **Pre-gate cheap path (exit 0, STOP), re-verified this run:**
+  `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 bash scripts/pre_gate_check.sh`
+  → `PRE-GATE OK: now=1794726973 (2026-11-15T07:16:13Z) < gate 1794866400 (2026-11-16T22:00:00Z); T-139427s remaining. state sha256 matches (c438cd71…); data/raw clean. STOP` — **EXIT=0**.
+- **Focused verification this run:**
+  `/tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` → **57 passed in 4.06s**.
+- **Ruff:** `/tmp/kilo-venv/bin/ruff check tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` → **All checks passed!**
+- **Orchestrator bash syntax:** `bash -n scripts/post_gate_orchestrator.sh` → **BASH_OK**.
+- **Working tree:** `git status --porcelain` → 0 lines (clean); `git status --porcelain -- data/raw` → 0 lines (clean).
+- **State fingerprint:** `sha256sum data/processed/paper_trading_state.yaml` = `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` (matches expected; `last_run=2026-11-13 nav=132654.46201168097 runs=469`).
+- **Gate reachability (deterministic blocker):** now epoch 1794726973 vs gate 1794866400 → **~38.7h / T-139427s out**. The global controller cutoff is 355 minutes (~5.9h), far shorter than the time to gate. No code change can release the gate early; Step 2 (mutating extend) remains withheld until at/after 2026-11-16T22:00:00Z.
+
+## Corrective invocation 4 — FULL read-only cycle executed end-to-end (2026-11-15T07:20Z)
+
+Materially different from inv 2 (cheap pre-gate path + bash -n) and inv 3 (gate-refusal exit-3
+only): this run executed the **entire orchestrator cycle — all 9 commands** — in
+`--force --read-only` mode against a throwaway handoff at `/tmp/probe_handoff_pre_gate.md`,
+proving the whole cycle runs clean and exits 0 before the gate. Prior invocations never
+exercised cmd7 (the data-cost inventory, the "waiter gap") or cmd9 (the state fingerprint)
+end-to-end; they only re-ran the cheap pre-gate path and syntax checks.
+
+- **Command:** `GATE_EPOCH=1794866400 HANDOFF=/tmp/probe_handoff_pre_gate.md PYTHON=/tmp/kilo-venv/bin/python RUFF=/tmp/kilo-venv/bin/ruff timeout 900 bash scripts/post_gate_orchestrator.sh --force --read-only`
+- **Result: `cycle complete`, EXIT=0.** Per-step output:
+  - cmd1 date → exit 0
+  - cmd2 SKIP extend (gate not released) — mutating extend correctly withheld
+  - cmd3 drift → exit 0 (last bars 2026-11-04 −0.8724 … 2026-11-13 −1.4833)
+  - cmd4 SKIP idempotent re-extend — correctly withheld
+  - cmd5 6-module pytest → **69 passed in 23.07s** (>=68 criterion met), exit 0
+  - cmd6 git status → exit 0
+  - cmd7a data_cost_inventory_001 → exit 0 (35 raw files, 180279 rows, 0 missing prices, 0 duplicate timestamps, 8/8 crypto digests match)
+  - cmd7b data_cost_inventory_002 → `MEMBERSHIP|complete_folds|41`, `DECISION|NO-GO`, `OVERALL: PASS`, exit 0
+  - cmd7c inventory pytest → **41 passed in 40.88s**, exit 0
+  - cmd8 ruff → **All checks passed!**, exit 0
+  - cmd9 state fingerprint → `c438cd71… last_run=2026-11-13 nav=132654.46201168097 runs=469` — well-formed, matches expected
+- **Throwaway handoff written to `/tmp` (not the repo), then deleted:** `Status: OK`, `Mode: read-only verification`, `Gate state: NOT released — pre-gate verification run only (T-139153s remaining; mutating extend withheld)`, `Cmds run: 1 date, 3 drift, 5 6-module pytest, 6 git status, 7 data-cost inventory + tests, 8 ruff, 9 state fingerprint`, `Cmds skipped: 2 extend (gate not released), 4 idempotent re-extend (gate not released)`. The handoff's `State:` line matches the real `paper_trading_state.yaml` exactly.
+- **Working tree after the run:** `git status --porcelain` → only `M CORRECTIVE_HANDOFF_POSTGATE_20261116.md` (this intended evidence refresh); `git status --porcelain -- data/raw` → 0 lines; `sha256sum data/processed/paper_trading_state.yaml` = `c438cd71…` (unchanged). No production code, threshold, gate, cost model, universe, or `data/raw` touched. The mutating extend (cmd2/cmd4) was withheld by the clock gate as required.
+- **Gate reachability (deterministic blocker):** now epoch 1794727237 vs gate 1794866400 → ~38.6h / T-139153s out. The global controller cutoff is 355 minutes (~5.9h), far shorter than the time to gate. No code change can release the gate early; Step 2 (mutating extend) remains withheld until at/after 2026-11-16T22:00:00Z.
+
+This run supplies the missing end-to-end cycle evidence: every command in the orchestrator's
+read-only path runs green and exits 0, and the cycle correctly refuses the mutating extend
+before the gate. The only unexercised branch is the extend itself (cmd2/cmd4), which is
+gated on the clock and cannot run this session.
+
 ## Evidence-integrity correction (corrective inv 182)
 This file previously recorded `Mode: full cycle (extend included)`, `Gate state: released (gate epoch reached)`, and `Cmds skipped: none` at 2026-11-14T18:56:06Z UTC — while the gate (2026-11-16T22:00:00Z) was **not** reached, `last_run_date` was still `2026-11-13`, and no extend had run. A `--force` FULL run before the gate invoked the mutating extend and then wrote a handoff whose own `Gate state` line contradicted its `Mode`/`Cmds run` lines. Root cause: the extend was gated on `--read-only`, not on the clock, so `--force` (which only overrides the exit-3 refusal) silently re-enabled the mutating extend before the target session was complete. Fixed in `scripts/post_gate_orchestrator.sh`: the extend is now gated on `PRE_GATE` (the clock), and `Mode` is derived from what actually ran. This record is rewritten to the honest pre-gate state. The real post-gate cycle (extend included) must still run at/after 2026-11-16T22:00:00Z per NEXT_AGENT_TASK.md Step 2.
