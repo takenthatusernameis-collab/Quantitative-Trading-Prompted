@@ -335,8 +335,14 @@ mark_run "9 state fingerprint"
 # free `[^[:space:]]+` alternative accepted the literal token "None" (a state
 # whose last_run_date key is absent prints last_run=None), which is exactly the
 # semantically-empty fingerprint this guard exists to reject (Cycle 1260).
+# nav allows an optional leading minus (nav=-?[0-9]+...): current_nav is a float
+# and a paper account can legitimately fall below zero. The prior
+# `[0-9]+...`-only pattern rejected a valid negative NAV as "malformed" and
+# failed an otherwise-successful post-gate cycle with Status: FAILED, destroying
+# the very success evidence this orchestrator exists to leave behind
+# (test_negative_nav_fingerprint_is_not_malformed).
 if [[ -n "$STATE_SHA" ]] \
-   && ! [[ "$STATE_SHA" =~ ^[0-9a-fA-F]{64}\ last_run=20[0-9]{2}-[0-9]{2}-[0-9]{2}\ nav=[0-9]+\.?[0-9]*\ runs=[0-9]+$ ]]; then
+   && ! [[ "$STATE_SHA" =~ ^[0-9a-fA-F]{64}\ last_run=20[0-9]{2}-[0-9]{2}-[0-9]{2}\ nav=-?[0-9]+\.?[0-9]*\ runs=[0-9]+$ ]]; then
   log "STEP FAILED (rc=1): 9 state fingerprint malformed (got: '$STATE_SHA')"
   FAILED=1
 fi

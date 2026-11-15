@@ -648,3 +648,80 @@ def test_valid_session_date_fingerprint_still_passes(tmp_path: Path) -> None:
     assert proc.returncode == 0, proc.stdout + proc.stderr
     text = handoff.read_text()
     assert "**Status:** OK" in text, text
+
+
+def test_negative_nav_fingerprint_is_not_malformed(tmp_path: Path) -> None:
+    # current_nav is a float; a paper account can legitimately fall below zero
+    # after losses. The prior nav pattern ([0-9]+...) required a leading digit,
+    # so a valid negative NAV (nav=-1234.56) was rejected as "malformed" and
+    # failed an otherwise-successful cycle with Status: FAILED and exit 1 --
+    # destroying the very success evidence this orchestrator exists to record.
+    # The minus sign must be accepted; a negative integer or float NAV must pass.
+    handoff = tmp_path / "handoff.md"
+    py = tmp_path / "py_state_neg.sh"
+    py.write_text(
+        '#!/usr/bin/env bash\n'
+        'printf "%s last_run=2026-11-13 nav=-1234.56 runs=3\\n" "$(printf \'a%.0s\' {1..64})"\n'
+        'exit 0\n'
+    )
+    py.chmod(0o755)
+    proc = _run(["--read-only"], PAST_GATE, handoff, env_extra={"PYTHON": str(py)})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    text = handoff.read_text()
+    assert "**Status:** OK" in text, text
+    state_line = text.split("- **State:**")[1].split("\n")[0]
+    assert "nav=-1234.56" in state_line, text
+    assert "malformed" not in proc.stdout, proc.stdout
+
+
+def test_negative_integer_nav_fingerprint_is_not_malformed(tmp_path: Path) -> None:
+    # A negative *integer* NAV (e.g. a whole-dollar -500) is the same valid case
+    # as a negative float; the optional-minus fix must cover both.
+    handoff = tmp_path / "handoff.md"
+    py = tmp_path / "py_state_negint.sh"
+    py.write_text(
+        '#!/usr/bin/env bash\n'
+        'printf "%s last_run=2026-11-13 nav=-500 runs=3\\n" "$(printf \'a%.0s\' {1..64})"\n'
+        'exit 0\n'
+    )
+    py.chmod(0o755)
+    proc = _run(["--read-only"], PAST_GATE, handoff, env_extra={"PYTHON": str(py)})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    text = handoff.read_text()
+    assert "**Status:** OK" in text, text
+    assert "nav=-500" in text, text
+
+
+def test_double_negative_nav_fingerprint_is_malformed(tmp_path: Path) -> None:
+    # Anti-vacuity guard for the optional-minus fix: `--123` is not a valid
+    # number. Loosening nav to `-?[0-9]+...` must not accept a second minus or
+    # any other non-numeric token; a genuinely malformed nav must still fail.
+    handoff = tmp_path / "handoff.md"
+    py = tmp_path / "py_state_doubleneg.sh"
+    py.write_text(
+        '#!/usr/bin/env bash\n'
+        'printf "%s last_run=2026-11-13 nav=--123.45 runs=3\\n" "$(printf \'a%.0s\' {1..64})"\n'
+        'exit 0\n'
+    )
+    py.chmod(0o755)
+    proc = _run(["--read-only"], PAST_GATE, handoff, env_extra={"PYTHON": str(py)})
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "malformed" in proc.stdout, proc.stdout
+    assert "**Status:** FAILED" in handoff.read_text()
+
+
+def test_non_numeric_nav_fingerprint_is_still_malformed(tmp_path: Path) -> None:
+    # The optional-minus loosening must not accept a non-numeric nav such as
+    # "abc"; only a leading minus followed by digits is a valid negative number.
+    handoff = tmp_path / "handoff.md"
+    py = tmp_path / "py_state_nonnumeric.sh"
+    py.write_text(
+        '#!/usr/bin/env bash\n'
+        'printf "%s last_run=2026-11-13 nav=-abc runs=3\\n" "$(printf \'a%.0s\' {1..64})"\n'
+        'exit 0\n'
+    )
+    py.chmod(0o755)
+    proc = _run(["--read-only"], PAST_GATE, handoff, env_extra={"PYTHON": str(py)})
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "malformed" in proc.stdout, proc.stdout
+    assert "**Status:** FAILED" in handoff.read_text()
