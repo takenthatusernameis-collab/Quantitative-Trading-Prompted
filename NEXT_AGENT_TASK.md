@@ -1,5 +1,14 @@
 # Next Agent Task: execute the 2026-11-16 gate extension in the FOREGROUND
 
+## State verified this session (2026-11-15T04:18Z, session 12 inv 1, run 43637804536) — **PRE-GATE VERIFIED; GATE UNREACHABLE THIS RUN; HANDOFF-CONSISTENCY GUARD ADDED (durable, test-only)**
+- **Pre-gate cheap path exit 0 (STOP):** `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1794716328 (2026-11-15T04:18:48Z) < gate 1794866400 (2026-11-16T22:00:00Z); T-150072s remaining. state sha256 matches (c438cd71…); data/raw clean. STOP — do not re-run the cycle.` **EXIT=0**.
+- **Durable change this invocation (test-only):** added `tests/test_post_gate_handoff_consistency.py` (4 tests). The orchestrator's *generation* logic was already pinned, but nothing pinned the *committed* durable record: a handoff could carry a `State:` line disagreeing with the real `paper_trading_state.yaml`, or a `Mode`/`Gate state`/`Cmds skipped` that contradicts itself. The new tests read the committed `CORRECTIVE_HANDOFF_POSTGATE_20261116.md` and the real state file and assert (1) the `State:` line's sha256/last_run/nav/runs match the real state, (2) `Mode` and `Gate state` agree, (3) `Cmds skipped` is truthful for the gate state, (4) pre-gate record is `Status: OK` with the gate withheld. Anti-vacuity: the tests fail closed if the canonical handoff is absent; mutation-checked that wrong nav / `Mode: full cycle` while unreleased / dropping `2 extend` from `Cmds skipped` each fail. No production code, threshold, gate, cost model, universe, or `data/raw` touched.
+- **Focused verification this run:** `/tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_handoff_consistency.py tests/test_pre_gate_check.py tests/test_post_gate_orchestrator.py` → **50 passed in 3.92s** (46 baseline + 4 new); `/tmp/kilo-venv/bin/ruff check tests/test_post_gate_handoff_consistency.py tests/test_pre_gate_check.py` → **All checks passed!**.
+- **Working tree:** `git status --porcelain` → `?? tests/test_post_gate_handoff_consistency.py` (this new test file), plus `NEXT_AGENT_TASK.md` / `CORRECTIVE_HANDOFF_POSTGATE_20261116.md` intended refresh; `git status --porcelain -- data/raw` → 0 lines. HEAD `6d54a73`.
+- **State fingerprint (unchanged):** `last_run_date 2026-11-13`; `current_nav 132654.46201168097`; `run_history 469`; `sha256sum data/processed/paper_trading_state.yaml` = `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` (matches). `/tmp/kilo-venv` present.
+- **Gate reachability (deterministic blocker, not a failure loop):** now epoch 1794716328 vs gate 1794866400 → ~1.74 days / T-150072s out. The sole remaining blocker to Step 2 is the clock, which no code change can resolve.
+- **Next distinct investigation (bounded, non-recursive):** none outstanding. The handoff-consistency guard closed the last prose-only evidence gap; Step 2 (the mutating extend) remains the single clock-gated task and must run at/after 2026-11-16T22:00:00Z.
+
 ## State verified this session (2026-11-15T04:17Z, corrective inv 362, run 43637804536) — **PRE-GATE VERIFIED; GATE UNREACHABLE THIS RUN**
 - **Pre-gate cheap path exit 0 (STOP):** `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1794716238 (2026-11-15T04:17:18Z) < gate 1794866400 (2026-11-16T22:00:00Z); T-150162s remaining. state sha256 matches (c438cd71…); data/raw clean. STOP — do not re-run the cycle.` **EXIT=0**.
 - **Focused verification this run:** `/tmp/kilo-venv/bin/python -m pytest -q tests/test_pre_gate_check.py tests/test_post_gate_orchestrator.py` → **46 passed in 3.78s**; `/tmp/kilo-venv/bin/ruff check tests/test_pre_gate_check.py` → **All checks passed!**.
@@ -97,6 +106,7 @@ single state write.
 - `git status --porcelain -- data/raw` (expect empty)
 - `git status --porcelain` (only intended state/handoff changes)
 - `/tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py` (>=46 passed; corrective inv 2 added 2 STATE_FILE-override tests to the 44 baseline)
+- `/tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_handoff_consistency.py tests/test_pre_gate_check.py tests/test_post_gate_orchestrator.py` (>=50 passed; session 12 added the 4-test committed-handoff evidence-consistency guard)
 
 ## Scope boundaries
 - Do not run a mutating extend before the target session gate.
