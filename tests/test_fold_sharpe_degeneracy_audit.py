@@ -66,7 +66,9 @@ def report_text() -> str:
 # Artefacts and tool
 # ---------------------------------------------------------------------------
 def test_tool_runs_and_passes():
-    result = _run_tool()
+    # --no-report keeps the run read-only: it must never write to the tracked
+    # report/experiment paths (that would mutate the working tree during tests).
+    result = _run_tool("--no-report")
     assert result.returncode == 0, result.stderr
     assert "OVERALL: PASS" in result.stdout
 
@@ -172,22 +174,24 @@ def test_experiment_record_references_the_tool():
 def test_data_and_config_are_byte_identical_before_and_after():
     before_data = fingerprint(REPO / "data")
     before_config = fingerprint(REPO / "config")
-    result = _run_tool()
+    result = _run_tool("--no-report")
     assert result.returncode == 0, result.stderr
     assert fingerprint(REPO / "data") == before_data
     assert fingerprint(REPO / "config") == before_config
 
 
-def test_committed_artifacts_are_byte_identical_before_and_after():
+def test_committed_artifacts_are_byte_identical_before_and_after(tmp_path: Path):
+    # Run the tool in write mode into a temp dir: it must leave the tracked
+    # artifacts untouched (read-only w.r.t. the repo) AND reproduce them exactly.
     before = tracked_artifact_hashes()
     assert before, "no committed artifacts were found"
-    result = _run_tool()
+    report = tmp_path / "report.md"
+    experiment = tmp_path / "experiment.md"
+    result = _run_tool("--report-out", str(report), "--experiment-out", str(experiment))
     assert result.returncode == 0, result.stderr
-    after = tracked_artifact_hashes()
-    assert after == before
-    key = "research/reports/fold_sharpe_degeneracy_001.md"
-    if key in before:
-        assert _sha256(REPORT) == before[key]
+    assert tracked_artifact_hashes() == before
+    assert report.read_bytes() == REPORT.read_bytes()
+    assert experiment.read_bytes() == EXPERIMENT.read_bytes()
 
 
 def test_two_consecutive_generations_are_identical(tmp_path: Path):

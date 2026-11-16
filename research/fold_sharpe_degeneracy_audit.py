@@ -346,7 +346,6 @@ def render_report(payload: dict[str, Any]) -> str:
     add("python -m pytest -q tests/test_fold_sharpe_degeneracy_audit.py")
     add("git status --porcelain data/ config/")
     add("```")
-    add("")
     return "\n".join(lines) + "\n"
 
 
@@ -441,7 +440,6 @@ def render_experiment(payload: dict[str, Any]) -> str:
     add("python -m pytest -q tests/test_fold_sharpe_degeneracy_audit.py")
     add("git status --porcelain data/ config/")
     add("```")
-    add("")
     return "\n".join(lines) + "\n"
 
 
