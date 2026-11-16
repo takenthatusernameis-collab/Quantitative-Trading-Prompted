@@ -21,6 +21,25 @@ from research.tsmomentum_sma175_candidate_eval import (
 TOOL = "research/tsmomentum_sma175_candidate_eval.py"
 
 
+@pytest.fixture(scope="module", autouse=True)
+def _restore_report_after_module():
+    """Keep the tracked report byte-identical after the module runs.
+
+    ``run_candidate_eval`` rewrites ``OUT_REPORT`` with today's date, so the
+    subprocess run and the ``payload`` fixture would otherwise leave the
+    tracked artifact dirty. Snapshot and restore it so this suite upholds the
+    same read-only guarantee it asserts for ``run_cycle6.py`` and ``data/``.
+    """
+    original = OUT_REPORT.read_bytes() if OUT_REPORT.exists() else None
+    try:
+        yield
+    finally:
+        if original is not None:
+            OUT_REPORT.write_bytes(original)
+        elif OUT_REPORT.exists():
+            OUT_REPORT.unlink()
+
+
 def _run_tool(*extra: str) -> subprocess.CompletedProcess:
     return subprocess.run(
         [sys.executable, TOOL, *extra],
