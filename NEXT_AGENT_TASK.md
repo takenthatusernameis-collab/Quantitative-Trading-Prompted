@@ -70,5 +70,5 @@ python3 -m venv /tmp/kilo-venv
 
 ### Compact history of identical pre-gate re-verifications (pre-gate EXIT=0, gate unreached, Step 2 withheld, no code/state change)
 - run 43722618751: session 19 (09:43Z, HEAD 29503eb, 61 tests), session 10 (16:14Z, HEAD 79ba936, 62), session 1 (17:05Z, HEAD a171b6c, 62, venv recreated), session 3 (17:15Z, HEAD 7e18ce1, 62), session 6 (18:14Z, HEAD 7e18ce1, 62), session 7 (18:16Z, HEAD 2d5a269, 62), session 8 (18:20Z, HEAD 287fa9c, 62), session 11 (19:30Z, HEAD 984ec1f, 65), session 13 (22:16Z, HEAD 9d236aa, 65).
-- run 43754114833: session 1 (22:58Z, HEAD def558b8, 65, venv recreated), session 4 (00:12Z, HEAD 30d4c45, 65, rec-0030 superseded), session 6 (01:00Z, HEAD 30d4c45, 65).
+- run 43754114833: session 1 (22:58Z, HEAD def558b8, 65, venv recreated), session 4 (00:12Z, HEAD 30d4c45, 65, rec-0030 superseded), session 6 (01:00Z, HEAD 30d4c45, 65), session 8 (01:03Z, HEAD ed4a76e, 65).
 - All runs: ruff clean; bash -n OK on both scripts; state sha256 c438cd71... matches; data/raw clean; working tree clean before handoff refresh.
