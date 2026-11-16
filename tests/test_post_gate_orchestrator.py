@@ -410,7 +410,8 @@ def test_force_full_before_gate_withholds_extend_and_labels_pre_gate(tmp_path: P
 
 def test_force_read_only_before_gate_still_withholds_extend(tmp_path: Path) -> None:
     # Regression guard: the pre-gate path that already existed (--force
-    # --read-only) must still withhold the extend and keep its Mode label.
+    # --read-only) must still withhold the extend and report the gate-aware
+    # Mode label (pre-gate verification with extend withheld).
     handoff = tmp_path / "handoff.md"
     py, log = _stub_python(tmp_path)
     proc = _run(["--force", "--read-only"], FUTURE_GATE, handoff, env_extra={"PYTHON": str(py), "RUFF": str(py)})
@@ -418,7 +419,7 @@ def test_force_read_only_before_gate_still_withholds_extend(tmp_path: Path) -> N
     calls = _calls(log)
     assert not [c for c in calls if c.startswith("research/extend_paper_trading_state.py")], calls
     text = handoff.read_text()
-    assert "- **Mode:** read-only verification" in text, text
+    assert "- **Mode:** pre-gate verification (extend withheld — gate not released)" in text, text
     assert "2 extend (gate not released)" in text, text
 
 

@@ -226,10 +226,13 @@ fi
 # whoever reads the handoff after the gate (the acceptance criteria's expected
 # "Mode: full cycle (extend included)" is produced only by the real post-gate
 # run, i.e. the else branch here).
-if (( READ_ONLY )); then
-  MODE="read-only verification"
-elif (( PRE_GATE )); then
+# Gate state takes precedence for the Mode label: a pre-gate run (whether
+# --read-only or not) is "pre-gate verification"; a post-gate --read-only run
+# is "read-only verification"; a post-gate full run is "full cycle (extend included)".
+if (( PRE_GATE )); then
   MODE="pre-gate verification (extend withheld — gate not released)"
+elif (( READ_ONLY )); then
+  MODE="read-only verification"
 else
   MODE="full cycle (extend included)"
 fi
