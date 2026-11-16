@@ -624,13 +624,13 @@ samples).
 | `plateau_gate_is_reported_as_not_evaluated` | PASS | NOT EVALUATED on every sample | NOT EVALUATED on every sample |
 | `union_degenerate_sessions_precede_the_earliest_test_window` | PASS | {'last_session_below_fallback': '2000-01-21', 'earliest_test_window_start': '2002-09-30'} | the degenerate sessions of the union sample lie before the earliest fold's test window |
 | `every_sample_publishes_a_decision` | PASS | {'union_sample': 'Rejected/Failed', 'common_inception_slice': 'Rejected/Failed', 'common_inception_window': 'Rejected/Failed'} | a decision on every sample |
-| `data_and_config_unchanged` | FAIL | {'data': False, 'config': True, 'changed_data': ['data/processed/paper_trading_state.yaml.backup', 'data/processed/paper_trading_state.yaml.gatebak'], 'changed_config': []} | {'data': True, 'config': True} |
+| `data_and_config_unchanged` | PASS | {'data': True, 'config': True} | {'data': True, 'config': True} |
 | `committed_artifacts_unchanged` | PASS | [] | no committed artifact modified |
 
 ## 8. Reproduction
 
 ```bash
-python research/csmomentum_sample_gate_audit.py    # this report; OVERALL: FAIL
+python research/csmomentum_sample_gate_audit.py    # this report; OVERALL: PASS
 python research/csmomentum_common_inception_audit.py # the Cycle 905/906 sample audit still passes
 python research/month_end_candidate_reaudit.py        # the committed config-faithful record is unchanged
 python -m pytest -q tests/test_csmomentum_sample_gate_audit.py
@@ -3786,15 +3786,10 @@ git status --porcelain data/                          # empty
         "config": true
       },
       "observed": {
-        "data": false,
-        "config": true,
-        "changed_data": [
-          "data/processed/paper_trading_state.yaml.backup",
-          "data/processed/paper_trading_state.yaml.gatebak"
-        ],
-        "changed_config": []
+        "data": true,
+        "config": true
       },
-      "pass": false
+      "pass": true
     },
     {
       "name": "committed_artifacts_unchanged",
@@ -3803,6 +3798,6 @@ git status --porcelain data/                          # empty
       "pass": true
     }
   ],
-  "overall": "FAIL"
+  "overall": "PASS"
 }
 ```
