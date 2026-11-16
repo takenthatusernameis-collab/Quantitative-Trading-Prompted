@@ -8,7 +8,7 @@
 - Trailing 63d Sharpe (gate under diagnosis): **-1.483269** vs gate 0.9 (FAIL); production decision **NO-GO** (failed gates: rolling_63d_sharpe, psr)
 - Rolling windows on the record: 407 | gate base rate 70.5160% (287/407) | current value at percentile 1.23%
 - Distribution: min -2.120279 | p10 -0.253931 | p25 0.488275 | median 1.863988 | p75 3.621753 | max 6.144063
-- Read-only: `data/` and `config/` byte-identical before and after the run (**yes**); no committed artifact modified (**yes**).
+- Read-only: `data/` and `config/` byte-identical before and after the run (**yes**); no committed artifact modified (**NO**).
 - Data source: committed parquet cache in `data/raw/` and the committed paper-trading state; the fetcher is never called.
 - No gate, threshold, parameter, universe, cost model, drift flag or verdict is changed by this tool.
 
@@ -253,7 +253,7 @@ This is a **measurement** finding, not a fix: lagging the estimate makes the fai
 - [no_counterfactual_variant_clears_the_rolling_gate]: PASS (observed: V0_baseline=-1.4394, V1_no_vol_target=-1.3233, V2_vol_estimate_lagged_1d=-1.6214, V3_no_drawdown_control=-1.4394, V4_no_overlay=-1.3233, expected: every variant below the 0.9 gate)
 - [data_unchanged]: PASS
 - [config_unchanged]: PASS
-- [committed_artifacts_unchanged]: PASS
+- [committed_artifacts_unchanged]: FAIL
 
 ## 8. Reproduction commands
 
@@ -406,7 +406,7 @@ git status --porcelain data/ config/
       "expected": "",
       "name": "committed_artifacts_unchanged",
       "observed": "",
-      "pass": true
+      "pass": false
     }
   ],
   "correlations": [
@@ -963,11 +963,11 @@ git status --porcelain data/ config/
     "n": 7,
     "pass_rate": 0.8571428571428571
   },
-  "overall": "PASS",
+  "overall": "FAIL",
   "permutation_seed": 925,
   "permutations": 10000,
   "read_only": {
-    "committed_artifacts_unchanged": true,
+    "committed_artifacts_unchanged": false,
     "config_unchanged": true,
     "data_unchanged": true
   },
