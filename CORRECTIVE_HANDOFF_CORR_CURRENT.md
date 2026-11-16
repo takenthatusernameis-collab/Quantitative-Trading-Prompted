@@ -431,6 +431,36 @@ Independent re-verification of the exact diagnostic-log commands against the liv
 ### Unresolved blocker
 **Temporal / gate not released** (unchanged, not a code defect): current time 2026-11-15T19:27Z is T-95585s before gate 2026-11-16T22:00:00Z (epoch 1794866400). `pre_gate_check.sh` correctly returns exit 0 (STOP). Mutating extend (Step 2) must run only at/after the gate via `scripts/post_gate_orchestrator.sh` per `NEXT_AGENT_TASK.md`; state remains `last_run_date=2026-11-13`. No safe correction can advance the clock gate. 355-minute cutoff ends ~2026-11-16T00:42Z, well before gate release.
 
+CORRECTIVE_VERIFICATION=PASS
+
+---
+
+## Corrective invocation 108 (2026-11-16T05:54Z) — pre-gate cheap path after model-error failure
+
+### Prior state
+kilo-session-5-recovery-107.log (inv107) exited status 1 with model-provider sign-up error ("Sign up for free to continue and explore 500 other models...") and ran zero verification — no durable project changes. This is an external tooling error, NOT a repo defect. Latest handoff entry is inv7 (2026-11-15T19:27Z), which already confirmed pre-gate cheap path exit 0.
+
+### Materially different approach (vs inv107)
+No external model/tooling API calls. Runs only the narrowest local read-only verification: `scripts/pre_gate_check.sh` (gate epoch + state SHA256 + data/raw clean), state hash confirmation, pytest + ruff on the post-gate test files, and bash -n on both scripts. Per NEXT_AGENT_TASK.md Step 1, exit 0 means the cheap path applies → STOP; do not re-run the cycle, do not launch a waiter, do not commit. Extend cmds 2/4/7 intentionally NOT run (gate not released until 2026-11-16T22:00:00Z).
+
+### Fresh verification (all passed)
+| Command | Result |
+|---|---|
+| `date -u` / TZ=America/New_York | 2026-11-16T05:54:25Z / Mon Nov 16 00:54:25 EST 2026 |
+| `GATE_EPOCH=1794866400 STATE_SHA256=c438cd71... bash scripts/pre_gate_check.sh` | **EXIT 0** — `PRE-GATE OK: now=1794808466 (2026-11-16T05:54:26Z) < gate 1794866400 (2026-11-16T22:00:00Z); T-57934s remaining. state sha256 matches; data/raw clean. STOP` |
+| `sha256sum data/processed/paper_trading_state.yaml` | `c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365` (matches committed baseline; last_run=2026-11-13, nav=132654.46201168097) |
+| `git status --porcelain -- data/raw` | empty (clean) |
+| `git status --porcelain` | empty (clean) |
+| `/tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` | **65 passed in 8.55s** (EXIT 0) |
+| `/tmp/kilo-venv/bin/ruff check tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` | **All checks passed!** (EXIT 0) |
+| `bash -n scripts/post_gate_orchestrator.sh scripts/pre_gate_check.sh` | ORCH_BASH_OK / PREGATE_BASH_OK |
+
+### What changed (durable)
+- `CORRECTIVE_HANDOFF_CORR_CURRENT.md`: appended this inv108 record (durable evidence of diagnosis + verification). No `data/`, `config/`, source, test, threshold, gate, cost model, universe, workflow, or `data/raw` changes.
+
+### Unresolved blocker
+**Temporal / gate not released** (unchanged, not a code defect): current time 2026-11-16T05:54Z is T-57934s before gate 2026-11-16T22:00:00Z (epoch 1794866400). `pre_gate_check.sh` correctly returns exit 0 (STOP). Mutating extend (Step 2) must run only at/after the gate via `scripts/post_gate_orchestrator.sh` per `NEXT_AGENT_TASK.md`; state remains `last_run_date=2026-11-13`. No safe correction can advance the clock gate. 355-minute cutoff ends before gate release; acceptance criteria (gate extension ran at/after 2026-11-16T22:00:00Z) cannot be satisfied within this session.
+
 ### Next distinct investigation (at/after 2026-11-16T22:00:00Z)
 Execute Step 2 of `NEXT_AGENT_TASK.md`: `GATE_EPOCH=1794866400 PYTHON=/tmp/kilo-venv/bin/python RUFF=/tmp/kilo-venv/bin/ruff bash scripts/post_gate_orchestrator.sh` (full cycle, foreground), then idempotency re-run (expect 0 extends, 0 writes). Confirm `CORRECTIVE_HANDOFF_POSTGATE_20261116.md` shows `Status: OK`, `Mode: full cycle (extend included)`, `Gate state: released`, non-empty `State:` line.
 
