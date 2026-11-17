@@ -30,7 +30,7 @@ which no committed record measures.
 | Configuration files | 15 published vs 19 current (added: config/overnight_capture_001.yaml, config/paper_trading_config.yaml, config/promotion_gates.yaml, config/sample_policy.yaml) |
 | Anchor (recomputed) | 48 folds, mean 0.947307, positive 91.67%, 6013 pooled trades |
 | Folds on an incomplete cross-section | 7 of 48 (mean OOS Sharpe 1.883186) |
-| Folds on the complete cross-section | 41 of 48 (mean OOS Sharpe 0.787522; 1.352958 without the fold-12 artefact) |
+| Folds on the complete cross-section | 41 of 48 (mean OOS Sharpe 0.787522; 0.787522 with no fold removed) |
 
 ## Number of trials
 

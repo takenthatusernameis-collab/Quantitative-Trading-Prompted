@@ -189,14 +189,14 @@ so the pre-2006 part of the published path is not the same strategy as the post-
 |---|---|---|---|---|---|---|
 | All published folds (48) | 48 | 0.947306 | [-0.1181, 1.6041] | 91.67% | 6013 | PASS |
 | Point-in-time-complete folds (breadth 7/7) | 41 | 0.787522 | [-0.4244, 1.5431] | 90.24% | 4884 | FAIL |
-| Point-in-time-complete folds, artefact fold 12 removed | 40 | 1.352958 | [1.0358, 1.6602] | 92.50% | 4882 | PASS |
+| Point-in-time-complete folds (no fold removed — same as the complete subsample) | 41 | 0.787522 | [-0.4244, 1.5431] | 90.24% | 4884 | FAIL |
 | Point-in-time-incomplete folds (breadth < 7/7) | 7 | 1.883186 | [1.1877, 2.3925] | 100.00% | 1129 | PASS |
 
 | Subsample | Gate 1 | Gate 2 (positive folds >= 0.5) | Gate 3 (pooled trades > 100) |
 |---|---|---|---|
 | All published folds (48) | PASS | PASS | PASS |
 | Point-in-time-complete folds (breadth 7/7) | FAIL | PASS | PASS |
-| Point-in-time-complete folds, artefact fold 12 removed | PASS | PASS | PASS |
+| Point-in-time-complete folds (no fold removed — same as the complete subsample) | FAIL | PASS | PASS |
 | Point-in-time-incomplete folds (breadth < 7/7) | PASS | PASS | PASS |
 
 ### 4.5 The membership split is not the phase split
@@ -215,7 +215,7 @@ The `all` row is an independent reproduction of the committed Cycle-911 phase de
 
 - **Nothing published changed.** The published record, the published gates, the published protocol, the shortlist row and every committed candidate artefact are byte-identical after the run; the anchor (48 folds, mean 0.947307, positive rate 91.67%, 6013 pooled trades) is reproduced from the committed cache.
 - **The incumbent's verdict is unchanged**: it stays a **Credible Candidate** by its published verdict and **NO-GO** for promotion (failed gates `rolling_63d_sharpe`, `psr`). This audit adds a third stability axis to a verdict that was already NO-GO.
-- **The published walk-forward mean is not a homogeneous statistic.** It averages 7 folds measured on an incomplete cross-section (mean 1.883186) with 41 folds measured on the complete one (mean 0.787522; 1.352958 with the fold-12 numerical artefact removed). The gate-1 outcome on the complete subsample therefore depends on that artefact, and neither variant reproduces the published number.
+- **The published walk-forward mean is not a homogeneous statistic.** It averages 7 folds measured on an incomplete cross-section (mean 1.883186) with 41 folds measured on the complete one (mean 0.787522). The gate-1 outcome on the complete subsample is therefore **0.787522 < 0.9 = FAIL**, and no fold is dropped to improve it: the lowest-Sharpe fold is a genuine observation, not a numerical artefact, so the complete subsample is reported as measured. Neither variant reproduces the published number.
 - **The finding is an association, not a mechanism.** The incomplete folds are also the earliest folds, so "incomplete cross-section" and "a favourable 2002-2006 regime for this rule" are not separable in this design. The decision-relevant statement is the same either way: the published statistic does not survive either stability split taken alone.
 - **The cost model is unchanged** and the cost axis remains closed by the committed Cycle-913 break-even audit.
 

@@ -49,7 +49,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import json
 import re
 import sys
 from pathlib import Path
@@ -62,7 +61,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from research.run_cycle6 import (  # noqa: E402  (committed candidate definition)
+from research.run_cycle6 import (
     END_DATE,
     LOOKBACK,
     SKIP,
@@ -70,15 +69,15 @@ from research.run_cycle6 import (  # noqa: E402  (committed candidate definition
     SYMBOLS,
     TOP_FRACTION,
 )
-from research.tsmomentum_walkforward_embargo_audit import (  # noqa: E402
+from research.tsmomentum_walkforward_embargo_audit import (
     build_candidate_path,
     evaluate_design,
     load_close_from_cache,
     published_splits,
     resolve_published_record,
 )
-from src.backtest.engine import get_cost_params, get_risk_free_rate  # noqa: E402
-from src.features.momentum import compute_momentum, select_top_decile  # noqa: E402
+from src.backtest.engine import get_cost_params, get_risk_free_rate
+from src.features.momentum import compute_momentum, select_top_decile
 
 CANDIDATE_ID = "tsmomentum_spytrend_001"
 CYCLE = "929"
@@ -254,7 +253,7 @@ def measure_price_file(path: Path) -> dict[str, Any]:
         "path": rel,
         "asset_class": classify_asset_class(rel),
         "price_label": price_label,
-        "rows": int(len(idx)),
+        "rows": len(idx),
         "first": str(idx[0].date()),
         "last": str(idx[-1].date()),
         "frequency": frequency,
@@ -289,7 +288,7 @@ def measure_processed_tree(processed_dir: Path) -> list[dict[str, Any]]:
         )
         df = pd.read_parquet(path)
         entry["files"] += 1
-        entry["rows"] += int(len(df))
+        entry["rows"] += len(df)
         dates = pd.Series(dtype="datetime64[ns]")
         if isinstance(df.index, pd.DatetimeIndex):
             dates = pd.Series(df.index)
@@ -437,7 +436,7 @@ def _prices_component(key_clean: str, component: str) -> bool:
     words = [word for word in key_clean.replace("-", "_").split("_") if word]
     component_words = [word for word in component.replace("-", "_").split("_") if word]
     span = len(component_words)
-    for start in range(0, len(words) - span + 1):
+    for start in range(len(words) - span + 1):
         if words[start : start + span] != component_words:
             continue
         if start + span == len(words):
@@ -506,7 +505,6 @@ def moving_block_bootstrap_mean(
     n = len(arr)
     block = max(1, min(block, n))
     rng = np.random.default_rng(seed)
-    n_blocks = int(np.ceil(n / block))
     means = np.empty(draws, dtype=float)
     for i in range(draws):
         picked: list[int] = []
@@ -653,7 +651,15 @@ def audit_membership(raw_dir: Path) -> dict[str, Any]:
     n_assets = len(SYMBOLS)
     complete = [r for r in rows if r["breadth_min"] >= n_assets]
     incomplete = [r for r in rows if r["breadth_min"] < n_assets]
-    artefact_fold = min(rows, key=lambda r: r["published_test_sharpe"])["fold"]
+    # The lowest published test Sharpe is NOT a numerical artefact: it is a
+    # genuine fold-level observation, and it sits inside the point-in-time-
+    # complete subsample (fold 12, breadth 7/7). Dropping it as an "artefact"
+    # silently edits the published record to make gate 1 pass (0.787522 ->
+    # 1.352958) -- exactly the selective-reporting hazard this inventory exists
+    # to measure. The complete subsample is therefore reported as measured;
+    # no fold is dropped, and the gate-1 FAIL on the complete subsample is the
+    # honest outcome (research/reports/data_cost_inventory_002.md section 4.4).
+    artefact_fold = None
 
     all_stats = subsample_stats(rows, "All published folds (48)")
     complete_stats = subsample_stats(
@@ -661,8 +667,7 @@ def audit_membership(raw_dir: Path) -> dict[str, Any]:
     )
     complete_clean_stats = subsample_stats(
         complete,
-        f"Point-in-time-complete folds, artefact fold {artefact_fold} removed",
-        drop_folds=(artefact_fold,),
+        "Point-in-time-complete folds (no fold removed — same as the complete subsample)",
     )
     incomplete_stats = subsample_stats(
         incomplete, "Point-in-time-incomplete folds (breadth < 7/7)"
@@ -1189,11 +1194,11 @@ def render_report(payload: dict[str, Any]) -> str:
         f"averages {mem['n_incomplete']} folds measured on an incomplete cross-section "
         f"(mean {mem['subsamples']['incomplete']['mean_test_sharpe']:.6f}) with "
         f"{mem['n_complete']} folds measured on the complete one (mean "
-        f"{mem['subsamples']['complete']['mean_test_sharpe']:.6f}; "
-        f"{mem['subsamples']['complete_without_artefact']['mean_test_sharpe']:.6f} with "
-        f"the fold-{mem['artefact_fold']} numerical artefact removed). The gate-1 "
-        "outcome on the complete subsample therefore depends on that artefact, and "
-        "neither variant reproduces the published number."
+        f"{mem['subsamples']['complete']['mean_test_sharpe']:.6f}). The gate-1 outcome "
+        "on the complete subsample is therefore **0.787522 < 0.9 = FAIL**, and no "
+        "fold is dropped to improve it: the lowest-Sharpe fold is a genuine "
+        "observation, not a numerical artefact, so the complete subsample is reported "
+        "as measured. Neither variant reproduces the published number."
     )
     add(
         "- **The finding is an association, not a mechanism.** The incomplete folds "
@@ -1299,8 +1304,8 @@ def render_experiment(payload: dict[str, Any]) -> str:
     add(
         f"| Folds on the complete cross-section | {mem['n_complete']} of 48 "
         f"(mean OOS Sharpe {mem['subsamples']['complete']['mean_test_sharpe']:.6f}; "
-        f"{mem['subsamples']['complete_without_artefact']['mean_test_sharpe']:.6f} without "
-        f"the fold-{mem['artefact_fold']} artefact) |"
+        f"{mem['subsamples']['complete_without_artefact']['mean_test_sharpe']:.6f} with "
+        f"no fold removed) |"
     )
     add("")
     add("## Number of trials")
@@ -1410,6 +1415,10 @@ def main(argv: list[str] | None = None) -> int:
         "MEMBERSHIP|complete_without_artefact|"
         f"{mem['subsamples']['complete_without_artefact']['n_folds']}|mean_sharpe|"
         f"{mem['subsamples']['complete_without_artefact']['mean_test_sharpe']:.6f}"
+    )
+    print(
+        "NOTE|no fold is dropped: the lowest-Sharpe fold is a genuine observation, "
+        "not a numerical artefact; complete_without_artefact == complete"
     )
     print(f"DECISION|NO-GO|incumbent {mem['candidate_id']} unchanged")
     print("OVERALL: " + ("PASS" if payload["ok"] else "FAIL"))

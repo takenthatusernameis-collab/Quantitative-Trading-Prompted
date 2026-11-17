@@ -23,16 +23,16 @@ REPO = Path(__file__).resolve().parents[1]
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
-import pytest  # noqa: E402
+import pytest
 
-from research.data_cost_inventory_002 import (  # noqa: E402
+from research.data_cost_inventory_002 import (
     GATE_WF_MEAN_MIN,
     PUBLISHED_POOLED_TRADES,
     PUBLISHED_WF_MEAN,
     fingerprint,
     tracked_artifact_hashes,
 )
-from src.backtest.engine import get_cost_params, get_risk_free_rate  # noqa: E402
+from src.backtest.engine import get_cost_params, get_risk_free_rate
 
 TOOL = "research/data_cost_inventory_002.py"
 REPORT = REPO / "research" / "reports" / "data_cost_inventory_002.md"
@@ -150,6 +150,46 @@ def test_membership_split_is_reported(report_text: str):
     assert "7" in report_text and "41" in report_text
     assert "Point-in-time-complete" in report_text
     assert "Point-in-time-incomplete" in report_text
+
+
+def test_no_fold_is_dropped_from_the_complete_subsample(report_text: str):
+    """The complete subsample must be reported as measured, with no fold removed.
+
+    Regression for the selective-reporting hazard this audit exists to measure:
+    the lowest published test Sharpe (fold 12, breadth 7/7) is a genuine
+    observation sitting *inside* the point-in-time-complete subsample, so
+    dropping it as a "numerical artefact" silently edits the published record to
+    make gate 1 pass (0.787522 -> 1.352958). The honest outcome is that the
+    complete subsample's gate-1 is FAIL (0.787522 < 0.9), and no fold is
+    removed to improve it.
+    """
+    assert "Point-in-time-complete folds (breadth 7/7) | 41 | 0.787522" in report_text
+    assert "Point-in-time-complete folds (breadth 7/7) | FAIL" in report_text
+    # No "artefact fold removed" row must remain: the complete subsample is
+    # reported once, as measured.
+    assert "artefact fold" not in report_text
+    assert "no fold removed" in report_text
+    # The complete-subsample mean must not have been inflated by dropping a fold.
+    assert "1.352958" not in report_text
+
+
+def test_membership_payload_drops_no_folds():
+    """The membership payload's artefact_fold must be None and the two
+    complete-subsample statistics must be identical (no fold removed)."""
+    import importlib
+
+    module = importlib.import_module("research.data_cost_inventory_002")
+    membership = module.audit_membership(REPO / "data" / "raw")
+    assert membership["artefact_fold"] is None, (
+        "audit_membership must not identify a fold to drop; the lowest-Sharpe "
+        "fold is a genuine observation, not a numerical artefact"
+    )
+    complete = membership["subsamples"]["complete"]
+    clean = membership["subsamples"]["complete_without_artefact"]
+    assert clean["n_folds"] == complete["n_folds"] == membership["n_complete"]
+    assert clean["mean_test_sharpe"] == complete["mean_test_sharpe"]
+    assert clean["pooled_trades"] == complete["pooled_trades"]
+    assert clean["folds"] == complete["folds"]
 
 
 def test_gate_thresholds_are_the_committed_ones():
