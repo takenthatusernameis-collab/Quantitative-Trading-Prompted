@@ -1,8 +1,8 @@
 # Next Agent Task: execute the 2026-11-17 gate extension in the FOREGROUND
 
-## Current status (verified 2026-11-17T01:49Z, run 43952759940, session 15 inv 1)
-- **Pre-gate cheap path EXIT=0 (gate unreached, T-72603s):** `GATE_EPOCH=1794952800 STATE_SHA256=8a1d29960142bca9aa4d9673e06f64775593d9402622612209bae66bf9965ee1 bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1794880197 (2026-11-17T01:49:57Z) < gate 1794952800 (2026-11-17T22:00:00Z); T-72603s remaining. state sha256 matches (8a1d2996…); data/raw clean. STOP — do not re-run the cycle.`
-- **Focused verification:** `tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` → **64 passed, 1 skipped** (the skip is `test_status_ok_for_pre_gate_verification`, line 156 — the 2026-11-16 gate released at 22:00 UTC Nov 16, so the on-disk handoff is correctly a full-cycle record and the pre-gate assertion is skipped, not failed); ruff **All checks passed!**; `bash -n` ORCH/PREGATE OK.
+## Current status (verified 2026-11-17T04:15Z, run 44008498688, session 4 inv 1)
+- **Pre-gate cheap path EXIT=0 (gate unreached, T-63883s):** `GATE_EPOCH=1794952800 STATE_SHA256=8a1d29960142bca9aa4d9673e06f64775593d9402622612209bae66bf9965ee1 bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1794888917 (2026-11-17T04:15:17Z) < gate 1794952800 (2026-11-17T22:00:00Z); T-63883s remaining. state sha256 matches (8a1d2996…); data/raw clean. STOP — do not re-run the cycle.`
+- **Focused verification:** `tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` → **67 passed, 1 skipped** (the skip is `test_status_ok_for_pre_gate_verification`, line 156 — the 2026-11-16 gate released at 22:00 UTC Nov 16, so the on-disk handoff is correctly a full-cycle record and the pre-gate assertion is skipped, not failed); ruff **All checks passed!**; `bash -n` ORCH/PREGATE OK.
 - **State:** sha256 `8a1d29960142bca9aa4d9673e06f64775593d9402622612209bae66bf9965ee1` == `sha256sum data/processed/paper_trading_state.yaml`; `last_run_date 2026-11-16`, `nav 131036.60557839136`, `runs 470`. `git status --porcelain` clean (0 lines); `git status --porcelain -- data/raw` empty.
 - **Supervisor:** rec `43952759940-attempt-1-review-0077-68105f64edb6` (STATUS: CONTINUE; recovered report — advises Step 1 only and to disregard the stale cycle-76 commit advice) dispositioned `verified` in `.kilo-runtime/worker-disposition.json` (runtime, not committed). Advice followed exactly; no code change required.
 - **Next gate:** 2026-11-17T22:00:00Z (Tue, 17:00 ET) = epoch **1794952800**. Extend targets next session after 2026-11-16 (**2026-11-17 Tue**) only if a completed bar exists and clock gate released.
@@ -77,8 +77,11 @@ python3 -m venv /tmp/kilo-venv
 - **Session 7 inv 1 (2026-11-16T22:05Z, HEAD c07f417, run 43952759940):** rec-0033 dispositioned `verified` (runtime). Verified git clean/HEAD committed 2026-11-16 cycle artifacts (state sha 8a1d2996, 4× 20261116 parquets present, handoff/report/script/test in HEAD); `data_cost_inventory_002.md` evidence: complete-subsample gate-1 FAIL (breadth 7/7, 41 folds, mean OOS Sharpe 0.787522) while published PASS depended on removing fold-12 artefact—next evidence task is this gate-1 FAIL on the complete subsample. `GATE_EPOCH=1794952800 STATE_SHA256=8a1d29960142bca9aa4d9673e06f64775593d9402622612209bae66bf9965ee1 bash scripts/pre_gate_check.sh` → EXIT=0 (T-86089s). `git status --porcelain -- data/raw` empty. Step 2 withheld until 2026-11-17T22:00:00Z.
 - **Session 2 inv 1 (2026-11-16T21:00Z, HEAD f4749d7, run 43952759940):** pre-gate cheap path EXIT=0 (T-3592s); 65 passed; ruff clean; bash -n OK; gate unreached.
 - **Session 9 inv 1 (2026-11-16T15:32Z, HEAD f4749d7, run 43852775967):** pre-gate EXIT=0; 65 passed; ruff clean.
+- **Session 4 inv 1 (2026-11-17T04:15Z, HEAD ac42e11, run 44008498688):** pre-gate EXIT=0 (T-63883s, sha 8a1d2996); focused suite 67 passed, 1 skipped; ruff clean; bash -n OK; state unchanged (last_run 2026-11-16, nav 131036.61, runs 470); data/raw clean; working tree clean. Step 2 withheld until 2026-11-17T22:00:00Z.
 
 ### Compact history of identical pre-gate re-verifications (pre-gate EXIT=0, gate unreached, Step 2 withheld, no code/state change)
 - run 43852775967: sessions 2/3/4/6/8/11/17/18/19/20/21 (all 65 tests, ruff clean, bash -n OK, state c438cd71... matches, data/raw clean).
 - run 43754114833: sessions 1/4/6/8/9/10.
 - run 43722618751: sessions 1/3/6/7/8/10/11/13/19.
+- run 43952759940: sessions 2/7/9 (all 65 tests, ruff clean, bash -n OK, state 8a1d2996... matches, data/raw clean).
+- run 44008498688: session 4 (67 passed, 1 skipped, ruff clean, bash -n OK, state 8a1d2996... matches, data/raw clean).
