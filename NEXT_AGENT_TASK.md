@@ -1,14 +1,16 @@
 # Next Agent Task: execute the 2026-11-17 gate extension in the FOREGROUND
 
-## Current status (verified 2026-11-17T08:38Z, run 44008498688, session 15 inv 1)
-- **Pre-gate cheap path EXIT=0 (gate unreached, T-48109s):** `GATE_EPOCH=1794952800 STATE_SHA256=8a1d29960142bca9aa4d9673e06f64775593d9402622612209bae66bf9965ee1 bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1794904691 (2026-11-17T08:38:11Z) < gate 1794952800 (2026-11-17T22:00:00Z); T-48109s remaining. state sha256 matches (8a1d2996…); data/raw clean. STOP — do not re-run the cycle.` EXIT=0.
-- **Focused verification:** `tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` → **70 passed, 1 skipped** (the skip is `test_status_ok_for_pre_gate_verification`, line 156 — pre-gate record, correctly skipped); ruff **All checks passed!**; `bash -n` ORCH/PREGATE OK.
+## Current status (verified 2026-11-17T15:55Z, run 44077834177, session 6 inv 1)
+- **Pre-gate cheap path EXIT=0 (gate unreached, T-21891s):** `GATE_EPOCH=1794952800 STATE_SHA256=8a1d29960142bca9aa4d9673e06f64775593d9402622612209bae66bf9965ee1 bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1794930909 (2026-11-17T15:55:09Z) < gate 1794952800 (2026-11-17T22:00:00Z); T-21891s remaining. state sha256 matches (8a1d2996…); data/raw clean. STOP — do not re-run the cycle.` EXIT=0.
+- **Gate-active path fully verified green against the live 470/2026-11-16 state (de-risks the 22:00 UTC extension):** focused suite `tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` → **72 passed, 1 skipped**; cmd5 six-module (`extend, drift_persistence, verify_monday_extension_path, real_extension_path, state_aggregate_audit, rolling_63d_gate_refresh`) → **69 passed**; cmd7c (`data_cost_inventory_001/002`) → **43 passed**; record-status audit → **2 passed**; rolling63 weakness diagnosis → **17 passed**; go_no_go evaluation → **19 passed**. ruff **All checks passed!**; `bash -n` ORCH/PREGATE OK.
+- **Session-5 forward-compat fix verified (durable, test-only):** `tests/test_post_gate_handoff_consistency.py` now selects the newest `CORRECTIVE_HANDOFF_POSTGATE_<YYYYMMDD>.md` and derives the gate epoch from its filename date (not a hard-pinned 20261116 constant); the wall-clock skip in `test_status_ok_for_pre_gate_verification` was replaced by a **record-anchored** `_is_pre_gate_record` check plus synthetic anti-vacuity tests (`test_pre_gate_record_happy_path_is_enforced`, `test_released_record_is_not_treated_as_pre_gate`). This lets the guard survive the 2026-11-17 cycle (state → 471 / 2026-11-17, new sha) without failing on the very cycle it guards.
 - **State unchanged:** sha256 `8a1d29960142bca9aa4d9673e06f64775593d9402622612209bae66bf9965ee1`; `last_run_date 2026-11-16`, `nav 131036.60557839136`, `runs 470`. `git status --porcelain` clean (0 lines); `git status --porcelain -- data/raw` empty. `/tmp/kilo-venv` present.
-- **Supervisor:** rec `44008498688-attempt-1-review-0002-1954af463073` (STATUS: CONTINUE; Step 1 only, stop on pre-gate exit 0) dispositioned `verified` in `.kilo-runtime/worker-disposition.json` (runtime, not committed). Advice followed exactly; no code change required.
+- **Supervisor:** rec `44077834177-attempt-1-review-0078-b067ca34b6c3` (STATUS: ATTENTION; recommended running the focused + broader suites, no code change unless tests fail) dispositioned `verified` in `.kilo-runtime/worker-disposition.json` (runtime, not committed). Advice followed exactly; all suites pass, no code change required.
 - **Next gate:** 2026-11-17T22:00:00Z (Tue, 17:00 ET) = epoch **1794952800**. Extend targets next session after 2026-11-16 (**2026-11-17 Tue**) only if a completed bar exists and clock gate released.
 - **Working tree:** clean; `data/raw` untouched.
 
-## Prior verified status (verified 2026-11-17T06:33Z, run 44008498688, session 13 inv 1)
+## Prior verified status (verified 2026-11-17T08:38Z, run 44008498688, session 15 inv 1)
+- **Pre-gate cheap path EXIT=0 (T-48109s);** focused suite 70 passed, 1 skipped; ruff clean; `bash -n` OK; state unchanged (8a1d2996…, 2026-11-16, 470); data/raw clean. (Consolidated — full detail in README cycle history.)
 
 ## Prior verified status (verified 2026-11-17T04:45Z, run 44008498688, session 7 inv 1)
 - **Pre-gate cheap path EXIT=0 (gate unreached, T-63275s):** `GATE_EPOCH=1794952800 STATE_SHA256=8a1d29960142bca9aa4d9673e06f64775593d9402622612209bae66bf9965ee1 bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1794889525 (2026-11-17T04:25:25Z) < gate 1794952800 (2026-11-17T22:00:00Z); T-63275s remaining. state sha256 matches (8a1d2996…); data/raw clean. STOP — do not re-run the cycle.` EXIT=0.
@@ -36,6 +38,7 @@
 - **inv-228:** cmd9 state-fingerprint accepts optional leading minus; 4 regression tests.
 - **inv-1:** orchestrator fails closed (rc=2) with actionable "recreate /tmp/kilo-venv" when `PYTHON`/`RUFF` missing.
 - **session 12/9:** `tests/test_post_gate_handoff_consistency.py` pins handoff State/Mode/Gate/Cmds/gate-epoch consistency against real state and gate.
+- **session 5 (2026-11-17T15:02Z, run 44077834177):** `tests/test_post_gate_handoff_consistency.py` record-anchored forward-compat — `_select_handoff()` picks the newest `CORRECTIVE_HANDOFF_POSTGATE_<YYYYMMDD>.md` and derives the gate epoch from its filename date (was hard-pinned to 20261116); the wall-clock skip in `test_status_ok_for_pre_gate_verification` replaced by a record-anchored `_is_pre_gate_record` check + synthetic anti-vacuity tests. Test-only; lets the guard survive the 2026-11-17 cycle (state → 471/2026-11-17) instead of failing on it.
 
 ## Step 1 — pre-gate cheap path (now < 2026-11-17T22:00:00Z)
 ```
