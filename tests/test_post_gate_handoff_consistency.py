@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -87,8 +87,6 @@ HANDOFF = _select_handoff()
 HANDOFF_GATE = _handoff_gate_dt(HANDOFF)
 CANONICAL_GATE_EPOCH = int(HANDOFF_GATE.timestamp())
 CANONICAL_GATE_HUMAN = HANDOFF_GATE.strftime("%Y-%m-%dT%H:%M:%SZ")
-
-_SKIP_GUARD_GATE = HANDOFF_GATE + timedelta(days=1)
 
 # nav allows an optional leading minus (nav=-?[0-9]+(?:\.[0-9]+)?): current_nav is
 # a float and a paper account can legitimately fall below zero after losses. This
@@ -196,23 +194,101 @@ def test_cmds_skipped_is_truthful_for_mode() -> None:
         pytest.fail(f"unrecognized 'Gate state' value: {gate_state!r}")
 
 
-def test_status_ok_for_pre_gate_verification() -> None:
-    """Before the gate the handoff must be Status OK with the gate withheld.
+def _is_pre_gate_record(lines: list[str]) -> bool:
+    """True iff ``lines`` describe a pre-gate (extend-withheld) verification run.
 
-    This is the current on-disk state (a pre-gate verification run). It pins the
-    happy-path record so a future session cannot regress it into a FAILED or
-    extend-included record while the clock gate is still un-released. It is
-    guarded by the wall clock: once the gate is reached the canonical record is
-    expected to become a full-cycle record and this assertion is skipped, not
-    failed, so it does not block the real post-gate cycle.
+    The gate-state line is the authoritative record of which side of the clock
+    gate produced the handoff (see ``scripts/post_gate_orchestrator.sh``: a
+    pre-gate run writes ``Gate state: NOT released ...``). This helper lets the
+    happy-path test decide from the *committed record* -- not the wall clock --
+    whether the record it is validating is a pre-gate one.
     """
-    if datetime.now(UTC) >= _SKIP_GUARD_GATE:
-        pytest.skip("gate released: the committed handoff is expected to be a full-cycle record")
-    lines = _handoff_lines()
+    return _field(lines, "Gate state").startswith("NOT released")
+
+
+def _assert_pre_gate_record_ok(lines: list[str]) -> None:
+    """Assert a pre-gate verification handoff is Status OK and honestly withheld.
+
+    A pre-gate record must report ``Status: OK`` (verification passed) AND, if it
+    claims the gate is unreleased, must label its Mode as the pre-gate
+    (extend-withheld) verification mode. This is the happy-path contract the
+    wall-clock-anchored version only checked opportunistically.
+    """
     assert _field(lines, "Status").startswith("OK"), _field(lines, "Status")
-    gate_state = _field(lines, "Gate state")
-    if gate_state.startswith("NOT released"):
-        assert _field(lines, "Mode") == "pre-gate verification (extend withheld — gate not released)"
+    assert _field(lines, "Mode") == "pre-gate verification (extend withheld — gate not released)"
+
+
+def test_status_ok_for_pre_gate_verification() -> None:
+    """A committed pre-gate handoff must be Status OK with the extend withheld.
+
+    This guard is **record-anchored**, not wall-clock-anchored. It inspects the
+    newest committed gate handoff and, *iff that record itself is a pre-gate
+    verification run* (``Gate state: NOT released``), asserts the happy-path
+    contract (Status OK + pre-gate Mode). Otherwise -- i.e. the newest record is
+    already a full-cycle / released record -- there is no pre-gate record to
+    pin, so the assertion is skipped rather than vacuously passing.
+
+    The previous version skipped on the *wall clock* (``now >= handoff_gate +
+    1 day``). That was both wrong and vacuous in the current window: the newest
+    committed handoff is the released 2026-11-16 full-cycle record, so the old
+    test ran while the gate clock was still in the future but never exercised its
+    own pre-gate branch, and its docstring falsely claimed "this is the current
+    on-disk state (a pre-gate verification run)". Anchoring on the committed
+    record makes the skip meaningful and keeps the test non-vacuous whenever a
+    real pre-gate record exists (see the synthetic regression tests below).
+    """
+    lines = _handoff_lines()
+    if not _is_pre_gate_record(lines):
+        pytest.skip("newest committed handoff is not a pre-gate record; no pre-gate record to pin")
+    _assert_pre_gate_record_ok(lines)
+
+
+def test_pre_gate_record_happy_path_is_enforced() -> None:
+    """Anti-vacuity: a NOT-released record must satisfy the pre-gate contract.
+
+    Builds a synthetic pre-gate record (``Gate state: NOT released``) and shows
+    the happy-path assertion passes for a correct one and rejects a FAILED /
+    extend-included one. This proves the guard is not vacuous: it actually
+    constrains pre-gate records rather than trivially passing on any input.
+    """
+    good = [
+        "- **Status:** OK — all verification steps passed",
+        "- **Mode:** pre-gate verification (extend withheld — gate not released)",
+        "- **Gate state:** NOT released — pre-gate verification run only (T-100s remaining; mutating extend withheld)",
+    ]
+    assert _is_pre_gate_record(good)
+    _assert_pre_gate_record_ok(good)  # correct record passes
+
+    bad_status = [
+        "- **Status:** FAILED — a verification step failed",
+        "- **Mode:** pre-gate verification (extend withheld — gate not released)",
+        "- **Gate state:** NOT released — pre-gate verification run only (T-100s remaining; mutating extend withheld)",
+    ]
+    with pytest.raises(AssertionError):
+        _assert_pre_gate_record_ok(bad_status)
+
+    wrong_mode = [
+        "- **Status:** OK — all verification steps passed",
+        "- **Mode:** full cycle (extend included)",
+        "- **Gate state:** NOT released — pre-gate verification run only (T-100s remaining; mutating extend withheld)",
+    ]
+    with pytest.raises(AssertionError):
+        _assert_pre_gate_record_ok(wrong_mode)
+
+
+def test_released_record_is_not_treated_as_pre_gate() -> None:
+    """Anti-vacuity: a released/full-cycle record must NOT match the pre-gate branch.
+
+    Guards against the inverse defect: a released record (like the newest
+    2026-11-16 handoff) must be classified as *not* pre-gate so the happy-path
+    test skips it instead of wrongly asserting pre-gate semantics on it.
+    """
+    released = [
+        "- **Status:** OK — all verification steps passed",
+        "- **Mode:** full cycle (extend included)",
+        "- **Gate state:** released (gate epoch reached)",
+    ]
+    assert not _is_pre_gate_record(released)
 
 
 # Read-only verification steps the orchestrator always runs (cmds 1,3,5,6,7,8,9).
