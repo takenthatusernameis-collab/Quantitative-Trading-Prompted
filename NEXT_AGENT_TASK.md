@@ -1,9 +1,9 @@
 # Next Agent Task: execute the 2026-11-17 gate extension in the FOREGROUND
 
-## Current status (verified 2026-11-17T04:15Z, run 44008498688, session 4 inv 1)
-- **Pre-gate cheap path EXIT=0 (gate unreached, T-63883s):** `GATE_EPOCH=1794952800 STATE_SHA256=8a1d29960142bca9aa4d9673e06f64775593d9402622612209bae66bf9965ee1 bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1794888917 (2026-11-17T04:15:17Z) < gate 1794952800 (2026-11-17T22:00:00Z); T-63883s remaining. state sha256 matches (8a1d2996…); data/raw clean. STOP — do not re-run the cycle.`
+## Current status (verified 2026-11-17T04:23Z, run 44008498688, session 6 inv 1)
+- **Pre-gate cheap path EXIT=0 (gate unreached, T-63421s):** `GATE_EPOCH=1794952800 STATE_SHA256=8a1d29960142bca9aa4d9673e06f64775593d9402622612209bae66bf9965ee1 bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1794889379 (2026-11-17T04:22:59Z) < gate 1794952800 (2026-11-17T22:00:00Z); T-63421s remaining. state sha256 matches (8a1d2996…); data/raw clean. STOP — do not re-run the cycle.`
 - **Focused verification:** `tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` → **67 passed, 1 skipped** (the skip is `test_status_ok_for_pre_gate_verification`, line 156 — the 2026-11-16 gate released at 22:00 UTC Nov 16, so the on-disk handoff is correctly a full-cycle record and the pre-gate assertion is skipped, not failed); ruff **All checks passed!**; `bash -n` ORCH/PREGATE OK.
-- **State:** sha256 `8a1d29960142bca9aa4d9673e06f64775593d9402622612209bae66bf9965ee1` == `sha256sum data/processed/paper_trading_state.yaml`; `last_run_date 2026-11-16`, `nav 131036.60557839136`, `runs 470`. `git status --porcelain` clean (0 lines); `git status --porcelain -- data/raw` empty.
+- **State:** sha256 `8a1d29960142bca9aa4d9673e06f64775593d9402622612209bae66bf9965ee1` == `sha256sum data/processed/paper_trading_state.yaml`; `last_run_date 2026-11-16`, `nav 131036.60557839136`, `runs 470`, `rolling_sharpe_63d -1.5917275518816598`. `git status --porcelain` clean (0 lines); `git status --porcelain -- data/raw` empty.
 - **Supervisor:** rec `43952759940-attempt-1-review-0077-68105f64edb6` (STATUS: CONTINUE; recovered report — advises Step 1 only and to disregard the stale cycle-76 commit advice) dispositioned `verified` in `.kilo-runtime/worker-disposition.json` (runtime, not committed). Advice followed exactly; no code change required.
 - **Next gate:** 2026-11-17T22:00:00Z (Tue, 17:00 ET) = epoch **1794952800**. Extend targets next session after 2026-11-16 (**2026-11-17 Tue**) only if a completed bar exists and clock gate released.
 - **Working tree:** clean; `data/raw` untouched.
@@ -78,10 +78,11 @@ python3 -m venv /tmp/kilo-venv
 - **Session 2 inv 1 (2026-11-16T21:00Z, HEAD f4749d7, run 43952759940):** pre-gate cheap path EXIT=0 (T-3592s); 65 passed; ruff clean; bash -n OK; gate unreached.
 - **Session 9 inv 1 (2026-11-16T15:32Z, HEAD f4749d7, run 43852775967):** pre-gate EXIT=0; 65 passed; ruff clean.
 - **Session 4 inv 1 (2026-11-17T04:15Z, HEAD ac42e11, run 44008498688):** pre-gate EXIT=0 (T-63883s, sha 8a1d2996); focused suite 67 passed, 1 skipped; ruff clean; bash -n OK; state unchanged (last_run 2026-11-16, nav 131036.61, runs 470); data/raw clean; working tree clean. Step 2 withheld until 2026-11-17T22:00:00Z.
+- **Session 6 inv 1 (2026-11-17T04:23Z, HEAD ac42e11, run 44008498688):** pre-gate EXIT=0 (T-63421s, sha 8a1d2996); focused suite 67 passed, 1 skipped; ruff clean; bash -n OK; state unchanged (last_run 2026-11-16, nav 131036.61, runs 470); data/raw clean; working tree clean. Step 2 withheld until 2026-11-17T22:00:00Z.
 
 ### Compact history of identical pre-gate re-verifications (pre-gate EXIT=0, gate unreached, Step 2 withheld, no code/state change)
 - run 43852775967: sessions 2/3/4/6/8/11/17/18/19/20/21 (all 65 tests, ruff clean, bash -n OK, state c438cd71... matches, data/raw clean).
 - run 43754114833: sessions 1/4/6/8/9/10.
 - run 43722618751: sessions 1/3/6/7/8/10/11/13/19.
 - run 43952759940: sessions 2/7/9 (all 65 tests, ruff clean, bash -n OK, state 8a1d2996... matches, data/raw clean).
-- run 44008498688: session 4 (67 passed, 1 skipped, ruff clean, bash -n OK, state 8a1d2996... matches, data/raw clean).
+- run 44008498688: sessions 4/6 (67 passed, 1 skipped, ruff clean, bash -n OK, state 8a1d2996... matches, data/raw clean).
