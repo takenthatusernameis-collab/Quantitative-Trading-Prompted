@@ -1,11 +1,11 @@
-# Next Agent Task: execute the 2026-11-17 gate extension in the FOREGROUND
+# Next Agent Task: verify the 2026-11-17 gate extension results
 
-## Current status (verified 2026-11-17T17:10Z, run 44077834177, session 14 inv 1)
-- **Pre-gate cheap path EXIT=0 (gate unreached, T-17366s):** `GATE_EPOCH=1794952800 STATE_SHA256=8a1d29960142bca9aa4d9673e06f64775593d9402622612209bae66bf9965ee1 bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1794935434 (2026-11-17T17:10:34Z) < gate 1794952800 (2026-11-17T22:00:00Z); T-17366s remaining. state sha256 matches (8a1d2996…); data/raw clean. STOP — do not re-run the cycle.` EXIT=0.
-- **Background gate watcher:** `scripts/post_gate_orchestrator.sh --wait-until-gate` (persistent id bgp_1ea797fdc001moB33IAc3qCp10, pid 357004) running, waiting for 2026-11-17T22:00:00Z gate release; will fire the full cycle (cmds 1-8) if this environment survives. Logs confirmed waiting (`still waiting for gate: ... target 2026-11-17T22:00:00Z`). If the environment does not survive to 22:00 UTC, the next session must run Step 2 directly at/after gate release per the command in Step 2.
+## Current status (verified 2026-11-17T21:43Z, run 44165547375, session 2 inv 1)
+- **Pre-gate cheap path EXIT=0 (gate unreached, T-2330s):** `GATE_EPOCH=1794952800 STATE_SHA256=8a1d29960142bca9aa4d9673e06f64775593d9402622612209bae66bf9965ee1 bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1794950470 (2026-11-17T21:21:10Z) < gate 1794952800 (2026-11-17T22:00:00Z); T-2330s remaining. state sha256 matches (8a1d2996…); data/raw clean. STOP — do not re-run the cycle.` EXIT=0.
+- **Background gate watcher RESTARTED:** `scripts/post_gate_orchestrator.sh --wait-until-gate` (persistent id bgp_1eb64fbb1001IUpJpJ4UQCNpmm, pid 76047) running, waiting for 2026-11-17T22:00:00Z gate release; will fire the full cycle (cmds 1-8) when gate releases. Logs confirm heartbeat every 60s (`still waiting for gate: 2026-11-17T21:42:46Z target 2026-11-17T22:00:00Z`). Prior watcher (bgp_1ea797fdc001moB33IAc3qCp10) was not found; supervisor rec 0031 recommended restart. If the environment does not survive to 22:00 UTC, the next session must run Step 2 directly at/after gate release per the command in Step 2.
 - **Focused verification (this session):** `tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` → **72 passed, 1 skipped**; ruff **All checks passed!**; `bash -n` ORCH/PREGATE OK.
 - **State unchanged:** sha256 `8a1d29960142bca9aa4d9673e06f64775593d9402622612209bae66bf9965ee1`; `last_run_date 2026-11-16`, `nav 131036.60557839136`, `runs 470`. `git status --porcelain` clean (0 lines); `git status --porcelain -- data/raw` empty.
-- **Supervisor:** rec `44077834177-attempt-1-review-0078-b067ca34b6c3` (STATUS: ATTENTION; recommended running the focused + broader suites, no code change unless tests fail) dispositioned `verified` in `.kilo-runtime/worker-disposition.json` (runtime, not committed). Advice followed exactly; all suites pass, no code change required. Step 2 blocked by gate clock only.
+- **Supervisor:** rec `44165547375-attempt-1-review-0031-a659b915f7e5` (STATUS: ATTENTION; missing waiter, recommended restart) dispositioned `accepted` in `.kilo-runtime/worker-disposition.json` (runtime, not committed). Waiter restarted. Rec `44165547375-attempt-1-review-0035-484599037d30` (STATUS: CONTINUE; allow waiter to run through gate) dispositioned `in_progress`. Step 2 blocked by gate clock only.
 - **Next gate:** 2026-11-17T22:00:00Z (Tue, 17:00 ET) = epoch **1794952800**. Extend targets next session after 2026-11-16 (**2026-11-17 Tue**) only if a completed bar exists and clock gate released.
 - **Working tree:** clean; `data/raw` untouched.
 
@@ -81,7 +81,7 @@ Runs cmds 1–8 including mutating extend (cmd2) and idempotency re-run (cmd4), 
 
 ## Validation commands
 - `GATE_EPOCH=1794952800 STATE_SHA256=8a1d29960142bca9aa4d9673e06f64775593d9402622612209bae66bf9965ee1 bash scripts/pre_gate_check.sh` (pre-gate: exit 0; at/after gate: exit 3)
-- `cat CORRECTIVE_HANDOFF_POSTGATE_20261116.md` (post-2026-11-16 cycle: `Mode: full cycle (extend included)`, `Gate state: released`; inspect cmd7b status if any)
+- `cat CORRECTIVE_HANDOFF_POSTGATE_20261117.md` (post-2026-11-17 cycle: `Mode: full cycle (extend included)`, `Gate state: released`; inspect cmd7b status if any)
 - `git status --porcelain -- data/raw` (expect empty)
 - `git status --porcelain` (only intended state/handoff/artifact changes)
 - `/tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` (>=65 passed)
@@ -102,12 +102,13 @@ python3 -m venv /tmp/kilo-venv
 ```
 
 ## Background process (this session)
-A persistent `scripts/post_gate_orchestrator.sh --wait-until-gate` (id `bgp_1ea797fdc001moB33IAc3qCp10`) is running, waiting for the 2026-11-17T22:00:00Z gate then executing the full cycle (cmds 1-8). Check:
-- `background_process status bgp_1ea797fdc001moB33IAc3qCp10`
-- `background_process logs bgp_1ea797fdc001moB33IAc3qCp10`
+A persistent `scripts/post_gate_orchestrator.sh --wait-until-gate` (id `bgp_1eb64fbb1001IUpJpJ4UQCNpmm`) is running, waiting for the 2026-11-17T22:00:00Z gate then executing the full cycle (cmds 1-8). Check:
+- `background_process status bgp_1eb64fbb1001IUpJpJ4UQCNpmm`
+- `background_process logs bgp_1eb64fbb1001IUpJpJ4UQCNpmm`
 If it fired and completed, verify: `cat CORRECTIVE_HANDOFF_POSTGATE_20261117.md` (`Mode: full cycle (extend included)`, non-empty `- **State:**` line), `git status --porcelain -- data/raw` empty, focused suite >=65 passed. If the environment did not survive to 22:00 UTC, run Step 2 directly at/after gate release per the command in Step 2.
 
 ## Session log (non-redundant)
+- **Session 2 inv 1 (2026-11-17T21:43Z, HEAD 8a1d2996, run 44165547375):** pre-gate cheap path EXIT=0 (T-2330s, sha 8a1d2996); focused suite **72 passed, 1 skipped**; ruff **All checks passed!**; `bash -n` ORCH/PREGATE OK; state unchanged (last_run 2026-11-16, nav 131036.61, runs 470); data/raw clean; working tree clean (only NEXT_AGENT_TASK.md refreshed). **Prior background watcher (bgp_1ea797fdc001moB33IAc3qCp10) not found; supervisor rec 0031 dispositioned `accepted`; restarted watcher as bgp_1eb64fbb1001IUpJpJ4UQCNpmm (pid 76047) awaiting 2026-11-17T22:00:00Z gate release; heartbeat confirmed every 60s.** Supervisor rec `44165547375-attempt-1-review-0035-484599037d30` dispositioned `in_progress` (allow waiter to run through gate). Step 2 withheld until 2026-11-17T22:00:00Z.
 - **Session 10 inv 1 (2026-11-17T16:59Z, HEAD 8a1d2996, run 44077834177):** pre-gate cheap path EXIT=0 (T-18055s, sha 8a1d2996); focused suite **72 passed, 1 skipped**; ruff **All checks passed!**; `bash -n` ORCH/PREGATE OK; state unchanged (last_run 2026-11-16, nav 131036.61, runs 470); data/raw clean; working tree clean (only NEXT_AGENT_TASK.md refreshed). Supervisor rec `44077834177-attempt-1-review-0078-b067ca34b6c3` dispositioned `verified` (runtime). Step 2 withheld until 2026-11-17T22:00:00Z.
 - **Session 13 inv 1 (2026-11-17T17:08Z, HEAD 8a1d2996, run 44077834177):** pre-gate cheap path EXIT=0 (T-17502s, sha 8a1d2996); focused suite **72 passed, 1 skipped**; ruff **All checks passed!**; `bash -n` ORCH/PREGATE OK; state unchanged (last_run 2026-11-16, nav 131036.61, runs 470); data/raw clean; working tree clean (only NEXT_AGENT_TASK.md refreshed). Background `--wait-until-gate` process running (pid 357004, id bgp_1ea797fdc001moB33IAc3qCp10) awaiting 2026-11-17T22:00:00Z gate release; will fire full cycle (cmds 1-8) if environment survives, otherwise next session runs Step 2 directly at/after gate. Supervisor rec `44077834177-attempt-1-review-0078-b067ca34b6c3` dispositioned `verified` (runtime). Step 2 withheld until 2026-11-17T22:00:00Z.
 - **Session 14 inv 1 (2026-11-17T17:10Z, HEAD 8a1d2996, run 44077834177):** pre-gate cheap path EXIT=0 (T-17366s, sha 8a1d2996); focused suite **72 passed, 1 skipped**; ruff **All checks passed!**; `bash -n` ORCH/PREGATE OK; state unchanged (last_run 2026-11-16, nav 131036.61, runs 470); data/raw clean; working tree clean (only NEXT_AGENT_TASK.md refreshed). Background watcher confirmed running (pid 357004, id bgp_1ea797fdc001moB33IAc3qCp10) awaiting 2026-11-17T22:00:00Z gate release. Supervisor rec `44077834177-attempt-1-review-0078-b067ca34b6c3` dispositioned `verified` in `.kilo-runtime/worker-disposition.json` (runtime, not committed). Step 2 withheld until 2026-11-17T22:00:00Z.
