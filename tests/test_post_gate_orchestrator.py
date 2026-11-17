@@ -761,3 +761,58 @@ def test_non_numeric_nav_fingerprint_is_still_malformed(tmp_path: Path) -> None:
     assert proc.returncode == 1, proc.stdout + proc.stderr
     assert "malformed" in proc.stdout, proc.stdout
     assert "**Status:** FAILED" in handoff.read_text()
+
+
+def test_full_cycle_regenerates_record_status_after_extend(tmp_path: Path) -> None:
+    # The record-status artifacts (research/{reports,experiments}/
+    # paper_trading_record_status_001.md) are derived from the paper-trading state
+    # but no prior step regenerated them, so after cmd2 appends a session they go
+    # stale (e.g. 470/2026-11-16 while state is 471/2026-11-17) and
+    # tests/test_paper_trading_record_status_audit.py -- which asserts the
+    # artifacts equal the state-derived output -- fails. A full post-gate cycle
+    # must regenerate them so the durable artifacts track the state it just wrote.
+    # The stub log is the proof: the audit runs exactly once, after the extend.
+    handoff = tmp_path / "handoff.md"
+    py, log = _stub_python(tmp_path)
+    proc = _run([], PAST_GATE, handoff, env_extra={"PYTHON": str(py), "RUFF": str(py)})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    calls = _calls(log)
+    audit_calls = [i for i, c in enumerate(calls) if c.startswith("research/paper_trading_record_status_audit.py")]
+    assert len(audit_calls) == 1, calls
+    # It must run after the (first) extend so it captures the post-extend state.
+    extend_idx = next(i for i, c in enumerate(calls) if c.startswith("research/extend_paper_trading_state.py"))
+    assert audit_calls[0] > extend_idx, calls
+    # The handoff must record the step truthfully (run, not skipped).
+    text = handoff.read_text()
+    run_line = text.split("- **Cmds run:**")[1].split("\n")[0]
+    assert "4b record-status regen" in run_line, text
+    assert "- **Cmds skipped:** none" in text, text
+
+
+def test_read_only_cycle_does_not_regenerate_record_status(tmp_path: Path) -> None:
+    # Side-effect-free contract: --read-only (and pre-gate) runs must never write
+    # the record-status artifacts. The regen is gated on the extend running, so a
+    # read-only cycle must not invoke the audit and must list it as skipped.
+    handoff = tmp_path / "handoff.md"
+    py, log = _stub_python(tmp_path)
+    proc = _run(["--read-only"], PAST_GATE, handoff, env_extra={"PYTHON": str(py), "RUFF": str(py)})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    calls = _calls(log)
+    assert not [c for c in calls if c.startswith("research/paper_trading_record_status_audit.py")], calls
+    text = handoff.read_text()
+    assert "4b record-status regen (gate not released)" in text, text
+
+
+def test_pre_gate_forced_full_run_withholds_record_status_regen(tmp_path: Path) -> None:
+    # The regen must follow the SAME clock gate as the mutating extend: a --force
+    # FULL run before the gate withholds the extend (EXTEND_DISABLED=1), so it
+    # must also withhold the record-status regen -- otherwise a pre-gate run would
+    # write the artifacts while claiming the extend was withheld.
+    handoff = tmp_path / "handoff.md"
+    py, log = _stub_python(tmp_path)
+    proc = _run(["--force"], FUTURE_GATE, handoff, env_extra={"PYTHON": str(py), "RUFF": str(py)})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    calls = _calls(log)
+    assert not [c for c in calls if c.startswith("research/paper_trading_record_status_audit.py")], calls
+    text = handoff.read_text()
+    assert "4b record-status regen (gate not released)" in text, text
