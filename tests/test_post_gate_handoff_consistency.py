@@ -9,12 +9,26 @@ real ``data/processed/paper_trading_state.yaml``, or a ``Mode``/``Gate state``/
 successive sessions rewrite handoff-timestamp churn with no verifiable progress
 (the recurring failure this cycle exists to prevent).
 
-These tests read the committed ``CORRECTIVE_HANDOFF_POSTGATE_20261116.md`` and
+These tests read the most recent committed post-gate durable handoff
+(``CORRECTIVE_HANDOFF_POSTGATE_<YYYYMMDD>.md`` with the greatest gate date) and
 ``data/processed/paper_trading_state.yaml`` directly and assert the durable
 record is internally consistent and anchored to the real state. They are
 test-only: no production code, threshold, gate, cost model, universe, or
 ``data/raw`` is touched, and the checks fail closed if the canonical record is
 absent (anti-vacuity) so the suite cannot silently pass by reading nothing.
+
+Forward-compatibility (this guard's own correction): the suite previously
+hard-pinned ``CORRECTIVE_HANDOFF_POSTGATE_20261116.md`` and asserted its
+``State:`` line equalled the *live* state file. That is only true while the
+state is still the one that handoff recorded (470 / 2026-11-16). The imminent
+2026-11-17T22:00:00Z cycle appends a session (state -> 471 / 2026-11-17, new
+sha256) and writes ``CORRECTIVE_HANDOFF_POSTGATE_20261117.md``; the pinned
+20261116 record's ``State:`` line would then disagree with the live state and
+``test_state_line_present_and_matches_real_state_file`` would FAIL on the very
+cycle it exists to guard. The record to verify is therefore selected
+dynamically as the newest gate handoff, and the canonical gate epoch is derived
+from that handoff's own filename date (22:00 UTC), so the guard tracks the
+current cycle without a wall-clock-pinned constant or a hard-coded past date.
 """
 
 from __future__ import annotations
@@ -28,14 +42,51 @@ import pytest
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-HANDOFF = REPO_ROOT / "CORRECTIVE_HANDOFF_POSTGATE_20261116.md"
 STATE = REPO_ROOT / "data" / "processed" / "paper_trading_state.yaml"
 
-# Same gate the current cycle targets; kept here so the test states its own
-# assumption rather than silently depending on wall-clock layout.
-GATE_20261116 = datetime(2026, 11, 16, 22, 0, 0, tzinfo=UTC)
-CANONICAL_GATE_EPOCH = int(GATE_20261116.timestamp())
-CANONICAL_GATE_HUMAN = GATE_20261116.strftime("%Y-%m-%dT%H:%M:%SZ")
+# Gate handoffs are written as CORRECTIVE_HANDOFF_POSTGATE_<YYYYMMDD>.md where
+# the date is the gate's UTC date. A pre-gate backup file
+# (..._20261113_pregate_backup.md) does NOT match this anchored pattern, so it is
+# correctly excluded from selection.
+_POSTGATE_RE = re.compile(r"^CORRECTIVE_HANDOFF_POSTGATE_(\d{8})\.md$")
+
+
+def _select_handoff() -> Path:
+    """Return the newest committed post-gate handoff (greatest gate date).
+
+    The "current" durable record is the one for the most recent gate cycle that
+    has run. Selecting by the greatest ``YYYYMMDD`` in the filename makes the
+    guard forward-compatible: before the 2026-11-17 cycle it selects
+    ``..._20261116.md`` (whose State line matches the live 470 / 2026-11-16
+    state); after that cycle it selects ``..._20261117.md`` (matching the new
+    471 / 2026-11-17 state) instead of failing against the stale pinned record.
+
+    Fails closed (anti-vacuity) if no gate handoff is present, so the suite
+    cannot silently pass by validating nothing.
+    """
+    candidates: list[tuple[int, Path]] = []
+    for path in REPO_ROOT.glob("CORRECTIVE_HANDOFF_POSTGATE_*.md"):
+        match = _POSTGATE_RE.match(path.name)
+        if match:
+            candidates.append((int(match.group(1)), path))
+    assert candidates, (
+        "no CORRECTIVE_HANDOFF_POSTGATE_<YYYYMMDD>.md record is present; the "
+        "gate cycle's durable record must be committed for this guard to run"
+    )
+    return max(candidates, key=lambda item: item[0])[1]
+
+
+def _handoff_gate_dt(path: Path) -> datetime:
+    """Derive the gate's UTC datetime (22:00 on the filename date) from ``path``."""
+    match = _POSTGATE_RE.match(path.name)
+    assert match, f"handoff name is not a gate record: {path.name!r}"
+    return datetime.strptime(match.group(1), "%Y%m%d").replace(hour=22, tzinfo=UTC)
+
+
+HANDOFF = _select_handoff()
+CANONICAL_GATE = _handoff_gate_dt(HANDOFF)
+CANONICAL_GATE_EPOCH = int(CANONICAL_GATE.timestamp())
+CANONICAL_GATE_HUMAN = CANONICAL_GATE.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 # nav allows an optional leading minus (nav=-?[0-9]+(?:\.[0-9]+)?): current_nav is
 # a float and a paper account can legitimately fall below zero after losses. This
@@ -153,7 +204,7 @@ def test_status_ok_for_pre_gate_verification() -> None:
     expected to become a full-cycle record and this assertion is skipped, not
     failed, so it does not block the real post-gate cycle.
     """
-    if datetime.now(UTC) >= GATE_20261116:
+    if datetime.now(UTC) >= CANONICAL_GATE:
         pytest.skip("gate released: the committed handoff is expected to be a full-cycle record")
     lines = _handoff_lines()
     assert _field(lines, "Status").startswith("OK"), _field(lines, "Status")
@@ -225,6 +276,66 @@ def test_cmds_run_is_truthful_for_gate_state() -> None:
     """``Cmds run`` must record what actually ran for the current gate state."""
     lines = _handoff_lines()
     _assert_cmds_run_truthful(_field(lines, "Cmds run"), _field(lines, "Gate state"))
+
+
+def test_select_handoff_picks_newest_gate_record(tmp_path: Path) -> None:
+    """The guard must verify the NEWEST gate handoff, not a stale pinned one.
+
+    Regression for this guard's own forward-compatibility defect: it previously
+    hard-pinned ``CORRECTIVE_HANDOFF_POSTGATE_20261116.md`` and asserted that
+    record's ``State:`` line equalled the live state. After the 2026-11-17 cycle
+    appends a session and writes ``..._20261117.md`` the pinned 20261116 record's
+    State line no longer matches the live state, so the whole suite would fail on
+    the very cycle it guards. Selection must follow the greatest gate date.
+    """
+    (tmp_path / "CORRECTIVE_HANDOFF_POSTGATE_20261112.md").write_text("old")
+    (tmp_path / "CORRECTIVE_HANDOFF_POSTGATE_20261116.md").write_text("mid")
+    (tmp_path / "CORRECTIVE_HANDOFF_POSTGATE_20261117.md").write_text("new")
+    # A pre-gate backup must NOT be selected even though it shares the prefix.
+    (tmp_path / "CORRECTIVE_HANDOFF_POSTGATE_20261117_pregate_backup.md").write_text("bak")
+    # An unrelated handoff (different family) must not be selected.
+    (tmp_path / "CORRECTIVE_HANDOFF_GATECLOCK_20261117T0527Z.md").write_text("x")
+
+    import importlib
+
+    module = importlib.import_module("tests.test_post_gate_handoff_consistency")
+    original_root = module.REPO_ROOT
+    try:
+        module.REPO_ROOT = tmp_path
+        selected = module._select_handoff()
+        gate = module._handoff_gate_dt(selected)
+    finally:
+        module.REPO_ROOT = original_root
+
+    assert selected.name == "CORRECTIVE_HANDOFF_POSTGATE_20261117.md"
+    assert gate == datetime(2026, 11, 17, 22, 0, 0, tzinfo=UTC)
+
+
+def test_select_handoff_fails_closed_without_any_gate_record(tmp_path: Path) -> None:
+    """Anti-vacuity: with no gate handoff present the guard must fail, not pass."""
+    (tmp_path / "CORRECTIVE_HANDOFF_POSTGATE_20261117_pregate_backup.md").write_text("bak")
+
+    import importlib
+
+    module = importlib.import_module("tests.test_post_gate_handoff_consistency")
+    original_root = module.REPO_ROOT
+    try:
+        module.REPO_ROOT = tmp_path
+        with pytest.raises(AssertionError):
+            module._select_handoff()
+    finally:
+        module.REPO_ROOT = original_root
+
+
+def test_handoff_gate_dt_derives_2200_utc(tmp_path: Path) -> None:
+    """The canonical gate datetime is 22:00 UTC on the filename date."""
+    import importlib
+
+    module = importlib.import_module("tests.test_post_gate_handoff_consistency")
+    gate = module._handoff_gate_dt(tmp_path / "CORRECTIVE_HANDOFF_POSTGATE_20261117.md")
+    assert gate == datetime(2026, 11, 17, 22, 0, 0, tzinfo=UTC)
+    assert int(gate.timestamp()) == 1794952800
+    assert gate.strftime("%Y-%m-%dT%H:%M:%SZ") == "2026-11-17T22:00:00Z"
 
 
 def test_false_extend_claim_is_rejected_when_gate_unreleased() -> None:
