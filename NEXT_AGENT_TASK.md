@@ -100,6 +100,12 @@ python3 -m venv /tmp/kilo-venv
 /tmp/kilo-venv/bin/python -m pip install --no-cache-dir numpy pandas scipy statsmodels arch yfinance pyarrow pyyaml pytest ruff
 ```
 
+## Background process (this session)
+A persistent `scripts/post_gate_orchestrator.sh --wait-until-gate` (id `bgp_1ea797fdc001moB33IAc3qCp10`) is running, waiting for the 2026-11-17T22:00:00Z gate then executing the full cycle (cmds 1-8). Check:
+- `background_process status bgp_1ea797fdc001moB33IAc3qCp10`
+- `background_process logs bgp_1ea797fdc001moB33IAc3qCp10`
+If it fired and completed, verify: `cat CORRECTIVE_HANDOFF_POSTGATE_20261117.md` (`Mode: full cycle (extend included)`, non-empty `- **State:**` line), `git status --porcelain -- data/raw` empty, focused suite >=65 passed. If the environment did not survive to 22:00 UTC, run Step 2 directly at/after gate release per the command in Step 2.
+
 ## Session log (non-redundant)
 - **Session 10 inv 1 (2026-11-17T16:59Z, HEAD 8a1d2996, run 44077834177):** pre-gate cheap path EXIT=0 (T-18055s, sha 8a1d2996); focused suite **72 passed, 1 skipped**; ruff **All checks passed!**; `bash -n` ORCH/PREGATE OK; state unchanged (last_run 2026-11-16, nav 131036.61, runs 470); data/raw clean; working tree clean (only NEXT_AGENT_TASK.md refreshed). Supervisor rec `44077834177-attempt-1-review-0078-b067ca34b6c3` dispositioned `verified` (runtime). Step 2 withheld until 2026-11-17T22:00:00Z.
 - **Session 7 inv 1 (2026-11-17T16:01Z, HEAD 8a1d2996, run 44077834177):** pre-gate cheap path EXIT=0 (T-21505s, sha 8a1d2996); focused suite **72 passed, 1 skipped**; ruff **All checks passed!**; `bash -n` ORCH/PREGATE OK; state unchanged (last_run 2026-11-16, nav 131036.61, runs 470); data/raw clean; working tree clean (only NEXT_AGENT_TASK.md refreshed). Supervisor rec `44077834177-attempt-1-review-0078-b067ca34b6c3` dispositioned `verified` (runtime). Step 2 withheld until 2026-11-17T22:00:00Z.
