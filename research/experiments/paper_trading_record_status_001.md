@@ -1,3 +1,3 @@
 # Paper trading record status experiment
 
-sessions: 470
+sessions: 471
