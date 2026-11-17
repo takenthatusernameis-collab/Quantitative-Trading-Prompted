@@ -219,6 +219,15 @@ def render_report(payload: dict[str, Any]) -> str:
         "- Read-only: `data/` and `config/` byte-identical before and after the run; "
         "no committed artefact modified."
     )
+    lof = payload["leave_one_out_complete"]
+    add(
+        f"- Leave-one-fold-out: fold {lof['top_drop']['dropped_fold']} is the unique "
+        f"single-fold determinant of the gate-1 flip; dropping any other single fold "
+        f"leaves the mean in "
+        f"[{_fmt(lof['non_artefact_mean_min'], 4)}, "
+        f"{_fmt(lof['non_artefact_mean_max'], 4)}] "
+        f"({'PASS' if lof['non_artefact_gate1_any_pass'] else 'all FAIL'})."
+    )
     add(
         "- The incumbent's overall verdict is unchanged: **NO-GO** (failed gates "
         "`rolling_63d_sharpe`, `psr`)."
@@ -296,6 +305,58 @@ def render_report(payload: dict[str, Any]) -> str:
         )
     add("")
 
+    lof = payload["leave_one_out_complete"]
+    top = lof["top_drop"]
+    runner = lof["runner_up"]
+    add("## Leave-one-fold-out sensitivity (complete subsample, 41 folds)")
+    add("")
+    add(
+        "The Cycle-929 report shows the complete-subsample gate-1 outcome flips "
+        "when fold 12 is removed. This section measures whether fold 12 is the "
+        "*unique* single-fold determinant of that flip, or whether dropping any "
+        "other single fold also lifts the mean above the threshold. The "
+        "decision-relevant question is whether the gate-1 PASS on the clean "
+        "subsample is robust to dropping any single *other* fold -- i.e. whether "
+        "it is fold 12 specifically, not the act of dropping a fold, that carries "
+        "the result."
+    )
+    add("")
+    add("| Drop | Dropped Sharpe | Mean OOS Sharpe (40 folds) | Gate 1 (>= 0.9) |")
+    add("|---|---|---|---|")
+    add(
+        f"| fold {top['dropped_fold']} (artefact) | {_fmt(top['dropped_sharpe'], 4)} | "
+        f"{_fmt(top['mean_test_sharpe'])} | {'PASS' if top['gate1_pass'] else 'FAIL'} |"
+    )
+    if runner:
+        add(
+            f"| fold {runner['dropped_fold']} (runner-up) | {_fmt(runner['dropped_sharpe'], 4)} | "
+            f"{_fmt(runner['mean_test_sharpe'])} | {'PASS' if runner['gate1_pass'] else 'FAIL'} |"
+        )
+    add(
+        f"| any other single fold (39 folds) | -- | "
+        f"[{_fmt(lof['non_artefact_mean_min'], 6)}, "
+        f"{_fmt(lof['non_artefact_mean_max'], 6)}] | "
+        f"{'PASS' if lof['non_artefact_gate1_any_pass'] else 'FAIL'} |"
+    )
+    add("")
+    add(
+        f"**Result:** fold {top['dropped_fold']} is the **unique** single-fold "
+        f"determinant of the complete-subsample gate-1 flip. Dropping it lifts the "
+        f"mean to {_fmt(top['mean_test_sharpe'])} (PASS); dropping any other single "
+        f"fold leaves the mean in "
+        f"[{_fmt(lof['non_artefact_mean_min'], 4)}, "
+        f"{_fmt(lof['non_artefact_mean_max'], 4)}] "
+        f"({'PASS' if lof['non_artefact_gate1_any_pass'] else 'all FAIL'})."
+    )
+    if runner:
+        add(
+            f" The runner-up drop (fold {runner['dropped_fold']}, Sharpe "
+            f"{_fmt(runner['dropped_sharpe'], 4)}) reaches "
+            f"{_fmt(runner['mean_test_sharpe'])} "
+            f"({'PASS' if runner['gate1_pass'] else 'FAIL'})."
+        )
+    add("")
+
     add("## What this does and does not change")
     add("")
     add(
@@ -307,6 +368,17 @@ def render_report(payload: dict[str, Any]) -> str:
         "- **The complete-subsample gate-1 FAIL is attributable to a single degenerate "
         f"fold (fold {fold12['fold']}).** Its Sharpe is not a valid statistic, so the "
         "complete subsample does not actually fail gate 1 on comparable evidence."
+    )
+    add(
+        "- **Leave-one-fold-out confirms fold 12 is the unique single-fold determinant.** "
+        f"Dropping fold {lof['top_drop']['dropped_fold']} lifts the mean to "
+        f"{_fmt(lof['top_drop']['mean_test_sharpe'])} (PASS); dropping any other single "
+        f"fold leaves the mean in "
+        f"[{_fmt(lof['non_artefact_mean_min'], 4)}, "
+        f"{_fmt(lof['non_artefact_mean_max'], 4)}] "
+        f"({'PASS' if lof['non_artefact_gate1_any_pass'] else 'all FAIL'}). The gate-1 "
+        "PASS on the clean subsample is therefore not an artefact of dropping a fold "
+        "in general -- it is fold 12 specifically that carries the result."
     )
     add(
         "- **This refines the Cycle-911 thin-trade grouping.** Fold 13 is *not* "
@@ -424,6 +496,22 @@ def render_experiment(payload: dict[str, Any]) -> str:
         f"| Complete-subsample gate 1 without degenerate folds ({clean['n_folds']} folds) | "
         f"{_fmt(clean['mean_test_sharpe'])} -> {'PASS' if clean['gate1_pass'] else 'FAIL'} |"
     )
+    lof = payload["leave_one_out_complete"]
+    top = lof["top_drop"]
+    add(
+        f"| Leave-one-out top drop (fold {top['dropped_fold']}) mean | "
+        f"{_fmt(top['mean_test_sharpe'])} -> {'PASS' if top['gate1_pass'] else 'FAIL'} |"
+    )
+    add(
+        f"| Leave-one-out non-artefact drop range | "
+        f"[{_fmt(lof['non_artefact_mean_min'], 6)}, "
+        f"{_fmt(lof['non_artefact_mean_max'], 6)}] -> "
+        f"{'any PASS' if lof['non_artefact_gate1_any_pass'] else 'all FAIL'} |"
+    )
+    add(
+        f"| Leave-one-out unique determinant | fold {top['dropped_fold']} "
+        f"(flip_to_pass={lof['flip_to_pass_folds']}) |"
+    )
     add("")
     add("## Number of trials")
     add("")
@@ -477,6 +565,44 @@ def run_audit(
     complete_stats["gate1_pass"] = _gate1_pass(complete_stats)
     complete_clean_stats["gate1_pass"] = _gate1_pass(complete_clean_stats)
 
+    # Leave-one-fold-out sensitivity on the point-in-time-complete subsample.
+    # The Cycle-929 report shows the complete-subsample gate-1 outcome flips
+    # when fold 12 is removed; this measures whether that fold is the *unique*
+    # single-fold determinant of the flip, or whether any other single fold
+    # also lifts the mean above the threshold. The decision-relevant question
+    # is whether the gate-1 PASS on the clean subsample is robust to dropping
+    # any single *other* fold -- i.e. whether it is fold 12 specifically, not
+    # the act of dropping a fold, that carries the result.
+    lof = []
+    for r in complete_rows:
+        kept = [s for s in complete_rows if s["fold"] != r["fold"]]
+        s = subsample_stats(kept, f"complete drop fold {r['fold']}", drop_folds=())
+        s["dropped_fold"] = r["fold"]
+        s["dropped_sharpe"] = r["sharpe"]
+        s["gate1_pass"] = _gate1_pass(s)
+        lof.append(s)
+    lof_by_mean = sorted(lof, key=lambda s: s["mean_test_sharpe"], reverse=True)
+    # The fold whose removal lifts the complete-subsample mean the most.
+    lof_top = lof_by_mean[0]
+    # Folds whose removal alone flips the complete-subsample gate 1 to PASS.
+    lof_flip_folds = [s["dropped_fold"] for s in lof if s["gate1_pass"]]
+    # Folds whose removal alone flips the complete-subsample gate 1 to FAIL
+    # (i.e. the clean-subsample PASS depends on that fold's presence).
+    lof_fail_folds = [
+        s["dropped_fold"]
+        for s in lof
+        if not s["gate1_pass"] and s["dropped_fold"] != lof_top["dropped_fold"]
+    ]
+    # The runner-up fold (second-largest mean after the top drop) and whether
+    # dropping it also lifts the mean to PASS. If only the top drop flips the
+    # gate, the artefact fold is the unique single-fold determinant.
+    lof_runner_up = lof_by_mean[1] if len(lof_by_mean) > 1 else None
+    # Range of means over all *non-artefact* single-fold drops: this is the
+    # floor the gate-1 PASS on the clean subsample rests on.
+    non_artefact_means = [
+        s["mean_test_sharpe"] for s in lof if s["dropped_fold"] != lof_top["dropped_fold"]
+    ]
+
     fold12 = next(r for r in rows if r["fold"] == 12)
     non_degen = [r for r in rows if not r["degenerate"]]
     by_vol = sorted(non_degen, key=lambda r: r["ann_vol"])
@@ -502,6 +628,34 @@ def run_audit(
         "fold_13_sharpe": fold13["sharpe"] if fold13 else None,
         "by_vol_lowest_nondeg": by_vol[0]["fold"],
         "by_active_lowest_nondeg": by_active[0]["fold"],
+        "leave_one_out_complete": {
+            "folds": lof,
+            "top_drop": {
+                "dropped_fold": lof_top["dropped_fold"],
+                "dropped_sharpe": lof_top["dropped_sharpe"],
+                "mean_test_sharpe": lof_top["mean_test_sharpe"],
+                "gate1_pass": lof_top["gate1_pass"],
+            },
+            "runner_up": (
+                {
+                    "dropped_fold": lof_runner_up["dropped_fold"],
+                    "dropped_sharpe": lof_runner_up["dropped_sharpe"],
+                    "mean_test_sharpe": lof_runner_up["mean_test_sharpe"],
+                    "gate1_pass": lof_runner_up["gate1_pass"],
+                }
+                if lof_runner_up
+                else None
+            ),
+            "flip_to_pass_folds": lof_flip_folds,
+            "flip_to_fail_folds": lof_fail_folds,
+            "non_artefact_mean_min": float(min(non_artefact_means)),
+            "non_artefact_mean_max": float(max(non_artefact_means)),
+            "non_artefact_gate1_any_pass": any(
+                s["gate1_pass"]
+                for s in lof
+                if s["dropped_fold"] != lof_top["dropped_fold"]
+            ),
+        },
     }
 
     checks = _run_checks(payload, data_before, config_before, artifacts_before)
@@ -580,6 +734,35 @@ def _run_checks(
         f"complete-without-degenerate mean {clean['mean_test_sharpe']:.6f} "
         f">= {GATE_WF_MEAN_MIN} ({clean['n_folds']} folds)",
     )
+    lof = payload["leave_one_out_complete"]
+    check(
+        "lof_top_drop_is_the_artefact_fold",
+        lof["top_drop"]["dropped_fold"] == fold12["fold"],
+        f"leave-one-out largest mean lift from dropping fold "
+        f"{lof['top_drop']['dropped_fold']} (mean {lof['top_drop']['mean_test_sharpe']:.6f})",
+    )
+    check(
+        "lof_only_artefact_fold_flips_gate1_to_pass",
+        lof["flip_to_pass_folds"] == [fold12["fold"]],
+        f"single-fold drops that flip complete-subsample gate 1 to PASS: "
+        f"{lof['flip_to_pass_folds']}",
+    )
+    check(
+        "lof_no_non_artefact_drop_flips_gate1",
+        not lof["non_artefact_gate1_any_pass"],
+        f"non-artefact single-fold drops reaching gate 1 PASS: "
+        f"{lof['non_artefact_gate1_any_pass']}; "
+        f"range [{lof['non_artefact_mean_min']:.6f}, "
+        f"{lof['non_artefact_mean_max']:.6f}]",
+    )
+    check(
+        "lof_runner_up_below_threshold",
+        lof["runner_up"] is None or not lof["runner_up"]["gate1_pass"],
+        f"runner-up drop fold {lof['runner_up']['dropped_fold'] if lof['runner_up'] else 'n/a'} "
+        f"mean {lof['runner_up']['mean_test_sharpe']:.6f}"
+        if lof["runner_up"]
+        else "fewer than two complete folds",
+    )
     check(
         "data_unchanged",
         fingerprint(REPO_ROOT / "data") == data_before,
@@ -649,6 +832,21 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"GATE|complete_without_degenerate|n_folds|{clean['n_folds']}|mean_sharpe|"
         f"{clean['mean_test_sharpe']:.6f}|gate1|{'PASS' if clean['gate1_pass'] else 'FAIL'}"
+    )
+    lof = payload["leave_one_out_complete"]
+    top = lof["top_drop"]
+    print(
+        f"LEAVE_ONE_OUT|top_drop_fold|{top['dropped_fold']}|mean_sharpe|"
+        f"{top['mean_test_sharpe']:.6f}|gate1|{'PASS' if top['gate1_pass'] else 'FAIL'}"
+    )
+    print(
+        f"LEAVE_ONE_OUT|non_artefact_range|min|{lof['non_artefact_mean_min']:.6f}"
+        f"|max|{lof['non_artefact_mean_max']:.6f}"
+        f"|any_pass|{lof['non_artefact_gate1_any_pass']}"
+    )
+    print(
+        f"LEAVE_ONE_OUT|unique_determinant|{top['dropped_fold']}"
+        f"|flip_to_pass|{lof['flip_to_pass_folds']}"
     )
     print(f"DECISION|NO-GO|incumbent {CANDIDATE_ID} unchanged")
     print("OVERALL: " + ("PASS" if payload["ok"] else "FAIL"))

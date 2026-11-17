@@ -147,6 +147,59 @@ def test_complete_without_degenerate_gate1_passes(payload: dict):
 
 
 # ---------------------------------------------------------------------------
+# Leave-one-fold-out sensitivity (complete subsample)
+# ---------------------------------------------------------------------------
+def test_leave_one_out_has_41_entries(payload: dict):
+    lof = payload["leave_one_out_complete"]
+    assert len(lof["folds"]) == 41
+    assert all(s["n_folds"] == 40 for s in lof["folds"])
+
+
+def test_leave_one_out_top_drop_is_fold_12(payload: dict):
+    lof = payload["leave_one_out_complete"]
+    top = lof["top_drop"]
+    assert top["dropped_fold"] == 12
+    assert top["gate1_pass"]
+    assert top["mean_test_sharpe"] == pytest.approx(1.352958, abs=1e-6)
+
+
+def test_leave_one_out_only_fold_12_flips_to_pass(payload: dict):
+    lof = payload["leave_one_out_complete"]
+    assert lof["flip_to_pass_folds"] == [12]
+
+
+def test_leave_one_out_no_non_artefact_drop_reaches_gate1(payload: dict):
+    lof = payload["leave_one_out_complete"]
+    assert not lof["non_artefact_gate1_any_pass"]
+    # Every non-artefact single-fold drop leaves the mean well below 0.9.
+    assert lof["non_artefact_mean_max"] < GATE_WF_MEAN_MIN
+    assert lof["non_artefact_mean_min"] < lof["non_artefact_mean_max"]
+
+
+def test_leave_one_out_runner_up_is_fold_13_and_fails(payload: dict):
+    lof = payload["leave_one_out_complete"]
+    runner = lof["runner_up"]
+    assert runner is not None
+    assert runner["dropped_fold"] == 13
+    assert not runner["gate1_pass"]
+    assert runner["mean_test_sharpe"] == pytest.approx(0.813872, abs=1e-6)
+
+
+def test_leave_one_out_report_section_present(report_text: str):
+    assert "## Leave-one-fold-out sensitivity" in report_text
+    assert "unique" in report_text.lower()
+    assert "fold 13 (runner-up)" in report_text
+
+
+def test_leave_one_out_cli_output():
+    result = _run_tool("--no-report")
+    assert result.returncode == 0, result.stderr
+    assert "LEAVE_ONE_OUT|top_drop_fold|12" in result.stdout
+    assert "LEAVE_ONE_OUT|unique_determinant|12" in result.stdout
+    assert "LEAVE_ONE_OUT|non_artefact_range" in result.stdout
+
+
+# ---------------------------------------------------------------------------
 # Report consistency
 # ---------------------------------------------------------------------------
 def test_report_matches_rederivation(report_text: str):

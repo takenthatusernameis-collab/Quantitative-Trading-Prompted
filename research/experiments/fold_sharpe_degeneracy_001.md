@@ -30,6 +30,9 @@ degenerate fold, by measuring each fold's exposure and volatility.
 | Fold 12 recomputed Sharpe | -21.829879 |
 | Complete-subsample gate 1 (41 folds) | 0.787522 -> FAIL |
 | Complete-subsample gate 1 without degenerate folds (40 folds) | 1.352958 -> PASS |
+| Leave-one-out top drop (fold 12) mean | 1.352958 -> PASS |
+| Leave-one-out non-artefact drop range | [0.709407, 0.813872] -> all FAIL |
+| Leave-one-out unique determinant | fold 12 (flip_to_pass=[12]) |
 
 ## Number of trials
 

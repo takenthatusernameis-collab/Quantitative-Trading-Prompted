@@ -12,6 +12,7 @@
 - Complete-subsample gate 1 (mean OOS Sharpe >= 0.9): **FAIL** at 0.787522 (41 folds).
 - Complete-subsample gate 1 with the degenerate fold(s) removed: **PASS** at 1.352958 (40 folds).
 - Read-only: `data/` and `config/` byte-identical before and after the run; no committed artefact modified.
+- Leave-one-fold-out: fold 12 is the unique single-fold determinant of the gate-1 flip; dropping any other single fold leaves the mean in [0.7094, 0.8139] (all FAIL).
 - The incumbent's overall verdict is unchanged: **NO-GO** (failed gates `rolling_63d_sharpe`, `psr`).
 
 ## The degeneracy rule (pre-registered)
@@ -48,10 +49,24 @@ The SPY trend overlay (SPY below its 200-session SMA) held the portfolio in cash
 | Point-in-time-complete folds (breadth 7/7) | 41 | 0.787522 | [-0.4244, 1.5431] | FAIL |
 | Point-in-time-complete folds, degenerate fold(s) removed | 40 | 1.352958 | [1.0358, 1.6602] | PASS |
 
+## Leave-one-fold-out sensitivity (complete subsample, 41 folds)
+
+The Cycle-929 report shows the complete-subsample gate-1 outcome flips when fold 12 is removed. This section measures whether fold 12 is the *unique* single-fold determinant of that flip, or whether dropping any other single fold also lifts the mean above the threshold. The decision-relevant question is whether the gate-1 PASS on the clean subsample is robust to dropping any single *other* fold -- i.e. whether it is fold 12 specifically, not the act of dropping a fold, that carries the result.
+
+| Drop | Dropped Sharpe | Mean OOS Sharpe (40 folds) | Gate 1 (>= 0.9) |
+|---|---|---|---|
+| fold 12 (artefact) | -21.8299 | 1.352958 | PASS |
+| fold 13 (runner-up) | -0.2665 | 0.813872 | FAIL |
+| any other single fold (39 folds) | -- | [0.709407, 0.813872] | FAIL |
+
+**Result:** fold 12 is the **unique** single-fold determinant of the complete-subsample gate-1 flip. Dropping it lifts the mean to 1.352958 (PASS); dropping any other single fold leaves the mean in [0.7094, 0.8139] (all FAIL).
+ The runner-up drop (fold 13, Sharpe -0.2665) reaches 0.813872 (FAIL).
+
 ## What this does and does not change
 
 - **Nothing published changed.** The published record, gates, protocol and every committed candidate artefact are byte-identical; this is a measurement, not a correction.
 - **The complete-subsample gate-1 FAIL is attributable to a single degenerate fold (fold 12).** Its Sharpe is not a valid statistic, so the complete subsample does not actually fail gate 1 on comparable evidence.
+- **Leave-one-fold-out confirms fold 12 is the unique single-fold determinant.** Dropping fold 12 lifts the mean to 1.352958 (PASS); dropping any other single fold leaves the mean in [0.7094, 0.8139] (all FAIL). The gate-1 PASS on the clean subsample is therefore not an artefact of dropping a fold in general -- it is fold 12 specifically that carries the result.
 - **This refines the Cycle-911 thin-trade grouping.** Fold 13 is *not* degenerate: it has 22 active days, `ann_vol` 0.036173 and a Sharpe of -0.267. The artefact is fold 12 alone.
 - **The incumbent's verdict is unchanged**: it stays a Credible Candidate by its published verdict and **NO-GO** for promotion (failed gates `rolling_63d_sharpe`, `psr`). This audit adds a measurement-quality axis to a verdict that was already NO-GO.
 
