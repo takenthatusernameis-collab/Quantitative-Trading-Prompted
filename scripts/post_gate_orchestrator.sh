@@ -291,15 +291,19 @@ if (( EXTEND_DISABLED )); then
 else
   log "cmd4b: regenerate record-status artifacts"
   mark_run "4b record-status regen"
-  "$PY" research/paper_trading_record_status_audit.py 2>&1 | tail -3
-  record_rc $? "cmd4b record-status regen"
+  "$PY" research/paper_trading_record_status_audit.py > /tmp/cmd4b.out 2>&1
+  cmd4b_rc=$?
+  tail -3 /tmp/cmd4b.out
+  record_rc $cmd4b_rc "cmd4b record-status regen"
 fi
 
 # --- 5. 6-module pytest ------------------------------------------------------
 log "cmd5: 6-module pytest"
 mark_run "5 6-module pytest"
-"$PY" -m pytest $PYTEST6 -q 2>&1 | tail -6
-record_rc $? "cmd5 6-module pytest"
+"$PY" -m pytest $PYTEST6 -q > /tmp/cmd5.out 2>&1
+cmd5_rc=$?
+tail -6 /tmp/cmd5.out
+record_rc $cmd5_rc "cmd5 6-module pytest"
 
 # --- 6. Git status -----------------------------------------------------------
 log "cmd6: git status"
@@ -308,22 +312,38 @@ git status --porcelain
 record_rc $? "cmd6 git status"
 
 # --- 7. Data-cost inventory (the waiter gap) ---------------------------------
+# cmd7a/cmd7b/cmd7c are piped through `tail` to keep the log short, but
+# `set -uo pipefail` makes the PIPELINE's exit code the LAST command's (tail),
+# which always succeeds -- so a failing inventory script (rc=1, e.g. the
+# data_cost_inventory_002 NO-GO gate) is silently recorded as PASSED and the
+# handoff's "Status: OK" reads as passing evidence for a cycle whose own
+# inventory step failed. That is the recurring false-evidence defect class this
+# orchestrator exists to prevent (cf. the Cycle-1258/1259/1260 fingerprint
+# guards). Capture the pre-pipe exit code and record THAT instead.
 mark_run "7 data-cost inventory + tests"
 log "cmd7a: data_cost_inventory_001"
-"$PY" research/data_cost_inventory_001.py 2>&1 | tail -5
-record_rc $? "cmd7a inventory 001"
+"$PY" research/data_cost_inventory_001.py > /tmp/cmd7a.out 2>&1
+cmd7a_rc=$?
+tail -5 /tmp/cmd7a.out
+record_rc $cmd7a_rc "cmd7a inventory 001"
 log "cmd7b: data_cost_inventory_002"
-"$PY" research/data_cost_inventory_002.py 2>&1 | tail -5
-record_rc $? "cmd7b inventory 002"
+"$PY" research/data_cost_inventory_002.py > /tmp/cmd7b.out 2>&1
+cmd7b_rc=$?
+tail -5 /tmp/cmd7b.out
+record_rc $cmd7b_rc "cmd7b inventory 002"
 log "cmd7c: inventory pytest"
-"$PY" -m pytest $PYTEST7 -q 2>&1 | tail -6
-record_rc $? "cmd7c inventory pytest"
+"$PY" -m pytest $PYTEST7 -q > /tmp/cmd7c.out 2>&1
+cmd7c_rc=$?
+tail -6 /tmp/cmd7c.out
+record_rc $cmd7c_rc "cmd7c inventory pytest"
 
 # --- 8. Ruff -----------------------------------------------------------------
 log "cmd8: ruff"
 mark_run "8 ruff"
-"$RUFF" check $RUFF4 2>&1 | tail -4
-record_rc $? "cmd8 ruff"
+"$RUFF" check $RUFF4 > /tmp/cmd8.out 2>&1
+cmd8_rc=$?
+tail -4 /tmp/cmd8.out
+record_rc $cmd8_rc "cmd8 ruff"
 
 # --- 9. Durable handoff ------------------------------------------------------
 log "writing durable handoff: $HANDOFF"
