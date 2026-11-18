@@ -8,10 +8,10 @@ cannot silently return:
    ``config/promotion_gates.yaml`` documents for that gate. The candidate
    therefore scored itself against itself, and the published PSR (0.856637)
    was not comparable with any other PSR in the repository. The corrected
-   value is 0.895808 (the target is unchanged, the *comparison* was wrong).
+   value is 0.902880 (the target is unchanged, the *comparison* was wrong).
 
 The promotion gates, their thresholds and the decision mapping are untouched
-by the correction: the corrected PSR is *higher* (0.895808) than the
+by the correction: the corrected PSR is *higher* (0.902880) than the
 incorrect one, the verdict is unchanged (NO-GO), and the decision is
 unchanged because ``rolling_63d_sharpe`` fails independently of the PSR.
 
@@ -177,8 +177,10 @@ def test_committed_artifacts_record_the_corrected_psr():
     experiment = OUT_EXP.read_text()
     assert "PSR target: 1.4178" in report
     assert "psr_target: 1.4178" in experiment
-    assert "0.895808" in report
-    assert "0.895808" in experiment
+    assert "0.902880" in report
+    assert "0.902880" in experiment
+    assert "0.895808" not in report
+    assert "0.895808" not in experiment
     assert "0.899699" not in report
     assert "0.899699" not in experiment
     assert "0.856637" not in report
