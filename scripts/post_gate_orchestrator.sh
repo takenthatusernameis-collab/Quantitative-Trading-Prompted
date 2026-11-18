@@ -69,7 +69,14 @@ GATE_DATE="$(date -u -d "@$GATE_EPOCH" +%Y%m%d)"
 HANDOFF="${HANDOFF:-CORRECTIVE_HANDOFF_POSTGATE_${GATE_DATE}.md}"
 PYTEST6="tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py"
 PYTEST7="tests/test_data_cost_inventory_001.py tests/test_data_cost_inventory_002.py"
-RUFF4="research/drift_persistence_report.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py research/verify_gate_time_forward_bar.py"
+# cmd8 lints every script the cycle EXECUTES, including cmd4b's
+# paper_trading_record_status_audit.py. That script runs in the real post-gate
+# cycle (it regenerates the record-status artifacts after the extend) but was
+# absent from this list, so a latent defect in it would fail the cycle with
+# Status: FAILED and no lint evidence -- the exact gap cmd8 exists to close for
+# the other four extension scripts. It now passes ruff (EXE001 cleared by making
+# the file executable) and is pinned here so it cannot silently drop out again.
+RUFF4="research/drift_persistence_report.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py research/verify_gate_time_forward_bar.py research/paper_trading_record_status_audit.py"
 
 log() { echo "[$(date -u +%FT%TZ)] $*"; }
 fail() { log "FATAL: $*"; exit 1; }

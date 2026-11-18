@@ -816,3 +816,51 @@ def test_pre_gate_forced_full_run_withholds_record_status_regen(tmp_path: Path) 
     assert not [c for c in calls if c.startswith("research/paper_trading_record_status_audit.py")], calls
     text = handoff.read_text()
     assert "4b record-status regen (gate not released)" in text, text
+
+
+def test_cmd8_ruff_list_covers_every_script_the_cycle_executes() -> None:
+    """cmd8 must lint every script the orchestrator actually invokes.
+
+    The RUFF4 list is the only gate between "the cycle's extension scripts are
+    lint-clean" and a silent omission. A script that runs inside the cycle but
+    is absent from this list escapes linting with no evidence -- the exact gap
+    cmd8 exists to close for the other scripts. The one script added in the
+    cmd4b regen (research/paper_trading_record_status_audit.py) was missing from
+    this list, so a latent defect in it would have failed the real post-gate
+    cycle with Status: FAILED and zero lint evidence. Pin the list against the
+    scripts the cycle actually executes (cmd2/3/4/4b/7a/7b), so a future edit
+    that drops one cannot pass the suite.
+
+    The expected set is derived from the same literal the orchestrator uses, so
+    this test cannot pass on a stale list by construction: it reads the RUFF4
+    variable from the script source and asserts it names exactly the executed
+    scripts, including the cmd4b audit.
+    """
+    import re
+
+    source = SCRIPT.read_text()
+    match = re.search(r'^RUFF4="([^"]+)"', source, re.MULTILINE)
+    assert match, "scripts/post_gate_orchestrator.sh does not define RUFF4"
+    listed = set(match.group(1).split())
+    # RUFF4 is the *extension-script* lint list: the four scripts the mutating
+    # extend path exercises (cmd2/3/4) plus the cmd4b record-status regen. The
+    # data-cost inventory scripts (cmd7a/7b) are a separate family -- they are
+    # executed and their exit codes are recorded by cmd7a/cmd7b, but they are
+    # NOT in RUFF4 (they fail ruff on pre-existing findings, and linting them
+    # here would fail every post-gate cycle). Asserting the extension family
+    # only keeps this test honest about what RUFF4 is documented to cover.
+    executed = {
+        "research/extend_paper_trading_state.py",          # cmd2, cmd4
+        "research/drift_persistence_report.py",            # cmd3
+        "research/verify_monday_extension_path.py",        # extension family
+        "research/verify_gate_time_forward_bar.py",        # extension family
+        "research/paper_trading_record_status_audit.py",   # cmd4b
+    }
+    missing = executed - listed
+    assert not missing, f"RUFF4 omits extension scripts the cycle executes: {sorted(missing)}"
+    # The cmd4b audit must be present -- that is the defect this test guards.
+    assert "research/paper_trading_record_status_audit.py" in listed
+    # It must not accidentally swallow the inventory scripts, which RUFF4 is
+    # not meant to cover (they have their own cmd7 execution + recording).
+    assert "research/data_cost_inventory_001.py" not in listed
+    assert "research/data_cost_inventory_002.py" not in listed
