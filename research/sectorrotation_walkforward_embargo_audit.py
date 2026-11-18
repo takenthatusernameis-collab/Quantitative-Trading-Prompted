@@ -111,10 +111,12 @@ def main():
     # Build strategy path by importing the feasibility module's main logic via exec? Instead replicate minimal.
     # We'll import functions.
     from research.sectorrotation_long_sample_feasibility import (
-        build_monthly_weights, portfolio_returns, compute_momentum, select_top_decile,
-        month_end_dates, fetch_universe,
+        build_monthly_weights,
+        compute_momentum,
+        month_end_dates,
+        portfolio_returns,
+        select_top_decile,
     )
-    import hashlib
     universe = list(cand["universe"])
     signal = cand["signal"]
     lookback = int(signal["lookback"]); skip = int(signal["skip"]); top_fraction = float(signal["top_fraction"])
@@ -126,7 +128,7 @@ def main():
     momentum = compute_momentum(close, lookback=lookback, skip=skip)
     mask = select_top_decile(momentum, top_fraction=top_fraction)
     month_ends = month_end_dates(close.index)
-    weights, segments = build_monthly_weights(close, mask, month_ends)
+    weights, _segments = build_monthly_weights(close, mask, month_ends)
     cost_per_trade = (cand["cost_model"]["commission_bps"] + cand["cost_model"]["slippage_bps"]) / 10000.0
     net_ret, turnover = portfolio_returns(close, weights, cost_per_trade)
 
@@ -147,13 +149,12 @@ def main():
     # Design B
     b_splits = design_b_splits(history_start, test_end, wf_cfg)
     b_rows = evaluate_walkforward(net_ret, turnover, b_splits) if b_splits else []
-    b_mean = float(np.mean([r["test_sharpe"] for r in b_rows])) if b_rows else float("nan")
 
     # overlap diagnostics
     def diag(rows):
         return {"overlap": mean_consecutive_overlap_days(rows), "disjoint": max_disjoint(rows), "folds": len(rows)}
 
-    pub_d = diag(pub_rows); a_d = diag(a_rows); b_d = diag(b_rows)
+    pub_d = diag(pub_rows); a_d = diag(a_rows)
 
     anchor_ok = abs(pub_mean - PUBLISHED_WF_MEAN) <= 1e-4
 
@@ -163,7 +164,7 @@ def main():
     lines = []
     lines.append("# Sectorrotation Walk-Forward Embargo Audit (sectorrotation_walkforward_embargo_001, Cycle 909)")
     lines.append("")
-    lines.append(f"- Candidate: sectorrotation_001")
+    lines.append("- Candidate: sectorrotation_001")
     lines.append(f"- Published WF mean OOS Sharpe: {pub_mean:.6f} (published 0.847243) anchor={'MATCH' if anchor_ok else 'DIFF'}")
     lines.append(f"- Design A folds: {len(a_rows)}, mean {a_mean:.6f}, overlap {a_d['overlap']:.1f}, disjoint {a_d['disjoint']}")
     lines.append(f"- Design B folds: {len(b_rows)}")
