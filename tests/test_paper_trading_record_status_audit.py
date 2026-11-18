@@ -79,3 +79,82 @@ def test_real_audit_regenerates_from_post_extend_state(tmp_path: Path) -> None:
     # state, so cmd4b regeneration is genuinely required after an extend.
     stale = "# Paper trading record status\n\nsessions: 2\nlast_run_date: 2026-11-16\n"
     assert stale != expected_report
+
+
+def _run_audit_in_tmp(tmp_path: Path, state: dict) -> subprocess.CompletedProcess[str]:
+    """Run a copy of the real audit script in tmp_path against ``state``."""
+    research = tmp_path / "research"
+    research.mkdir()
+    audit = research / "paper_trading_record_status_audit.py"
+    audit.write_text(Path("research/paper_trading_record_status_audit.py").read_text())
+    state_path = tmp_path / "data" / "processed" / "paper_trading_state.yaml"
+    state_path.parent.mkdir(parents=True)
+    state_path.write_text(yaml.safe_dump(state))
+    return subprocess.run(
+        [sys.executable, str(audit)],
+        cwd=tmp_path,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_divergent_session_arrays_fail_closed(tmp_path: Path) -> None:
+    # The artifact reports one "sessions" count, but the state carries that count
+    # in parallel arrays (cumulative_returns / cumulative_dates / run_history).
+    # The committed handoff's runs= anchor is len(run_history); the drift
+    # computation already defends against the arrays diverging. A present
+    # run_history whose length disagrees with cumulative_returns must fail the
+    # audit closed rather than silently report the misleading count as PASS.
+    r = _run_audit_in_tmp(
+        tmp_path,
+        {
+            "cumulative_returns": [0.0, 0.01, -0.005],
+            "cumulative_dates": ["2026-11-13", "2026-11-14", "2026-11-17"],
+            "run_history": [{"date": "2026-11-13"}, {"date": "2026-11-14"}],
+            "last_run_date": "2026-11-17",
+        },
+    )
+    assert r.returncode != 0, r.stdout
+    assert "OVERALL: PASS" not in r.stdout, r.stdout
+    assert "divergence" in r.stderr, r.stderr
+
+
+def test_divergent_cumulative_dates_fail_closed(tmp_path: Path) -> None:
+    # Symmetric case: a present cumulative_dates that disagrees with
+    # cumulative_returns must also fail closed (not only run_history).
+    r = _run_audit_in_tmp(
+        tmp_path,
+        {
+            "cumulative_returns": [0.0, 0.01, -0.005],
+            "cumulative_dates": ["2026-11-13", "2026-11-14"],
+            "last_run_date": "2026-11-17",
+        },
+    )
+    assert r.returncode != 0, r.stdout
+    assert "OVERALL: PASS" not in r.stdout, r.stdout
+    assert "divergence" in r.stderr, r.stderr
+
+
+def test_agreeing_session_arrays_still_pass(tmp_path: Path) -> None:
+    # Positive complement: parallel arrays that agree on the count must pass, so
+    # the fail-closed guard is not a net regression on healthy states.
+    r = _run_audit_in_tmp(
+        tmp_path,
+        {
+            "cumulative_returns": [0.0, 0.01, -0.005],
+            "cumulative_dates": ["2026-11-13", "2026-11-14", "2026-11-17"],
+            "run_history": [
+                {"date": "2026-11-13"},
+                {"date": "2026-11-14"},
+                {"date": "2026-11-17"},
+            ],
+            "last_run_date": "2026-11-17",
+        },
+    )
+    assert r.returncode == 0, r.stderr
+    assert "OVERALL: PASS" in r.stdout, r.stdout
+    report = tmp_path / "research" / "reports" / "paper_trading_record_status_001.md"
+    assert report.read_text() == (
+        "# Paper trading record status\n\nsessions: 3\nlast_run_date: 2026-11-17\n"
+    )
