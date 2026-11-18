@@ -1,10 +1,10 @@
 # Next Agent Task: verify the 2026-11-18 gate extension results
 
-## Current status (verified 2026-11-18T01:13Z, run 44165547375, session 9 inv 1)
-- **Pre-gate cheap path exit 0:** `GATE_EPOCH=1795039200 STATE_SHA256=05ca6c2f... bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1794964393 (2026-11-18T01:13:13Z) < gate 1795039200 (2026-11-18T22:00:00Z); T-74807s remaining. state sha256 matches (05ca6c2f...); data/raw clean. STOP — do not re-run the cycle.` EXIT=0.
-- **Focused regression suite:** `/tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` → **74 passed in 7.53s**; `/tmp/kilo-venv/bin/ruff check tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` → **All checks passed!**.
-- **State unchanged:** SHA256 `05ca6c2f7ef25c00c8e1f02a05589931c8020b670f1117a09154df5d2cdf0ce7` == HEAD `3661092`; `last_run_date 2026-11-17`; `current_nav 130327.27738053048`; `run_history` **471**. `git status --porcelain` → **0 lines** (working tree clean); `git status --porcelain -- data/raw` → **0 lines**.
-- **Supervisor:** rec `44165547375-attempt-1-review-0035-484599037d30` dispositioned `superseded` (runtime, `.kilo-runtime/worker-disposition.json`, not committed). Its advice — allow the restarted waiter to run through gate release; do not manually run extend or mutate state before the gate — was followed exactly (pre-gate check exit 0, no mutations). The 2026-11-17 gate cycle already completed and was verified in session 4 inv 1.
+## Current status (verified 2026-11-18T02:22Z, run 44222711169, session 1 inv 1)
+- **Pre-gate cheap path exit 0:** `GATE_EPOCH=1795039200 STATE_SHA256=05ca6c2f... bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1794968577 (2026-11-18T02:22:57Z) < gate 1795039200 (2026-11-18T22:00:00Z); T-70623s remaining. state sha256 matches (05ca6c2f...); data/raw clean. STOP — do not re-run the cycle.` EXIT=0.
+- **Focused regression suite:** `/tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` → **74 passed in 9.22s**; `/tmp/kilo-venv/bin/ruff check tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` → **All checks passed!**.
+- **State unchanged:** SHA256 `05ca6c2f7ef25c00c8e1f02a05589931c8020b670f1117a09154df5d2cdf0ce7` == HEAD `da469a0`; `last_run_date 2026-11-17`; `current_nav 130327.27738053048`; `run_history` **471**. `git status --porcelain` → **0 lines** (working tree clean); `git status --porcelain -- data/raw` → **0 lines**.
+- **Supervisor:** no recommendation file at startup; disposition `verified`/`none-received` written to `.kilo-runtime/worker-disposition.json` (runtime, not committed). `/tmp/kilo-venv` absent at start, recreated (Python 3.14.4).
 - **Next gate:** 2026-11-18T22:00:00Z (Wed, 17:00 ET) = epoch **1795039200**. Extend targets next session after 2026-11-17 (**2026-11-18 Wed**) only if a completed bar exists and clock gate released.
 
 ## Prior verified fixes at HEAD (preserved, do not re-open)
@@ -64,7 +64,7 @@ python3 -m venv /tmp/kilo-venv
 ```
 
 ## Session log (non-redundant)
-- **Session 9 inv 1 (2026-11-18T01:13Z, HEAD run 44165547375):** pre-gate cheap path EXIT=0 (now=1794964393 < gate 1795039200, T-74807s remaining; state sha 05ca6c2f... matches; data/raw clean). Focused suite **74 passed in 7.53s**; ruff **All checks passed!**; `git status --porcelain` clean. Supervisor rec 0035 dispositioned `superseded` (runtime). No code/state change.
+- **Session 1 inv 1 (2026-11-18T02:22Z, run 44222711169):** pre-gate cheap path EXIT=0 (now=1794968577 < gate 1795039200, T-70623s remaining; state sha 05ca6c2f... matches; data/raw clean). Focused suite **74 passed in 9.22s**; ruff **All checks passed!**; `git status --porcelain` clean; `/tmp/kilo-venv` absent at start, recreated (Python 3.14.4). Supervisor: no recommendation file at startup; disposition `verified`/`none-received` written to `.kilo-runtime/worker-disposition.json` (runtime). No code/state change.
 
 ### Compact history of prior pre-gate re-verifications (gate unreached, Step 2 withheld, no code/state change)
 - run 44165547375: session 2 inv 1 (pre-gate EXIT=0, watcher restarted; cycle later completed), session 4 inv 1 (verified 2026-11-17 gate cycle).
