@@ -113,7 +113,6 @@ from src.backtest.engine import (  # noqa: E402
     get_risk_free_rate,
 )
 from src.evaluation.sharpe import sharpe_ratio  # noqa: E402
-from src.evaluation.statistics import block_bootstrap_sharpe  # noqa: E402
 
 PROC_CRYPTO = REPO / "data" / "processed" / "crypto"
 RAW_CRYPTO = REPO / "data" / "raw" / "crypto"
@@ -1221,7 +1220,6 @@ def capacity_analysis(paths: dict[str, pd.DataFrame]) -> dict[str, Any]:
     """
     out: dict[str, Any] = {}
     for base in BASE_SYMBOLS:
-        symbol = base[:3]
         entry: dict[str, Any] = {}
         for market in ("spot", "perp"):
             frame = pd.read_parquet(RAW_CRYPTO / f"{base}_{market}_1d_binance.parquet")
