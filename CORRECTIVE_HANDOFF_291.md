@@ -4,54 +4,49 @@
 CORRECTIVE_VERIFICATION=PASS — focused read-only pre-gate verification succeeded; no state-changing progress possible within cutoff (temporal blocker).
 
 ## Invocation context
-- Invocation: 291 (corrective). Previous invocation (290) exited status 1 with a model sign-up error ("Sign up for free to continue...") and ran zero verification per /home/runner/work/_temp/kilo-session-16-recovery-290.log.
-- Latest diagnostic log inspected: /home/runner/work/_temp/kilo-session-16-recovery-290.log
-- Previous corrective logs inspected: CORRECTIVE_HANDOFF_CORR291.md, CORRECTIVE_HANDOFF_CORR_CURRENT.md, CORRECTIVE_HANDOFF_291.md (stale, from prior cycle).
+- Invocation: 291 (corrective). Previous invocation (290) verified pre-gate steady state (tree clean, hash matches, 73 passed, ruff passed) and correctly concluded no change is warranted; produced no durable change because scope boundaries forbid a pre-gate mutating extend.
+- Diagnostic log inspected: /home/runner/work/_temp/kilo-session-7-recovery-290.log
+- Previous corrective logs inspected: CORRECTIVE_HANDOFF_290-era records and CORRECTIVE_HANDOFF_291.md (stale, prior 2026-11-11 cycle — overwritten here with current-cycle content).
 
-## Root cause / approach difference (materially different from inv290)
-- inv290 attempted an external model/tooling API call and failed (sign-up error), running zero verification. inv291 makes NO external API calls.
-- No code defect exists to correct. The blocker is purely temporal: the clock gate for 2026-11-11 releases at 22:00 UTC 2026-11-11; current time is before that and the 355-minute cutoff (~21:29 UTC) ends before gate release.
-- Scope boundary #29 (from NEXT_AGENT_TASK.md): do NOT run extend_paper_trading_state.py (cmds 2/4/7) before 22:00 UTC 2026-11-11.
-- Smallest justified correction: run the narrow local read-only pre-gate verification (cmds 1,3,5,6,8) via /tmp/kilo-venv, plus a readiness diagnostic to programmatically document why extension cannot proceed.
+## Approach difference (materially different from prior invocations)
+- No external API/model calls (inv290's prior failure mode). inv291 runs only local read-only verification via /tmp/kilo-venv.
+- No code defect exists to correct; forcing a change would violate scope boundaries ("Do not run a mutating extend before the target session gate", "Do not append redundant per-session re-verification notes... on clean pre-gate exit 0 with unchanged state").
+- Smallest justified correction: re-confirm the pre-gate steady state with the narrow read-only verification (pre_gate_check.sh + focused pytest + ruff), document the temporal blocker precisely, and emit PASS since verification succeeded. Durable progress (gate extension) cannot be produced in this window because the gate is not reached and will not be reached before the 355-minute cutoff.
 
-## Gate check (cmd 1)
-`date -u && TZ=America/New_York date` → Wed Nov 11 16:23:00 UTC 2026 / Wed Nov 11 11:23:00 EST 2026. Gate for 2026-11-11 releases at 22:00 UTC 2026-11-11 — NOT released (~5.5h remaining). 355-minute cutoff ~21:29 UTC ends before gate release.
+## Gate check (cmd 1 equivalent)
+`date -u && date -u +%s` → 2026-11-18T00:14:07Z, now=1794960847.
+Gate 2026-11-18T22:00:00Z = epoch 1795039200. NOT released; remaining = 78353s (~21.8h). 355-minute cutoff (~06:09 UTC) ends well before gate release.
 
 ## State integrity
-`sha256sum data/processed/paper_trading_state.yaml` → 111b642c4ac5834460c83ac250a0a90ffb75eed308321ad1bb6309a2fc552517 (unchanged; last_run_date=2026-11-10, NAV 132498.02732499802, run_history 466).
-`git status --porcelain data/ config/ src/ tests/ research/` → empty/clean.
-`ls data/processed/paper_trading/ | grep 20261111` → no matches (exit 1). No 2026-11-11 artifacts exist.
+`sha256sum data/processed/paper_trading_state.yaml` → 05ca6c2f7ef25c00c8e1f02a05589931c8020b670f1117a09154df5d2cdf0ce7 (matches expected NEXT_AGENT_TASK.md baseline).
+`git status --porcelain -- data/raw` → empty (clean).
+`git status --porcelain` → empty (clean working tree).
 
-## Verification (all run fresh this invocation, 2026-11-11T16:2x UTC)
+## Verification (all run fresh this invocation)
 | # | Command | Result |
 |---|---------|--------|
-| 1 | `date -u && TZ=America/New_York date` | Wed Nov 11 16:23:00 UTC 2026 / 11:23:00 EST; gate NOT released |
-| 3 | `/tmp/kilo-venv/bin/python research/drift_persistence_report.py \| tail -6` | tail ends `2026-11-10 -1.4394` (consistent), EXIT=0 |
-| 5 | `/tmp/kilo-venv/bin/python -m pytest tests/test_paper_trading_extend.py tests/test_drift_persistence.py tests/test_verify_monday_extension_path.py tests/test_real_extension_path.py tests/test_state_aggregate_audit.py tests/test_rolling_63d_gate_refresh.py -q` | **67 passed in 27.02s**, EXIT=0 |
-| 6 | `git status --porcelain data/ config/ src/ tests/ research/` | empty (clean), EXIT=0 |
-| 8 | `/tmp/kilo-venv/bin/ruff check research/drift_persistence_report.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py` | **All checks passed!**, EXIT=0 |
-
-## Readiness diagnostic (NEW evidence — materially different)
-`/tmp/kilo-venv/bin/python research/extend_paper_trading_state.py` → clock gate: NOT released; candidate available: no; candidate reason: next session 2026-11-11 has not closed yet (today and still in progress); no completed candidate bar exists to extend into; sessions extended: 0; state write count: 0; NAV before: 132498.02732499802; NAV after: 132498.02732499802; raw cache: scratch (canonical data/raw untouched). Explicitly confirms the temporal blocker with programmatic evidence.
+| A | `GATE_EPOCH=1795039200 STATE_SHA256=05ca6c2f...ce7 bash scripts/pre_gate_check.sh` | **PRE-GATE OK**, now=1794960847 < gate 1795039200; T-78353s; state hash matches; data/raw clean; STOP. EXIT=0 |
+| B | `/tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` | **73 passed in 7.88s**. PYTEST_EXIT=0 |
+| C | `/tmp/kilo-venv/bin/ruff check tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` | **All checks passed!**. RUFF_EXIT=0 |
 
 ## Cmds 2/4/7 intentionally NOT run
-Per NEXT_AGENT_TASK.md scope boundary #29 (no real extend before 22:00 UTC 2026-11-11). No thresholds/gates/cost model/universe/clock-gate logic, tests, security controls, or workflow boundaries modified. data/raw/ untouched. No commit (not requested).
+Per NEXT_AGENT_TASK.md scope boundary: no mutating extend (cmd2/idempotent re-extend cmd4/record-status regen cmd4b) and no data-cost inventory (cmd7) before the gate release. No thresholds/gates/cost model/universe/clock-gate logic, tests, security controls, or workflow boundaries modified. data/raw/ untouched. No commit (not requested).
 
 ## Durable change
-Appended this section to CORRECTIVE_HANDOFF_291.md (overwriting stale prior-cycle content). No changes to data/, config/, source, or tests.
+None to source/tests/config/data. This handoff file (CORRECTIVE_HANDOFF_291.md) is rewritten with current-cycle accurate content, replacing stale prior-cycle (2026-11-11) content.
 
 ## Unresolved blocker
-Temporal — real extension to 2026-11-11 requires a completed candidate bar usable after 22:00 UTC 2026-11-11. Scope boundary prohibits running extend_paper_trading_state.py before gate release. 355-minute cutoff (~21:29 UTC) ends before gate release (22:00 UTC). No safe code correction can advance the clock gate.
+Temporal — real extension to 2026-11-18 requires a completed candidate bar usable after 22:00 UTC 2026-11-18. Scope boundary prohibits running extend_paper_trading_state.py before gate release. 355-minute cutoff (~06:09 UTC) ends before gate release (22:00 UTC). No safe code correction can advance the clock gate.
 
-## Next distinct investigation (at/after 2026-11-11T22:00Z)
-Execute NEXT_AGENT_TASK.md cmds 1–8 in order. If sessions_extended==1: verify last_run_date advance, NAV change, write count 1, idempotent re-run, drift consistent; re-run inventories + inventory tests (step 7). If sessions_extended==0: record explicit reason, NAV/writes unchanged. Wakeup wku_1c8448845001omFY5tU83Glxyu scheduled 2026-11-11T22:03:00Z per NEXT_AGENT_TASK.md.
+## Next distinct investigation (at/after 2026-11-18T22:00:00Z)
+Execute NEXT_AGENT_TASK.md cmds 1–8 in order via scripts/post_gate_orchestrator.sh (foreground). Verify last_run_date advances to 2026-11-18, sessions_extended==1 with a single state write, idempotent re-run extends 0 with 0 writes, data/raw untouched, handoff records Mode: full cycle (extend included) and Gate state: released. Re-run focused suite (>=72 passed) and ruff.
 
 ## Safety
 - Research/backtesting only, no live trades
 - No deps/services added, no secrets accessed
 - No workflow/agent changes
 - No test threshold edits
-- Clean-tree invariant for data/ config/ respected
+- Clean-tree invariant for data/ respected
 - All pre-registrations and promotion gates preserved
 
 CORRECTIVE_VERIFICATION=PASS
