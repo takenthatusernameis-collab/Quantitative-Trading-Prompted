@@ -1,6 +1,23 @@
-# Next Agent Task: verify the 2026-11-18 gate extension results
+# Next Agent Task: evaluate the 2026-11-18 drift flags (the gate cycle itself is COMPLETE)
 
-## Current status (verified 2026-11-18T10:24Z, run 44284895009, session 1 inv 1)
+## Cycle result — 2026-11-18 gate extension COMPLETE (verified 2026-11-18T22:06Z, corrective inv 7)
+- **What happened:** the 2026-11-18 gate cycle ran and advanced the state once (471→472 sessions, `last_run_date` 2026-11-17→2026-11-18, NAV 130327.27738053048→130307.21196257228).
+  The cycle's first handoff was written as `Status: FAILED` because `cmd7b` (`research/data_cost_inventory_002.py`) recorded `[FAIL] committed_artifacts_unchanged` while the aborted first invocation was still writing artefacts. A clean foreground re-run at 22:04–22:06Z passed every step and rewrote the handoff as `Status: OK — all verification steps passed`.
+- **Re-run evidence (idempotent):** `GATE_EPOCH=1795039200 PYTHON=/tmp/kilo-venv/bin/python RUFF=/tmp/kilo-venv/bin/ruff bash scripts/post_gate_orchestrator.sh` → `ORCH_EXIT=0`; cmd2/cmd4 both `sessions extended: 0` (no second state write); cmd4b `OVERALL: PASS`; cmd5 `69 passed in 40.25s`; cmd7a `OVERALL: PASS`; cmd7b `OVERALL: PASS`; cmd7c `43 passed in 80.93s`; cmd8 `All checks passed!`.
+- **Bar consistency:** `daily_pnl_20261118.parquet` (date 2026-11-18, daily_return -0.0001539617673405499, daily_pnl -20.065417958188544, nav 130307.21196257228) matches `run_history[-1]` exactly (nav/report/date all match); `positions` 7 rows, `regime`/`risk_state` 1 row each. `regime_20261118` has `regime_exposure 0.0`; its `spy_price` is **NaN by construction** (`src/simulation/paper_trading.py:508` only emits it when the daily frame has a `price_SPY` column, and `src/simulation/engine.py:500-513` never creates one) — that NaN is a reporting artifact, NOT evidence of stale prices, and must not be read as a data-integrity failure.
+- **Drift flags now on record:** `high_turnover` 0.5132 (>0.5), `regime_flip` 1.0→0.0, `low_rolling_sharpe` -1.9745 (persistence 16), `regime_persistence_low` 1 (<5), all dated 2026-11-18.
+- **Focused suite (post-gate):** `73 passed, 1 skipped in 8.92s`; ruff `All checks passed!`; the skip is expected (`test_post_gate_handoff_consistency.py:242` — newest handoff is now a post-gate record). `git status --porcelain -- data/raw` → 0 lines. State sha `bed3b2363a50d51bf059a27b2ca369d4b5480ada8ad01fe0e89756035720b750`.
+- **Superseded below:** the Step 1 / Step 2 / acceptance sections are kept only as the record of the pre-gate phase that led to this cycle. Do **not** re-run the gate cycle or pre-gate path for 2026-11-18.
+
+## Next task (bounded): decide whether the 2026-11-18 drift flags are actionable
+- **Context:** the four flags above fired together on the first session after a full liquidation (positions 7×0.1283 → all 0.0, turnover 0.5132). The rolling Sharpe has been negative for 16 sessions, so the question is whether the recorded rules call for any action or continued observation.
+- **Objective:** re-derive every flag from committed code (`src/simulation/paper_trading.py` thresholds and `research/drift_persistence_report.py`), confirm the four stored values reproduce, and write one explicit decision (`observe` or `mitigate`) with the rule that justifies it.
+- **Acceptance criteria:** each of the four flags reproduced from source with its threshold cited by file:line; `research/drift_persistence_report.py` rerun agrees with the stored `low_rolling_sharpe`; a decision line names the predefined rule (no new thresholds introduced); no change to strategy, gate, cost model, universe, or `data/raw`.
+- **Validation:** `/tmp/kilo-venv/bin/python research/drift_persistence_report.py`; `/tmp/kilo-venv/bin/python research/rolling_63d_gate_refresh.py`; `/tmp/kilo-venv/bin/python -m pytest -q tests/test_drift_persistence_report.py tests/test_rolling_63d_gate_refresh.py` (or the corresponding test modules actually present); `git status --porcelain -- data/raw` empty.
+- **Scope boundaries:** read-only analysis plus one decision record under `research/reports/`; do not re-run the extend, do not tune thresholds, do not dispatch workflows.
+
+## Pre-gate status record (superseded 2026-11-18T22:06Z, kept for traceability)
+### Verified at 2026-11-18T10:24Z (run 44284895009, session 1 inv 1)
 - **Pre-gate cheap path exit 0:** `GATE_EPOCH=1795039200 STATE_SHA256=05ca6c2f7ef25c00c8e1f02a05589931c8020b670f1117a09154df5d2cdf0ce7 bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1794997423 (2026-11-18T10:23:43Z) < gate 1795039200 (2026-11-18T22:00:00Z); T-41777s remaining. state sha256 matches (05ca6c2f…); data/raw clean. STOP — do not re-run the cycle.` EXIT=0.
 - **Focused regression suite:** `/tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` → **74 passed in 8.83s**; `/tmp/kilo-venv/bin/ruff check tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` → **All checks passed!**.
 - **State unchanged:** SHA256 `05ca6c2f7ef25c00c8e1f02a05589931c8020b670f1117a09154df5d2cdf0ce7` == HEAD `fb5143b`; `last_run_date 2026-11-17`; `current_nav 130327.27738053048`; `rolling_sharpe_63d -2.008333566199979`; `run_history` **471**. `git status --porcelain` → **0 lines** (working tree clean); `git status --porcelain -- data/raw` → **0 lines**.
@@ -20,7 +37,7 @@
 - **corrective inv 3 (2026-11-17T01:56Z):** orchestrator cmd4b regenerates paper-trading record-status artifacts after extend (gated on `EXTEND_DISABLED`).
 - **corrective inv (2026-11-17T01:48Z):** record-status audit test asserts committed artifacts equal generator output from state.
 
-## Step 1 — pre-gate cheap path (now < 2026-11-18T22:00:00Z)
+## Step 1 — pre-gate cheap path (SUPERSEDED: cycle complete; do not re-run)
 ```
 GATE_EPOCH=1795039200 STATE_SHA256=05ca6c2f7ef25c00c8e1f02a05589931c8020b670f1117a09154df5d2cdf0ce7 \
   bash scripts/pre_gate_check.sh
@@ -29,7 +46,7 @@ GATE_EPOCH=1795039200 STATE_SHA256=05ca6c2f7ef25c00c8e1f02a05589931c8020b670f111
 - Exit 3 → precondition failed (gate reached / hash drift / dirty `data/raw`): inspect; if gate released go to Step 2.
 - Exit 2 → usage error: fix and re-run.
 
-## Step 2 — full gate cycle (only at/after gate, state still `2026-11-17`)
+## Step 2 — full gate cycle (SUPERSEDED: executed 2026-11-18T22:00–22:06Z, Status OK)
 ```
 GATE_EPOCH=1795039200 PYTHON=/tmp/kilo-venv/bin/python RUFF=/tmp/kilo-venv/bin/ruff \
   bash scripts/post_gate_orchestrator.sh
@@ -65,6 +82,7 @@ python3 -m venv /tmp/kilo-venv
 ```
 
 ## Session log (non-redundant)
+- **Corrective inv 7 (2026-11-18T22:04–22:08Z):** the 2026-11-18 gate cycle is complete and verified. The first invocation (22:00–22:02Z) advanced the state once but its handoff was written `Status: FAILED` — `cmd7b` recorded `[FAIL] committed_artifacts_unchanged` while that aborted invocation was still writing `research/reports/data_cost_inventory_001.md`, i.e. a self-race, not a data defect (a clean `run_audit(write=False)` hash comparison gave `n_before 857 n_after 857`, `FAILED_CHECKS []`, `OK True`). A foreground idempotent re-run at 22:04–22:06Z passed every step (`ORCH_EXIT=0`; cmd2/cmd4 `sessions extended: 0`; cmd5 `69 passed`; cmd7a/b `OVERALL: PASS`; cmd7c `43 passed`; cmd8 `All checks passed!`) and rewrote the handoff as `Status: OK`. Bar cross-check: `daily_pnl_20261118.parquet` == `run_history[-1]` on date/nav/return; `regime_20261118.spy_price` NaN is by construction (`paper_trading.py:508` needs a `price_SPY` column `engine.py:500-513` never emits) and is not a stale-data signal. Post-gate focused suite `73 passed, 1 skipped` (skip expected), ruff clean, `data/raw` untouched. Detail: `CORRECTIVE_HANDOFF_CORRECTIVE_7_20261118T2208Z.md`. No threshold/gate/cost/universe change.
 - **Corrective inv 222 (2026-11-18T15:33Z, run 44284895009):** first durable code change of the session-8 corrective chain. Removed the two genuine lint defects confirmed in `research/eval_cryptofunding.py` (F401 unused `block_bootstrap_sharpe` import; F841 unused `symbol = base[:3]`), both dead/behavior-preserving. Supervisor rec-0076's other two premises re-confirmed FALSE (`fixed_coin_portfolio_accounting` appears once at :1777; `run_cycle19.py:975` is the live `dsr = mult["dsr"]`). Verified: targeted `ruff --select F401,F841,F811,F601` on both research scripts **All checks passed** (was 2 errors); `py_compile` EXIT=0; `tests/test_eval_cryptofunding*.py` **68 passed**; gate-suite **74 passed**; pre-gate EXIT=0 with state sha `05ca6c2f…` and `data/raw` unchanged. No state/threshold/gate/data changes; no manual commit. Detail: `CORRECTIVE_HANDOFF_CORRECTIVE_222_20261118T1533Z.md`.
 - **Session 1 inv 1 (2026-11-18T10:23Z, run 44284895009):** pre-gate cheap path EXIT=0 (now=1794997423 < gate 1795039200, T-41777s remaining; state sha 05ca6c2f... matches; data/raw clean). Venv absent at start, recreated (`python3 -m venv` + pip install) EXIT=0. Focused suite **74 passed in 8.83s**; ruff **All checks passed!**; `git status --porcelain` clean; state HEAD `fb5143b` (last_run 2026-11-17, nav 130327.27738053048, rolling_sharpe_63d -2.008333566199979, run_history 471). Supervisor: no recommendation file at startup; disposition `verified`/`none-received` written to `.kilo-runtime/worker-disposition.json` (runtime). No code/state change.
 - **Session 12 inv 1 (2026-11-18T05:37Z, run 44222711169):** pre-gate cheap path EXIT=0 (now=1794980243 < gate 1795039200, T-58957s remaining; state sha 05ca6c2f... matches; data/raw clean). Focused suite **74 passed in 9.50s**; ruff **All checks passed!**; `git status --porcelain` clean; `/tmp/kilo-venv` present (Python 3.14.4). Supervisor: no recommendation file at startup; disposition `verified`/`none-received` refreshed in `.kilo-runtime/worker-disposition.json` (runtime). No code/state change.
