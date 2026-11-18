@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -223,8 +223,8 @@ def test_manifest_content(tmp_path, monkeypatch):
     now = datetime(2026, 10, 20, 12, 0, tzinfo=timezone.utc)
     reports_dir = tmp_path / "reports"
 
-    result = rc.refresh(raw_dir=raw_dir, symbols=["SPY"], now_et=now, dry_run=False,
-                        reports_dir=reports_dir)
+    rc.refresh(raw_dir=raw_dir, symbols=["SPY"], now_et=now, dry_run=False,
+               reports_dir=reports_dir)
 
     manifest_path = reports_dir / "raw_cache_integrity_manifest.json"
     assert manifest_path.exists()

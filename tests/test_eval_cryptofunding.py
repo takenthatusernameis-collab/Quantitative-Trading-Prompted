@@ -28,7 +28,6 @@ sys.path.insert(0, str(REPO_ROOT))
 
 import research.eval_cryptofunding as ev  # noqa: E402
 from src.backtest.engine import compute_metrics  # noqa: E402
-from src.evaluation.sharpe import sharpe_ratio  # noqa: E402
 from src.evaluation.statistics import block_bootstrap_sharpe  # noqa: E402
 
 ARTIFACT = REPO_ROOT / "research" / "experiments" / "cryptofunding_002_evaluation.md"
@@ -992,7 +991,6 @@ def test_reconciled_gross_per_capital_employed_is_the_same_trade(paths):
     """The gross per unit of capital employed is the gross divided by the
     leverage, and it is the number the record reports next to the
     constant-notional book's."""
-    model = ev.COST_MODEL_BY_KEY[ev.HEADLINE_COST_MODEL]
     for rule in ev.RULES:
         book = ev.build_fixed_coin_portfolio_book(
             paths, rule, capital_consistent=True

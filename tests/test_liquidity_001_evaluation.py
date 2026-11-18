@@ -26,11 +26,8 @@ from research.liquidity_001_evaluation import (  # noqa: E402
     load_frozen_config,
     load_ohlcv,
     build_payload,
-    evaluate,
     run_checks,
     verdict,
-    render_experiment,
-    render_report,
     FREEZE_COMMIT,
 )
 
@@ -63,7 +60,6 @@ def test_the_frozen_configuration_is_unchanged():
 
 
 def test_a_post_freeze_drift_fails_closed(monkeypatch):
-    config = load_frozen_config()
     monkeypatch.setitem(FROZEN, "lookback_sessions", 5)
     with pytest.raises(EvaluationError):
         load_frozen_config()

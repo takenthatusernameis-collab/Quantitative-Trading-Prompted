@@ -23,10 +23,8 @@ from research.leadlag_001_evaluation import (  # noqa: E402
     EvaluationError,
     book_returns,
     build_pair_weights,
-    build_panel,
     detect_roll_dates,
     futures_signal,
-    load_closes,
     load_frozen_config,
     build_payload,
     run_checks,
@@ -313,7 +311,6 @@ def test_the_cl_f_non_positive_close_is_detected(payload):
 # The verdict
 # ----------------------------------------------------------------------
 def test_the_falsification_conditions_drive_the_verdict(payload):
-    evaluation = payload["evaluation"]
     assert len(payload["verdict"]["conditions"]) == 4
     fired = payload["verdict"]["fired"]
     assert "i" in fired  # the walk-forward mean OOS Sharpe is far below 0.9
