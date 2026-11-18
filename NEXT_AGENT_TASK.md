@@ -1,10 +1,10 @@
 # Next Agent Task: verify the 2026-11-18 gate extension results
 
-## Current status (verified 2026-11-17T22:02Z, run 44165547375, session 4 inv 1)
-- **2026-11-17 gate extension COMPLETED (background watcher):** `scripts/post_gate_orchestrator.sh --wait-until-gate` (bgp_1eb64fbb1001IUpJpJ4UQCNpmm, restarted this session after rec 0031) ran through gate release (2026-11-17T22:00:00Z, epoch 1794952800) and finished the full cycle. `CORRECTIVE_HANDOFF_POSTGATE_20261117.md` records: `Status: OK — all verification steps passed`, `Mode: full cycle (extend included)`, `Gate state: released (gate epoch reached)`, Cmds run 1,2,3,4,4b,5,6,7,8,9 (none skipped), non-empty `- **State:** 05ca6c2f7ef25c00c8e1f02a05589931c8020b670f1117a09154df5d2cdf0ce7 last_run=2026-11-17 nav=130327.27738053048 runs=471`.
-- **Post-gate verification (this session):** focused suite `/tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` → **72 passed, 1 skipped**; `/tmp/kilo-venv/bin/ruff check tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` → **All checks passed!**. `git status --porcelain -- data/raw` empty; `git status --porcelain` clean.
-- **State:** sha256 `05ca6c2f7ef25c00c8e1f02a05589931c8020b670f1117a09154df5d2cdf0ce7`; `last_run_date 2026-11-17`, `nav 130327.27738053048`, `runs 471`. Intended 2026-11-17 parquets present under `data/processed/paper_trading/`.
-- **Supervisor:** rec `44165547375-attempt-1-review-0031-a659b915f7e5` dispositioned `accepted` (restart waiter). rec `44165547375-attempt-1-review-0035-484599037d30` dispositioned `verified` after confirming completed full-cycle artifacts (runtime, `.kilo-runtime/worker-disposition.json`, not committed).
+## Current status (verified 2026-11-18T01:13Z, run 44165547375, session 9 inv 1)
+- **Pre-gate cheap path exit 0:** `GATE_EPOCH=1795039200 STATE_SHA256=05ca6c2f... bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1794964393 (2026-11-18T01:13:13Z) < gate 1795039200 (2026-11-18T22:00:00Z); T-74807s remaining. state sha256 matches (05ca6c2f...); data/raw clean. STOP — do not re-run the cycle.` EXIT=0.
+- **Focused regression suite:** `/tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` → **74 passed in 7.53s**; `/tmp/kilo-venv/bin/ruff check tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py` → **All checks passed!**.
+- **State unchanged:** SHA256 `05ca6c2f7ef25c00c8e1f02a05589931c8020b670f1117a09154df5d2cdf0ce7` == HEAD `3661092`; `last_run_date 2026-11-17`; `current_nav 130327.27738053048`; `run_history` **471**. `git status --porcelain` → **0 lines** (working tree clean); `git status --porcelain -- data/raw` → **0 lines**.
+- **Supervisor:** rec `44165547375-attempt-1-review-0035-484599037d30` dispositioned `superseded` (runtime, `.kilo-runtime/worker-disposition.json`, not committed). Its advice — allow the restarted waiter to run through gate release; do not manually run extend or mutate state before the gate — was followed exactly (pre-gate check exit 0, no mutations). The 2026-11-17 gate cycle already completed and was verified in session 4 inv 1.
 - **Next gate:** 2026-11-18T22:00:00Z (Wed, 17:00 ET) = epoch **1795039200**. Extend targets next session after 2026-11-17 (**2026-11-18 Wed**) only if a completed bar exists and clock gate released.
 
 ## Prior verified fixes at HEAD (preserved, do not re-open)
@@ -64,10 +64,10 @@ python3 -m venv /tmp/kilo-venv
 ```
 
 ## Session log (non-redundant)
-- **Session 4 inv 1 (2026-11-17T22:02Z, HEAD run 44165547375):** verified completed 2026-11-17 gate cycle (background watcher bgp_1eb64fbb1001IUpJpJ4UQCNpmm): `CORRECTIVE_HANDOFF_POSTGATE_20261117.md` OK/full cycle/released, state advanced to 05ca6c2f… last_run 2026-11-17 nav 130327.27738053048 runs 471, 20261117 parquets present, `data/raw` clean, `git status` clean. Post-gate focused suite **72 passed, 1 skipped**; ruff **All checks passed!**. Supervisor rec 0035 dispositioned `verified` (runtime). Next gate 2026-11-18T22:00:00Z (epoch 1795039200).
+- **Session 9 inv 1 (2026-11-18T01:13Z, HEAD run 44165547375):** pre-gate cheap path EXIT=0 (now=1794964393 < gate 1795039200, T-74807s remaining; state sha 05ca6c2f... matches; data/raw clean). Focused suite **74 passed in 7.53s**; ruff **All checks passed!**; `git status --porcelain` clean. Supervisor rec 0035 dispositioned `superseded` (runtime). No code/state change.
 
 ### Compact history of prior pre-gate re-verifications (gate unreached, Step 2 withheld, no code/state change)
-- run 44165547375: session 2 inv 1 (pre-gate EXIT=0, watcher restarted; cycle later completed).
+- run 44165547375: session 2 inv 1 (pre-gate EXIT=0, watcher restarted; cycle later completed), session 4 inv 1 (verified 2026-11-17 gate cycle).
 - run 44077834177: sessions 6/7/10/13/14.
 - run 44008498688: sessions 4/6/7/13/15 (+ session 7 verified gate-1 FAIL on point-in-time-complete subsample: 41 folds mean OOS Sharpe 0.787522 < 0.9; artefact-fold-12-removed 40 folds 1.352958; incumbent tsmomentum_spytrend_001 NO-GO unchanged; evidence in `research/reports/data_cost_inventory_002.md` §4.4).
 - earlier runs 43722618751, 43754114833, 43852775967, 43952759940: numerous identical pre-gate EXIT=0 verifications (see git history/README for detail).
