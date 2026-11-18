@@ -44,7 +44,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.backtest.engine import get_cost_params, get_risk_free_rate  # noqa: E402
+from src.backtest.engine import get_cost_params, get_risk_free_rate
 
 RAW_DIR = REPO_ROOT / "data" / "raw"
 PROCESSED_DIR = REPO_ROOT / "data" / "processed"
@@ -628,12 +628,11 @@ def build_raw_inventory(raw_dir: Path) -> list[dict[str, Any]]:
         rel = path.relative_to(raw_dir).as_posix()
         inventory.append(inspect_raw_file(path, rel))
 
-    # Coverage: equity session calendar (the union of the daily equity files)
-    # and the crypto calendar (the union of the crypto files' dates).
+    # Coverage: equity session calendar (the union of the daily equity files).
+    # The crypto calendar is derived later from the inventory itself (crypto_last),
+    # so no per-item set is needed here.
     equity_dates: set[pd.Timestamp] = set()
-    crypto_dates: set[pd.Timestamp] = set()
     for item in inventory:
-        stamps = pd.DatetimeIndex([pd.Timestamp(item["first"]), pd.Timestamp(item["last"])])
         if item["provenance"] == PROVENANCE_YFINANCE:
             equity_dates.add(pd.Timestamp(item["last"]))
     # The session calendar is built from the daily equity files themselves.
@@ -686,7 +685,7 @@ def build_processed_inventory(processed_dir: Path) -> list[dict[str, Any]]:
         for path in paths:
             try:
                 frame = pd.read_parquet(path)
-            except Exception:  # pragma: no cover - non-parquet processed file
+            except Exception:  # noqa: S112 - non-parquet processed file (e.g. .yaml); skip silently
                 continue
             parquet_files += 1
             rows += int(len(frame))
@@ -1603,7 +1602,6 @@ def render_report(payload: dict[str, Any]) -> str:
 
 
 def render_experiment(payload: dict[str, Any]) -> str:
-    inv = payload["inventory"]
     totals = payload["totals"]
     cost = payload["cost_model"]
     shortlist = payload["shortlist"]
