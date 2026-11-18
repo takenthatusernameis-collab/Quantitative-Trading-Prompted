@@ -31,10 +31,10 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import research.sectorrotation_long_sample_feasibility as feas  # noqa: E402
-from src.evaluation.sharpe import sharpe_ratio  # noqa: E402
-from src.evaluation.utils import max_drawdown  # noqa: E402
-from src.features.momentum import compute_momentum, select_top_decile  # noqa: E402
+import research.sectorrotation_long_sample_feasibility as feas
+from src.evaluation.sharpe import sharpe_ratio
+from src.evaluation.utils import max_drawdown
+from src.features.momentum import compute_momentum, select_top_decile
 
 REPORT = ROOT / "research" / "reports" / "sectorrotation_long_sample_feasibility_001.md"
 UNIVERSE = ["XLB", "XLE", "XLF", "XLI", "XLK", "XLP", "XLU", "XLV", "XLY"]
@@ -70,6 +70,7 @@ def test_tool_runs_standalone_and_is_read_only():
         capture_output=True,
         text=True,
         timeout=600,
+        check=True,
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "OVERALL: PASS" in proc.stdout
