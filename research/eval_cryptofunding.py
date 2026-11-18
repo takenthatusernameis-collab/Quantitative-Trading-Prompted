@@ -1788,7 +1788,6 @@ def evaluate_cost_models(paths: dict[str, pd.DataFrame]) -> dict[str, Any]:
         "threshold_gates": threshold_gates,
         "threshold_break_evens": threshold_break_evens,
         "threshold_sensitivity": threshold_sensitivity,
-        "fixed_coin_portfolio_accounting": fixed_coin_accounting,
         "gross_paths": gross_paths,
     }
 

@@ -971,8 +971,8 @@ def build_report(
         "|-----------|-------|-----------------|-----|------------|---------------|"
     )
 
+    # pre-registered and evaluated count both = 12
     dsr = mult["dsr"]
-    dsr_actual = mult["dsr"]  # pre-registered and evaluated count both = 12
     psr = mult["psr_vs0"]
     psr_gate = mult["psr_vs09"]
     pbo = mult["pbo"]
