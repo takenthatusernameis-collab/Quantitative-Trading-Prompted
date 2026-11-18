@@ -37,7 +37,6 @@ REPO = Path(__file__).resolve().parents[1]
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
-import pandas as pd
 import pytest
 import yaml
 

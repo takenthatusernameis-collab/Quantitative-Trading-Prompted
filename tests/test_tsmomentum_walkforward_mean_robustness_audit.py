@@ -127,7 +127,6 @@ def test_phase_decomposition_is_exact(payload):
 def test_leave_one_out_table_is_consistent(payload):
     """Recomputing the leave-one-out mean of the most influential fold from the
     published fold Sharpes reproduces the audit's value."""
-    influence = payload["fold_influence"]["influence"]
     most_influential = payload["fold_influence"]["most_influential_fold"]
     assert most_influential["fold"] == 12
     assert most_influential["test_trades"] == 2
