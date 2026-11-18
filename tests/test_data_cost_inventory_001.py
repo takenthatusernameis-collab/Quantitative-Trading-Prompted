@@ -19,16 +19,16 @@ REPO = Path(__file__).resolve().parents[1]
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
-import pytest  # noqa: E402
+import pytest
 
-from research.data_cost_inventory_001 import (  # noqa: E402
+from research.data_cost_inventory_001 import (
     COST_COMPONENTS,
     build_payload,
     fingerprint,
     parse_committed_shortlist,
     tracked_artifact_hashes,
 )
-from src.backtest.engine import get_cost_params, get_risk_free_rate  # noqa: E402
+from src.backtest.engine import get_cost_params, get_risk_free_rate
 
 TOOL = "research/data_cost_inventory_001.py"
 REPORT = REPO / "research" / "reports" / "data_cost_inventory_001.md"
