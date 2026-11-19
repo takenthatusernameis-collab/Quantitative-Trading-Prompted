@@ -145,8 +145,28 @@ def test_artifact_agreement_detects_nonzero_weights_at_zero_exposure(
         [{"date": state["run_history"][-1]["date"], "spy_price": np.nan,
           "regime_exposure": 0.0}]
     ).to_parquet(tmp_path / f"regime_{stamp}.parquet", index=False)
-    pd.DataFrame([{"weight_A": 0.25, "weight_B": 0.25}]).to_parquet(
-        tmp_path / f"positions_{stamp}.parquet", index=False
-    )
+    # The committed positions artifacts are long-format: one row per symbol with
+    # a single `weight` column (src/simulation/paper_trading.py:500-503). The
+    # check must fire on that schema, not only on a hypothetical `weight_*` one.
+    pd.DataFrame(
+        [{"symbol": "A", "weight": 0.25, "date": state["run_history"][-1]["date"]},
+         {"symbol": "B", "weight": 0.25, "date": state["run_history"][-1]["date"]}]
+    ).to_parquet(tmp_path / f"positions_{stamp}.parquet", index=False)
     violations = check_artifact_agreement(state, tmp_path)
     assert any("zero exposure" in item for item in violations)
+
+
+def test_artifact_agreement_passes_when_weights_are_zero_at_zero_exposure(
+    tmp_path: Path,
+) -> None:
+    state = _state([1.0, 1.0, 0.0], [0.01, 0.01, 0.51])
+    stamp = state["run_history"][-1]["date"].replace("-", "")
+    pd.DataFrame(
+        [{"date": state["run_history"][-1]["date"], "spy_price": np.nan,
+          "regime_exposure": 0.0}]
+    ).to_parquet(tmp_path / f"regime_{stamp}.parquet", index=False)
+    pd.DataFrame(
+        [{"symbol": "A", "weight": 0.0, "date": state["run_history"][-1]["date"]},
+         {"symbol": "B", "weight": 0.0, "date": state["run_history"][-1]["date"]}]
+    ).to_parquet(tmp_path / f"positions_{stamp}.parquet", index=False)
+    assert check_artifact_agreement(state, tmp_path) == []

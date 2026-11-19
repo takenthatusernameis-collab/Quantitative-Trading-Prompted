@@ -11,6 +11,13 @@ that would overturn an ``observe`` decision for a stored drift flag:
 3. a recorded regime exposure that disagrees with the persisted regime
    artifact (would indicate an artifact/state mismatch).
 
+The third check also verifies that a zero-exposure session has no nonzero
+position weights in its ``positions_`` artifact. That sub-check was previously
+written against a wide-format ``weight_*`` schema that no committed artifact
+has (they are long-format: one row per symbol with a single ``weight`` column,
+``src/simulation/paper_trading.py:500-503``), so it could never fire. It now
+matches the real schema.
+
 This module evaluates those three conditions against the committed paper-trading
 state and artifacts. It is pure read-only: it never writes the state, the
 artifact directory, ``data/raw`` or any config. Exit code is ``0`` when every
@@ -189,14 +196,22 @@ def check_artifact_agreement(state: dict, paper_dir: Path) -> list[str]:
     positions_file = paper_dir / f"positions_{stamp}.parquet"
     if recorded == 0.0 and positions_file.exists():
         positions = pd.read_parquet(positions_file)
-        weight_cols = [c for c in positions.columns if c.startswith("weight_")]
-        if weight_cols:
-            max_weight = float(np.abs(positions[weight_cols].to_numpy()).max())
+        # The committed positions artifacts are long-format: one row per symbol
+        # with a single `weight` column (see src/simulation/paper_trading.py:500-
+        # 503). The previous lookup looked for `weight_*` wide-format columns,
+        # which no artifact has, so this branch never fired. Check the real schema.
+        if "weight" in positions.columns:
+            max_weight = float(np.abs(positions["weight"].to_numpy()).max())
             if max_weight > TOL:
                 violations.append(
                     f"{positions_file.name}: zero exposure but max |weight| "
                     f"{max_weight:.12f}"
                 )
+        else:
+            violations.append(
+                f"{positions_file.name}: zero exposure but no `weight` column "
+                f"(columns={list(positions.columns)}); cannot verify flatness"
+            )
     return violations
 
 
