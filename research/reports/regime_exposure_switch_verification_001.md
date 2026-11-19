@@ -68,8 +68,10 @@ Simulation engine (`run_simulation`, 1993-01-01 … 2026-11-18, 8504 sessions,
 
 ## Remaining (post-gate)
 
-The switch is implemented and now tested; the deferred task's remaining
-deliverables are documentation accuracy and downstream re-derivation only:
-`research/reports/deployment_dossier_001.md:279` and
-`research/reports/go_nogo_evaluation_001.md:75` still assert the regime factor
-is point-in-time, which is false on the default path.
+The switch is implemented and now tested. The deferred task's documentation
+deliverable is complete: `research/reports/deployment_dossier_001.md:279-280`
+and `research/reports/go_nogo_evaluation_001.md:75-76` no longer assert the
+regime factor is point-in-time — both carry an explicit "Correction
+(2026-11-19)" annotation stating the default path is *not* point-in-time, the
+regime factor is same-session, the audit reference, and the default vs lagged
+metrics. What remains is downstream re-derivation only (no record changes).
