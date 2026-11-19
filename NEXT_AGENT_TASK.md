@@ -1,5 +1,13 @@
 # Next Agent Task: 2026-11-20 gate cycle (pre-gate first; extend only at/after 22:00Z)
 
+## Pre-gate verification — 2026-11-19T22:35Z (run 44577861725 attempt 1 session 19 inv 1) — **PRE-GATE OK; GATE UNREACHABLE THIS RUN**
+- **UTC 2026-11-19T22:35:47Z.** Gate for 2026-11-20 **NOT released** (releases 22:00 UTC 2026-11-20, epoch 1795212000; ~23.4h / T-84253s remaining).
+- **Pre-gate cheap path exit 0 (one call, then STOP):** `GATE_EPOCH=1795212000 STATE_SHA256=743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1795127747 (2026-11-19T22:35:47Z) < gate 1795212000 (2026-11-20T22:00:00Z); T-84253s remaining. state sha256 matches (743c6e41…); data/raw clean. STOP — do not re-run the cycle.` EXIT=0.
+- **State unchanged:** `sha256sum data/processed/paper_trading_state.yaml` = `743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab`; `last_run_date 2026-11-19`; NAV `130307.21196257228`; `run_history` **473**. `git status --porcelain` → 0 lines; `git status --porcelain -- data/raw` → 0 lines. `/tmp/kilo-venv/bin/python` present.
+- **Supervisor:** no `.kilo-runtime/current-supervisor-recommendation.json` at startup; disposition `verified`/`none-received` refreshed in `.kilo-runtime/worker-disposition.json` (runtime, not committed).
+- **Gate reachability (deterministic blocker, not a failure loop):** now epoch 1795127747 vs gate 1795212000 → ~23.4h out; run envelope ends before the gate. The run active at/after 22:00 UTC 2026-11-20 must run Step 2.
+- **Handoff:** current-status refreshed; objective, acceptance criteria, validation commands, and scope boundaries unchanged. No commits made; `data/raw/` untouched.
+
 ## Pre-gate verification — 2026-11-19T22:34Z (run 44577861725 attempt 1 session 18 inv 1) — **PRE-GATE OK; GATE UNREACHABLE THIS RUN**
 - **UTC 2026-11-19T22:34:50Z.** Gate for 2026-11-20 **NOT released** (releases 22:00 UTC 2026-11-20, epoch 1795212000; ~23.4h / T-84310s remaining).
 - **Pre-gate cheap path exit 0 (one call, then STOP):** `GATE_EPOCH=1795212000 STATE_SHA256=743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1795127690 (2026-11-19T22:34:50Z) < gate 1795212000 (2026-11-20T22:00:00Z); T-84310s remaining. state sha256 matches (743c6e41…); data/raw clean. STOP — do not re-run the cycle.` EXIT=0.
