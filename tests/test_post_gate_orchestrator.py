@@ -959,6 +959,44 @@ def test_cmd8c_is_in_ruff_lint_list() -> None:
     assert "research/paper_record_raw_coverage_audit.py" in listed, sorted(listed)
 
 
+def test_artifact_reconciliation_failure_marks_handoff_failed(tmp_path: Path) -> None:
+    # cmd8d (research/paper_trading_artifact_reconciliation_audit.py) is the only
+    # step that compares every run_history row with its committed per-session
+    # parquet artifacts. An unattested mismatch exits 1; pin that this surfaces in
+    # the process log AND marks the durable handoff FAILED, instead of being
+    # recorded only in /tmp/cmd8d.out while the handoff reads "Status: OK".
+    handoff = tmp_path / "handoff.md"
+    stub = _python_stub(tmp_path, fail_when="paper_trading_artifact_reconciliation_audit.py")
+    proc = _run(["--read-only"], PAST_GATE, handoff, env_extra={"PYTHON": str(stub)})
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "STEP FAILED (rc=1): cmd8d artifact reconciliation" in proc.stdout, proc.stdout
+    assert handoff.exists()
+    assert "**Status:** FAILED" in handoff.read_text()
+
+
+def test_artifact_reconciliation_is_recorded_as_run(tmp_path: Path) -> None:
+    # The durable record must show cmd8d actually ran; an orchestrator that
+    # silently dropped the step would otherwise still produce "Status: OK".
+    handoff = tmp_path / "handoff.md"
+    proc = _run(["--read-only"], PAST_GATE, handoff)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    text = handoff.read_text()
+    run_line = text.split("- **Cmds run:**")[1].split("\n")[0]
+    assert "8d artifact reconciliation" in run_line, text
+
+
+def test_cmd8d_is_in_ruff_lint_list() -> None:
+    # Same wiring contract as cmd8c: a script executed by the cycle must be
+    # linted, or a latent defect fails the real cycle with zero lint evidence.
+    import re
+
+    source = SCRIPT.read_text()
+    match = re.search(r'^RUFF4="([^"]+)"', source, re.MULTILINE)
+    assert match, "scripts/post_gate_orchestrator.sh does not define RUFF4"
+    listed = set(match.group(1).split())
+    assert "research/paper_trading_artifact_reconciliation_audit.py" in listed, sorted(listed)
+
+
 def _argv_logging_stub(tmp_path: Path) -> tuple[Path, Path]:
     """``PYTHON`` stub that records every invocation's argv into a log file.
 

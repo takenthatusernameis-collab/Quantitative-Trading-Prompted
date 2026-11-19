@@ -76,7 +76,7 @@ PYTEST7="tests/test_data_cost_inventory_001.py tests/test_data_cost_inventory_00
 # Status: FAILED and no lint evidence -- the exact gap cmd8 exists to close for
 # the other four extension scripts. It now passes ruff (EXE001 cleared by making
 # the file executable) and is pinned here so it cannot silently drop out again.
-RUFF4="research/drift_persistence_report.py research/drift_invariant_check.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py research/verify_gate_time_forward_bar.py research/paper_trading_record_status_audit.py research/paper_record_raw_coverage_audit.py"
+RUFF4="research/drift_persistence_report.py research/drift_invariant_check.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py research/verify_gate_time_forward_bar.py research/paper_trading_record_status_audit.py research/paper_record_raw_coverage_audit.py research/paper_trading_artifact_reconciliation_audit.py"
 
 log() { echo "[$(date -u +%FT%TZ)] $*"; }
 fail() { log "FATAL: $*"; exit 1; }
@@ -411,6 +411,24 @@ fi
 cmd8c_rc=$?
 tail -6 /tmp/cmd8c.out
 record_rc $cmd8c_rc "cmd8c coverage audit"
+
+# --- 8d. Record <-> per-session artifact reconciliation (read-only) -----------
+# research/paper_trading_artifact_reconciliation_audit.py is the only check that
+# compares every run_history row with its four committed per-session parquet
+# artifacts across the WHOLE record. audit_state_aggregates.py re-derives
+# state-level fields from run_history only; drift_invariant_check.py checks the
+# latest session's regime exposure; the coverage audit compares against
+# data/raw. A dropped, duplicated, corrupted or wrongly reconstructed artifact
+# (the 2026-11-02 repair defect it attests) would therefore pass every other
+# step while the handoff read "Status: OK". Read-only: it writes only its own
+# report and never the state, the artifacts or data/raw. A nonzero exit means an
+# unattested mismatch -- record it as a step failure, do not hush it.
+log "cmd8d: paper_trading_artifact_reconciliation_audit"
+mark_run "8d artifact reconciliation"
+"$PY" research/paper_trading_artifact_reconciliation_audit.py > /tmp/cmd8d.out 2>&1
+cmd8d_rc=$?
+tail -6 /tmp/cmd8d.out
+record_rc $cmd8d_rc "cmd8d artifact reconciliation"
 
 # --- 9. Durable handoff ------------------------------------------------------
 log "writing durable handoff: $HANDOFF"
