@@ -1,6 +1,6 @@
 # Regime-filter same-session feedback: read-only audit (tsmomentum_regime_lookahead_audit_001)
 
-*Generated: 2026-11-19T01:09:22Z*
+*Generated: 2026-11-19T02:12:33Z*
 *Candidate: `tsmomentum_spytrend_001` (incumbent). Nothing is promoted, re-fit or re-ranked.*
 *Reproduction: `/tmp/kilo-venv/bin/python research/tsmomentum_regime_lookahead_audit_001.py`*
 

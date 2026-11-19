@@ -277,6 +277,7 @@
 - Paper trading replay is deterministic on cached data
 - Walk-forward splits are chronologically ordered with purging/embargo
 - No lookahead bias on signals: momentum weights shifted 1 day; regime filter uses session t's own close by default (opt-in `lag_regime_exposure=True` shifts regime 1 session for point-in-time)
+- **Correction (2026-11-19):** the default path is *not* point-in-time. `src/simulation/engine.py:_regime_exposure` builds the 200-day SMA including session `t` and sets `exposure[spy < sma] = 0.0` on the same index row; `engine.py:450-452` multiplies that into `base_weights` on the same row, and `_finalize` computes `gross_ret` from `close.pct_change()` of the same session. The regime factor is the only same-session input on the execution path (momentum is correctly lagged at `src/features/momentum.py:105`). Audit: `research/reports/tsmomentum_regime_lookahead_audit_001.md` — default walk-forward mean OOS Sharpe `0.947307` (48 folds, 6013 trades) vs lagged `0.153040` (43/48 folds worse); post-2017 Sharpe `1.333367 → 0.555815`, max DD `-7.7940% → -15.4646%`. The `lag_regime_exposure` opt-in switch is committed at HEAD (`src/simulation/engine.py:96,236`, `research/run_cycle6.py:114,134`, `src/simulation/paper_trading.py:103`) but is **not** the default. This line is annotated, not rewritten: the published default-path statistics were derived under the same-session convention.
 
 ---
 
