@@ -253,6 +253,33 @@ date -u
 TZ=America/New_York date
 record_rc $? "cmd1 date"
 
+# --- 1b. Pre-extend session anchor (for the cmd8c digest guard) --------------
+# research/paper_record_raw_coverage_audit.py documents (``--extend-before``)
+# that a session appended by this cycle MUST carry a valid
+# ``provider_digest_YYYYMMDD.json``, and fails closed (exit 1) when it does not.
+# That contract was dead in the real cycle: cmd8c was invoked with no argument,
+# so ``require_digest_for`` stayed None and a silently failed digest write would
+# still read "Status: OK". Capture the pre-extension ``last_run_date`` here,
+# before cmd2 mutates the state, and hand it to cmd8c.
+#
+# A plain text read (not an interpreter call) keeps this pre-step out of the
+# python step sequence, so the cycle's ordering contract (extend is still the
+# first python action) and its exit-code accounting are unchanged.
+STATE_FILE_PATH="data/processed/paper_trading_state.yaml"
+EXTEND_BEFORE=""
+if [[ -f "$STATE_FILE_PATH" ]]; then
+  EXTEND_BEFORE="$(sed -n "s/^last_run_date:[[:space:]]*['\"]\{0,1\}\(20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]\)['\"]\{0,1\}[[:space:]]*\$/\1/p" "$STATE_FILE_PATH" | head -1)"
+fi
+# Only a real YYYY-MM-DD session date is passed on (mirrors the State-line
+# last_run anchoring); a missing state or a malformed value must not turn into a
+# bogus argument that fails the audit.
+if [[ "$EXTEND_BEFORE" =~ ^20[0-9]{2}-[0-9]{2}-[0-9]{2}$ ]]; then
+  log "pre-extend last_run anchor: $EXTEND_BEFORE (cmd8c digest requirement active)"
+else
+  EXTEND_BEFORE=""
+  log "pre-extend last_run anchor unavailable; cmd8c digest requirement not armed"
+fi
+
 # --- 2. Extend (only if a completed candidate bar exists) --------------------
 if (( EXTEND_DISABLED )); then
   log "cmd2: SKIP extend (gate not released: $MODE)"
@@ -376,7 +403,11 @@ record_rc $cmd8b_rc "cmd8b drift invariant check"
 # exists to prevent (cf. cmd8b's identical gap, closed in Cycle 1271).
 log "cmd8c: paper_record_raw_coverage_audit"
 mark_run "8c coverage audit"
-"$PY" research/paper_record_raw_coverage_audit.py > /tmp/cmd8c.out 2>&1
+COVERAGE_ARGS=()
+if [[ -n "$EXTEND_BEFORE" ]]; then
+  COVERAGE_ARGS=(--extend-before "$EXTEND_BEFORE")
+fi
+"$PY" research/paper_record_raw_coverage_audit.py ${COVERAGE_ARGS[@]+"${COVERAGE_ARGS[@]}"} > /tmp/cmd8c.out 2>&1
 cmd8c_rc=$?
 tail -6 /tmp/cmd8c.out
 record_rc $cmd8c_rc "cmd8c coverage audit"

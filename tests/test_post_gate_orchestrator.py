@@ -957,3 +957,110 @@ def test_cmd8c_is_in_ruff_lint_list() -> None:
     assert match, "scripts/post_gate_orchestrator.sh does not define RUFF4"
     listed = set(match.group(1).split())
     assert "research/paper_record_raw_coverage_audit.py" in listed, sorted(listed)
+
+
+def _argv_logging_stub(tmp_path: Path) -> tuple[Path, Path]:
+    """``PYTHON`` stub that records every invocation's argv into a log file.
+
+    Repeated argv are newline-joined so a test can assert which flags the
+    orchestrator passed to one specific script. The stub consumes stdin for the
+    heredoc invocations (``PYTHON -``) so bash never blocks writing the heredoc.
+    """
+    log = tmp_path / "argv.log"
+    stub = tmp_path / "argv_python_stub.sh"
+    stub.write_text(
+        "#!/usr/bin/env bash\n"
+        'printf "%s\\n" "$*" >> "$ARGV_LOG"\n'
+        'if [ "${1:-}" = "-" ]; then cat >/dev/null; fi\n'
+        "exit 0\n",
+        encoding="utf-8",
+    )
+    stub.chmod(0o755)
+    return stub, log
+
+
+def _init_git(tmp_path: Path) -> None:
+    """cmd6 runs ``git status``; a copied script run from a bare temp dir would
+    fail that step (rc=128) and mask the behaviour under test."""
+    subprocess.run(
+        ["git", "init", "-q", str(tmp_path)],
+        check=True,
+        capture_output=True,
+    )
+
+
+def _write_state(tmp_path: Path, last_run: str) -> None:
+    state_dir = tmp_path / "data" / "processed"
+    state_dir.mkdir(parents=True)
+    (state_dir / "paper_trading_state.yaml").write_text(
+        f"last_run_date: {last_run}\ncurrent_nav: 1.0\nrun_history: []\n",
+        encoding="utf-8",
+    )
+
+
+def _coverage_audit_argv(argv_log: Path) -> list[str]:
+    lines = [
+        line
+        for line in argv_log.read_text().splitlines()
+        if "paper_record_raw_coverage_audit.py" in line
+    ]
+    assert lines, argv_log.read_text()
+    assert len(lines) == 1, lines
+    return lines[0].split()
+
+
+def test_cmd8c_receives_pre_extend_last_run_anchor(tmp_path: Path) -> None:
+    # The audit's provider-digest guard (``--extend-before``) only fires when it
+    # is told the pre-extension last_run_date. Without the flag, a real extend
+    # that silently failed to write a ``provider_digest_YYYYMMDD.json`` would
+    # leave the cycle reading "Status: OK" -- the documented regression. Pin that
+    # the real orchestrator arms the guard.
+    stub, log = _argv_logging_stub(tmp_path)
+    _init_git(tmp_path)
+    _write_state(tmp_path, "2026-11-19")
+    proc = _run_script_copy(
+        tmp_path,
+        ["--read-only"],
+        PAST_GATE,
+        env_extra={"PYTHON": str(stub), "ARGV_LOG": str(log)},
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    argv = _coverage_audit_argv(log)
+    assert "--extend-before" in argv, argv
+    assert argv[argv.index("--extend-before") + 1] == "2026-11-19", argv
+
+
+def test_cmd8c_anchor_omitted_when_state_is_absent(tmp_path: Path) -> None:
+    # No state file (a stubbed/ad-hoc run): the audit must still be invoked, but
+    # without a fabricated anchor. Passing a bogus value would fail the audit for
+    # the wrong reason.
+    stub, log = _argv_logging_stub(tmp_path)
+    _init_git(tmp_path)
+    proc = _run_script_copy(
+        tmp_path,
+        ["--read-only"],
+        PAST_GATE,
+        env_extra={"PYTHON": str(stub), "ARGV_LOG": str(log)},
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "--extend-before" not in _coverage_audit_argv(log)
+
+
+def test_cmd8c_anchor_omitted_when_last_run_is_not_a_session_date(
+    tmp_path: Path,
+) -> None:
+    # A malformed last_run_date (missing key renders as "None", a free string,
+    # etc.) must not be forwarded: the audit would then require a digest for a
+    # session that does not exist and fail a healthy cycle.
+    stub, log = _argv_logging_stub(tmp_path)
+    _init_git(tmp_path)
+    _write_state(tmp_path, "not-a-date")
+    proc = _run_script_copy(
+        tmp_path,
+        ["--read-only"],
+        PAST_GATE,
+        env_extra={"PYTHON": str(stub), "ARGV_LOG": str(log)},
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "--extend-before" not in _coverage_audit_argv(log)
+    assert "anchor unavailable" in proc.stdout, proc.stdout
