@@ -286,7 +286,7 @@
 ### 6.1 Identified Risks (from Go/No-Go Report)
 | Risk | Severity | Mitigation |
 |------|----------|------------|
-| Regime Filter Lag | Medium | 1-day lag in execution model; validated across 6 flips |
+| Regime Filter Lag | Medium | Momentum weights carry a 1-day lag; **the regime factor does not** on the default path (Correction 2026-11-19, see §5.3) — the SPY-200dSMA gate uses session `t`'s own close, so no regime lag is modelled |
 | Turnover Costs | Low | Cost model conservative (3 bps); actual drag ~2.1%/yr |
 | Capacity Constraints | Low | Liquid ETFs, ~6.8x annual turnover manageable |
 | Model Decay | Low-Medium | 33-year walk-forward + 444-day paper validation |
