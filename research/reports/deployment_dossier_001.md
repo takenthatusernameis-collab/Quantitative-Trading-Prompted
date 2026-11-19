@@ -276,7 +276,7 @@
 - Config SHA-256 tracked for every evaluation
 - Paper trading replay is deterministic on cached data
 - Walk-forward splits are chronologically ordered with purging/embargo
-- No lookahead bias: signals shifted 1 day, regime computed point-in-time
+- No lookahead bias on signals: momentum weights shifted 1 day; regime filter uses session t's own close by default (opt-in `lag_regime_exposure=True` shifts regime 1 session for point-in-time)
 
 ---
 

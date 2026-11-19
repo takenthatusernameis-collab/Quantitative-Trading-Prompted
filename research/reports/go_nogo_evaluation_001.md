@@ -72,7 +72,7 @@ The SPY-trend filter has been validated across three full market regime cycles, 
 ### Data Pipeline
 - **Data Source:** Yahoo Finance cached parquet files (`data/raw/`)
 - **Update Frequency:** Daily refresh after market close
-- **Point-in-Time Handling:** All signals use only data available at formation; weights shifted 1 day; SPY SMA computed point-in-time
+- **Point-in-Time Handling:** Momentum weights shifted 1 day; SPY SMA regime filter uses session t's own close by default (opt-in `lag_regime_exposure=True` shifts regime 1 session for point-in-time); no lookahead bias on signals
 - **Data Integrity:** Verified through cache system; no lookahead bias in validation
 - **Assessment:** Data pipeline is robust and has supported 444 days of uninterrupted paper trading
 
