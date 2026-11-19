@@ -9,6 +9,14 @@ Data-integrity contract (Cycle 854):
   * The canonical raw cache (``data/raw``) is READ-ONLY for this tool. Market
     data is downloaded into a scratch directory that is discarded on exit, so
     a monitoring/no-op run can never rewrite the committed dataset.
+  * Because that scratch data is discarded, every state extension also writes
+    a small provider-price attestation (``provider_digest_YYYYMMDD.json``) into
+    the paper-trading output directory: the sha256 of the canonical market
+    slice handed to the update plus the last two sessions' closes per universe
+    symbol. Sessions that advanced beyond the committed raw cache therefore
+    carry an independent, comparable record of the provider inputs instead of
+    resting on the state file alone. The write is non-fatal and happens after
+    the single state write.
   * Only sessions that have already closed are used. Any in-session
     (partial) daily bar returned by the provider is dropped before slicing.
 * The state is written at most once, and only after the update is confirmed
@@ -26,6 +34,9 @@ Data-integrity contract (Cycle 854):
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
+import math
 import shutil
 import sys
 import tempfile
@@ -48,6 +59,107 @@ from src.simulation.paper_trading import (
 )
 
 FetchFn = Callable[[str], pd.DataFrame]
+
+DIGEST_SCHEMA_VERSION = 1
+DIGEST_PREFIX = "provider_digest_"
+
+
+def _output_dir(config: PaperTradingConfig) -> Path:
+    """Resolve ``config.output_dir`` to an absolute path (repo root relative)."""
+    out = Path(config.output_dir)
+    if not out.is_absolute():
+        out = Path(__file__).resolve().parent.parent / out
+    return out
+
+
+def digest_path(paper_dir: Path, session: str) -> Path:
+    stamp = pd.Timestamp(session).strftime("%Y%m%d")
+    return Path(paper_dir) / f"{DIGEST_PREFIX}{stamp}.json"
+
+
+def canonical_slice_bytes(frame: pd.DataFrame) -> bytes:
+    """Deterministic byte serialization of the market slice handed to the update.
+
+    The slice is the only market input of a record extension. Hashing a
+    canonical text rendering (sorted index, sorted ``(field, symbol)`` columns,
+    full float precision) gives an input fingerprint that a later governed
+    ``data/raw`` refresh or provider re-fetch can be compared against.
+    """
+    ordered = frame.sort_index()
+    columns = sorted(ordered.columns, key=lambda c: (str(c[0]), str(c[1])))
+    header = ["date"] + [f"{field}:{sym}" for field, sym in columns]
+    lines = [",".join(header)]
+    for ts, row in ordered.iterrows():
+        stamp = pd.Timestamp(ts)
+        if stamp.tz is None:
+            stamp = stamp.tz_localize("UTC")
+        else:
+            stamp = stamp.tz_convert("UTC")
+        values = []
+        for col in columns:
+            value = row[col]
+            values.append("" if pd.isna(value) else f"{float(value):.17g}")
+        lines.append(",".join([stamp.strftime("%Y-%m-%dT%H:%M:%SZ")] + values))
+    return "\n".join(lines).encode("utf-8")
+
+
+def build_provider_digest(
+    frame: pd.DataFrame, target: str, symbols: list[str]
+) -> dict:
+    """Provider-price attestation for a single extended session.
+
+    Contains (a) the canonical sha256 of the full market slice used by the
+    update, and (b) the last two sessions' closes per universe symbol so the
+    target session's per-symbol price change is independently checkable.
+    """
+    slice_ = frame.loc[:target].sort_index()
+    if slice_.empty:
+        raise ValueError(f"market slice for {target} is empty")
+    last = pd.Timestamp(slice_.index[-1]).strftime("%Y-%m-%d")
+    if last != target:
+        raise ValueError(
+            f"market slice ends {last}, expected target session {target}"
+        )
+    previous_session = None
+    if len(slice_) >= 2:
+        previous_session = pd.Timestamp(slice_.index[-2]).strftime("%Y-%m-%d")
+
+    prices: dict[str, dict[str, float | None]] = {}
+    for sym in symbols:
+        column = ("Close", sym)
+        if column not in slice_.columns:
+            raise ValueError(f"market slice has no Close column for {sym}")
+        close = float(slice_[column].iloc[-1])
+        previous = (
+            float(slice_[column].iloc[-2]) if len(slice_) >= 2 else float("nan")
+        )
+        prices[sym] = {
+            "previous_close": previous if math.isfinite(previous) else None,
+            "close": close if math.isfinite(close) else None,
+        }
+
+    return {
+        "schema_version": DIGEST_SCHEMA_VERSION,
+        "session": target,
+        "previous_session": previous_session,
+        "universe": list(symbols),
+        "prices": prices,
+        "slice": {
+            "rows": len(slice_),
+            "columns": len(slice_.columns),
+            "first_session": pd.Timestamp(slice_.index[0]).strftime("%Y-%m-%d"),
+            "sha256": hashlib.sha256(canonical_slice_bytes(slice_)).hexdigest(),
+        },
+    }
+
+
+def write_provider_digest(payload: dict, paper_dir: Path) -> Path:
+    """Persist the attestation as deterministic JSON. Returns the written path."""
+    path = digest_path(paper_dir, payload["session"])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    return path
+
 
 
 def session_is_complete(
@@ -377,6 +489,22 @@ def run_extension(
         # Single write.
         new_state.to_yaml(state_path)
         generate_paper_report(new_state, config)
+
+        # Provider-price attestation for this session. The market data lives
+        # only in the discarded scratch directory, so without this the session
+        # can never be re-derived or cross-checked (the raw cache is read-only
+        # for this tool). The write is non-fatal and happens strictly after the
+        # state write: a digest defect must never block or roll back a valid
+        # state extension.
+        digest_file: Path | None = None
+        digest_error: str | None = None
+        try:
+            digest_payload = build_provider_digest(
+                market_slice, target, list(config.universe)
+            )
+            digest_file = write_provider_digest(digest_payload, _output_dir(config))
+        except Exception as exc:  # noqa: BLE001 - attestation must not block
+            digest_error = f"{type(exc).__name__}: {exc}"
     finally:
         if backup_path.exists():
             backup_path.unlink()
@@ -384,6 +512,8 @@ def run_extension(
     result["sessions_extended"] = 1
     result["nav_after"] = new_state.current_nav
     result["state_writes"] = 1
+    result["provider_digest"] = str(digest_file) if digest_file else None
+    result["digest_error"] = digest_error
     return result
 
 
@@ -465,6 +595,10 @@ def main() -> int:
     print(f"NAV before: {result['nav_before']}")
     print(f"NAV after: {result['nav_after']}")
     print("state write count: 1")
+    if result.get("provider_digest"):
+        print(f"provider digest: {result['provider_digest']}")
+    if result.get("digest_error"):
+        print(f"provider digest error: {result['digest_error']}")
     print("raw cache: scratch (canonical data/raw untouched)")
     return 0
 

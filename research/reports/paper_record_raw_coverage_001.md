@@ -14,6 +14,7 @@ committed state and cache.
 | record sessions | `472` |
 | sessions covered by committed raw | `466` |
 | sessions **not** re-derivable from `data/raw` | `6` |
+| of those, attested by a provider digest | `0` |
 
 Per-symbol last committed session:
 
@@ -38,6 +39,22 @@ Unverified record sessions:
 The extension path (`research/extend_paper_trading_state.py`, Cycle 854
 contract) never writes `data/raw`; it fetches into a scratch directory that is
 discarded. Sessions listed above therefore rest only on the state file itself.
+
+### Provider digests
+
+Sessions extended after this audit was introduced also write a
+`provider_digest_YYYYMMDD.json` next to the paper-trading artifacts. It records
+the canonical sha256 of the exact market slice handed to the update plus the
+last two sessions' closes per universe symbol. A digest is an *attestation of
+the provider inputs*, not a substitute for committed raw data: it does not make
+a session re-derivable, but it can be compared against a later governed
+`data/raw` refresh or a provider re-fetch.
+
+Digest-attested unverified sessions:   - (none)
+
+Digests are validated for schema, session/universe consistency and positive,
+finite closes; a malformed digest fails the audit (exit 1) rather than being
+silently ignored.
 
 ## Metric recurrence and decision sensitivity
 
