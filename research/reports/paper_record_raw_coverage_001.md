@@ -52,7 +52,7 @@ a session re-derivable, but it can be compared against a later governed
 
 Digest-attested unverified sessions:   - (none)
 
-This cycle's extension: no extension observed in this invocation
+This cycle's extension: no session extended (digest requirement not triggered)
 
 Digests are validated for schema, session/universe consistency and positive,
 finite closes; a malformed digest fails the audit (exit 1) rather than being

@@ -291,9 +291,20 @@ def test_released_record_is_not_treated_as_pre_gate() -> None:
     assert not _is_pre_gate_record(released)
 
 
-# Read-only verification steps the orchestrator always runs (cmds 1,3,5,6,7,8,9).
-# Kept as an explicit tuple so the truthfulness guard fails closed if a step
-# silently disappears from ``Cmds run`` rather than only checking the extend.
+# Read-only verification steps the orchestrator always runs (cmds 1,3,5,6,7,8,
+# 8b, 8c, 8d, 9). Kept as an explicit tuple so the truthfulness guard fails
+# closed if a step silently disappears from ``Cmds run`` rather than only
+# checking the extend.
+#
+# Cycle 1272: the cmd8b/8c/8d family (drift invariant, coverage audit, artifact
+# reconciliation) was wired into the orchestrator after this tuple was written,
+# and the three new ``mark_run`` labels were never added here. A handoff that
+# silently dropped those steps therefore still passed the committed consistency
+# guard -- the exact false-evidence class this file exists to prevent (a record
+# that reads "Status: OK" while omitting three verification steps). The tokens
+# below match the literal labels in scripts/post_gate_orchestrator.sh
+# (``mark_run "8b drift invariant"``, ``"8c coverage audit"``,
+# ``"8d artifact reconciliation"``) so a rename on either side fails the guard.
 _VERIFY_TOKENS = (
     "1 date",
     "3 drift",
@@ -301,6 +312,9 @@ _VERIFY_TOKENS = (
     "6 git status",
     "7 data-cost inventory + tests",
     "8 ruff",
+    "8b drift invariant",
+    "8c coverage audit",
+    "8d artifact reconciliation",
     "9 state fingerprint",
 )
 
@@ -431,6 +445,71 @@ def test_false_extend_claim_is_rejected_when_gate_unreleased() -> None:
     )
     with pytest.raises(AssertionError):
         _assert_cmds_run_truthful(false_claim, "NOT released — pre-gate verification run only")
+
+
+def test_false_extend_claim_is_rejected_when_gate_released() -> None:
+    """Anti-vacuity: a released handoff that omits the mutating extend must fail.
+
+    Complement to the pre-gate case above: a handoff whose ``Gate state`` says
+    released but whose ``Cmds run`` drops ``2 extend`` / ``4 idempotent
+    re-extend`` misrepresents a full cycle as a read-only one. Reject it.
+    """
+    false_claim = (
+        "1 date, 3 drift, 5 6-module pytest, 6 git status, "
+        "7 data-cost inventory + tests, 8 ruff, 9 state fingerprint"
+    )
+    with pytest.raises(AssertionError):
+        _assert_cmds_run_truthful(false_claim, "released (gate epoch reached)")
+
+
+def test_read_only_steps_8bcd_must_be_recorded_when_gate_released() -> None:
+    """The cmd8b/8c/8d verification steps must appear in ``Cmds run``.
+
+    Regression guard for the Cycle-1272 gap: those three steps were wired into
+    the orchestrator (mark_run "8b drift invariant", "8c coverage audit",
+    "8d artifact reconciliation") after ``_VERIFY_TOKENS`` was written and were
+    never added to it, so a handoff that silently dropped them passed the
+    committed consistency guard while still reading "Status: OK". A released
+    handoff that omits any of the three must now fail.
+    """
+    released = (
+        "1 date, 2 extend, 3 drift, 4 idempotent re-extend, 5 6-module pytest, "
+        "6 git status, 7 data-cost inventory + tests, 8 ruff, "
+        "8b drift invariant, 8c coverage audit, 8d artifact reconciliation, "
+        "9 state fingerprint"
+    )
+    _assert_cmds_run_truthful(released, "released (gate epoch reached)")
+
+    dropped = released.replace("8b drift invariant, ", "")
+    with pytest.raises(AssertionError):
+        _assert_cmds_run_truthful(dropped, "released (gate epoch reached)")
+    dropped = released.replace("8c coverage audit, ", "")
+    with pytest.raises(AssertionError):
+        _assert_cmds_run_truthful(dropped, "released (gate epoch reached)")
+    dropped = released.replace("8d artifact reconciliation, ", "")
+    with pytest.raises(AssertionError):
+        _assert_cmds_run_truthful(dropped, "released (gate epoch reached)")
+
+
+def test_read_only_steps_8bcd_must_be_recorded_when_gate_unreleased() -> None:
+    """The cmd8b/8c/8d steps run in every mode, including pre-gate.
+
+    They are read-only (they never write state or artifacts), so a pre-gate
+    handoff must still list them -- a pre-gate run that silently dropped them
+    would be a record that omits verification steps while claiming the extend
+    was withheld.
+    """
+    pre_gate = (
+        "1 date, 3 drift, 5 6-module pytest, 6 git status, "
+        "7 data-cost inventory + tests, 8 ruff, "
+        "8b drift invariant, 8c coverage audit, 8d artifact reconciliation, "
+        "9 state fingerprint"
+    )
+    _assert_cmds_run_truthful(pre_gate, "NOT released — pre-gate verification run only")
+
+    dropped = pre_gate.replace("8b drift invariant, ", "")
+    with pytest.raises(AssertionError):
+        _assert_cmds_run_truthful(dropped, "NOT released — pre-gate verification run only")
 
 
 def _make_handoff_with_nav(nav: str, tmp_path: Path) -> Path:

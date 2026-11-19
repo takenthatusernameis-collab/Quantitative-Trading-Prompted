@@ -4,10 +4,10 @@
 
 - Candidate: `tsmomentum_spytrend_001` (the incumbent)
 - Sharpe convention: `arithmetic_annualized_rf0`
-- Committed record: 471 sessions, 2025-01-02 .. 2026-11-17
-- Trailing 63d Sharpe (gate under diagnosis): **-2.008334** vs gate 0.9 (FAIL); production decision **NO-GO** (failed gates: rolling_63d_sharpe, psr)
-- Rolling windows on the record: 409 | gate base rate 70.1711% (287/409) | current value at percentile 0.49%
-- Distribution: min -2.120279 | p10 -0.282709 | p25 0.472755 | median 1.847093 | p75 3.610123 | max 6.144063
+- Committed record: 472 sessions, 2025-01-02 .. 2026-11-18
+- Trailing 63d Sharpe (gate under diagnosis): **-1.974487** vs gate 0.9 (FAIL); production decision **NO-GO** (failed gates: rolling_63d_sharpe, psr)
+- Rolling windows on the record: 410 | gate base rate 70.0000% (287/410) | current value at percentile 0.73%
+- Distribution: min -2.120279 | p10 -0.287066 | p25 0.452639 | median 1.846415 | p75 3.605678 | max 6.144063
 - Read-only: `data/` and `config/` byte-identical before and after the run (**yes**); no committed artifact modified (**yes**).
 - Data source: committed parquet cache in `data/raw/` and the committed paper-trading state; the fetcher is never called.
 - No gate, threshold, parameter, universe, cost model, drift flag or verdict is changed by this tool.
@@ -18,42 +18,42 @@ The trailing 63-session Sharpe of the committed record is reproduced three ways 
 
 | Quantity | Value |
 |---|---|
-| From the committed state file | -2.008333566200 |
-| Stored `low_rolling_sharpe` drift flag | -2.008333566199979 |
-| Production `evaluate_go_no_go` gate table | -2.008333566200 (identical) |
+| From the committed state file | -1.974486795447 |
+| Stored `low_rolling_sharpe` drift flag | -1.9744867954469325 |
+| Production `evaluate_go_no_go` gate table | -1.974486795447 (identical) |
 | Offline recomputation of the strategy path | identical to 1e-12 |
 
 ### Overlay state realised on the committed record
 
 | Quantity | Value |
 |---|---|
-| Sessions | 471 |
-| Risk-off sessions (SPY trend filter fired, regime_exposure < 1) | **55** |
+| Sessions | 472 |
+| Risk-off sessions (SPY trend filter fired, regime_exposure < 1) | **56** |
 | Sessions with the drawdown overlay active (dd_scale < 1) | **0** |
-| vol_scale range / mean | [0.4373, 1.0000] / 0.7453 |
+| vol_scale range / mean | [0.4373, 1.0000] / 0.7448 |
 | Positions held (min / max / mean) | 0 / 4 / 3.53 |
 
-The volatility target was the only overlay that acted continuously (vol_scale between 0.4373 and 1.0000, mean 0.7453); the drawdown overlay never bound (0 sessions with dd_scale < 1) and the SPY trend filter fired on 55 of 471 sessions.
+The volatility target was the only overlay that acted continuously (vol_scale between 0.4373 and 1.0000, mean 0.7448); the drawdown overlay never bound (0 sessions with dd_scale < 1) and the SPY trend filter fired on 56 of 472 sessions.
 
 ## 2. Distribution of the rolling 63d Sharpe on the committed record
 
 | Statistic | Value |
 |---|---|
-| Windows | 409 |
+| Windows | 410 |
 | Minimum | -2.120279 |
-| p05 | -1.082800 |
-| p10 | -0.282709 |
-| p25 | 0.472755 |
-| Median | 1.847093 |
-| Mean | 2.026426 |
-| p75 | 3.610123 |
-| p90 | 4.584375 |
+| p05 | -1.133344 |
+| p10 | -0.287066 |
+| p25 | 0.452639 |
+| Median | 1.846415 |
+| Mean | 2.016668 |
+| p75 | 3.605678 |
+| p90 | 4.581838 |
 | Maximum | 6.144063 |
-| Std (ddof=1) | 1.902719 |
+| Std (ddof=1) | 1.910636 |
 
-- Gate base rate on the record itself: **70.1711%** (287/409 windows at Sharpe >= 0.9); moving-block bootstrap 95% CI [55.4951%, 89.4866%] (2000 resamples over the rolling-window series in blocks of 21 windows, seed 925).
-- Current value -2.008334 sits at percentile **0.49%** of the record's own rolling-window distribution (bootstrap 95% CI [2.93%, 98.04%]).
-- Failing runs (lengths): [36, 27, 25, 11, 8, 7, 3, 2, 1, 1, 1]; the current run is **27 window(s)** covering 2026-10-12 .. 2026-11-17; the last passing window ended **2026-10-09** (27 windows ago).
+- Gate base rate on the record itself: **70.0000%** (287/410 windows at Sharpe >= 0.9); moving-block bootstrap 95% CI [55.1220%, 89.2744%] (2000 resamples over the rolling-window series in blocks of 21 windows, seed 925).
+- Current value -1.974487 sits at percentile **0.73%** of the record's own rolling-window distribution (bootstrap 95% CI [2.68%, 97.80%]).
+- Failing runs (lengths): [36, 28, 25, 11, 8, 7, 3, 2, 1, 1, 1]; the current run is **28 window(s)** covering 2026-10-12 .. 2026-11-18; the last passing window ended **2026-10-09** (28 windows ago).
 - Recovery lag (failing window -> next pass): median 9.0, mean 11.93, max 36.
 - Non-overlapping windows (every 63th session, n=7, no window overlap): mean 2.239434, median 1.719354, min 0.317668, max 5.743801, pass rate 85.7143%.
 
@@ -71,7 +71,7 @@ The volatility target was the only overlay that acted continuously (vol_scale be
 | 7 window(s) | 2026-09-11 | 2026-09-21 |
 | 8 window(s) | 2026-09-23 | 2026-10-02 |
 | 2 window(s) | 2026-10-07 | 2026-10-08 |
-| 27 window(s) | 2026-10-12 | 2026-11-17 |
+| 28 window(s) | 2026-10-12 | 2026-11-18 |
 
 ### Calendar-month profile of the rolling series
 
@@ -96,7 +96,7 @@ The volatility target was the only overlay that acted continuously (vol_scale be
 | 2026-08 | 21 | 0.283446 | -0.227560 | 0.9524 |
 | 2026-09 | 21 | 0.393223 | -0.491937 | 0.7619 |
 | 2026-10 | 22 | 0.234516 | -0.768973 | 0.8636 |
-| 2026-11 | 12 | -1.473605 | -2.120279 | 1.0000 |
+| 2026-11 | 13 | -1.512134 | -2.120279 | 1.0000 |
 
 ### Worst 10 rolling windows
 
@@ -104,6 +104,7 @@ The volatility target was the only overlay that acted continuously (vol_scale be
 |---|---|---|---|---|
 | 2026-08-10 .. 2026-11-05 | -2.120279 | -5.476774% | -0.086933% | 0.650866% |
 | 2026-08-20 .. 2026-11-17 | -2.008334 | -5.620187% | -0.089209% | 0.705139% |
+| 2026-08-21 .. 2026-11-18 | -1.974487 | -5.525907% | -0.087713% | 0.705195% |
 | 2026-08-11 .. 2026-11-06 | -1.814422 | -4.738132% | -0.075208% | 0.658004% |
 | 2025-02-07 .. 2025-05-08 | -1.809887 | -2.921631% | -0.046375% | 0.406756% |
 | 2025-02-06 .. 2025-05-07 | -1.777267 | -2.870009% | -0.045556% | 0.406902% |
@@ -111,13 +112,12 @@ The volatility target was the only overlay that acted continuously (vol_scale be
 | 2026-08-18 .. 2026-11-13 | -1.483269 | -4.121975% | -0.065428% | 0.700237% |
 | 2025-02-10 .. 2025-05-09 | -1.466006 | -2.331806% | -0.037013% | 0.400790% |
 | 2025-02-05 .. 2025-05-06 | -1.462508 | -2.392359% | -0.037974% | 0.412181% |
-| 2026-08-13 .. 2026-11-10 | -1.439417 | -3.929897% | -0.062379% | 0.687946% |
 
 ## 3. Overlap with the published folds' Cycle-923 buckets
 
-Each rolling window is mapped onto the published walk-forward fold that contains its end date (the latest-starting fold when two overlap) and inherits that fold's Cycle-923 bucket labels. 289 of 409 windows fall inside a published fold's test window (folds [47, 48]); 120 fall outside every fold -- the last published fold (#48) ends its test window on 2026-05-28 -- and 169 windows fall inside two folds.
+Each rolling window is mapped onto the published walk-forward fold that contains its end date (the latest-starting fold when two overlap) and inherits that fold's Cycle-923 bucket labels. 289 of 410 windows fall inside a published fold's test window (folds [47, 48]); 121 fall outside every fold -- the last published fold (#48) ends its test window on 2026-05-28 -- and 169 windows fall inside two folds.
 
-**Reading the two tests together.** The permutation p-value shuffles the bucket labels across the 409 windows and therefore treats them as independent observations; consecutive rolling windows overlap by 62 sessions, so that p-value is anticonservative by construction. The moving-block bootstrap CI on the bucket gap is the dependence-aware test and is the one the verdict uses.
+**Reading the two tests together.** The permutation p-value shuffles the bucket labels across the 410 windows and therefore treats them as independent observations; consecutive rolling windows overlap by 62 sessions, so that p-value is anticonservative by construction. The moving-block bootstrap CI on the bucket gap is the dependence-aware test and is the one the verdict uses.
 
 ### F1 calendar phase (published fold parity)
 
@@ -125,7 +125,7 @@ Each rolling window is mapped onto the published walk-forward fold that contains
 |---|---|---|---|---|
 | phase_A | 47 | 0.228400 | -0.282805 | 0.7872 |
 | phase_B | 242 | 3.147431 | 3.295418 | 0.0165 |
-| no_fold | 120 | 0.469959 | 0.335098 | 0.6750 |
+| no_fold | 121 | 0.449757 | 0.332991 | 0.6777 |
 
 - Dispersion share (eta^2) over the 289 covered windows: 0.353830; permutation p-value (10000 permutations, seed 925): **0.000100**
 - Bucket gap (phase_A - phase_B): -2.919032; moving-block bootstrap 95% CI [-4.506950, +1.061537] -- includes zero
@@ -137,7 +137,7 @@ Each rolling window is mapped onto the published walk-forward fold that contains
 |---|---|---|---|---|
 | risk_on | 289 | 2.672710 | 2.943380 | 0.1419 |
 | risk_off | 0 | not estimable (bucket absent in the record period) | - | - |
-| no_fold | 120 | 0.469959 | 0.335098 | 0.6750 |
+| no_fold | 121 | 0.449757 | 0.332991 | 0.6777 |
 
 - **This family is one-sided inside the committed record**: only one of its buckets occurs, so its bucket gap is **not estimable** from this record (the absence is reported, not imputed).
 
@@ -151,7 +151,7 @@ Each rolling window is mapped onto the published walk-forward fold that contains
 |---|---|---|---|---|
 | up | 289 | 2.672710 | 2.943380 | 0.1419 |
 | down | 0 | not estimable (bucket absent in the record period) | - | - |
-| no_fold | 120 | 0.469959 | 0.335098 | 0.6750 |
+| no_fold | 121 | 0.449757 | 0.332991 | 0.6777 |
 
 - **This family is one-sided inside the committed record**: only one of its buckets occurs, so its bucket gap is **not estimable** from this record (the absence is reported, not imputed).
 
@@ -166,7 +166,7 @@ Each rolling window is mapped onto the published walk-forward fold that contains
 | low_vol | 242 | 3.147431 | 3.295418 | 0.0165 |
 | med_vol | 47 | 0.228400 | -0.282805 | 0.7872 |
 | high_vol | 0 | not estimable (bucket absent in the record period) | - | - |
-| no_fold | 120 | 0.469959 | 0.335098 | 0.6750 |
+| no_fold | 121 | 0.449757 | 0.332991 | 0.6777 |
 
 - Dispersion share (eta^2) over the 289 covered windows: 0.353830; permutation p-value (10000 permutations, seed 925): **0.000100**
 - Bucket gap (low_vol - med_vol): +2.919032; moving-block bootstrap 95% CI [-1.061537, +4.506950] -- includes zero
@@ -178,10 +178,10 @@ Spearman rank correlations between the rolling 63d Sharpe and window-level obser
 
 | State variable | Windows | Spearman rho | 95% CI | Excludes zero |
 |---|---|---|---|---|
-| spy_ret_12m | 404 | 0.0126 | [-0.4082, +0.5753] | no |
-| spy_rv_63 | 404 | -0.3862 | [-0.6426, +0.3602] | no |
-| spy_sma_gap | 404 | 0.4642 | [-0.1934, +0.7193] | no |
-| strategy_window_realised_vol | 409 | -0.1376 | [-0.6924, +0.3814] | no |
+| spy_ret_12m | 404 | 0.0126 | [-0.4115, +0.5771] | no |
+| spy_rv_63 | 404 | -0.3862 | [-0.6475, +0.3691] | no |
+| spy_sma_gap | 404 | 0.4642 | [-0.1938, +0.7225] | no |
+| strategy_window_realised_vol | 410 | -0.1393 | [-0.6920, +0.3556] | no |
 
 ## 5. Isolated overlay counterfactuals (scratch paths, no production change)
 
@@ -211,43 +211,43 @@ The committed overlay sets the exposure of session *t* from a realised-volatilit
 
 | Quantity | Same-session estimate (committed) | Estimate lagged 1 session |
 |---|---|---|
-| Committed-record Sharpe | 1.473346 | 1.410227 |
-| Committed-record return sum | +0.274219 | +0.268943 |
-| Trailing 63d Sharpe | -2.008334 | -1.621363 |
+| Committed-record Sharpe | 1.470940 | 1.410227 |
+| Committed-record return sum | +0.274065 | +0.268943 |
+| Trailing 63d Sharpe | -1.974487 | -1.621363 |
 | vol_scale range on the record | [0.4373, 1.0000] | [0.4373, 1.0000] |
 
 This is a **measurement** finding, not a fix: lagging the estimate makes the failing window slightly worse, so it is not the cause of the gate failure, and it changes every published artifact of the candidate.
 
 ## 6. Verdict
 
-**1. The failing gate value is a tail state of the record's own rolling-window distribution, not a new level.** The trailing 63-session Sharpe -2.008334 sits at the 0.49% percentile of the 409 rolling windows the record has produced; the gate passes in 70.17% of them (bootstrap 95% CI [55.50%, 89.49%]). The current failing run covers 2026-10-12 .. 2026-11-17 (27 window(s)), and the record has produced longer failing runs before (the longest: 36 windows).
+**1. The failing gate value is a tail state of the record's own rolling-window distribution, not a new level.** The trailing 63-session Sharpe -1.974487 sits at the 0.73% percentile of the 410 rolling windows the record has produced; the gate passes in 70.00% of them (bootstrap 95% CI [55.12%, 89.27%]). The current failing run covers 2026-10-12 .. 2026-11-18 (28 window(s)), and the record has produced longer failing runs before (the longest: 36 windows).
 
 **2. The weakness does not cluster in any published observable-state bucket.** The families F2_spy_trend_state, F3_spy_12m_return_sign are one-sided inside the record period (the risk-off / down-trend / high-volatility states that Cycle 923 flagged never occur in the committed record), so their bucket gaps are **not estimable** from this record and are reported as absent rather than imputed; the two-sided F1_calendar_phase, F4_train_63d_realvol_tercile partition the record identically (the published folds that cover it are contiguous in time), i.e. they are a time split of the record rather than an independent state, and their bucket gap CI includes zero. The apparent concentration is therefore consistent with sampling noise at this record's effective sample size -- the same conclusion Cycle 924 reached for the fold-level buckets.
 
-**3. No permitted change clears the gate.** The strongest isolated overlay variant (`V1_no_vol_target`, volatility target disabled (vol_scale == 1)) lifts the trailing window from -2.008334 to -1.323347, still far below the 0.9 gate, and every other variant is below that. The weakness is an overlay-timing outcome -- the volatility target de-risks into the high-volatility sessions that dominate the window -- not evidence that the momentum edge has decayed, and not something a threshold, universe, cost-model or parameter change may fix.
+**3. No permitted change clears the gate.** The strongest isolated overlay variant (`V1_no_vol_target`, volatility target disabled (vol_scale == 1)) lifts the trailing window from -1.974487 to -1.323347, still far below the 0.9 gate, and every other variant is below that. The weakness is an overlay-timing outcome -- the volatility target de-risks into the high-volatility sessions that dominate the window -- not evidence that the momentum edge has decayed, and not something a threshold, universe, cost-model or parameter change may fix.
 
 **4. The gate is a symptom, not the binding constraint.** Per Cycle 866, clearing `rolling_63d_sharpe` alone cannot yield GO on this record: the PSR gate is decisive and the decision stays NO-GO (failed gates: rolling_63d_sharpe, psr).
 
-**5. Separate measurement defect found and quantified (not a fix).** The volatility estimate sets session t's exposure from a trailing window that includes session t itself (same-session feedback, in `research/run_cycle6.py`, `src/simulation/engine.py` and `src/evaluation/risk.py`). Lagging the estimate one session changes the committed record's Sharpe from 1.473346 to 1.410227, the full-path Sharpe from 1.476044 to 1.400029 and the failing window from -2.008334 to -1.621363: it makes the failing window slightly worse, so it is **not** the cause of the gate failure, but it does flatter the published Sharpe statistics of this candidate (the headline walk-forward mean moves the other way only because of the one numerical-artifact fold documented in section 5). It is handed off as a separate, explicitly scoped re-derivation task -- **no production code is changed by this cycle**.
+**5. Separate measurement defect found and quantified (not a fix).** The volatility estimate sets session t's exposure from a trailing window that includes session t itself (same-session feedback, in `research/run_cycle6.py`, `src/simulation/engine.py` and `src/evaluation/risk.py`). Lagging the estimate one session changes the committed record's Sharpe from 1.470940 to 1.410227, the full-path Sharpe from 1.476044 to 1.400029 and the failing window from -1.974487 to -1.621363: it makes the failing window slightly worse, so it is **not** the cause of the gate failure, but it does flatter the published Sharpe statistics of this candidate (the headline walk-forward mean moves the other way only because of the one numerical-artifact fold documented in section 5). It is handed off as a separate, explicitly scoped re-derivation task -- **no production code is changed by this cycle**.
 
 ## 7. Checks
 
-- [committed_record_loaded]: PASS (observed: 471 sessions, expected: > 63 sessions)
+- [committed_record_loaded]: PASS (observed: 472 sessions, expected: > 63 sessions)
 - [gate_threshold_read_from_config]: PASS (observed: 0.9, expected: 0.9)
-- [trailing_63d_sharpe_matches_stored_drift_flag]: PASS (observed: -2.008333566200 vs stored -2.008333566199979, expected: )
-- [trailing_63d_sharpe_matches_production_gate_table]: PASS (observed: production -2.008333566200, expected: )
+- [trailing_63d_sharpe_matches_stored_drift_flag]: PASS (observed: -1.974486795447 vs stored -1.9744867954469325, expected: )
+- [trailing_63d_sharpe_matches_production_gate_table]: PASS (observed: production -1.974486795447, expected: )
 - [local_baseline_path_bit_identical_to_run_cycle6_overlay]: PASS (observed: max |diff| = 0.000e+00, expected: 0.0 (bit-identical))
 - [offline_path_reproduces_every_committed_session]: PASS (observed: max |diff| = 5.421e-20 over 466 sessions, expected: <= 1e-12)
 - [offline_path_reproduces_trailing_63d_sharpe]: PASS (observed: -1.439416898299 vs -1.439416898299, expected: )
-- [committed_record_run_history_matches_the_session_count]: PASS (observed: 471 entries, expected: 471)
-- [rolling_window_count]: PASS (observed: 409 windows, expected: 409)
-- [rolling_series_last_value_matches_production_sharpe]: PASS (observed: -2.008333566200, expected: )
+- [committed_record_run_history_matches_the_session_count]: PASS (observed: 472 entries, expected: 472)
+- [rolling_window_count]: PASS (observed: 410 windows, expected: 410)
+- [rolling_series_last_value_matches_production_sharpe]: PASS (observed: -1.974486795447, expected: )
 - [bootstrap_is_deterministic]: PASS (observed: 2000 resamples, seed 925, expected: fixed seed)
 - [published_fold_buckets_reused_from_cycle_923]: PASS (observed: 48 folds, expected: 48 folds)
-- [bucket_family_F1_calendar_phase_absent_buckets_are_reported_not_estimable]: PASS (observed: n=[47, 242, 120], expected: every bucket either has windows or is reported as not estimable)
-- [bucket_family_F2_spy_trend_state_absent_buckets_are_reported_not_estimable]: PASS (observed: n=[289, 0, 120], expected: every bucket either has windows or is reported as not estimable)
-- [bucket_family_F3_spy_12m_return_sign_absent_buckets_are_reported_not_estimable]: PASS (observed: n=[289, 0, 120], expected: every bucket either has windows or is reported as not estimable)
-- [bucket_family_F4_train_63d_realvol_tercile_absent_buckets_are_reported_not_estimable]: PASS (observed: n=[242, 47, 0, 120], expected: every bucket either has windows or is reported as not estimable)
+- [bucket_family_F1_calendar_phase_absent_buckets_are_reported_not_estimable]: PASS (observed: n=[47, 242, 121], expected: every bucket either has windows or is reported as not estimable)
+- [bucket_family_F2_spy_trend_state_absent_buckets_are_reported_not_estimable]: PASS (observed: n=[289, 0, 121], expected: every bucket either has windows or is reported as not estimable)
+- [bucket_family_F3_spy_12m_return_sign_absent_buckets_are_reported_not_estimable]: PASS (observed: n=[289, 0, 121], expected: every bucket either has windows or is reported as not estimable)
+- [bucket_family_F4_train_63d_realvol_tercile_absent_buckets_are_reported_not_estimable]: PASS (observed: n=[242, 47, 0, 121], expected: every bucket either has windows or is reported as not estimable)
 - [counterfactual_baseline_reproduces_the_published_walk_forward]: PASS (observed: 0.947307, expected: 0.947307 (published))
 - [drawdown_control_contributes_exactly_zero_on_this_record]: PASS (observed: V3 == V0 on the record, expected: )
 - [no_counterfactual_variant_clears_the_rolling_gate]: PASS (observed: V0_baseline=-1.4394, V1_no_vol_target=-1.3233, V2_vol_estimate_lagged_1d=-1.6214, V3_no_drawdown_control=-1.4394, V4_no_overlay=-1.3233, expected: every variant below the 0.9 gate)
@@ -279,7 +279,7 @@ git status --porcelain data/ config/
     {
       "expected": "> 63 sessions",
       "name": "committed_record_loaded",
-      "observed": "471 sessions",
+      "observed": "472 sessions",
       "pass": true
     },
     {
@@ -291,13 +291,13 @@ git status --porcelain data/ config/
     {
       "expected": "",
       "name": "trailing_63d_sharpe_matches_stored_drift_flag",
-      "observed": "-2.008333566200 vs stored -2.008333566199979",
+      "observed": "-1.974486795447 vs stored -1.9744867954469325",
       "pass": true
     },
     {
       "expected": "",
       "name": "trailing_63d_sharpe_matches_production_gate_table",
-      "observed": "production -2.008333566200",
+      "observed": "production -1.974486795447",
       "pass": true
     },
     {
@@ -319,21 +319,21 @@ git status --porcelain data/ config/
       "pass": true
     },
     {
-      "expected": "471",
+      "expected": "472",
       "name": "committed_record_run_history_matches_the_session_count",
-      "observed": "471 entries",
+      "observed": "472 entries",
       "pass": true
     },
     {
-      "expected": "409",
+      "expected": "410",
       "name": "rolling_window_count",
-      "observed": "409 windows",
+      "observed": "410 windows",
       "pass": true
     },
     {
       "expected": "",
       "name": "rolling_series_last_value_matches_production_sharpe",
-      "observed": "-2.008333566200",
+      "observed": "-1.974486795447",
       "pass": true
     },
     {
@@ -351,25 +351,25 @@ git status --porcelain data/ config/
     {
       "expected": "every bucket either has windows or is reported as not estimable",
       "name": "bucket_family_F1_calendar_phase_absent_buckets_are_reported_not_estimable",
-      "observed": "n=[47, 242, 120]",
+      "observed": "n=[47, 242, 121]",
       "pass": true
     },
     {
       "expected": "every bucket either has windows or is reported as not estimable",
       "name": "bucket_family_F2_spy_trend_state_absent_buckets_are_reported_not_estimable",
-      "observed": "n=[289, 0, 120]",
+      "observed": "n=[289, 0, 121]",
       "pass": true
     },
     {
       "expected": "every bucket either has windows or is reported as not estimable",
       "name": "bucket_family_F3_spy_12m_return_sign_absent_buckets_are_reported_not_estimable",
-      "observed": "n=[289, 0, 120]",
+      "observed": "n=[289, 0, 121]",
       "pass": true
     },
     {
       "expected": "every bucket either has windows or is reported as not estimable",
       "name": "bucket_family_F4_train_63d_realvol_tercile_absent_buckets_are_reported_not_estimable",
-      "observed": "n=[242, 47, 0, 120]",
+      "observed": "n=[242, 47, 0, 121]",
       "pass": true
     },
     {
@@ -412,8 +412,8 @@ git status --porcelain data/ config/
   "correlations": [
     {
       "ci95": [
-        -0.4081684836693935,
-        0.5752920990428484
+        -0.4115078556244215,
+        0.5770949633288829
       ],
       "excludes_zero": false,
       "n": 404,
@@ -422,8 +422,8 @@ git status --porcelain data/ config/
     },
     {
       "ci95": [
-        -0.6426111691154991,
-        0.36024401206462775
+        -0.6475235323727778,
+        0.36906395026385114
       ],
       "excludes_zero": false,
       "n": 404,
@@ -432,8 +432,8 @@ git status --porcelain data/ config/
     },
     {
       "ci95": [
-        -0.19343824946993649,
-        0.7192895774642288
+        -0.1937974844106487,
+        0.7225011635331091
       ],
       "excludes_zero": false,
       "n": 404,
@@ -442,38 +442,38 @@ git status --porcelain data/ config/
     },
     {
       "ci95": [
-        -0.6924133079425404,
-        0.3814176462609497
+        -0.6920334209934604,
+        0.35556185361386816
       ],
       "excludes_zero": false,
-      "n": 409,
-      "spearman": -0.13762737965363256,
+      "n": 410,
+      "spearman": -0.1393275652457415,
       "variable": "strategy_window_realised_vol"
     }
   ],
   "cycle": "925",
   "data_source": "committed parquet cache in data/raw/ and the committed paper-trading state (fetcher never called)",
   "distribution": {
-    "base_rate": 0.7017114914425427,
+    "base_rate": 0.7,
     "base_rate_ci95": [
-      0.5549511002444988,
-      0.8948655256723717
+      0.551219512195122,
+      0.8927439024390241
     ],
-    "current": -2.008333566199978,
-    "current_failing_run": 27,
+    "current": -1.9744867954469323,
+    "current_failing_run": 28,
     "current_failing_run_detail": {
       "first_window_end": "2026-10-12",
-      "last_window_end": "2026-11-17",
-      "length": 27
+      "last_window_end": "2026-11-18",
+      "length": 28
     },
-    "current_percentile_rank": 0.004889975550122249,
+    "current_percentile_rank": 0.007317073170731708,
     "current_rank_ci95": [
-      0.029278728606356972,
-      0.980440097799511
+      0.026829268292682926,
+      0.9780487804878049
     ],
     "failing_runs": [
       36,
-      27,
+      28,
       25,
       11,
       8,
@@ -537,28 +537,28 @@ git status --porcelain data/ config/
       },
       {
         "first_window_end": "2026-10-12",
-        "last_window_end": "2026-11-17",
-        "length": 27
+        "last_window_end": "2026-11-18",
+        "length": 28
       }
     ],
     "last_passing_window_end": "2026-10-09",
     "max": 6.14406336732776,
-    "mean": 2.0264260203818183,
-    "median": 1.8470931720408093,
+    "mean": 2.0166676964407726,
+    "median": 1.8464154584543326,
     "min": -2.1202794870108113,
-    "n_fail": 122,
+    "n_fail": 123,
     "n_pass": 287,
-    "n_windows": 409,
-    "p05": -1.082799947060829,
-    "p10": -0.2827086769396577,
-    "p25": 0.4727551340423926,
-    "p75": 3.610123155722221,
-    "p90": 4.584374723337831,
+    "n_windows": 410,
+    "p05": -1.133343527429453,
+    "p10": -0.28706644013510196,
+    "p25": 0.4526394534464114,
+    "p75": 3.605677934779518,
+    "p90": 4.581838409708416,
     "recovery_lag_max": 36,
     "recovery_lag_mean": 11.926315789473684,
     "recovery_lag_median": 9.0,
-    "std": 1.9027190637735207,
-    "windows_since_last_pass": 27
+    "std": 1.9106361119596265,
+    "windows_since_last_pass": 28
   },
   "families": {
     "F1_calendar_phase": {
@@ -587,10 +587,10 @@ git status --porcelain data/ config/
         {
           "bucket": "no_fold",
           "estimable": true,
-          "fail_rate": 0.675,
-          "mean_rolling_sharpe": 0.4699587588877686,
-          "median_rolling_sharpe": 0.3350980232103934,
-          "n": 120
+          "fail_rate": 0.6776859504132231,
+          "mean_rolling_sharpe": 0.44975672951310164,
+          "median_rolling_sharpe": 0.33299056423794793,
+          "n": 121
         }
       ],
       "dispersion_share": 0.35383012261975,
@@ -628,10 +628,10 @@ git status --porcelain data/ config/
         {
           "bucket": "no_fold",
           "estimable": true,
-          "fail_rate": 0.675,
-          "mean_rolling_sharpe": 0.4699587588877686,
-          "median_rolling_sharpe": 0.3350980232103934,
-          "n": 120
+          "fail_rate": 0.6776859504132231,
+          "mean_rolling_sharpe": 0.44975672951310164,
+          "median_rolling_sharpe": 0.33299056423794793,
+          "n": 121
         }
       ],
       "dispersion_share": 0.0,
@@ -669,10 +669,10 @@ git status --porcelain data/ config/
         {
           "bucket": "no_fold",
           "estimable": true,
-          "fail_rate": 0.675,
-          "mean_rolling_sharpe": 0.4699587588877686,
-          "median_rolling_sharpe": 0.3350980232103934,
-          "n": 120
+          "fail_rate": 0.6776859504132231,
+          "mean_rolling_sharpe": 0.44975672951310164,
+          "median_rolling_sharpe": 0.33299056423794793,
+          "n": 121
         }
       ],
       "dispersion_share": 0.0,
@@ -718,10 +718,10 @@ git status --porcelain data/ config/
         {
           "bucket": "no_fold",
           "estimable": true,
-          "fail_rate": 0.675,
-          "mean_rolling_sharpe": 0.4699587588877686,
-          "median_rolling_sharpe": 0.3350980232103934,
-          "n": 120
+          "fail_rate": 0.6776859504132231,
+          "mean_rolling_sharpe": 0.44975672951310164,
+          "median_rolling_sharpe": 0.33299056423794793,
+          "n": 121
         }
       ],
       "dispersion_share": 0.35383012261975,
@@ -800,7 +800,7 @@ git status --porcelain data/ config/
   "fold_overlap": {
     "n_windows_in_two_folds": 169,
     "n_windows_with_a_fold": 289,
-    "n_windows_without_a_fold": 120
+    "n_windows_without_a_fold": 121
   },
   "fold_structure": {
     "folds_covering_the_record": [
@@ -949,10 +949,10 @@ git status --porcelain data/ config/
     },
     {
       "fail_rate": 1.0,
-      "mean_rolling_sharpe": -1.473605129386139,
+      "mean_rolling_sharpe": -1.5121344883138923,
       "min_rolling_sharpe": -2.1202794870108113,
       "month": "2026-11",
-      "n": 12
+      "n": 13
     }
   ],
   "non_overlapping": {
@@ -973,18 +973,18 @@ git status --porcelain data/ config/
   },
   "record": {
     "first_session": "2025-01-02",
-    "full_period_sharpe": 1.4733459926465635,
-    "last_session": "2026-11-17",
-    "n_sessions": 471,
+    "full_period_sharpe": 1.4709398862794072,
+    "last_session": "2026-11-18",
+    "n_sessions": 472,
     "overlay_state": {
       "n_drawdown_overlay_sessions": 0,
       "n_positions_max": 4,
-      "n_positions_mean": 3.5329087048832273,
+      "n_positions_mean": 3.5254237288135593,
       "n_positions_min": 0,
-      "n_risk_off_sessions": 55,
-      "n_run_history": 471,
+      "n_risk_off_sessions": 56,
+      "n_run_history": 472,
       "vol_scale_max": 1.0,
-      "vol_scale_mean": 0.7453343582352339,
+      "vol_scale_mean": 0.7448424775253254,
       "vol_scale_min": 0.43731674589035896
     },
     "production_decision": "NO-GO",
@@ -992,15 +992,15 @@ git status --porcelain data/ config/
       "rolling_63d_sharpe",
       "psr"
     ],
-    "stored_drift_flag": -2.008333566199979,
-    "trailing_63d_sharpe": -2.008333566199979
+    "stored_drift_flag": -1.9744867954469325,
+    "trailing_63d_sharpe": -1.9744867954469325
   },
   "same_session_feedback": {
-    "record_return_sum_base": 0.27421925704609107,
+    "record_return_sum_base": 0.2740652952787505,
     "record_return_sum_lagged": 0.2689425288005978,
-    "record_sharpe_base": 1.4733459926465635,
+    "record_sharpe_base": 1.4709398862794072,
     "record_sharpe_lagged": 1.4102271780414941,
-    "trailing_63d_base": -2.008333566199979,
+    "trailing_63d_base": -1.9744867954469325,
     "trailing_63d_lagged": -1.6213634935218275,
     "vol_scale_base_max": 1.0,
     "vol_scale_base_min": 0.43731674589035896,
@@ -1130,7 +1130,7 @@ git status --porcelain data/ config/
       "wf_worst_fold_test_start": "2008-01-22"
     }
   },
-  "verdict": "**1. The failing gate value is a tail state of the record's own rolling-window distribution, not a new level.** The trailing 63-session Sharpe -2.008334 sits at the 0.49% percentile of the 409 rolling windows the record has produced; the gate passes in 70.17% of them (bootstrap 95% CI [55.50%, 89.49%]). The current failing run covers 2026-10-12 .. 2026-11-17 (27 window(s)), and the record has produced longer failing runs before (the longest: 36 windows).\n\n**2. The weakness does not cluster in any published observable-state bucket.** The families F2_spy_trend_state, F3_spy_12m_return_sign are one-sided inside the record period (the risk-off / down-trend / high-volatility states that Cycle 923 flagged never occur in the committed record), so their bucket gaps are **not estimable** from this record and are reported as absent rather than imputed; the two-sided F1_calendar_phase, F4_train_63d_realvol_tercile partition the record identically (the published folds that cover it are contiguous in time), i.e. they are a time split of the record rather than an independent state, and their bucket gap CI includes zero. The apparent concentration is therefore consistent with sampling noise at this record's effective sample size -- the same conclusion Cycle 924 reached for the fold-level buckets.\n\n**3. No permitted change clears the gate.** The strongest isolated overlay variant (`V1_no_vol_target`, volatility target disabled (vol_scale == 1)) lifts the trailing window from -2.008334 to -1.323347, still far below the 0.9 gate, and every other variant is below that. The weakness is an overlay-timing outcome -- the volatility target de-risks into the high-volatility sessions that dominate the window -- not evidence that the momentum edge has decayed, and not something a threshold, universe, cost-model or parameter change may fix.\n\n**4. The gate is a symptom, not the binding constraint.** Per Cycle 866, clearing `rolling_63d_sharpe` alone cannot yield GO on this record: the PSR gate is decisive and the decision stays NO-GO (failed gates: rolling_63d_sharpe, psr).\n\n**5. Separate measurement defect found and quantified (not a fix).** The volatility estimate sets session t's exposure from a trailing window that includes session t itself (same-session feedback, in `research/run_cycle6.py`, `src/simulation/engine.py` and `src/evaluation/risk.py`). Lagging the estimate one session changes the committed record's Sharpe from 1.473346 to 1.410227, the full-path Sharpe from 1.476044 to 1.400029 and the failing window from -2.008334 to -1.621363: it makes the failing window slightly worse, so it is **not** the cause of the gate failure, but it does flatter the published Sharpe statistics of this candidate (the headline walk-forward mean moves the other way only because of the one numerical-artifact fold documented in section 5). It is handed off as a separate, explicitly scoped re-derivation task -- **no production code is changed by this cycle**.",
+  "verdict": "**1. The failing gate value is a tail state of the record's own rolling-window distribution, not a new level.** The trailing 63-session Sharpe -1.974487 sits at the 0.73% percentile of the 410 rolling windows the record has produced; the gate passes in 70.00% of them (bootstrap 95% CI [55.12%, 89.27%]). The current failing run covers 2026-10-12 .. 2026-11-18 (28 window(s)), and the record has produced longer failing runs before (the longest: 36 windows).\n\n**2. The weakness does not cluster in any published observable-state bucket.** The families F2_spy_trend_state, F3_spy_12m_return_sign are one-sided inside the record period (the risk-off / down-trend / high-volatility states that Cycle 923 flagged never occur in the committed record), so their bucket gaps are **not estimable** from this record and are reported as absent rather than imputed; the two-sided F1_calendar_phase, F4_train_63d_realvol_tercile partition the record identically (the published folds that cover it are contiguous in time), i.e. they are a time split of the record rather than an independent state, and their bucket gap CI includes zero. The apparent concentration is therefore consistent with sampling noise at this record's effective sample size -- the same conclusion Cycle 924 reached for the fold-level buckets.\n\n**3. No permitted change clears the gate.** The strongest isolated overlay variant (`V1_no_vol_target`, volatility target disabled (vol_scale == 1)) lifts the trailing window from -1.974487 to -1.323347, still far below the 0.9 gate, and every other variant is below that. The weakness is an overlay-timing outcome -- the volatility target de-risks into the high-volatility sessions that dominate the window -- not evidence that the momentum edge has decayed, and not something a threshold, universe, cost-model or parameter change may fix.\n\n**4. The gate is a symptom, not the binding constraint.** Per Cycle 866, clearing `rolling_63d_sharpe` alone cannot yield GO on this record: the PSR gate is decisive and the decision stays NO-GO (failed gates: rolling_63d_sharpe, psr).\n\n**5. Separate measurement defect found and quantified (not a fix).** The volatility estimate sets session t's exposure from a trailing window that includes session t itself (same-session feedback, in `research/run_cycle6.py`, `src/simulation/engine.py` and `src/evaluation/risk.py`). Lagging the estimate one session changes the committed record's Sharpe from 1.470940 to 1.410227, the full-path Sharpe from 1.476044 to 1.400029 and the failing window from -1.974487 to -1.621363: it makes the failing window slightly worse, so it is **not** the cause of the gate failure, but it does flatter the published Sharpe statistics of this candidate (the headline walk-forward mean moves the other way only because of the one numerical-artifact fold documented in section 5). It is handed off as a separate, explicitly scoped re-derivation task -- **no production code is changed by this cycle**.",
   "worst_windows": [
     {
       "rolling_sharpe": -2.1202794870108113,
@@ -1147,6 +1147,14 @@ git status --porcelain data/ config/
       "window_return": -0.0562018713538963,
       "window_start": "2026-08-20",
       "window_std": 0.00705138862252547
+    },
+    {
+      "rolling_sharpe": -1.9744867954469323,
+      "window_end": "2026-11-18",
+      "window_mean": -0.0008771281406671539,
+      "window_return": -0.055259072862030696,
+      "window_start": "2026-08-21",
+      "window_std": 0.0070519476762055874
     },
     {
       "rolling_sharpe": -1.8144217837687089,
@@ -1203,14 +1211,6 @@ git status --porcelain data/ config/
       "window_return": -0.023923588010341848,
       "window_start": "2025-02-05",
       "window_std": 0.00412180769882591
-    },
-    {
-      "rolling_sharpe": -1.4394168982987594,
-      "window_end": "2026-11-10",
-      "window_mean": -0.0006237931368574893,
-      "window_return": -0.03929896762202183,
-      "window_start": "2026-08-13",
-      "window_std": 0.006879458668122062
     }
   ]
 }
