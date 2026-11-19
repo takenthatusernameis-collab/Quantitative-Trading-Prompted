@@ -1,5 +1,13 @@
 # Next Agent Task: 2026-11-20 gate cycle (pre-gate first; extend only at/after 22:00Z)
 
+## Pre-gate verification — 2026-11-19T22:33Z (run 44577861725 attempt 1 session 17 inv 1) — **PRE-GATE OK; GATE UNREACHABLE THIS RUN**
+- **UTC 2026-11-19T22:33:41Z.** Gate for 2026-11-20 **NOT released** (releases 22:00 UTC 2026-11-20, epoch 1795212000; ~23.4h / T-84379s remaining).
+- **Pre-gate cheap path exit 0 (one call, then STOP):** `GATE_EPOCH=1795212000 STATE_SHA256=743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1795127621 (2026-11-19T22:33:41Z) < gate 1795212000 (2026-11-20T22:00:00Z); T-84379s remaining. state sha256 matches (743c6e41…); data/raw clean. STOP — do not re-run the cycle.` EXIT=0.
+- **State unchanged:** SHA256 `743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab` == HEAD `1576dc5`; `last_run_date 2026-11-19`; NAV `130307.21196257228`; `run_history` **473**. `git status --porcelain` → 0 lines (working tree clean); `git status --porcelain -- data/raw` → 0 lines. `/tmp/kilo-venv` present (Python 3.14.4, ruff 0.17.6).
+- **Supervisor:** no `.kilo-runtime/current-supervisor-recommendation.json` at startup; disposition `verified`/`none-received` refreshed in `.kilo-runtime/worker-disposition.json` (runtime, not committed).
+- **Gate reachability (deterministic blocker, not a failure loop):** now epoch 1795127621 vs gate 1795212000 → ~23.4h out. This run's envelope ends well before the gate. The real extension cannot execute in this run; the run active at/after 22:00 UTC 2026-11-20 must run Step 2.
+- **Handoff:** `NEXT_AGENT_TASK.md` current-status refreshed; objective, acceptance criteria, validation commands, and scope boundaries unchanged. No commits made (user instruction); `data/raw/` untouched.
+
 ## Pre-gate verification — 2026-11-19T22:31Z (run 44577861725 attempt 1 session 16 inv 1) — **PRE-GATE OK; GATE UNREACHABLE THIS RUN**
 - **UTC 2026-11-19T22:31:48Z.** Gate for 2026-11-20 **NOT released** (releases 22:00 UTC 2026-11-20, epoch 1795212000; ~23.5h / T-84492s remaining).
 - **Pre-gate cheap path exit 0 (one call, then STOP):** `GATE_EPOCH=1795212000 STATE_SHA256=743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1795127508 (2026-11-19T22:31:48Z) < gate 1795212000 (2026-11-20T22:00:00Z); T-84492s remaining. state sha256 matches (743c6e41…); data/raw clean. STOP — do not re-run the cycle.` EXIT=0.
