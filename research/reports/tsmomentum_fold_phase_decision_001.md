@@ -742,7 +742,7 @@ git diff --stat src/ config/ research/experiments/ research/reports/
     "published_mean_position": "published 0.947307 = (1.385035 + 0.509580) / 2",
     "union_covers_published_folds": true
   },
-  "point_in_time": "signals use only data available at formation (weights shifted one day), the SPY SMA is computed point-in-time, and the overlay/cost model are applied on the same continuously computed path for every fold and phase",
+  "point_in_time": "signals use only data available at formation (weights shifted one day); the SPY SMA regime factor uses session t's own close on the default path (opt-in lag_regime_exposure=True shifts it one session, see research/reports/tsmomentum_regime_lookahead_audit_001.md); the overlay/cost model is applied on the same continuously computed path for every fold and phase",
   "published_anchor_value": 0.9473,
   "published_record_path": "research/experiments/tsmomentum_regime_filter_wf_001.md",
   "published_verdict_original": "Credible Candidate",

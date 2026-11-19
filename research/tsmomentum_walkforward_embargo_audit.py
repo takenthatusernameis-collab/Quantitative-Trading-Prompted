@@ -1283,9 +1283,11 @@ def run_audit(
         "slippage_bps": slippage_bps * 10000.0,
         "rf_annual": get_risk_free_rate(),
         "point_in_time": (
-            "signals use only data available at formation (weights shifted one day), "
-            "the SPY SMA is computed point-in-time, and the overlay/cost model are applied "
-            "on the same continuously computed path for every design"
+            "signals use only data available at formation (weights shifted one day); the SPY "
+            "SMA regime factor uses session t's own close on the default path (opt-in "
+            "lag_regime_exposure=True shifts it one session, see "
+            "research/reports/tsmomentum_regime_lookahead_audit_001.md); the overlay/cost model "
+            "is applied on the same continuously computed path for every design"
         ),
         "data_source": "committed parquet cache in data/raw/ (fetcher never called)",
     }

@@ -213,7 +213,7 @@ def run_audit(
         "commission_bps": commission_bps * 10000.0,
         "slippage_bps": slippage_bps * 10000.0,
         "rf_annual": get_risk_free_rate(),
-        "point_in_time": "signals use only data available at formation (weights shifted one day), SPY SMA computed point-in-time, overlay/cost model applied on same path",
+        "point_in_time": "signals use only data available at formation (weights shifted one day); the SPY SMA regime factor uses session t's own close on the default path (opt-in lag_regime_exposure=True shifts it one session, see research/reports/tsmomentum_regime_lookahead_audit_001.md); overlay/cost model applied on same path",
         "data_source": "committed parquet cache in data/raw/ (fetcher never called)",
     }
     return payload

@@ -16,7 +16,7 @@ Quantify how much of the incumbent's published walk-forward mean OOS Sharpe (0.9
 - Source: committed raw cache `data/raw/*.parquet` (cache-only; the fetcher is never called)
 - Universe: SPY, QQQ, IWM, TLT, GLD, EFA, EEM
 - Date range: 1993-01-01 to 2026-10-09
-- Point-in-time treatment: signals use only data available at formation (weights shifted one day), the SPY SMA is computed point-in-time, and the overlay/cost model are applied on the same continuously computed path for every fold and phase
+- Point-in-time treatment: signals use only data available at formation (weights shifted one day); the SPY SMA regime factor uses session t's own close on the default path (opt-in lag_regime_exposure=True shifts it one session, see research/reports/tsmomentum_regime_lookahead_audit_001.md); the overlay/cost model is applied on the same continuously computed path for every fold and phase
 - Cost model: 1.0 bps commission + 2.0 bps slippage = 3.0 bps round-trip; risk-free rate 0.02 annual
 
 ## Configuration (consumed as-is, never inferred)

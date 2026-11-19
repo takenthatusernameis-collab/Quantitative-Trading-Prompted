@@ -395,7 +395,10 @@ SMA trend filter — is not a single-period or single-parameter artifact, via:
 - **Regime Driver**: SPY (trend via SMA)
 - **Test Period**: 2018-01-01 to {END_DATE}
 - **Point-in-Time**: All signals use only data available at formation; weights
-  shifted 1 day; SPY SMA computed point-in-time; purge/embargo in walk-forward.
+  shifted 1 day; the SPY SMA regime factor uses session t's own close on the default
+  path (opt-in `lag_regime_exposure=True` shifts it one session, see
+  `research/reports/tsmomentum_regime_lookahead_audit_001.md`); purge/embargo in
+  walk-forward.
 - **Cost Model**: {COMMISSION_BPS_RAW:.1f} bps + {SLIPPAGE_BPS_RAW:.1f} bps = {TOTAL_COST_BPS_RAW:.1f} bps round-trip
 
 ---
