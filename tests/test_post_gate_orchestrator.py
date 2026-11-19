@@ -864,3 +864,51 @@ def test_cmd8_ruff_list_covers_every_script_the_cycle_executes() -> None:
     # not meant to cover (they have their own cmd7 execution + recording).
     assert "research/data_cost_inventory_001.py" not in listed
     assert "research/data_cost_inventory_002.py" not in listed
+
+
+def _python_stub(tmp_path: Path, fail_when: str | None = None) -> Path:
+    """No-op ``PYTHON`` stub that can fail for one specific script argument.
+
+    The orchestrator passes the same interpreter to every step, so a test that
+    needs ONE step to fail cannot use ``PYTHON=false`` (that fails all of them).
+    This stub returns 0 for everything except a command line containing
+    ``fail_when``, letting a single step's exit code be controlled.
+    """
+    stub = tmp_path / "python_stub.sh"
+    guard = f'  *"{fail_when}"*) exit 1 ;;\n' if fail_when else ""
+    stub.write_text(
+        "#!/usr/bin/env bash\n"
+        'case "$*" in\n'
+        f"{guard}"
+        "  *) exit 0 ;;\n"
+        "esac\n",
+        encoding="utf-8",
+    )
+    stub.chmod(0o755)
+    return stub
+
+
+def test_drift_invariant_check_failure_marks_handoff_failed(tmp_path: Path) -> None:
+    # cmd8b (research/drift_invariant_check.py) is a verification step whose
+    # nonzero exit is the documented defect signal from drift_decision_20261118
+    # §7. It ran untested: a failure could have been recorded only in
+    # /tmp/cmd8b.out while the handoff still read "Status: OK". Pin that its
+    # failure surfaces in the process log AND marks the durable handoff FAILED.
+    handoff = tmp_path / "handoff.md"
+    stub = _python_stub(tmp_path, fail_when="drift_invariant_check.py")
+    proc = _run(["--read-only"], PAST_GATE, handoff, env_extra={"PYTHON": str(stub)})
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "STEP FAILED (rc=1): cmd8b drift invariant check" in proc.stdout, proc.stdout
+    assert handoff.exists()
+    assert "**Status:** FAILED" in handoff.read_text()
+
+
+def test_drift_invariant_check_is_recorded_as_run(tmp_path: Path) -> None:
+    # The durable record must show cmd8b actually ran; an orchestrator that
+    # silently dropped the step would otherwise still produce "Status: OK".
+    handoff = tmp_path / "handoff.md"
+    proc = _run(["--read-only"], PAST_GATE, handoff)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    text = handoff.read_text()
+    run_line = text.split("- **Cmds run:**")[1].split("\n")[0]
+    assert "8b drift invariant" in run_line, text
