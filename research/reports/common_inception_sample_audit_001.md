@@ -59,7 +59,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
         "pass": true
       },
       "regime_flips": {
-        "value": 6.0,
+        "value": 7.0,
         "threshold": 1.0,
         "comparison": "gte",
         "pass": true
@@ -191,7 +191,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
         "pass": true
       },
       "regime_flips": {
-        "value": 6.0,
+        "value": 7.0,
         "threshold": 1.0,
         "comparison": "gte",
         "pass": true
@@ -274,7 +274,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
         "pass": true
       },
       "regime_flips": {
-        "value": 6.0,
+        "value": 7.0,
         "threshold": 1.0,
         "comparison": "gte",
         "pass": true
@@ -464,7 +464,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
       "pass": true
     },
     "regime_flips": {
-      "value": 6.0,
+      "value": 7.0,
       "threshold": 1.0,
       "comparison": "gte",
       "pass": true
@@ -508,7 +508,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
       "pass": true
     },
     "regime_flips": {
-      "value": 6.0,
+      "value": 7.0,
       "threshold": 1.0,
       "comparison": "gte",
       "pass": true
@@ -552,7 +552,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
       "pass": true
     },
     "regime_flips": {
-      "value": 6.0,
+      "value": 7.0,
       "threshold": 1.0,
       "comparison": "gte",
       "pass": true
@@ -675,7 +675,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
       "paper_max_dd": -0.6224126346564325,
       "rolling_sharpe_63d": -1.3233468907373043,
       "rolling_63d_max_dd": -0.109209305725669,
-      "regime_flips": 6,
+      "regime_flips": 7,
       "paper_days": 8504,
       "sharpe_observed_canonical": 0.5602214749842194,
       "sharpe_se": 0.15284835880824443
@@ -685,7 +685,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
       "paper_max_dd": -0.6224126346564325,
       "rolling_sharpe_63d": -1.3233468907373043,
       "rolling_63d_max_dd": -0.109209305725669,
-      "regime_flips": 6,
+      "regime_flips": 7,
       "paper_days": 8504,
       "sharpe_observed_canonical": 0.5602214749842194,
       "sharpe_se": 0.15284835880824443
@@ -738,7 +738,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
         "pass": true
       },
       "regime_flips": {
-        "value": 6.0,
+        "value": 7.0,
         "threshold": 1.0,
         "comparison": "gte",
         "pass": true
@@ -782,7 +782,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
         "pass": true
       },
       "regime_flips": {
-        "value": 6.0,
+        "value": 7.0,
         "threshold": 1.0,
         "comparison": "gte",
         "pass": true
@@ -829,7 +829,7 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
     "name": "data_and_config_unchanged",
     "expected": "identical SHA-256 fingerprint of every file under data/ and config/",
     "observed": {
-      "data_files": 1939,
+      "data_files": 1943,
       "config_files": 19,
       "data_unchanged": true,
       "config_unchanged": true
