@@ -38,12 +38,17 @@ Checks (all read-only; no network, no writes outside the report files):
   5. Decision sensitivity: the rolling-63d Sharpe computed at the coverage end
      (covered sessions only) is compared with the same alert threshold
      (``0.5``); the flag persists / does not persist under both conventions.
+  6. Extension attestation (``--extend-before``): when the orchestrator reports
+     that the record advanced during this cycle, the new session MUST carry a
+     valid ``provider_digest_YYYYMMDD.json``; a missing or malformed digest is a
+     hard error, because the extension path cannot re-derive that session.
 
 Exit codes:
   0  audit ran; output is internally consistent (an "unverified" count > 0 is a
      documented coverage gap, not an error)
   1  the state is internally inconsistent (stored Sharpe does not reproduce,
-     the parallel arrays disagree in length, or a provider digest is malformed)
+     the parallel arrays disagree in length, a provider digest is malformed, or
+     an extension completed without a valid digest)
   2  usage / environment error (missing state, config or raw cache)
 """
 
@@ -252,11 +257,31 @@ def attest_unverified(
     return attested, problems
 
 
+def required_digest_issues(
+    session: str, paper_dir: Path, symbols: list[str]
+) -> list[str]:
+    """Validate the digest a real extension of ``session`` must have written.
+
+    Empty list = the extended session is attested. A missing file is reported
+    explicitly: after the record advanced in this cycle, an absent digest is a
+    provenance regression, not a routine coverage gap.
+    """
+    path = digest_path(paper_dir, session)
+    if not path.exists():
+        return [f"missing provider digest {path.name} for extended session {session}"]
+    try:
+        payload = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        return [f"unreadable provider digest {path.name}: {exc}"]
+    return digest_issues(payload, session, symbols)
+
+
 def audit(
     state_path: Path,
     config_path: Path,
     raw_dir: Path,
     paper_dir: Path | None = None,
+    require_digest_for: str | None = None,
 ) -> dict:
     state = yaml.safe_load(state_path.read_text())
     symbols = universe_from_config(config_path)
@@ -274,6 +299,22 @@ def audit(
             f"{name}: {', '.join(issues)}" for name, issues in sorted(digest_problems.items())
         )
         raise ValueError(f"malformed provider digest(s): {detail}")
+
+    # ``require_digest_for`` is the state's ``last_run_date`` captured BEFORE the
+    # cycle's extension. When the record advanced, the new session must carry the
+    # provider digest written by that extension; a silent digest failure must
+    # fail the cycle instead of leaving "Status: OK" without an attestation.
+    extended_session: str | None = None
+    if require_digest_for is not None:
+        last_run = str(state.get("last_run_date") or "")
+        if last_run and last_run != str(require_digest_for):
+            extended_session = last_run
+            required_issues = required_digest_issues(last_run, paper_dir, symbols)
+            if required_issues:
+                raise ValueError(
+                    "extended session has no valid provider digest: "
+                    + "; ".join(required_issues)
+                )
 
     stored_sharpe = float(state["rolling_sharpe_63d"])
     reproduced_sharpe = rolling_sharpe_at(returns)
@@ -297,6 +338,8 @@ def audit(
         "n_attested": len(attested),
         "attested_sessions": attested,
         "paper_dir": str(paper_dir),
+        "require_digest_for": require_digest_for,
+        "extended_session": extended_session,
         "stored_rolling_sharpe_63d": stored_sharpe,
         "reproduced_rolling_sharpe_63d": reproduced_sharpe,
         "reproduced_ok": reproduced_ok,
@@ -313,6 +356,13 @@ def render_report(result: dict) -> str:
     unverified_lines = "\n".join(f"  - {d}" for d in unverified) if unverified else "  - (none)"
     attested = result["attested_sessions"]
     attested_lines = "\n".join(f"  - {d}" for d in attested) if attested else "  - (none)"
+    required_session = result.get("extended_session")
+    if required_session:
+        required_line = f"extended `{required_session}` and required digest is valid"
+    elif result.get("require_digest_for") is not None:
+        required_line = "no session extended (digest requirement not triggered)"
+    else:
+        required_line = "no extension observed in this invocation"
     symbol_lines = "\n".join(
         f"| `{sym}` | `{last}` |" for sym, last in sorted(result["per_symbol_last_date"].items())
     )
@@ -364,6 +414,8 @@ a session re-derivable, but it can be compared against a later governed
 
 Digest-attested unverified sessions: {attested_lines}
 
+This cycle's extension: {required_line}
+
 Digests are validated for schema, session/universe consistency and positive,
 finite closes; a malformed digest fails the audit (exit 1) rather than being
 silently ignored.
@@ -399,6 +451,15 @@ def main(argv: list[str] | None = None) -> int:
         "--paper-dir", default=str(REPO_ROOT / "data" / "processed" / "paper_trading")
     )
     parser.add_argument("--report", default=str(REPORT_PATH))
+    parser.add_argument(
+        "--extend-before",
+        default=None,
+        help=(
+            "the state's last_run_date captured before this cycle's extension; "
+            "when the record has advanced, a valid provider digest for the new "
+            "session is required or the audit fails (exit 1)"
+        ),
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -407,6 +468,7 @@ def main(argv: list[str] | None = None) -> int:
             Path(args.config),
             Path(args.raw_dir),
             Path(args.paper_dir),
+            require_digest_for=args.extend_before,
         )
     except FileNotFoundError as exc:
         print(f"FATAL: {exc}", file=sys.stderr)
