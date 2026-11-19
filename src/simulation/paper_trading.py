@@ -100,6 +100,7 @@ class PaperTradingConfig(SimulationConfig):
             dd_threshold=sim_base.dd_threshold,
             dd_reduction=sim_base.dd_reduction,
             lag_vol_estimate=sim_base.lag_vol_estimate,
+            lag_regime_exposure=sim_base.lag_regime_exposure,
             regime_type=sim_base.regime_type,
             regime_window=sim_base.regime_window,
             exposure_below=sim_base.exposure_below,

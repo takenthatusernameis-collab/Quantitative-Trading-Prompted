@@ -87,6 +87,14 @@ class SimulationConfig:
     # bit-for-bit unchanged.
     lag_vol_estimate: bool = False
 
+    # Opt-in switch: when True the SPY-SMA regime exposure for session t is
+    # the exposure that was knowable at the close of t-1 (the committed rule
+    # shifted one session), removing the same-session feedback in which
+    # session t's own close decides the exposure that earns session t's
+    # close-to-close return.  The default (False) is the committed behaviour
+    # and is bit-for-bit unchanged.
+    lag_regime_exposure: bool = False
+
     regime_type: str = "spy_sma"
     regime_window: int = 200
     exposure_below: float = 0.0
@@ -129,6 +137,7 @@ class SimulationConfig:
             dd_threshold=float(dd_control.get("threshold", 0.15)),
             dd_reduction=float(dd_control.get("reduction", 0.5)),
             lag_vol_estimate=_as_bool(overlay.get("lag_vol_estimate", False)),
+            lag_regime_exposure=_as_bool(regime.get("lag_regime_exposure", False)),
             regime_type=str(regime.get("type", "spy_sma")),
             regime_window=int(regime.get("window", 200)),
             exposure_below=float(regime.get("exposure_below", 0.0)),
@@ -205,7 +214,16 @@ def _signal_weights(close: pd.DataFrame, config: SimulationConfig) -> pd.DataFra
 
 
 def _regime_exposure(close: pd.DataFrame, config: SimulationConfig) -> pd.Series:
-    """Return the point-in-time regime exposure factor."""
+    """Return the regime exposure factor.
+
+    By default the factor for session *t* is built from session *t*'s own
+    close (the committed behaviour): ``sma = spy.rolling(window).mean()``
+    includes *t* and ``exposure[spy < sma]`` gates the position that earns
+    session *t*'s close-to-close return.  With ``lag_regime_exposure=True``
+    the factor is shifted one session (``shift(1).fillna(0.0)``), so the
+    exposure applied on session *t* is the one knowable at the close of
+    *t-1* -- the point-in-time convention used elsewhere in this engine.
+    """
     if config.regime_type != "spy_sma":
         raise ValueError(
             f"Unsupported regime filter type: {config.regime_type!r}"
@@ -215,6 +233,8 @@ def _regime_exposure(close: pd.DataFrame, config: SimulationConfig) -> pd.Series
     exposure = pd.Series(config.exposure_above, index=close.index)
     exposure[spy < sma] = config.exposure_below
     exposure[spy.isna() | sma.isna()] = config.exposure_below
+    if config.lag_regime_exposure:
+        exposure = exposure.shift(1).fillna(config.exposure_below)
     return exposure
 
 

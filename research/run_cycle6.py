@@ -111,6 +111,7 @@ def _apply_overlay(
     slippage_bps: float = SLIPPAGE_BPS,
     rf_annual: float = RF_ANNUAL,
     lag_vol_estimate: bool = False,
+    lag_regime_exposure: bool = False,
 ) -> tuple[pd.DataFrame, pd.Series, dict]:
     """Replicate Cycle 5's _apply_overlay: combined vol-targeting + DD control
     with correct 3 bps cost model. Returns combined weights, net returns, metrics.
@@ -119,10 +120,19 @@ def _apply_overlay(
     estimate for session t is computed from sessions up to and including t-1
     (no same-session feedback).  The default (False) is the committed
     behaviour and is bit-for-bit unchanged.
+
+    ``lag_regime_exposure`` is the opt-in switch for the SPY-SMA regime
+    factor: when True the exposure applied on session t is the one that was
+    knowable at the close of t-1 (the committed rule shifted one session),
+    removing the same-session feedback in which session t's own close decides
+    the exposure that earns session t's close-to-close return.  The default
+    (False) is the committed behaviour and is bit-for-bit unchanged.
     """
     weights = base_weights.copy()
     if exposure_factor is not None:
         ef = exposure_factor.reindex(weights.index).fillna(0.0)
+        if lag_regime_exposure:
+            ef = ef.shift(1).fillna(0.0)
         weights = weights.mul(ef, axis=0)
 
     daily_ret = asset_ret.copy()
@@ -165,6 +175,7 @@ def _eval_candidate(
     close: pd.DataFrame,
     spy_sma_window: int = SPY_SMA_WINDOW,
     lag_vol_estimate: bool = False,
+    lag_regime_exposure: bool = False,
 ) -> dict:
     """Evaluate the full candidate config (TSMOM + combined overlay + SPY SMA filter)
     on the test period (post VAL_END).
@@ -193,6 +204,7 @@ def _eval_candidate(
     cw, net_ret_test, metrics_test = _apply_overlay(
         test_asset_ret, test_weights, exposure_factor=test_exposure,
         lag_vol_estimate=lag_vol_estimate,
+        lag_regime_exposure=lag_regime_exposure,
     )
 
     return {
@@ -209,6 +221,7 @@ def _eval_candidate_period(
     end_date: str,
     spy_sma_window: int = SPY_SMA_WINDOW,
     lag_vol_estimate: bool = False,
+    lag_regime_exposure: bool = False,
 ) -> tuple[pd.Series, pd.DataFrame]:
     """Evaluate candidate on an arbitrary period (for walk-forward folds).
 
@@ -232,6 +245,7 @@ def _eval_candidate_period(
     cw, net_ret, _ = _apply_overlay(
         daily_ret, weights_a, exposure_factor=exposure,
         lag_vol_estimate=lag_vol_estimate,
+        lag_regime_exposure=lag_regime_exposure,
     )
 
     # Slice to requested period
@@ -242,12 +256,16 @@ def _eval_candidate_period(
 # ---------------------------------------------------------------------------
 # 1. Walk-Forward Evaluation
 # ---------------------------------------------------------------------------
-def run_walkforward(lag_vol_estimate: bool = False) -> dict:
+def run_walkforward(lag_vol_estimate: bool = False, lag_regime_exposure: bool = False) -> dict:
     """Run walk-forward evaluation of the SPY trend-filter candidate.
 
     ``lag_vol_estimate`` is the opt-in switch that selects the lagged
     (no same-session feedback) volatility estimate.  The default (False) is
     the published protocol and is bit-for-bit unchanged.
+
+    ``lag_regime_exposure`` is the opt-in switch that selects the lagged
+    (no same-session feedback) SPY-SMA regime exposure.  The default (False)
+    is the published protocol and is bit-for-bit unchanged.
     """
     print("\n=== [1] Walk-Forward Evaluation ===")
 
@@ -256,6 +274,7 @@ def run_walkforward(lag_vol_estimate: bool = False) -> dict:
             symbols, start, end,
             spy_sma_window=SPY_SMA_WINDOW,
             lag_vol_estimate=lag_vol_estimate,
+            lag_regime_exposure=lag_regime_exposure,
         )
 
     wf_df = evaluate_walkforward(
@@ -281,8 +300,13 @@ def run_walkforward(lag_vol_estimate: bool = False) -> dict:
 # ---------------------------------------------------------------------------
 # 2. SMA Window Parameter Plateau Check
 # ---------------------------------------------------------------------------
-def run_plateau_check() -> dict:
-    """Test the candidate across pre-specified SMA windows on the 2018-2026 test period."""
+def run_plateau_check(lag_regime_exposure: bool = False) -> dict:
+    """Test the candidate across pre-specified SMA windows on the 2018-2026 test period.
+
+    ``lag_regime_exposure`` is the opt-in switch that selects the lagged
+    (no same-session feedback) SPY-SMA regime exposure.  The default (False)
+    is the published protocol and is bit-for-bit unchanged.
+    """
     print("\n=== [2] SMA Window Parameter Plateau Check ===")
 
     close = _load_close(SYMBOLS)
@@ -290,7 +314,7 @@ def run_plateau_check() -> dict:
 
     for w in SMA_WINDOWS:
         print(f"  Testing SMA window = {w}...")
-        res = _eval_candidate(close, spy_sma_window=w)
+        res = _eval_candidate(close, spy_sma_window=w, lag_regime_exposure=lag_regime_exposure)
         m = res["test_metrics"]
         results.append({
             "sma_window": w,
