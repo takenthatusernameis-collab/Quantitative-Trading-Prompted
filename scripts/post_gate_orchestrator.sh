@@ -76,7 +76,7 @@ PYTEST7="tests/test_data_cost_inventory_001.py tests/test_data_cost_inventory_00
 # Status: FAILED and no lint evidence -- the exact gap cmd8 exists to close for
 # the other four extension scripts. It now passes ruff (EXE001 cleared by making
 # the file executable) and is pinned here so it cannot silently drop out again.
-RUFF4="research/drift_persistence_report.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py research/verify_gate_time_forward_bar.py research/paper_trading_record_status_audit.py"
+RUFF4="research/drift_persistence_report.py research/drift_invariant_check.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py research/verify_gate_time_forward_bar.py research/paper_trading_record_status_audit.py"
 
 log() { echo "[$(date -u +%FT%TZ)] $*"; }
 fail() { log "FATAL: $*"; exit 1; }
@@ -351,6 +351,17 @@ mark_run "8 ruff"
 cmd8_rc=$?
 tail -4 /tmp/cmd8.out
 record_rc $cmd8_rc "cmd8 ruff"
+
+# --- 8b. Drift invariant check (read-only) -----------------------------------
+# research/drift_invariant_check.py encodes the three falsification conditions
+# from research/reports/drift_decision_20261118.md §7. Read-only: never writes
+# state or artifacts. Runs in every mode (pre-gate, read-only, post-gate).
+log "cmd8b: drift_invariant_check"
+mark_run "8b drift invariant"
+"$PY" research/drift_invariant_check.py > /tmp/cmd8b.out 2>&1
+cmd8b_rc=$?
+tail -6 /tmp/cmd8b.out
+record_rc $cmd8b_rc "cmd8b drift invariant check"
 
 # --- 9. Durable handoff ------------------------------------------------------
 log "writing durable handoff: $HANDOFF"
