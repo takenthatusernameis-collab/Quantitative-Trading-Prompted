@@ -161,6 +161,11 @@ def _config(tmp_path):
         ROOT / "config" / "paper_trading_config.yaml"
     )
     cfg.report_path = str(tmp_path / "report.md")
+    # The extension path writes a provider-price attestation into output_dir on
+    # every successful extend. Point it at tmp_path so the committed data tree
+    # stays clean when the suite runs (regression: the digest write landed in
+    # data/processed/paper_trading/ before this was redirected).
+    cfg.output_dir = str(tmp_path / "paper_trading")
     return cfg
 
 
