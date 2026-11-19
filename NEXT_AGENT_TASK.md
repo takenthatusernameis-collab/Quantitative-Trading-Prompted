@@ -1,6 +1,6 @@
 # Next Agent Task: 2026-11-20 gate cycle (pre-gate first; extend only at/after 22:00Z)
 
-## Current status — 2026-11-19T23:52Z (run 44640164008 attempt 1 session 1 inv 1 corrective) — **PRE-GATE OK; GATE UNREACHABLE THIS RUN**
+## Current status — 2026-11-19T23:50Z (run 44640164008 attempt 1 session 2 inv 1) — **PRE-GATE OK; GATE UNREACHABLE THIS RUN**
 - **UTC 2026-11-19T23:44Z.** Gate for 2026-11-20 **NOT released** (releases 22:00 UTC 2026-11-20, epoch 1795212000; T-80102s remaining). Cmds 2/4 **withheld** (scope boundary: before the gate). Gate epoch independently confirmed: `date -u -d @1795212000` → `Fri Nov 20 22:00:00 UTC 2026`; `TZ=America/New_York` → `Fri Nov 20 17:00:00 EST 2026`.
 - **Pre-gate cheap path exit 0 (one call, then STOP):** `GATE_EPOCH=1795212000 STATE_SHA256=743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1795131898 (2026-11-19T23:44:58Z) < gate 1795212000 (2026-11-20T22:00:00Z); T-80102s remaining. state sha256 matches (743c6e41…); data/raw clean. STOP — do not re-run the cycle.` EXIT=0.
 - **State unchanged:** `sha256sum data/processed/paper_trading_state.yaml` = `743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab`; `last_run_date 2026-11-19`; NAV `130307.21196257228`; `run_history` **473**. `git status --porcelain -- data/raw` → 0 lines.
