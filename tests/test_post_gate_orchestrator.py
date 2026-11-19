@@ -912,3 +912,48 @@ def test_drift_invariant_check_is_recorded_as_run(tmp_path: Path) -> None:
     text = handoff.read_text()
     run_line = text.split("- **Cmds run:**")[1].split("\n")[0]
     assert "8b drift invariant" in run_line, text
+
+
+def test_coverage_audit_failure_marks_handoff_failed(tmp_path: Path) -> None:
+    # cmd8c (research/paper_record_raw_coverage_audit.py) is the provenance check
+    # the research contract ranks first, and it was the last cycle step with no
+    # orchestrator wiring. Its nonzero exit is the documented defect signal for a
+    # malformed provider digest or a non-reproducing stored Sharpe; pin that it
+    # surfaces in the process log AND marks the durable handoff FAILED, instead of
+    # being recorded only in /tmp/cmd8c.out while the handoff reads "Status: OK".
+    handoff = tmp_path / "handoff.md"
+    stub = _python_stub(tmp_path, fail_when="paper_record_raw_coverage_audit.py")
+    proc = _run(["--read-only"], PAST_GATE, handoff, env_extra={"PYTHON": str(stub)})
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "STEP FAILED (rc=1): cmd8c coverage audit" in proc.stdout, proc.stdout
+    assert handoff.exists()
+    assert "**Status:** FAILED" in handoff.read_text()
+
+
+def test_coverage_audit_is_recorded_as_run(tmp_path: Path) -> None:
+    # The durable record must show cmd8c actually ran; an orchestrator that
+    # silently dropped the step would otherwise still produce "Status: OK".
+    handoff = tmp_path / "handoff.md"
+    proc = _run(["--read-only"], PAST_GATE, handoff)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    text = handoff.read_text()
+    run_line = text.split("- **Cmds run:**")[1].split("\n")[0]
+    assert "8c coverage audit" in run_line, text
+
+
+def test_cmd8c_is_in_ruff_lint_list() -> None:
+    """cmd8c's script must be linted by cmd8 (the RUFF4 family).
+
+    The coverage audit runs inside the cycle but was absent from RUFF4 when it
+    was added (Cycle 1271 inv 1) with no orchestrator wiring either, so a latent
+    defect in it would have failed the real post-gate cycle with Status: FAILED
+    and zero lint evidence -- the exact gap cmd8 exists to close for the other
+    extension scripts. Pin the list against the scripts the cycle executes.
+    """
+    import re
+
+    source = SCRIPT.read_text()
+    match = re.search(r'^RUFF4="([^"]+)"', source, re.MULTILINE)
+    assert match, "scripts/post_gate_orchestrator.sh does not define RUFF4"
+    listed = set(match.group(1).split())
+    assert "research/paper_record_raw_coverage_audit.py" in listed, sorted(listed)

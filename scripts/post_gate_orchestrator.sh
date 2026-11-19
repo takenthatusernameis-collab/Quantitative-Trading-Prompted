@@ -76,7 +76,7 @@ PYTEST7="tests/test_data_cost_inventory_001.py tests/test_data_cost_inventory_00
 # Status: FAILED and no lint evidence -- the exact gap cmd8 exists to close for
 # the other four extension scripts. It now passes ruff (EXE001 cleared by making
 # the file executable) and is pinned here so it cannot silently drop out again.
-RUFF4="research/drift_persistence_report.py research/drift_invariant_check.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py research/verify_gate_time_forward_bar.py research/paper_trading_record_status_audit.py"
+RUFF4="research/drift_persistence_report.py research/drift_invariant_check.py research/extend_paper_trading_state.py research/verify_monday_extension_path.py research/verify_gate_time_forward_bar.py research/paper_trading_record_status_audit.py research/paper_record_raw_coverage_audit.py"
 
 log() { echo "[$(date -u +%FT%TZ)] $*"; }
 fail() { log "FATAL: $*"; exit 1; }
@@ -362,6 +362,24 @@ mark_run "8b drift invariant"
 cmd8b_rc=$?
 tail -6 /tmp/cmd8b.out
 record_rc $cmd8b_rc "cmd8b drift invariant check"
+
+# --- 8c. Paper-record vs committed raw-cache coverage audit (read-only) --------
+# research/paper_record_raw_coverage_audit.py quantifies the reproducibility gap
+# between the committed paper-trading record and the committed raw cache (the
+# extension path never writes data/raw, so the six most recent sessions rest on
+# the state file alone). It is the provenance check the research contract ranks
+# first, and it was the ONLY cycle step that existed as a script with no
+# orchestrator wiring: its exit code was never recorded, so a coverage/regression
+# defect (malformed provider digest, non-reproducing stored Sharpe) would have
+# surfaced only as a printed FAIL line in /tmp/cmd8c.out while the handoff still
+# read "Status: OK" -- the recurring false-evidence class this orchestrator
+# exists to prevent (cf. cmd8b's identical gap, closed in Cycle 1271).
+log "cmd8c: paper_record_raw_coverage_audit"
+mark_run "8c coverage audit"
+"$PY" research/paper_record_raw_coverage_audit.py > /tmp/cmd8c.out 2>&1
+cmd8c_rc=$?
+tail -6 /tmp/cmd8c.out
+record_rc $cmd8c_rc "cmd8c coverage audit"
 
 # --- 9. Durable handoff ------------------------------------------------------
 log "writing durable handoff: $HANDOFF"
