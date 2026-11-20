@@ -55,7 +55,7 @@ a session re-derivable, but it can be compared against a later governed
 Digest-attested unverified sessions:   - 2026-11-19
   - 2026-11-20
 
-This cycle's extension: no session extended (digest requirement not triggered)
+This cycle's extension: no extension observed in this invocation
 
 Digests are validated for schema, session/universe consistency and positive,
 finite closes; a malformed digest fails the audit (exit 1) rather than being
