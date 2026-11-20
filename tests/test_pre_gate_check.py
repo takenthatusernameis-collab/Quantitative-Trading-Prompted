@@ -192,6 +192,55 @@ def test_gate_reached_exits_3(tmp_path: Path) -> None:
     assert "gate is released" in proc.stderr, proc.stderr
 
 
+def test_reachability_reports_unreachable_when_budget_too_small(tmp_path: Path) -> None:
+    """A budget far smaller than T-remaining yields GATE_REACHABLE=0 on exit 0.
+
+    Pre-gate sessions repeatedly re-derived by hand that the 22:00Z gate release
+    falls after the ~355-minute run cutoff. SESSION_BUDGET_SECONDS makes that a
+    deterministic verdict; it must never turn the cheap path into a failure.
+    """
+    sha = _sha256(_make_state(tmp_path))
+    proc = _run(tmp_path, FUTURE_GATE, sha, extra_env={"SESSION_BUDGET_SECONDS": "1"})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "GATE_REACHABLE=0" in proc.stderr, proc.stderr
+
+
+def test_reachability_reports_waitable_when_budget_covers_gate(tmp_path: Path) -> None:
+    """A budget larger than T-remaining yields GATE_REACHABLE=1 on exit 0."""
+    sha = _sha256(_make_state(tmp_path))
+    # FUTURE_GATE is 2100-01-01; any budget below that is unreachable, so use a
+    # very large budget to exercise the reachable branch deterministically.
+    proc = _run(
+        tmp_path,
+        FUTURE_GATE,
+        sha,
+        extra_env={"SESSION_BUDGET_SECONDS": "999999999999"},
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "GATE_REACHABLE=1" in proc.stderr, proc.stderr
+
+
+def test_bad_session_budget_exits_2(tmp_path: Path) -> None:
+    """A non-numeric SESSION_BUDGET_SECONDS fails closed instead of acting as 0."""
+    sha = _sha256(_make_state(tmp_path))
+    proc = _run(tmp_path, FUTURE_GATE, sha, extra_env={"SESSION_BUDGET_SECONDS": "1h"})
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    assert "SESSION_BUDGET_SECONDS" in proc.stderr, proc.stderr
+
+
+def test_reachability_is_side_effect_free(tmp_path: Path) -> None:
+    """Enabling the reachability verdict must not write anything."""
+    sha = _sha256(_make_state(tmp_path))
+    scripts_dir = tmp_path / "scripts"
+    scripts_dir.mkdir(parents=True, exist_ok=True)
+    (scripts_dir / "pre_gate_check.sh").write_text(SCRIPT.read_text())
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    before = _snapshot(tmp_path)
+    proc = _run(tmp_path, FUTURE_GATE, sha, extra_env={"SESSION_BUDGET_SECONDS": "1"})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert _snapshot(tmp_path) == before
+
+
 def test_hash_drift_exits_3(tmp_path: Path) -> None:
     _make_state(tmp_path)
     proc = _run(tmp_path, FUTURE_GATE, "1" * 64)

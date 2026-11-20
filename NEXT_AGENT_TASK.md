@@ -1,12 +1,14 @@
 # Next Agent Task: 2026-11-20 gate cycle (pre-gate first; extend only at/after 22:00Z)
 
-## Current status — 2026-11-20T06:55Z — **PRE-GATE OK; GATE UNREACHABLE THIS RUN; CUTOFF PRECEDES GATE**
-- **UTC 2026-11-20T06:55:35Z.** Gate for 2026-11-20 **NOT released** (releases 22:00 UTC 2026-11-20, epoch 1795212000; T-54265s ≈ 15.1h remaining). 355-min session cutoff ≈ 12:01Z, which precedes gate release by ~10h: **no mutating post-gate cycle can run this session.** Cmds 2/4 **withheld** (scope boundary: before the gate).
-- **Pre-gate cheap path exit 0 (this session):** `GATE_EPOCH=1795212000 STATE_SHA256=743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1795157735 (2026-11-20T06:55:35Z) < gate 1795212000 (2026-11-20T22:00:00Z); T-54265s remaining. state sha256 matches (743c6e41…); data/raw clean. STOP — do not re-run the cycle.` PRE_GATE_EXIT=0.
-- **State unchanged:** `sha256sum data/processed/paper_trading_state.yaml` = `743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab`; `last_run_date 2026-11-19`; NAV `130307.21196257228`; `run_history` **473**. `git status --porcelain` → 0 lines (tree clean); `git status --porcelain -- data/raw` → 0 lines.
-- **Verification (this session):** focused suite **123 passed** in 12.52s (PYTEST_EXIT=0); venv imports OK; `drift_invariant_check.py` EXIT=0 (sessions=473, regime_transitions=7, high_turnover_sessions=7, threshold=0.5); `paper_record_raw_coverage_audit.py` OVERALL: PASS (attested=1); `paper_trading_artifact_reconciliation_audit.py` OVERALL: PASS; `drift_persistence_report.py` tail ends `2026-11-19 -2.1416` (stored == recomputed True); `/tmp/kilo-venv/bin/ruff check` → **All checks passed!**.
-- **Supervisor:** no `.kilo-runtime/current-supervisor-recommendation.json` at startup; disposition refreshed.
-- **Corrective result:** CORRECTIVE_VERIFICATION=BLOCKED — gate time-locked at 22:00Z; session cutoff (~12:01Z) precedes gate release; no mutating progress possible within window. Read-only verification all passed; next session should re-run pre-gate at/after gate release to attempt the post-gate cycle.
+## Current status — 2026-11-20T07:56Z — **PRE-GATE OK; GATE UNREACHABLE IN-SESSION (now machine-verified)**
+- **UTC 2026-11-20T07:56Z.** Gate for 2026-11-20 **NOT released** (releases 22:00 UTC 2026-11-20, epoch 1795212000 verified via `date -u -d "2026-11-20T22:00:00Z" +%s`; T-50641s ≈ 14.1h remaining). Session cutoff ≈ 13:50Z, which precedes gate release: **no mutating post-gate cycle can run this session.** Cmds 2/4 **withheld** (scope boundary: before the gate).
+- **Pre-gate cheap path exit 0 (this session):** `GATE_EPOCH=1795212000 STATE_SHA256=743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab SESSION_BUDGET_SECONDS=21300 bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1795161359 (2026-11-20T07:55:59Z) < gate 1795212000; T-50641s remaining` + `GATE_REACHABLE=0: T-50641s > session budget 21300s (est. cutoff 13:50:59Z)`. PRE_GATE_EXIT=0; state sha256 matches; `data/raw` clean.
+- **State unchanged:** `sha256sum data/processed/paper_trading_state.yaml` = `743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab`; `last_run_date 2026-11-19`; `run_history` **473**. `git status --porcelain -- data/raw` → 0 lines.
+- **Improvement landed this session:** `scripts/pre_gate_check.sh` now accepts optional `SESSION_BUDGET_SECONDS` and prints a deterministic `GATE_REACHABLE=0|1` verdict (exit code contract unchanged: 0/3/2; side-effect free). This replaces the hand-derived "cutoff precedes gate" arithmetic repeated by the last several pre-gate sessions. Pinned by 4 new tests in `tests/test_pre_gate_check.py` (unreachable, waitable, bad budget, side-effect-free).
+- **Verification (this session, exact):** focused suite **123 passed** in 13.46s; `tests/test_pre_gate_check.py` **15 passed**; orchestrator+handoff tests **79 passed**; `drift_invariant_check.py` EXIT=0 (sessions=473, regime_transitions=7, high_turnover_sessions=7, threshold=0.5); `paper_record_raw_coverage_audit.py` OVERALL: PASS (covered=466, unverified=7, attested=1); `paper_trading_artifact_reconciliation_audit.py` OVERALL: PASS (only the known attested 2026-11-02 drawdown defect); `bash -n scripts/pre_gate_check.sh` OK; ruff clean on `tests/test_pre_gate_check.py` and on the orchestrator's pinned cmd8 list (`RUFF4`).
+- **Lint caveat (pre-existing, not introduced here):** `ruff check .` over the whole tree reports ~1097 violations from legacy paths (`.github/scripts/`, `research/_tmp_*.py`, older `src/` modules). The cycle's lint contract is the pinned `RUFF4` list, which is clean; do not treat the whole-tree count as a regression.
+- **Supervisor:** no `.kilo-runtime/current-supervisor-recommendation.json` at startup; `worker-disposition.json` refreshed.
+- **Corrective result:** CORRECTIVE_VERIFICATION=BLOCKED — gate time-locked at 22:00Z and the session cutoff (~13:50Z) precedes it. All read-only verification passed. Next session must re-run the pre-gate command (with `SESSION_BUDGET_SECONDS`) at/after gate release to attempt the post-gate cycle.
 
 ## Cycle result — 2026-11-19 gate cycle COMPLETE (verified 2026-11-19T22:07Z)
 - **ORCH_EXIT=0.** Pre-gate exited 3 (gate released). Full post-gate cycle ran once and extended one session: 2026-11-19 (state 472→473 sessions, NAV 130307.21196257228, unverified 6→7, attested 0→1).
@@ -19,15 +21,16 @@
 
 ## Next task (bounded): the 2026-11-20 gate cycle
 - **Objective:** run the cheap pre-gate path; only if the gate is released, run the full post-gate cycle once, confirm idempotency, and report the new day's drift flags.
-- **Pre-gate already verified at 01:59Z, 02:09Z, 03:49Z, 05:02Z, and 05:45Z** (all exit 0, state sha256 `743c6e41…`, run_history 473). The next run must still re-run the pre-gate command: it is the only thing that discovers gate release. Do not skip it because it passed earlier.
+- **Pre-gate will almost certainly still apply:** recent sessions start ~01:00–08:00Z and the run cutoff is ~355 min, so `GATE_REACHABLE=0` is expected until a session starts at/after 22:00Z. The next run must still re-run the pre-gate command: it is the only thing that discovers gate release. Do not skip it because it passed earlier.
 - **Acceptance criteria:**
-  - Pre-gate command run in foreground and exit code recorded (0 = stop, 3 = gate reached).
+  - Pre-gate command run in foreground with `SESSION_BUDGET_SECONDS=<remaining run budget>`; record exit code and the `GATE_REACHABLE=` verdict.
   - If exit 3 and `data/raw` clean: one foreground full cycle (`ORCH_EXIT=0`), then one idempotent re-run showing `sessions extended: 0` and no second state write; handoff `Status: OK`.
+  - If exit 0 with `GATE_REACHABLE=0`: this session cannot complete the gate cycle. Record the verdict, do **not** rewrite the status block unless a fact changed, and escalate the structural mismatch to `loop-supervisor` (worker must not edit workflow scheduling). Do not invent partial-cycle claims.
   - Extends at most one session, only with a completed bar; `data/raw` untouched; no threshold/gate/cost/universe/clock-gate changes.
   - New drift flags re-derived from source and recorded; if a `turnover > 0.5` day occurs without a regime transition, treat as defect signal and document (do not retune).
   - Digest check: `provider_digest_20261120.json` must exist; `paper_record_raw_coverage_audit.py` must report `n_attested >= 2` with `OVERALL: PASS`; malformed digest exits nonzero.
 - **Validation commands:**
-  - `GATE_EPOCH=1795212000 STATE_SHA256=743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab bash scripts/pre_gate_check.sh`
+  - `GATE_EPOCH=1795212000 STATE_SHA256=743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab SESSION_BUDGET_SECONDS=<budget> bash scripts/pre_gate_check.sh`
   - `GATE_EPOCH=1795212000 PYTHON=/tmp/kilo-venv/bin/python RUFF=/tmp/kilo-venv/bin/ruff bash scripts/post_gate_orchestrator.sh` (only if released)
   - `/tmp/kilo-venv/bin/python research/drift_persistence_report.py` (tail)
   - `/tmp/kilo-venv/bin/python research/drift_invariant_check.py` (must exit 0)
@@ -41,5 +44,6 @@
   → then `/tmp/kilo-venv/bin/python -c "import numpy,pandas,scipy,statsmodels,arch,yfinance,pyarrow,yaml"` must exit 0.
 - **Handoff hygiene:** append new pre-gate verifications as a single refreshed "Current status" block (replace the existing one) rather than adding another section; this file must stay a concise spec plus one status block.
 
-## Durable finding persisted this cycle (2026-11-19T22:07Z)
-- The 2026-11-19 extend produced a valid provider digest (`provider_digest_20261119.json`, n_attested 0→1) and raised sessions to 473; coverage audit still `OVERALL: PASS` (unverified 6→7). The digest attestation guard (cmd1b) is now armed and verified end-to-end for the first time.
+## Durable findings
+- **2026-11-20:** the gate/session mismatch is structural, not transient. Gate releases are daily at 22:00Z, while run sessions start ~01:00–08:00Z with a ~355-minute cutoff, so the post-gate cycle is unreachable from any session that starts before ~16:05Z. Workers must not edit workflow scheduling, so this needs a controller/human decision (session must start at/after 22:00Z, or the gate must be redefined). `scripts/pre_gate_check.sh` now emits `GATE_REACHABLE=0|1` from `SESSION_BUDGET_SECONDS` so this is verified in one command instead of re-derived by hand.
+- **2026-11-19T22:07Z:** the 2026-11-19 extend produced a valid provider digest (`provider_digest_20261119.json`, n_attested 0→1) and raised sessions to 473; coverage audit still `OVERALL: PASS` (unverified 6→7). The digest attestation guard (cmd1b) is now armed and verified end-to-end for the first time.

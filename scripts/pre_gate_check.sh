@@ -22,10 +22,24 @@
 #      or dirty `data/raw`). The caller must inspect and act; do not blindly stop.
 #   2  Usage / environment error (missing state file, bad args).
 #
+# Session reachability (optional, informational -- never changes the exit code)
+# ---------------------------------------------------------------------------
+# Consecutive pre-gate sessions each re-derived by hand that the gate release
+# (22:00Z) falls after the run's ~355-minute cutoff, so the post-gate cycle is
+# structurally unreachable. Passing SESSION_BUDGET_SECONDS makes that arithmetic
+# deterministic and machine-readable instead:
+#   GATE_REACHABLE=0   gate not reached AND T-remaining > budget (unreachable)
+#   GATE_REACHABLE=1   gate not reached AND T-remaining <= budget (waitable with
+#                      post_gate_orchestrator.sh --wait-until-gate)
+# The verdict stays on exit 0 (the cheap path still applies and the caller must
+# still STOP); a reachable gate never implies permission to extend early.
+#
 # Usage:
 #   GATE_EPOCH=1794866400 \
 #   STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 \
 #     bash scripts/pre_gate_check.sh
+#   # with an in-session reachability verdict:
+#   SESSION_BUDGET_SECONDS=21300 ... bash scripts/pre_gate_check.sh
 #
 # Both GATE_EPOCH and STATE_SHA256 are required so this cannot silently "pass"
 # against the wrong gate or a stale hash. STATE_SHA256 is the committed baseline
@@ -55,6 +69,15 @@ if ! [[ "$STATE_SHA256" =~ ^[0-9a-fA-F]{64}$ ]]; then
 fi
 if [[ ! -f "$STATE_FILE" ]]; then
   echo "FATAL: state file not found: $STATE_FILE" >&2
+  exit 2
+fi
+
+# Optional session budget. Validate it the same way as GATE_EPOCH: an empty or
+# non-numeric value must not silently flow into `(( ))`, where bash treats a
+# non-numeric string as 0 and would report the gate as trivially reachable.
+SESSION_BUDGET_SECONDS="${SESSION_BUDGET_SECONDS:-}"
+if [[ -n "$SESSION_BUDGET_SECONDS" && ! "$SESSION_BUDGET_SECONDS" =~ ^[0-9]+$ ]]; then
+  echo "FATAL: SESSION_BUDGET_SECONDS must be a non-negative integer, got '$SESSION_BUDGET_SECONDS'" >&2
   exit 2
 fi
 
@@ -99,4 +122,18 @@ fi
 remaining=$(( GATE_EPOCH - now_epoch ))
 echo "PRE-GATE OK: now=$now_epoch ($(date -u +%FT%TZ)) < gate $GATE_EPOCH ($gate_human); T-${remaining}s remaining." >&2
 echo "  state sha256 matches ($actual_sha); data/raw clean. STOP — do not re-run the cycle." >&2
+
+# Informational only: never alters the exit code. This replaces the manual
+# "cutoff precedes gate release" arithmetic repeated every pre-gate session.
+if [[ -n "$SESSION_BUDGET_SECONDS" ]]; then
+  cutoff_epoch=$(( now_epoch + SESSION_BUDGET_SECONDS ))
+  cutoff_human="$(date -u -d "@$cutoff_epoch" +%FT%TZ 2>/dev/null || echo "$cutoff_epoch")"
+  if (( remaining > SESSION_BUDGET_SECONDS )); then
+    echo "GATE_REACHABLE=0: T-${remaining}s > session budget ${SESSION_BUDGET_SECONDS}s (est. cutoff $cutoff_human, gate $gate_human);" >&2
+    echo "  the post-gate cycle cannot run in this session — record this verdict and hand off." >&2
+  else
+    echo "GATE_REACHABLE=1: T-${remaining}s <= session budget ${SESSION_BUDGET_SECONDS}s (est. cutoff $cutoff_human, gate $gate_human);" >&2
+    echo "  the gate falls inside this session — use post_gate_orchestrator.sh --wait-until-gate." >&2
+  fi
+fi
 exit 0
