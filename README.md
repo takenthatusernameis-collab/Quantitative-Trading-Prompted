@@ -1,3 +1,13 @@
+## Cycle 1274: pre-gate verification for 2026-11-20 gate (2026-11-20 06:53 UTC, run 44673857839 attempt 1 session 12 inv 1) — **PRE-GATE VERIFIED; GATE UNREACHABLE THIS RUN; CUTOFF PRECEDES GATE**
+
+- **UTC 2026-11-20T06:53:30Z.** Gate for 2026-11-20 **NOT released** (releases 22:00 UTC 2026-11-20, epoch 1795212000; T-54390s ≈ 15.1h remaining). Cmds 2/4 **withheld** (scope boundary: before the gate).
+- **Pre-gate cheap path exit 0 (one call, then STOP):** `GATE_EPOCH=1795212000 STATE_SHA256=743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1795157610 (2026-11-20T06:53:30Z) < gate 1795212000 (2026-11-20T22:00:00Z); T-54390s remaining. state sha256 matches (743c6e41…); data/raw clean. STOP — do not re-run the cycle.` EXIT=0.
+- **State unchanged:** SHA256 `743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab` == HEAD; `last_run_date 2026-11-19`; NAV `130307.21196257228`; `run_history` **473**. `git status --porcelain` → **0 lines**; `git status --porcelain -- data/raw` → **0 lines**.
+- **Verification (this session):** focused suite **123 passed in 12.52s**; `research/drift_invariant_check.py` → EXIT 0 (`SUMMARY sessions=473 regime_transitions=7 high_turnover_sessions=7 threshold=0.5`); `research/paper_record_raw_coverage_audit.py` → EXIT 0 (`OVERALL: PASS`); `research/paper_trading_artifact_reconciliation_audit.py` → EXIT 0 (`OVERALL: PASS`); `/tmp/kilo-venv/bin/ruff check` → **All checks passed!**.
+- **Supervisor:** no `.kilo-runtime/current-supervisor-recommendation.json` at startup; disposition refreshed in `.kilo-runtime/worker-disposition.json` (runtime, not committed).
+- **Gate reachability (deterministic blocker, not a failure loop):** ~15.1h out; session cutoff ≈ 12:01Z precedes gate release by ~10h; **no mutating post-gate cycle can run this session.** The run active at/after 22:00 UTC 2026-11-20 must run Step 2 (`post_gate_orchestrator.sh` once, then idempotent re-run).
+- **Handoff:** `NEXT_AGENT_TASK.md` "Current status" refreshed to this session's timestamp/cmd results; objective, acceptance criteria, validation commands, and scope boundaries unchanged. No commits made (user instruction); `data/raw/` untouched.
+
 ## Cycle 1273: pre-gate verification for 2026-11-20 gate (2026-11-20 06:51 UTC, run 44673857839 attempt 1 session 11 inv 1) — **PRE-GATE VERIFIED; GATE UNREACHABLE THIS RUN; CUTOFF PRECEDES GATE**
 
 - **UTC 2026-11-20T06:51:04Z.** Gate for 2026-11-20 **NOT released** (releases 22:00 UTC 2026-11-20, epoch 1795212000; T-54536s remaining). Cmds 2/4 **withheld** (scope boundary: before the gate).
