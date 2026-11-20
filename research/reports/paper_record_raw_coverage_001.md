@@ -10,11 +10,11 @@ committed state and cache.
 |---|---|
 | universe checked | `SPY`, `QQQ`, `IWM`, `TLT`, `GLD`, `EFA`, `EEM` |
 | committed raw coverage end (min across universe) | `2026-11-10` |
-| record window | `2025-01-02` .. `2026-11-19` |
-| record sessions | `473` |
+| record window | `2025-01-02` .. `2026-11-20` |
+| record sessions | `474` |
 | sessions covered by committed raw | `466` |
-| sessions **not** re-derivable from `data/raw` | `7` |
-| of those, attested by a provider digest | `1` |
+| sessions **not** re-derivable from `data/raw` | `8` |
+| of those, attested by a provider digest | `2` |
 
 Per-symbol last committed session:
 
@@ -36,6 +36,7 @@ Unverified record sessions:
   - 2026-11-17
   - 2026-11-18
   - 2026-11-19
+  - 2026-11-20
 
 The extension path (`research/extend_paper_trading_state.py`, Cycle 854
 contract) never writes `data/raw`; it fetches into a scratch directory that is
@@ -52,8 +53,9 @@ a session re-derivable, but it can be compared against a later governed
 `data/raw` refresh or a provider re-fetch.
 
 Digest-attested unverified sessions:   - 2026-11-19
+  - 2026-11-20
 
-This cycle's extension: no extension observed in this invocation
+This cycle's extension: no session extended (digest requirement not triggered)
 
 Digests are validated for schema, session/universe consistency and positive,
 finite closes; a malformed digest fails the audit (exit 1) rather than being
@@ -63,8 +65,8 @@ silently ignored.
 
 | quantity | value |
 |---|---|
-| stored `rolling_sharpe_63d` | `-2.141568617178681` |
-| reproduced from stored returns (last 63) | `-2.141568617178681` |
+| stored `rolling_sharpe_63d` | `-2.044068367431364` |
+| reproduced from stored returns (last 63) | `-2.044068367431364` |
 | reproduced exactly | `True` |
 | covered-only `rolling_sharpe_63d` (through `2026-11-10`) | `-1.4394168982987599` |
 | alert threshold | `0.5` |

@@ -11,8 +11,8 @@ per-session parquet.
 | quantity | value |
 |---|---|
 | universe checked | `SPY`, `QQQ`, `IWM`, `TLT`, `GLD`, `EFA`, `EEM` |
-| record window | `2025-01-02` .. `2026-11-19` |
-| record sessions | `473` |
+| record window | `2025-01-02` .. `2026-11-20` |
+| record sessions | `474` |
 | sessions with a mismatch | `1` |
 | mismatches attested (known defects) | `1` |
 | mismatches unattested | `0` |

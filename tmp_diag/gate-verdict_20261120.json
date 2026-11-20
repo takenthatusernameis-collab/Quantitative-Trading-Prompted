@@ -1,10 +1,18 @@
 {
-  "timestamp_utc": "2026-11-20T18:43:35Z",
+  "timestamp_utc": "2026-11-20T22:07:04Z",
   "gate_time_utc": "2026-11-20T22:00:00Z",
   "gate_epoch": 1795212000,
-  "reachable": false,
-  "reason": "T-11785s > session budget 8000s; est cutoff 2026-11-20T20:56:55Z precedes gate 2026-11-20T22:00:00Z",
+  "reachable": true,
+  "reason": "T-2692s <= session budget 12240s (est. cutoff 2026-11-21T00:39:08Z); gate fell inside this session — post-gate cycle completed via post_gate_orchestrator.sh --wait-until-gate",
   "pre_gate_exit": 0,
-  "state_sha256": "743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab",
+  "state_sha256_before": "743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab",
+  "state_sha256_after": "6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f",
+  "last_run_date": "2026-11-20",
+  "sessions_before": 473,
+  "sessions_after": 474,
+  "attested_before": 1,
+  "attested_after": 2,
+  "cycle_status": "OK",
+  "idempotent_re_run": "state hash unchanged after re-run; sessions_extended=0 on second pass",
   "data_raw_clean": true
 }

@@ -1,6 +1,17 @@
 # Next Agent Task: 2026-11-20 gate cycle (pre-gate first; extend only at/after 22:00Z)
 
-## Current status — 2026-11-20T18:43Z — **PRE-GATE OK; GATE UNREACHABLE IN-SESSION (GATE_REACHABLE=0); verdict recorded to tmp_diag/gate-verdict_20261120.json**
+## Current status — 2026-11-20T22:07Z — **POST-GATE CYCLE COMPLETE (verified); gate 2026-11-20 CLOSED**
+- **UTC 2026-11-20T22:07Z.** The 2026-11-20 gate cycle is **COMPLETE**. This is the first invocation in which the gate was reachable: `GATE_REACHABLE=1` (T-2692s <= budget 12240s, est. cutoff 2026-11-21T00:39:08Z). The prior invocations used `SESSION_BUDGET_SECONDS=8000` (cutoff 20:56Z), which structurally preceded the 22:00Z gate; the true session budget (~18:43Z start + 355 min) made the gate reachable for the first time.
+- **Full cycle ran** via `GATE_EPOCH=1795212000 bash scripts/post_gate_orchestrator.sh --wait-until-gate --max-wait-seconds 3000` (started 21:15Z, gate released 22:00Z, cycle complete 22:02:39Z). `ORCH_EXIT=0`.
+- **State advanced:** `sha256sum data/processed/paper_trading_state.yaml` = `6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f` (was `743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab`); `last_run_date` = `2026-11-20`; `run_history` **473→474**; attested **1→2** (`provider_digest_20261120.json` written). NAV unchanged at `130307.21196257228`.
+- **New artifacts:** `data/processed/paper_trading/{daily_pnl,positions,regime,risk_state}_20261120.parquet` + `provider_digest_20261120.json`.
+- **Idempotency verified:** re-run at 22:05Z → `sessions extended: 0`, state hash unchanged, `data/raw` clean.
+- **All verification PASS:** coverage audit `OVERALL: PASS` (474 sessions, 466 covered, 8 unverified, 2 attested); reconciliation audit `OVERALL: PASS`; drift invariant `OK` all three (sessions=474, regime_transitions=7, high_turnover_sessions=7, threshold=0.5); 126 pytest passed + 1 skipped; ruff `All checks passed!`.
+- **Gate verdict refreshed:** `tmp_diag/gate-verdict_20261120.json` now records `reachable: true`, both state hashes, cycle `OK`.
+- **Handoff:** `CORRECTIVE_HANDOFF_POSTGATE_20261120.md` written `Status: OK`.
+- **Next gate:** 2026-11-21T22:00:00Z (epoch 1795298400). Re-run pre-gate with the true remaining session budget; if reachable, run `--wait-until-gate`.
+
+## Current status — 2026-11-20T18:43Z — **PRE-GATE OK; GATE UNREACHABLE IN-SESSION (GATE_REACHABLE=0); verdict recorded to tmp_diag/gate-verdict_20261120.json** [SUPERSEDED — cycle completed 22:07Z]
 - **UTC 2026-11-20T18:43Z.** Gate for 2026-11-20 **NOT released** (releases 22:00 UTC 2026-11-20, epoch 1795212000; T-11785s ≈ 3.3h remaining). Session cutoff ≈ 20:56Z, which precedes gate release: **no mutating post-gate cycle can run this session.** Cmds 2/4 **withheld** (scope boundary: before the gate).
 - **Pre-gate cheap path exit 0 (this session):** `GATE_EPOCH=1795212000 STATE_SHA256=743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab SESSION_BUDGET_SECONDS=8000 bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1795200215 (2026-11-20T18:43:35Z) < gate 1795212000; T-11785s remaining` + `GATE_REACHABLE=0: T-11785s > session budget 8000s (est. cutoff 2026-11-20T20:56:55Z)`. PRE_GATE_EXIT=0; state sha256 matches; `data/raw` clean. Verdict recorded to `tmp_diag/gate-verdict_20261120.json`.
 - **State unchanged:** `sha256sum data/processed/paper_trading_state.yaml` = `743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab`; `last_run_date 2026-11-19`; `run_history` **473**. `git status --porcelain` → 0 lines; `git status --porcelain -- data/raw` → 0 lines.
