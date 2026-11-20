@@ -1,10 +1,10 @@
 # Next Agent Task: 2026-11-20 gate cycle (pre-gate first; extend only at/after 22:00Z)
 
 ## Current status — 2026-11-20T05:45Z — **PRE-GATE OK; GATE UNREACHABLE THIS RUN**
-- **UTC 2026-11-20T05:44:55Z.** Gate for 2026-11-20 **NOT released** (releases 22:00 UTC 2026-11-20, epoch 1795212000; T-58505s ≈ 16.25h remaining). Cmds 2/4 **withheld** (scope boundary: before the gate).
-- **Pre-gate cheap path exit 0 (this session):** `GATE_EPOCH=1795212000 STATE_SHA256=743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1795153495 (2026-11-20T05:44:55Z) < gate 1795212000 (2026-11-20T22:00:00Z); T-58505s remaining. state sha256 matches (743c6e41…); data/raw clean. STOP — do not re-run the cycle.` PRE_GATE_EXIT=0.
+- **UTC 2026-11-20T05:45:44Z.** Gate for 2026-11-20 **NOT released** (releases 22:00 UTC 2026-11-20, epoch 1795212000; T-58456s ≈ 16.24h remaining). Cmds 2/4 **withheld** (scope boundary: before the gate).
+- **Pre-gate cheap path exit 0 (this session):** `GATE_EPOCH=1795212000 STATE_SHA256=743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1795153544 (2026-11-20T05:45:44Z) < gate 1795212000 (2026-11-20T22:00:00Z); T-58456s remaining. state sha256 matches (743c6e41…); data/raw clean. STOP — do not re-run the cycle.` PRE_GATE_EXIT=0.
 - **State unchanged:** `sha256sum data/processed/paper_trading_state.yaml` = `743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab`; `last_run_date 2026-11-19`; NAV `130307.21196257228`; `run_history` **473**. `git status --porcelain` → 0 lines (tree clean); `git status --porcelain -- data/raw` → 0 lines.
-- **Verification (this session):** focused suite **123 passed** in 12.61s; venv imports OK.
+- **Verification (this session):** focused suite **123 passed** in 12.90s; venv imports OK.
 - **Supervisor:** no `.kilo-runtime/current-supervisor-recommendation.json` at startup; disposition refreshed.
 
 ## Cycle result — 2026-11-19 gate cycle COMPLETE (verified 2026-11-19T22:07Z)
@@ -18,7 +18,7 @@
 
 ## Next task (bounded): the 2026-11-20 gate cycle
 - **Objective:** run the cheap pre-gate path; only if the gate is released, run the full post-gate cycle once, confirm idempotency, and report the new day's drift flags.
-- **Pre-gate already verified at 01:59Z, 02:09Z, 03:49Z, and 05:02Z** (all exit 0, state sha256 `743c6e41…`, run_history 473). The next run must still re-run the pre-gate command: it is the only thing that discovers gate release. Do not skip it because it passed earlier.
+- **Pre-gate already verified at 01:59Z, 02:09Z, 03:49Z, 05:02Z, and 05:45Z** (all exit 0, state sha256 `743c6e41…`, run_history 473). The next run must still re-run the pre-gate command: it is the only thing that discovers gate release. Do not skip it because it passed earlier.
 - **Acceptance criteria:**
   - Pre-gate command run in foreground and exit code recorded (0 = stop, 3 = gate reached).
   - If exit 3 and `data/raw` clean: one foreground full cycle (`ORCH_EXIT=0`), then one idempotent re-run showing `sessions extended: 0` and no second state write; handoff `Status: OK`.
