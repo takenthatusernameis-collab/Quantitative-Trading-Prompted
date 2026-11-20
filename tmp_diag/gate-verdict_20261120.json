@@ -1,9 +1,9 @@
 {
-  "timestamp_utc": "2026-11-20T18:42:40Z",
+  "timestamp_utc": "2026-11-20T18:43:35Z",
   "gate_time_utc": "2026-11-20T22:00:00Z",
   "gate_epoch": 1795212000,
   "reachable": false,
-  "reason": "T-11840s > session budget 8000s; est cutoff 2026-11-20T20:56:00Z precedes gate 2026-11-20T22:00:00Z",
+  "reason": "T-11785s > session budget 8000s; est cutoff 2026-11-20T20:56:55Z precedes gate 2026-11-20T22:00:00Z",
   "pre_gate_exit": 0,
   "state_sha256": "743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab",
   "data_raw_clean": true
