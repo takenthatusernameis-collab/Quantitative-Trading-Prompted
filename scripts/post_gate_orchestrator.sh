@@ -298,14 +298,33 @@ mark_run "3 drift"
 record_rc $? "cmd3 drift"
 
 # --- 4. Idempotency re-run ---------------------------------------------------
+# NEXT_AGENT_TASK.md's acceptance criteria require the idempotency re-run to show
+# "sessions extended: 0" and "no second state write". Previously only cmd4's exit
+# code was recorded: a re-run that appended a duplicate session (or otherwise
+# rewrote the state) while still exiting 0 would have produced "Status: OK", i.e.
+# a durable record claiming idempotency that was never checked. Hash the state
+# before and after the re-run and record a step failure if it changed.
 if (( EXTEND_DISABLED )); then
   log "cmd4: SKIP idempotency re-extend (gate not released: $MODE)"
   mark_skipped "4 idempotent re-extend (gate not released)"
 else
   log "cmd4: extend idempotency check"
   mark_run "4 idempotent re-extend"
+  state_pre_cmd4="$(sha256sum "$STATE_FILE_PATH" 2>/dev/null | awk '{print $1}')"
   "$PY" research/extend_paper_trading_state.py 2>&1 | tail -8
-  record_rc $? "cmd4 idempotency re-extend"
+  cmd4_rc=$?
+  state_post_cmd4="$(sha256sum "$STATE_FILE_PATH" 2>/dev/null | awk '{print $1}')"
+  record_rc $cmd4_rc "cmd4 idempotency re-extend"
+  if (( cmd4_rc == 0 )); then
+    if [[ -n "$state_pre_cmd4" && "$state_pre_cmd4" == "$state_post_cmd4" ]]; then
+      log "cmd4 idempotency verified: state sha unchanged ($state_pre_cmd4)"
+    elif [[ -n "$state_pre_cmd4" ]]; then
+      log "STEP FAILED (rc=1): cmd4 idempotent re-extend rewrote the state ($state_pre_cmd4 -> ${state_post_cmd4:-absent})"
+      FAILED=1
+    else
+      log "cmd4 idempotency not verifiable: state file '$STATE_FILE_PATH' absent before the re-run"
+    fi
+  fi
 fi
 
 # --- 4b. Regenerate record-status artifacts (post-extend only) ---------------

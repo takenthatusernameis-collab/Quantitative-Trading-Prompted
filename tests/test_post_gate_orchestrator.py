@@ -1102,3 +1102,86 @@ def test_cmd8c_anchor_omitted_when_last_run_is_not_a_session_date(
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "--extend-before" not in _coverage_audit_argv(log)
     assert "anchor unavailable" in proc.stdout, proc.stdout
+
+
+def _extend_call_counting_stub(tmp_path: Path, rewrite_on_call: int) -> Path:
+    """``PYTHON`` stub that rewrites the state on the Nth extend invocation.
+
+    The idempotency acceptance criterion is "the re-run shows ``sessions
+    extended: 0`` and writes no second state". cmd4's exit code alone cannot show
+    that: a buggy extend that appends a duplicate session and still exits 0 would
+    have been recorded as "Status: OK". This stub lets one extend call mutate the
+    state so the orchestrator's before/after hash check has something to catch.
+    ``rewrite_on_call=0`` means never rewrite (the healthy idempotent case).
+    """
+    counter = tmp_path / "extend_calls.count"
+    stub = tmp_path / "extend_rewriter.sh"
+    rewrite_guard = (
+        f'    if [ "$n" -eq {rewrite_on_call} ]; then\n'
+        "      printf 'last_run_date: 2026-11-21\\ncurrent_nav: 2.0\\nrun_history: []\\n'"
+        " > data/processed/paper_trading_state.yaml\n"
+        "    fi\n"
+        if rewrite_on_call
+        else ""
+    )
+    stub.write_text(
+        "#!/usr/bin/env bash\n"
+        'case "$*" in\n'
+        "  *extend_paper_trading_state.py*)\n"
+        f'    n=$(cat "{counter}" 2>/dev/null || echo 0)\n'
+        '    n=$((n + 1))\n'
+        f'    printf "%s" "$n" > "{counter}"\n'
+        f"{rewrite_guard}"
+        "    ;;\n"
+        "esac\n"
+        "exit 0\n",
+        encoding="utf-8",
+    )
+    stub.chmod(0o755)
+    return stub
+
+
+def test_idempotent_reextend_that_rewrites_state_fails_the_cycle(tmp_path: Path) -> None:
+    # cmd4 is the idempotency re-run: the gate cycle's acceptance criteria require
+    # it to show "sessions extended: 0" and no second state write. Before this
+    # guard only cmd4's exit code was recorded, so a re-run that rewrote the state
+    # (duplicate session / corrupted record) still produced "Status: OK". Force
+    # the second extend call to rewrite the state and pin that the cycle fails.
+    stub = _extend_call_counting_stub(tmp_path, rewrite_on_call=2)
+    _init_git(tmp_path)
+    _write_state(tmp_path, "2026-11-19")
+    handoff = tmp_path / "handoff.md"
+    proc = _run_script_copy(
+        tmp_path,
+        [],
+        PAST_GATE,
+        handoff=str(handoff),
+        env_extra={"PYTHON": str(stub)},
+    )
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "cmd4 idempotent re-extend rewrote the state" in proc.stdout, proc.stdout
+    assert handoff.exists(), proc.stdout
+    text = handoff.read_text()
+    assert "- **Mode:** full cycle (extend included)" in text, text
+    assert "**Status:** FAILED" in text, text
+
+
+def test_idempotent_reextend_with_unchanged_state_is_verified(tmp_path: Path) -> None:
+    # Positive complement: when the re-run leaves the state byte-identical the
+    # cycle must record that evidence and stay "Status: OK" (so the new guard
+    # cannot only reject).
+    stub = _extend_call_counting_stub(tmp_path, rewrite_on_call=0)
+    _init_git(tmp_path)
+    _write_state(tmp_path, "2026-11-19")
+    handoff = tmp_path / "handoff.md"
+    proc = _run_script_copy(
+        tmp_path,
+        [],
+        PAST_GATE,
+        handoff=str(handoff),
+        env_extra={"PYTHON": str(stub)},
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "cmd4 idempotency verified: state sha unchanged" in proc.stdout, proc.stdout
+    assert handoff.exists(), proc.stdout
+    assert "**Status:** OK" in handoff.read_text()
