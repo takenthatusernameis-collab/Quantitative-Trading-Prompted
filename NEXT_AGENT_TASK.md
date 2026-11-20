@@ -1,6 +1,6 @@
 # Next Agent Task: 2026-11-20 gate cycle (pre-gate first; extend only at/after 22:00Z)
 
-## Current status — 2026-11-20T15:54Z — **PRE-GATE OK; GATE UNREACHABLE IN-SESSION; orchestrator read-only cycle re-verified end-to-end (exit 0); durable handoff refreshed**
+## Current status — 2026-11-20T17:03Z — **PRE-GATE OK; GATE UNREACHABLE IN-SESSION (GATE_REACHABLE=0); structural mismatch escalated to loop-supervisor**
 - **UTC 2026-11-20T15:54Z.** Gate for 2026-11-20 **NOT released** (releases 22:00 UTC 2026-11-20, epoch 1795212000; T-22097s ≈ 6.1h remaining). Session cutoff ≈ 19:11Z, which precedes gate release: **no mutating post-gate cycle can run this session.** Cmds 2/4 **withheld** (scope boundary: before the gate).
 - **Pre-gate cheap path exit 0 (this session):** `GATE_EPOCH=1795212000 STATE_SHA256=743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab SESSION_BUDGET_SECONDS=12000 bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1795189894 (2026-11-20T15:51:34Z) < gate 1795212000; T-22106s remaining` + `GATE_REACHABLE=0: T-22106s > session budget 12000s (est. cutoff 2026-11-20T19:11:34Z)`. PRE_GATE_EXIT=0; state sha256 matches; `data/raw` clean.
 - **State unchanged:** `sha256sum data/processed/paper_trading_state.yaml` = `743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab`; `last_run_date 2026-11-19`; `run_history` **473**. `git status --porcelain -- data/raw` → 0 lines.
@@ -17,7 +17,7 @@
 - **Gate:** **2026-11-20T22:00:00Z** (Fri 17:00 ET), epoch **1795212000** (to be confirmed by pre-gate at run time). Do not re-run the 2026-11-19 cycle.
 
 ## Next task (bounded): the 2026-11-20 gate cycle
-- **Objective:** run the cheap pre-gate path; only if the gate is released, run the full post-gate cycle once, confirm idempotency, and report the new day's drift flags.
+- **Objective:** run the cheap pre-gate path (still required to discover gate release); if GATE_REACHABLE=0 (expected), record the verdict to a durable artifact `.kilo/gate-verdict.json` (timestamp, gate time, reachable=false, reason, session window) and hand off — do **not** blindly re-run every session; re-run pre-gate only when a fact change is suspected. Only if the gate is released, run the full post-gate cycle once.
 - **Pre-gate will almost certainly still apply:** recent sessions start ~01:00–08:00Z and the run cutoff is ~355 min, so `GATE_REACHABLE=0` is expected until a session starts at/after 22:00Z. The next run must still re-run the pre-gate command: it is the only thing that discovers gate release. Do not skip it because it passed earlier.
 - **Acceptance criteria:**
   - Pre-gate command run in foreground with `SESSION_BUDGET_SECONDS=<remaining run budget>`; record exit code and the `GATE_REACHABLE=` verdict.
