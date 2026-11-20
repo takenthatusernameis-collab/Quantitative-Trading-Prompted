@@ -144,13 +144,13 @@ The published test-period reference **1.417752** is reproduced together with all
 
 ### 5.2 Committed artefacts that quote the affected statistics
 
-Measured by searching the committed tree for the published numeric markers, so the inventory cannot drift from the repository's content: 74 distinct committed files quote at least one of them.
+Measured by searching the committed tree for the published numeric markers, so the inventory cannot drift from the repository's content: 90 distinct committed files quote at least one of them.
 
 | Marker | Statistic | Committed files quoting it |
 |---|---|---|
-| `0.9473` | published 48-fold walk-forward mean OOS Sharpe | 67 |
+| `0.9473` | published 48-fold walk-forward mean OOS Sharpe | 72 |
 | `1.771084` | committed record's canonical Sharpe | 7 |
-| `-2.120279` | committed record's trailing 63-session Sharpe (drift flag) | 4 |
+| `-2.120279` | committed record's trailing 63-session Sharpe (drift flag) | 15 |
 | `1.486941` | full-path Sharpe of the committed record's path | 4 |
 
 - `0.9473` (published 48-fold walk-forward mean OOS Sharpe):
@@ -176,6 +176,11 @@ Measured by searching the committed tree for the published numeric markers, so t
   - `research/experiments/tsmomentum_sma175_validation_001.md`
   - `research/experiments/tsmomentum_walkforward_embargo_001.md`
   - `research/experiments/tsmomentum_walkforward_mean_robustness_001.md`
+  - `research/handoffs/archive/CORRECTIVE_HANDOFF_CORRECTIVE_354_20261119T0300Z.md`
+  - `research/handoffs/archive/CORRECTIVE_HANDOFF_CORRECTIVE_382_20261118T2323Z.md`
+  - `research/handoffs/archive/CORRECTIVE_HANDOFF_CORRECTIVE_INV1_20261119T0305Z.md`
+  - `research/handoffs/archive/CORRECTIVE_HANDOFF_CORRECTIVE_INV3_20261119T0311Z.md`
+  - `research/handoffs/archive/CORRECTIVE_HANDOFF_INVOCATION_5.md`
   - `research/hypotheses/macroregime_001.md`
   - `research/incumbent_phase_stability_audit.py`
   - `research/mechanism_comparison_001.py`
@@ -231,6 +236,17 @@ Measured by searching the committed tree for the published numeric markers, so t
   - `research/tsmomentum_same_session_vol_correction.py`
 - `-2.120279` (committed record's trailing 63-session Sharpe (drift flag)):
   - `research/corrective_handoff_inv2_2026-11-06.md`
+  - `research/handoffs/archive/CORRECTIVE_HANDOFF_CORRECTIVE_186.md`
+  - `research/handoffs/archive/CORRECTIVE_HANDOFF_CORRECTIVE_264_20261110T1524Z.md`
+  - `research/handoffs/archive/CORRECTIVE_HANDOFF_INVOCATION_1048.md`
+  - `research/handoffs/archive/CORRECTIVE_HANDOFF_INVOCATION_1050.md`
+  - `research/handoffs/archive/CORRECTIVE_HANDOFF_INVOCATION_1060.md`
+  - `research/handoffs/archive/CORRECTIVE_HANDOFF_INVOCATION_1061.md`
+  - `research/handoffs/archive/CORRECTIVE_HANDOFF_INVOCATION_2.md`
+  - `research/handoffs/archive/CORRECTIVE_HANDOFF_INVOCATION_513.md`
+  - `research/handoffs/archive/CORRECTIVE_HANDOFF_INVOCATION_515.md`
+  - `research/handoffs/archive/CORRECTIVE_HANDOFF_INVOCATION_709.md`
+  - `research/handoffs/archive/CORRECTIVE_HANDOFF_INVOCATION_710.md`
   - `research/reports/tsmomentum_rolling63_weakness_diagnosis_001.md`
   - `research/reports/tsmomentum_same_session_vol_correction_001.md`
   - `research/tsmomentum_same_session_vol_correction.py`
@@ -426,6 +442,11 @@ git status --porcelain data/ config/
           "research/experiments/tsmomentum_sma175_validation_001.md",
           "research/experiments/tsmomentum_walkforward_embargo_001.md",
           "research/experiments/tsmomentum_walkforward_mean_robustness_001.md",
+          "research/handoffs/archive/CORRECTIVE_HANDOFF_CORRECTIVE_354_20261119T0300Z.md",
+          "research/handoffs/archive/CORRECTIVE_HANDOFF_CORRECTIVE_382_20261118T2323Z.md",
+          "research/handoffs/archive/CORRECTIVE_HANDOFF_CORRECTIVE_INV1_20261119T0305Z.md",
+          "research/handoffs/archive/CORRECTIVE_HANDOFF_CORRECTIVE_INV3_20261119T0311Z.md",
+          "research/handoffs/archive/CORRECTIVE_HANDOFF_INVOCATION_5.md",
           "research/hypotheses/macroregime_001.md",
           "research/incumbent_phase_stability_audit.py",
           "research/mechanism_comparison_001.py",
@@ -473,7 +494,7 @@ git status --porcelain data/ config/
           "research/tsmomentum_walkforward_mean_robustness_audit.py"
         ],
         "marker": "0.9473",
-        "n_files": 67
+        "n_files": 72
       },
       {
         "description": "committed record's canonical Sharpe",
@@ -493,12 +514,23 @@ git status --porcelain data/ config/
         "description": "committed record's trailing 63-session Sharpe (drift flag)",
         "files": [
           "research/corrective_handoff_inv2_2026-11-06.md",
+          "research/handoffs/archive/CORRECTIVE_HANDOFF_CORRECTIVE_186.md",
+          "research/handoffs/archive/CORRECTIVE_HANDOFF_CORRECTIVE_264_20261110T1524Z.md",
+          "research/handoffs/archive/CORRECTIVE_HANDOFF_INVOCATION_1048.md",
+          "research/handoffs/archive/CORRECTIVE_HANDOFF_INVOCATION_1050.md",
+          "research/handoffs/archive/CORRECTIVE_HANDOFF_INVOCATION_1060.md",
+          "research/handoffs/archive/CORRECTIVE_HANDOFF_INVOCATION_1061.md",
+          "research/handoffs/archive/CORRECTIVE_HANDOFF_INVOCATION_2.md",
+          "research/handoffs/archive/CORRECTIVE_HANDOFF_INVOCATION_513.md",
+          "research/handoffs/archive/CORRECTIVE_HANDOFF_INVOCATION_515.md",
+          "research/handoffs/archive/CORRECTIVE_HANDOFF_INVOCATION_709.md",
+          "research/handoffs/archive/CORRECTIVE_HANDOFF_INVOCATION_710.md",
           "research/reports/tsmomentum_rolling63_weakness_diagnosis_001.md",
           "research/reports/tsmomentum_same_session_vol_correction_001.md",
           "research/tsmomentum_same_session_vol_correction.py"
         ],
         "marker": "-2.120279",
-        "n_files": 4
+        "n_files": 15
       },
       {
         "description": "full-path Sharpe of the committed record's path",
@@ -512,7 +544,7 @@ git status --porcelain data/ config/
         "n_files": 4
       }
     ],
-    "n_distinct_affected_files": 74
+    "n_distinct_affected_files": 90
   },
   "candidate": "tsmomentum_spytrend_001",
   "checks": [
@@ -850,7 +882,7 @@ git status --porcelain data/ config/
     "name": "lag_vol_estimate",
     "semantics": "When True the realised-volatility estimate for session t is computed from sessions up to and including t-1 only (no same-session feedback). When False (the default) the trailing 63-session window includes session t, which is the committed behaviour."
   },
-  "verdict": "**1. The defect is real, quantified and now correctable, but it is not a cause of the gate failure and it does not rescue anything.** The same-session volatility estimate (session *t*'s own return moves session *t*'s exposure) is present in the published research path, in the shared simulation / live paper-trading path and in both overlay helpers of `src/evaluation/risk.py`. With the estimate lagged one session the committed record's canonical Sharpe moves from 1.583075 to 1.410227, its trailing 63-session Sharpe from -1.439417 to -1.621363 and its PSR against the fixed backtest baseline 1.4178 from 0.592754 to 0.495713. The corrected path is **worse on every record-level statistic** and the promotion decision stays **NO-GO** (failed gates: rolling_63d_sharpe, psr).\n\n**2. The corrected 48-fold walk-forward mean looks better only because a numerical artefact disappears.** On the default path the published mean OOS Sharpe is 0.947307 and it contains one pathological fold (fold 12, -21.829879: 242 of 244 flat sessions, so the backtest-scale estimator divides a near-zero numerator by a near-zero dispersion, Cycle 925 section 5). Excluding that fold the default path's mean is 1.431928. On the corrected path the same segment is entirely flat, so the estimator returns 0.000000 instead of a pathology, the mean over all 48 folds is 1.318605, and the strictest comparable statistic - both paths with fold 12 excluded - is **lower** on the corrected path (1.346660 vs 1.431928); excluding each path's own worst fold it is also lower (1.357135 vs 1.431928). The corrected path is not a recovery, and the higher headline mean must never be quoted without the fold-level table.\n\n**3. The default path is unchanged, bit-for-bit.** The opt-in switch (`lag_vol_estimate`, default off) is available in all three code paths; every default-path comparison in this report is a max |diff| of exactly 0.0 against a frozen copy of the pre-change implementation (research path, simulation path and both risk-overlay helpers). No gate, threshold, universe, cost model, Sharpe convention, parameter, hypothesis or drift flag was changed, the published walk-forward record and the committed paper-trading state were **not** overwritten, and `data/` and `config/` are byte-identical before and after the run.\n\n**4. Decision recommendation: adopt only for new live paper-trading records.** The defect is a genuine point-in-time error in the **live** path (the exposure for session *t* is set with information that is only fully observable after session *t*'s close, at the price the trade is executed at), so a **new** live record must not be produced with it. But the published backtest artefacts are frozen, are quoted by 74 committed files, and the correction **lowers** every record-level statistic of the only credible candidate in the repository while leaving the decision NO-GO: adopting it everywhere would invalidate a large body of published evidence in exchange for no decision-relevant gain. The published record therefore stays as it is, and a clearly labelled successor record is the right vehicle for the corrected backtest (plan in section 7, not executed here). Two consequences must be stated. (i) A corrected live record is measured on a different path from the published backtest baseline 1.4178, so its PSR comparison against that unchanged reference is **conservative**: the corrected path's own 2018-2026 test-period Sharpe is 1.335983 against the published 1.417752. (ii) A corrected live record must be **started fresh** rather than appended to the committed one, because a record that mixes the two paths measures neither; the `track_record_length` gate needs 126 sessions, so the promotion evidence would restart from zero while the committed record stays published and NO-GO.\n\n**5. The incumbent's published verdict is unchanged.** It remains a **Credible Candidate** by its published verdict and **NO-GO** for promotion, live deployment remains unsupported, and this cycle publishes a measurement and a plan - not an edge, not a recovery and not a promotion.",
+  "verdict": "**1. The defect is real, quantified and now correctable, but it is not a cause of the gate failure and it does not rescue anything.** The same-session volatility estimate (session *t*'s own return moves session *t*'s exposure) is present in the published research path, in the shared simulation / live paper-trading path and in both overlay helpers of `src/evaluation/risk.py`. With the estimate lagged one session the committed record's canonical Sharpe moves from 1.583075 to 1.410227, its trailing 63-session Sharpe from -1.439417 to -1.621363 and its PSR against the fixed backtest baseline 1.4178 from 0.592754 to 0.495713. The corrected path is **worse on every record-level statistic** and the promotion decision stays **NO-GO** (failed gates: rolling_63d_sharpe, psr).\n\n**2. The corrected 48-fold walk-forward mean looks better only because a numerical artefact disappears.** On the default path the published mean OOS Sharpe is 0.947307 and it contains one pathological fold (fold 12, -21.829879: 242 of 244 flat sessions, so the backtest-scale estimator divides a near-zero numerator by a near-zero dispersion, Cycle 925 section 5). Excluding that fold the default path's mean is 1.431928. On the corrected path the same segment is entirely flat, so the estimator returns 0.000000 instead of a pathology, the mean over all 48 folds is 1.318605, and the strictest comparable statistic - both paths with fold 12 excluded - is **lower** on the corrected path (1.346660 vs 1.431928); excluding each path's own worst fold it is also lower (1.357135 vs 1.431928). The corrected path is not a recovery, and the higher headline mean must never be quoted without the fold-level table.\n\n**3. The default path is unchanged, bit-for-bit.** The opt-in switch (`lag_vol_estimate`, default off) is available in all three code paths; every default-path comparison in this report is a max |diff| of exactly 0.0 against a frozen copy of the pre-change implementation (research path, simulation path and both risk-overlay helpers). No gate, threshold, universe, cost model, Sharpe convention, parameter, hypothesis or drift flag was changed, the published walk-forward record and the committed paper-trading state were **not** overwritten, and `data/` and `config/` are byte-identical before and after the run.\n\n**4. Decision recommendation: adopt only for new live paper-trading records.** The defect is a genuine point-in-time error in the **live** path (the exposure for session *t* is set with information that is only fully observable after session *t*'s close, at the price the trade is executed at), so a **new** live record must not be produced with it. But the published backtest artefacts are frozen, are quoted by 90 committed files, and the correction **lowers** every record-level statistic of the only credible candidate in the repository while leaving the decision NO-GO: adopting it everywhere would invalidate a large body of published evidence in exchange for no decision-relevant gain. The published record therefore stays as it is, and a clearly labelled successor record is the right vehicle for the corrected backtest (plan in section 7, not executed here). Two consequences must be stated. (i) A corrected live record is measured on a different path from the published backtest baseline 1.4178, so its PSR comparison against that unchanged reference is **conservative**: the corrected path's own 2018-2026 test-period Sharpe is 1.335983 against the published 1.417752. (ii) A corrected live record must be **started fresh** rather than appended to the committed one, because a record that mixes the two paths measures neither; the `track_record_length` gate needs 126 sessions, so the promotion evidence would restart from zero while the committed record stays published and NO-GO.\n\n**5. The incumbent's published verdict is unchanged.** It remains a **Credible Candidate** by its published verdict and **NO-GO** for promotion, live deployment remains unsupported, and this cycle publishes a measurement and a plan - not an edge, not a recovery and not a promotion.",
   "walk_forward": {
     "corrected": {
       "artefact_fold": 12,
