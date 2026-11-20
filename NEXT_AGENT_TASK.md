@@ -1,10 +1,10 @@
 # Next Agent Task: 2026-11-20 gate cycle (pre-gate first; extend only at/after 22:00Z)
 
-## Current status — 2026-11-20T05:49Z — **PRE-GATE OK; GATE UNREACHABLE THIS RUN**
-- **UTC 2026-11-20T05:49:47Z.** Gate for 2026-11-20 **NOT released** (releases 22:00 UTC 2026-11-20, epoch 1795212000; T-58213s ≈ 16.17h remaining). Cmds 2/4 **withheld** (scope boundary: before the gate).
-- **Pre-gate cheap path exit 0 (this session):** `GATE_EPOCH=1795212000 STATE_SHA256=743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1795153787 (2026-11-20T05:49:47Z) < gate 1795212000 (2026-11-20T22:00:00Z); T-58213s remaining. state sha256 matches (743c6e41…); data/raw clean. STOP — do not re-run the cycle.` PRE_GATE_EXIT=0.
+## Current status — 2026-11-20T06:40Z — **PRE-GATE OK; GATE UNREACHABLE THIS RUN**
+- **UTC 2026-11-20T06:40:32Z.** Gate for 2026-11-20 **NOT released** (releases 22:00 UTC 2026-11-20, epoch 1795212000; T-55168s ≈ 15.32h remaining). Cmds 2/4 **withheld** (scope boundary: before the gate).
+- **Pre-gate cheap path exit 0 (this session):** `GATE_EPOCH=1795212000 STATE_SHA256=743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab bash scripts/pre_gate_check.sh` → `PRE-GATE OK: now=1795156832 (2026-11-20T06:40:32Z) < gate 1795212000 (2026-11-20T22:00:00Z); T-55168s remaining. state sha256 matches (743c6e41…); data/raw clean. STOP — do not re-run the cycle.` PRE_GATE_EXIT=0.
 - **State unchanged:** `sha256sum data/processed/paper_trading_state.yaml` = `743c6e419f1e28a05a76272c63909161679178be3bf805f8cbf289e11c6b33ab`; `last_run_date 2026-11-19`; NAV `130307.21196257228`; `run_history` **473**. `git status --porcelain` → 0 lines (tree clean); `git status --porcelain -- data/raw` → 0 lines.
-- **Verification (this session):** focused suite **123 passed** in 11.95s; venv imports OK; `drift_invariant_check.py` EXIT=0 (sessions=473, regime_transitions=7, high_turnover_sessions=7, threshold=0.5); `paper_record_raw_coverage_audit.py` OVERALL: PASS (attested=1); `paper_trading_artifact_reconciliation_audit.py` OVERALL: PASS; `drift_persistence_report.py` tail ends `2026-11-19 -2.1416`.
+- **Verification (this session):** focused suite **123 passed** in 12.82s; venv imports OK; `drift_invariant_check.py` EXIT=0 (sessions=473, regime_transitions=7, high_turnover_sessions=7, threshold=0.5); `paper_record_raw_coverage_audit.py` OVERALL: PASS (attested=1); `paper_trading_artifact_reconciliation_audit.py` OVERALL: PASS; `drift_persistence_report.py` tail ends `2026-11-19 -2.1416` (stored == recomputed True).
 - **Supervisor:** no `.kilo-runtime/current-supervisor-recommendation.json` at startup; disposition refreshed.
 
 ## Cycle result — 2026-11-19 gate cycle COMPLETE (verified 2026-11-19T22:07Z)
