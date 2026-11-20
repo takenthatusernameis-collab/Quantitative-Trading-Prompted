@@ -97,13 +97,13 @@ PSR settings (the repository's own): `n_bootstrap=1000`, `block_size=22`, `seed=
 
 | Gate | Published record | Corrected record | Threshold |
 |---|---|---|---|
-| `track_record_length` | 472.000000 | 466.000000 | >= 126 |
-| `full_period_sharpe` | 1.470940 | 1.410227 | >= 0.9 |
-| `rolling_63d_sharpe` | -1.974487 | -1.621363 | >= 0.9 |
+| `track_record_length` | 473.000000 | 466.000000 | >= 126 |
+| `full_period_sharpe` | 1.469374 | 1.410227 | >= 0.9 |
+| `rolling_63d_sharpe` | -2.141569 | -1.621363 | >= 0.9 |
 | `max_drawdown` | -0.065625 | -0.078141 | >= -0.15 |
 | `rolling_63d_max_dd` | -0.065445 | -0.073811 | >= -0.15 |
 | `regime_flips` | 7.000000 | 7.000000 | >= 1 |
-| `psr` | 0.530422 | 0.495713 | >= 0.95 |
+| `psr` | 0.529363 | 0.495713 | >= 0.95 |
 | **decision** | **NO-GO** | **NO-GO** | failed gates: rolling_63d_sharpe, psr |
 
 The corrected record's gate table is computed by the production code (`src/simulation/evaluation.py::evaluate_go_no_go`) on the corrected return series with the committed configuration; only the return series and the dates are substituted, because the promotion gates consume only the returns, the dates, the run-history turnover and the run-history regime exposure.
@@ -150,7 +150,7 @@ Measured by searching the committed tree for the published numeric markers, so t
 |---|---|---|
 | `0.9473` | published 48-fold walk-forward mean OOS Sharpe | 67 |
 | `1.771084` | committed record's canonical Sharpe | 7 |
-| `-2.120279` | committed record's trailing 63-session Sharpe (drift flag) | 5 |
+| `-2.120279` | committed record's trailing 63-session Sharpe (drift flag) | 4 |
 | `1.486941` | full-path Sharpe of the committed record's path | 4 |
 
 - `0.9473` (published 48-fold walk-forward mean OOS Sharpe):
@@ -231,7 +231,6 @@ Measured by searching the committed tree for the published numeric markers, so t
   - `research/tsmomentum_same_session_vol_correction.py`
 - `-2.120279` (committed record's trailing 63-session Sharpe (drift flag)):
   - `research/corrective_handoff_inv2_2026-11-06.md`
-  - `research/experiments/tsmomentum_rolling63_weakness_diagnosis_001.md`
   - `research/reports/tsmomentum_rolling63_weakness_diagnosis_001.md`
   - `research/reports/tsmomentum_same_session_vol_correction_001.md`
   - `research/tsmomentum_same_session_vol_correction.py`
@@ -268,9 +267,9 @@ The same-session estimate is a point-in-time error in the live path, so a new li
 
 ## 8. Checks
 
-- [committed_record_loaded]: PASS (observed: 472 sessions (last 2026-11-18), expected: >= 126 sessions)
-- [committed_record_series_are_length_consistent]: PASS (observed: returns 472, dates 472, run_history 472, expected: all equal)
-- [excluded_sessions_are_only_the_post_cache_tail]: PASS (observed: 6 excluded session(s) after cache end 2026-11-10: ['2026-11-11', '2026-11-12', '2026-11-13', '2026-11-16', '2026-11-17', '2026-11-18'], expected: every excluded date strictly after the cache's last session)
+- [committed_record_loaded]: PASS (observed: 473 sessions (last 2026-11-19), expected: >= 126 sessions)
+- [committed_record_series_are_length_consistent]: PASS (observed: returns 473, dates 473, run_history 473, expected: all equal)
+- [excluded_sessions_are_only_the_post_cache_tail]: PASS (observed: 7 excluded session(s) after cache end 2026-11-10: ['2026-11-11', '2026-11-12', '2026-11-13', '2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19'], expected: every excluded date strictly after the cache's last session)
 - [default_path_reproduces_every_committed_session]: PASS (observed: max |diff| = 5.421e-20 over 466 sessions, expected: <= 1e-12)
 - [default_research_path_is_bit_identical_to_the_pre_change_implementation]: PASS (observed: net max |diff| = 0.000e+00, weights max |diff| = 0.000e+00, expected: 0.0 (bit-identical))
 - [default_simulation_path_is_bit_identical_to_the_pre_change_implementation]: PASS (observed: weights max |diff| = 0.000e+00, vol_scale max |diff| = 0.000e+00, expected: 0.0 (bit-identical))
@@ -494,13 +493,12 @@ git status --porcelain data/ config/
         "description": "committed record's trailing 63-session Sharpe (drift flag)",
         "files": [
           "research/corrective_handoff_inv2_2026-11-06.md",
-          "research/experiments/tsmomentum_rolling63_weakness_diagnosis_001.md",
           "research/reports/tsmomentum_rolling63_weakness_diagnosis_001.md",
           "research/reports/tsmomentum_same_session_vol_correction_001.md",
           "research/tsmomentum_same_session_vol_correction.py"
         ],
         "marker": "-2.120279",
-        "n_files": 5
+        "n_files": 4
       },
       {
         "description": "full-path Sharpe of the committed record's path",
@@ -521,19 +519,19 @@ git status --porcelain data/ config/
     {
       "expected": ">= 126 sessions",
       "name": "committed_record_loaded",
-      "observed": "472 sessions (last 2026-11-18)",
+      "observed": "473 sessions (last 2026-11-19)",
       "pass": true
     },
     {
       "expected": "all equal",
       "name": "committed_record_series_are_length_consistent",
-      "observed": "returns 472, dates 472, run_history 472",
+      "observed": "returns 473, dates 473, run_history 473",
       "pass": true
     },
     {
       "expected": "every excluded date strictly after the cache's last session",
       "name": "excluded_sessions_are_only_the_post_cache_tail",
-      "observed": "6 excluded session(s) after cache end 2026-11-10: ['2026-11-11', '2026-11-12', '2026-11-13', '2026-11-16', '2026-11-17', '2026-11-18']",
+      "observed": "7 excluded session(s) after cache end 2026-11-10: ['2026-11-11', '2026-11-12', '2026-11-13', '2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19']",
       "pass": true
     },
     {
@@ -759,15 +757,15 @@ git status --porcelain data/ config/
         "psr"
       ],
       "gates": {
-        "full_period_sharpe": 1.4709398862794072,
+        "full_period_sharpe": 1.4693740922183858,
         "max_drawdown": -0.06562469374042079,
-        "psr": 0.5304221346115184,
+        "psr": 0.5293628800235217,
         "regime_flips": 7.0,
-        "rolling_63d_max_dd": -0.06544463769225406,
-        "rolling_63d_sharpe": -1.9744867954469325,
-        "track_record_length": 472.0
+        "rolling_63d_max_dd": -0.06544463769225395,
+        "rolling_63d_sharpe": -2.141568617178681,
+        "track_record_length": 473.0
       },
-      "psr_normal": 0.5304221346115184
+      "psr_normal": 0.5293628800235217
     },
     "psr_settings": {
       "block_size": 22,
