@@ -829,10 +829,22 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
     "name": "data_and_config_unchanged",
     "expected": "identical SHA-256 fingerprint of every file under data/ and config/",
     "observed": {
-      "data_files": 1943,
+      "data_files": 1948,
       "config_files": 19,
       "data_unchanged": true,
       "config_unchanged": true
+    },
+    "pass": true
+  },
+  {
+    "name": "committed_report_file_counts_match_committed_tree",
+    "expected": {
+      "data_files": 1948,
+      "config_files": 19
+    },
+    "observed": {
+      "data_files": 1948,
+      "config_files": 19
     },
     "pass": true
   },

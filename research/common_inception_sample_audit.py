@@ -48,6 +48,7 @@ import ast
 import hashlib
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -115,6 +116,26 @@ def fingerprint_tree(root: Path) -> dict[str, str]:
         if path.is_file():
             out[str(path.relative_to(REPO_ROOT))] = sha256_file(path)
     return out
+
+
+def committed_tree_file_count(rel_dir: str) -> int:
+    """Number of committed files under ``rel_dir`` (git ls-files, tracked only).
+
+    Counts the *committed* tree, not the working tree: untracked files under
+    ``data/`` would inflate a working-tree walk and would not be evidence that
+    the published count is right.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(REPO_ROOT), "ls-files", "--", rel_dir],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30,
+        )
+    except (subprocess.SubprocessError, OSError) as exc:
+        raise RuntimeError(f"cannot enumerate committed files under {rel_dir}: {exc}") from exc
+    return sum(1 for line in result.stdout.splitlines() if line.strip())
 
 
 def parse_json_block(text: str, header: str) -> Any:
@@ -308,7 +329,12 @@ def rederive_common_inception(universe: list[str]) -> tuple[pd.Timestamp, str]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Common-inception sample audit")
     parser.add_argument("--policy", type=Path, default=POLICY_DEFAULT, help="Path to sample policy YAML")
+    parser.add_argument("--report", type=Path, default=None, help="Override output report path")
     args = parser.parse_args(argv)
+
+    global OUT_REPORT
+    if args.report is not None:
+        OUT_REPORT = args.report
 
     policy_path = args.policy
     if not policy_path.exists():
@@ -520,6 +546,32 @@ def main(argv: list[str] | None = None) -> int:
         committed_text, "## Gate evaluation (same table as config/promotion_gates.yaml)"
     )
     committed_decision = parse_decision_bullets(committed_text)
+    # The counts this audit itself published on its last run are recorded in the
+    # committed audit report's structural-checks block (OUT_REPORT), not in the
+    # committed long-sample artifact (COMMITTED_REPORT). They are the numbers a
+    # reader sees, so they must match the committed tree; see the new check below.
+    committed_audit_text = OUT_REPORT.read_text() if OUT_REPORT.exists() else ""
+    committed_structural = (
+        parse_json_block(committed_audit_text, "## Structural checks")
+        if committed_audit_text
+        else []
+    )
+    committed_recorded_data_files = next(
+        (
+            int(c["observed"]["data_files"])
+            for c in committed_structural
+            if c.get("name") == "data_and_config_unchanged"
+        ),
+        None,
+    )
+    committed_recorded_config_files = next(
+        (
+            int(c["observed"]["config_files"])
+            for c in committed_structural
+            if c.get("name") == "data_and_config_unchanged"
+        ),
+        None,
+    )
 
     union_metrics = samples["union_sample"]["metrics"]
     union_canonical = {
@@ -603,6 +655,18 @@ def main(argv: list[str] | None = None) -> int:
     config_fingerprint_after = fingerprint_tree(REPO_ROOT / "config")
     committed_after = COMMITTED_REPORT.read_bytes() if COMMITTED_REPORT.exists() else b""
 
+    # The published ``data_files`` / ``config_files`` counts are *recorded in
+    # the committed report itself* (the JSON block under "## Structural checks").
+    # They are not re-derived from the committed tree, so a stale count survives
+    # any number of re-runs: the committed report said 1943 while the committed
+    # tree held 1948, and the before/after comparison below still passed because
+    # it only ever compares two live fingerprints. Re-derive the counts from the
+    # committed tree (git ls-files, so untracked files cannot inflate them) and
+    # require the recorded numbers to match; otherwise the "unchanged" claim is
+    # evidence about nothing.
+    committed_data_files = committed_tree_file_count("data")
+    committed_config_files = committed_tree_file_count("config")
+
     structural_checks = [
         {
             "name": "data_and_config_unchanged",
@@ -616,6 +680,23 @@ def main(argv: list[str] | None = None) -> int:
             "pass": bool(
                 data_fingerprint_after == data_fingerprint_before
                 and config_fingerprint_after == config_fingerprint_before
+            ),
+        },
+        {
+            "name": "committed_report_file_counts_match_committed_tree",
+            "expected": {
+                "data_files": committed_data_files,
+                "config_files": committed_config_files,
+            },
+            "observed": {
+                "data_files": committed_recorded_data_files,
+                "config_files": committed_recorded_config_files,
+            },
+            "pass": bool(
+                committed_recorded_data_files is not None
+                and committed_recorded_config_files is not None
+                and committed_recorded_data_files == committed_data_files
+                and committed_recorded_config_files == committed_config_files
             ),
         },
         {
@@ -965,7 +1046,10 @@ def main(argv: list[str] | None = None) -> int:
         f"sensitivity: gates that disagree {sensitivity['gates_that_disagree']}, "
         f"decision agrees {sensitivity['decision_agrees']}"
     )
-    print(f"report: {OUT_REPORT.relative_to(REPO_ROOT)}")
+    try:
+        print(f"report: {OUT_REPORT.relative_to(REPO_ROOT)}")
+    except ValueError:
+        print(f"report: {OUT_REPORT}")
     return 0 if overall == "PASS" else 1
 
 

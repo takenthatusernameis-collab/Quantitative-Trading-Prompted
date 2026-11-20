@@ -261,6 +261,61 @@ def test_committed_artifact_byte_identical_after_tool_run(tool_run):
     assert COMMITTED.read_bytes() == committed_before
 
 
+def test_committed_report_file_counts_match_committed_tree(tool_run):
+    """The published data/config file counts must equal the committed tree's.
+
+    Regression for a false-assurance defect: the audit's
+    ``data_and_config_unchanged`` check compared two *live* fingerprints taken
+    before and after the run, so a stale count recorded in the committed report
+    (1943 while the committed tree held 1948) passed every re-run forever. The
+    published counts are now re-derived from ``git ls-files`` and compared with
+    the numbers the committed report records.
+    """
+    structural = _audit_json("## Structural checks")
+    by_name = {c["name"]: c for c in structural}
+    check = by_name["committed_report_file_counts_match_committed_tree"]
+    assert check["pass"] is True
+    assert check["observed"]["data_files"] == check["expected"]["data_files"]
+    assert check["observed"]["config_files"] == check["expected"]["config_files"]
+
+
+def test_committed_report_file_counts_fail_when_recorded_count_is_stale(tmp_path):
+    """A stale recorded count fails the new check (regression proof).
+
+    The committed report records 1948; rewrite the value the tool reads as the
+    *previously published* count (the ``data_and_config_unchanged`` block) to the
+    stale 1943 the tree had before the last data append, write the result to a
+    scratch report path, and run the tool against it. The new check must fail
+    without touching the committed tree.
+    """
+    text = AUDIT_REPORT.read_text()
+    marker = (
+        '"name": "data_and_config_unchanged",\n'
+        '    "expected": "identical SHA-256 fingerprint of every file under data/ and config/",\n'
+        '    "observed": {\n'
+        '      "data_files": 1948,'
+    )
+    assert marker in text, "expected the recorded-count marker to be present"
+    stale = text.replace(marker, marker.replace('"data_files": 1948,', '"data_files": 1943,'), 1)
+    assert stale != text, "expected the replacement to take effect"
+    assert '"data_files": 1943,' in stale
+
+    scratch = tmp_path / "stale_audit.md"
+    scratch.write_text(stale)
+    proc = subprocess.run(
+        [sys.executable, TOOL, "--report", str(scratch)],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=1800,
+    )
+    assert proc.returncode != 0, proc.stdout + proc.stderr
+    assert "committed_report_file_counts_match_committed_tree" in proc.stdout
+    assert "FAIL" in proc.stdout
+    # the committed tree and the committed report are untouched
+    assert AUDIT_REPORT.read_text() == text
+
+
 def test_audit_samples_match_policy_declaration(tool_run):
     import yaml
     policy = yaml.safe_load((ROOT / "config" / "sample_policy.yaml").read_text())
