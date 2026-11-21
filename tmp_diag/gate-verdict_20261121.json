@@ -1,13 +1,1 @@
-{
-  "reachable": false,
-  "pre_gate_exit": 0,
-  "data_raw_clean": true,
-  "state_sha256_matches": true,
-  "remaining_seconds": 24604,
-  "session_budget_seconds": 2500,
-  "run_cutoff_utc": "2026-11-21T15:51:36Z",
-  "gate_utc": "2026-11-21T22:00:00Z",
-  "utc": "2026-11-21T15:09:56Z",
-  "session": "21",
-  "note": "Run 44891984693 started ~09:57Z; its single 355-min global cutoff (~15:52Z) precedes the 22:00Z gate by ~6h. Actual remaining session budget ~2500s (controller progress remaining_seconds=2634 at 15:08:26Z), NOT the full 21300s that earlier sessions assumed. Entire run is pre-gate; no session can run the post-gate extend."
-}
+{"reachable":false,"pre_gate_exit":0,"data_raw_clean":true,"state_sha256_matches":true,"remaining_seconds":17122,"session_budget_seconds":10000,"run_cutoff_utc":"2026-11-21T20:01:18Z","gate_utc":"2026-11-21T22:00:00Z","utc":"2026-11-21T17:14:38Z","session":"2","note":"Corrective invocation 2 (session 2). Pre-gate cheap path: exit 0, GATE_REACHABLE=0 (T-17122s > 10000s budget; est. cutoff 2026-11-21T20:01:18Z < gate 22:00Z). State sha256 matches 6b7f37e6...; data/raw clean. Gate structurally unreachable this session. No mutating post-gate cycle. No source/test/data/config changes."}
