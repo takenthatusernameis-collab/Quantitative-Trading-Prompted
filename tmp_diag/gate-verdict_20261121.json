@@ -1,1 +1,13 @@
-{"reachable": false, "pre_gate_exit": 0, "data_raw_clean": true, "state_sha256_matches": true, "now_utc": "2026-11-21T13:01:45Z", "gate_utc": "2026-11-21T22:00:00Z", "session_budget_seconds": 21300}
+{
+  "reachable": false,
+  "pre_gate_exit": 0,
+  "data_raw_clean": true,
+  "state_sha256_matches": true,
+  "gate_epoch": 1795298400,
+  "now_epoch": 1795269513,
+  "remaining_seconds": 28887,
+  "session_budget_seconds": 21300,
+  "estimated_cutoff": "2026-11-21T19:53:33Z",
+  "gate_time": "2026-11-21T22:00:00Z",
+  "verdict": "gate unreachable in-session; structural timing mismatch persists"
+}
