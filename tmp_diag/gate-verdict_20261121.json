@@ -1,15 +1,1 @@
-{
-  "timestamp_utc": "2026-11-21T00:17:49Z",
-  "gate_time_utc": "2026-11-21T22:00:00Z",
-  "gate_epoch": 1795298400,
-  "reachable": false,
-  "reason": "T-78131s > session budget 9000s (est. cutoff 2026-11-21T02:47:49Z); gate falls outside this session — post-gate cycle cannot run; pre-gate cheap path applied, STOP.",
-  "pre_gate_exit": 0,
-  "gate_reachable": 0,
-  "state_sha256": "6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f",
-  "last_run_date": "2026-11-20",
-  "sessions": 474,
-  "attested": 2,
-  "cycle_status": "not run (gate unreachable in-session)",
-  "data_raw_clean": true
-}
+{"timestamp":"2026-11-21T00:20:34Z","session":15,"gate_epoch":1795298400,"gate_utc":"2026-11-21T22:00:00Z","now_epoch":1795220434,"now_utc":"2026-11-21T00:20:34Z","t_remaining_s":77966,"session_budget_s":9000,"est_cutoff_utc":"2026-11-21T02:50:34Z","GATE_REACHABLE":0,"pre_gate_exit":0,"state_sha256":"6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f","data_raw_clean":true,"reachable":false}
