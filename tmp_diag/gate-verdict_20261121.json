@@ -3,11 +3,7 @@
   "pre_gate_exit": 0,
   "data_raw_clean": true,
   "state_sha256_matches": true,
-  "gate_epoch": 1795298400,
-  "now_epoch": 1795270697,
-  "remaining_seconds": 27703,
-  "session_budget_seconds": 21300,
-  "estimated_cutoff": "2026-11-21T20:13:17Z",
-  "gate_time": "2026-11-21T22:00:00Z",
-  "verdict": "gate unreachable in-session; structural timing mismatch persists"
+  "remaining_seconds": 27635,
+  "utc": "2026-11-21T14:19:25Z",
+  "session": "17"
 }
