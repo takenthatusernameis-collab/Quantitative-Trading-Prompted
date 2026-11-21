@@ -25,6 +25,7 @@ cache, so the invariants survive the next data append.
 from __future__ import annotations
 
 import hashlib
+import importlib
 import subprocess
 import sys
 from pathlib import Path
@@ -35,7 +36,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import research.common_inception_sample_audit as audit  # noqa: E402
+audit = importlib.import_module("research.common_inception_sample_audit")
 
 TOOL = "research/common_inception_sample_audit.py"
 COMMITTED = ROOT / "research" / "reports" / "promotion_feasibility_backtest_001.md"
@@ -63,6 +64,7 @@ def _run_tool() -> subprocess.CompletedProcess:
     proc = subprocess.run(
         [sys.executable, TOOL],
         cwd=ROOT,
+        check=False,
         capture_output=True,
         text=True,
         timeout=1800,
@@ -240,18 +242,18 @@ def test_policy_is_consistent_with_raw_cache(tool_run):
 def test_tool_fails_closed_on_missing_malformed_unknown_policy(tmp_path):
     """Fails closed on missing/malformed/unknown-rule policy via --policy."""
     # missing
-    proc = subprocess.run([sys.executable, TOOL, "--policy", str(tmp_path / "nope.yaml")], cwd=ROOT, capture_output=True, text=True)
+    proc = subprocess.run([sys.executable, TOOL, "--policy", str(tmp_path / "nope.yaml")], cwd=ROOT, check=False, capture_output=True, text=True)
     assert proc.returncode != 0
     assert "missing" in proc.stderr or "missing" in proc.stdout or "ERROR" in proc.stderr or "ERROR" in proc.stdout
     # malformed
     bad = tmp_path / "bad.yaml"
     bad.write_text("not: [valid: yaml")  # will parse? load_yaml expects dict; our load_policy checks
-    proc = subprocess.run([sys.executable, TOOL, "--policy", str(bad)], cwd=ROOT, capture_output=True, text=True)
+    proc = subprocess.run([sys.executable, TOOL, "--policy", str(bad)], cwd=ROOT, check=False, capture_output=True, text=True)
     assert proc.returncode != 0
     # unknown rule
     bad2 = tmp_path / "bad2.yaml"
     bad2.write_text("schema_version: 1\nlong_sample_diagnostic:\n  evaluation_rule: 'do_something_else'\n")
-    proc = subprocess.run([sys.executable, TOOL, "--policy", str(bad2)], cwd=ROOT, capture_output=True, text=True)
+    proc = subprocess.run([sys.executable, TOOL, "--policy", str(bad2)], cwd=ROOT, check=False, capture_output=True, text=True)
     assert proc.returncode != 0
 
 
@@ -305,6 +307,7 @@ def test_committed_report_file_counts_fail_when_recorded_count_is_stale(tmp_path
     proc = subprocess.run(
         [sys.executable, TOOL, "--report", str(scratch)],
         cwd=ROOT,
+        check=False,
         capture_output=True,
         text=True,
         timeout=1800,

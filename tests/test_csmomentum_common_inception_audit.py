@@ -24,7 +24,7 @@ def sha_tree(root):
 
 def run_tool(*args):
     return subprocess.run(
-        [sys.executable, str(TOOL), *args], capture_output=True, text=True
+        [sys.executable, str(TOOL), *args], check=False, capture_output=True, text=True
     )
 
 
@@ -99,7 +99,7 @@ def test_data_config_untouched():
 
 
 def test_artifact_written():
-    r = subprocess.run([sys.executable, str(TOOL)], capture_output=True, text=True)
+    r = subprocess.run([sys.executable, str(TOOL)], check=False, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
     assert "OVERALL: PASS" in r.stdout
     assert REPORT.exists()
@@ -134,10 +134,10 @@ def test_common_inception_is_rederived_from_the_raw_cache():
 
 
 def test_two_runs_agree_bit_for_bit():
-    first = subprocess.run([sys.executable, str(TOOL)], capture_output=True, text=True)
+    first = subprocess.run([sys.executable, str(TOOL)], check=False, capture_output=True, text=True)
     assert first.returncode == 0, first.stderr
     first_bytes = REPORT.read_bytes()
-    second = subprocess.run([sys.executable, str(TOOL)], capture_output=True, text=True)
+    second = subprocess.run([sys.executable, str(TOOL)], check=False, capture_output=True, text=True)
     assert second.returncode == 0, second.stderr
     assert REPORT.read_bytes() == first_bytes
     assert second.stdout == first.stdout
