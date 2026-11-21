@@ -1,1 +1,15 @@
-{"timestamp":"2026-11-21T00:21:18Z","session":16,"gate_epoch":1795298400,"gate_utc":"2026-11-21T22:00:00Z","now_epoch":1795220478,"now_utc":"2026-11-21T00:21:18Z","t_remaining_s":77922,"session_budget_s":9000,"est_cutoff_utc":"2026-11-21T02:51:18Z","GATE_REACHABLE":0,"pre_gate_exit":0,"state_sha256":"6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f","data_raw_clean":true,"reachable":false}
+{
+  "gate_epoch": 1795298400,
+  "gate_human": "2026-11-21T22:00:00Z",
+  "now_epoch": 1795220592,
+  "now_human": "2026-11-21T00:23:12Z",
+  "remaining_seconds": 77808,
+  "session_budget_seconds": 9000,
+  "est_cutoff_epoch": 1795229592,
+  "est_cutoff_human": "2026-11-21T02:53:12Z",
+  "reachable": false,
+  "pre_gate_exit": 0,
+  "data_raw_clean": true,
+  "state_sha256": "6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f",
+  "state_sha256_matches": true
+}
