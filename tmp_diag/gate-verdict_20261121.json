@@ -1,9 +1,9 @@
 {
-  "timestamp_utc": "2026-11-21T00:17:02Z",
+  "timestamp_utc": "2026-11-21T00:17:49Z",
   "gate_time_utc": "2026-11-21T22:00:00Z",
   "gate_epoch": 1795298400,
   "reachable": false,
-  "reason": "T-78178s > session budget 9000s (est. cutoff 2026-11-21T02:47:02Z); gate falls outside this session — post-gate cycle cannot run; pre-gate cheap path applied, STOP.",
+  "reason": "T-78131s > session budget 9000s (est. cutoff 2026-11-21T02:47:49Z); gate falls outside this session — post-gate cycle cannot run; pre-gate cheap path applied, STOP.",
   "pre_gate_exit": 0,
   "gate_reachable": 0,
   "state_sha256": "6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f",
