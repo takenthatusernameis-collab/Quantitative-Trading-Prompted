@@ -1,15 +1,16 @@
 {
   "gate_epoch": 1795298400,
   "gate_human": "2026-11-21T22:00:00Z",
-  "now_epoch": 1795223665,
-  "now_human": "2026-11-21T01:14:25Z",
-  "remaining_seconds": 74735,
-  "session_budget_seconds": 21300,
-  "est_cutoff_epoch": 1795244965,
-  "est_cutoff_human": "2026-11-21T07:09:25Z",
+  "now_epoch": 1795227850,
+  "now_human": "2026-11-21T02:24:10Z",
+  "remaining_seconds": 70550,
+  "session_budget_seconds": 6000,
+  "est_cutoff_epoch": 1795233850,
+  "est_cutoff_human": "2026-11-21T04:04:10Z",
   "reachable": false,
   "pre_gate_exit": 0,
   "data_raw_clean": true,
   "state_sha256": "6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f",
-  "state_sha256_matches": true
+  "state_sha256_matches": true,
+  "gate_verdict": "GATE_REACHABLE=0: T-70550s > session budget 6000s (est. cutoff 2026-11-21T04:04:10Z precedes gate 2026-11-21T22:00:00Z); post-gate cycle cannot run this session — hand off"
 }
