@@ -3,7 +3,11 @@
   "pre_gate_exit": 0,
   "data_raw_clean": true,
   "state_sha256_matches": true,
-  "remaining_seconds": 24880,
-  "utc": "2026-11-21T15:05:20Z",
-  "session": "20"
+  "remaining_seconds": 24604,
+  "session_budget_seconds": 2500,
+  "run_cutoff_utc": "2026-11-21T15:51:36Z",
+  "gate_utc": "2026-11-21T22:00:00Z",
+  "utc": "2026-11-21T15:09:56Z",
+  "session": "21",
+  "note": "Run 44891984693 started ~09:57Z; its single 355-min global cutoff (~15:52Z) precedes the 22:00Z gate by ~6h. Actual remaining session budget ~2500s (controller progress remaining_seconds=2634 at 15:08:26Z), NOT the full 21300s that earlier sessions assumed. Entire run is pre-gate; no session can run the post-gate extend."
 }
