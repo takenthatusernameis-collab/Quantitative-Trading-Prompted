@@ -1,17 +1,18 @@
 {
   "gate_epoch": 1795298400,
   "gate_human": "2026-11-21T22:00:00Z",
-  "now_epoch": 1795285034,
-  "now_human": "2026-11-21T18:17:14Z",
-  "time_to_gate_s": 13366,
-  "session_budget_seconds": 10000,
-  "gate_reachable": 0,
+  "now_epoch": 1795289068,
+  "now_human": "2026-11-21T19:24:28Z",
+  "time_to_gate_s": 9332,
+  "session_budget_seconds": 21300,
+  "gate_reachable": 1,
   "state_sha256": "6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f",
   "data_raw_clean": true,
   "state_sha256_matches": true,
   "pre_gate_exit": 0,
-  "pre_gate_output": "PRE-GATE OK: now=1795285034 (2026-11-21T18:17:14Z) < gate 1795298400 (2026-11-21T22:00:00Z); T-13366s remaining. state sha256 matches; data/raw clean. STOP — do not re-run the cycle. GATE_REACHABLE=0: T-13366s > session budget 10000s (est. cutoff 2026-11-21T21:03:54Z, gate 2026-11-21T22:00:00Z);",
-  "verdict": "Pre-gate cheap path exit 0, GATE_REACHABLE=0. Gate unreachable this session; no mutating cycle run.",
-  "next_step": "At/after 22:00Z run full post-gate cycle (ORCH_EXIT=0), then idempotent re-run.",
-  "no_changes": "git status --porcelain clean; data/raw untouched; no source/test/data/config modified."
+  "pre_gate_output": "PRE-GATE OK: now=1795289068 (2026-11-21T19:24:28Z) < gate 1795298400 (2026-11-21T22:00:00Z); T-9332s remaining. state sha256 matches (6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f); data/raw clean. STOP — do not re-run the cycle. GATE_REACHABLE=1: T-9332s <= session budget 21300s (est. cutoff 2026-11-22T01:19:28Z, gate 2026-11-21T22:00:00Z); the gate falls inside this session — use post_gate_orchestrator.sh --wait-until-gate.",
+  "verdict": "Pre-gate cheap path exit 0, GATE_REACHABLE=1. Gate is reachable in-session by budget arithmetic, but the post-gate cycle CANNOT run here: post_gate_orchestrator.sh --wait-until-gate sleeps ~9332s until 22:00Z, exceeding the 600s idle timeout (heartbeats are block-buffered off a tty and do not flush), which produced the previous status-124 termination. Repeating --wait-until-gate would fail identically.",
+  "next_step": "Do not repeat --wait-until-gate in this session. The run active at/after 2026-11-21T22:00Z must run post_gate_orchestrator.sh once (full cycle, ORCH_EXIT=0), then an idempotent re-run showing sessions extended: 0.",
+  "blocker": "Idle-timeout gate-wait gap: gate release (~2.6h out) exceeds the 600s idle timeout; workers must not edit workflow scheduling (controller/human decision required to run a session at/after 22:00Z or redefine the gate).",
+  "no_changes": "git status --porcelain clean; data/raw untouched; no source/test/data/config/threshold/gate modified; /tmp/kilo-venv imports (numpy,pandas,scipy,statsmodels,arch,yfinance,pyarrow,yaml) exit 0."
 }
