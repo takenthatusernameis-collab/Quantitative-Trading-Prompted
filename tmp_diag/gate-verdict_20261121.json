@@ -1,1 +1,19 @@
-{"reachable":false,"pre_gate_exit":0,"data_raw_clean":true,"state_sha256_matches":true,"remaining_seconds":17073,"session_budget_seconds":10000,"run_cutoff_utc":"2026-11-21T20:02:07Z","gate_utc":"2026-11-21T22:00:00Z","utc":"2026-11-21T17:15:27Z","session":"2","note":"Corrective invocation 2 (session 2). Pre-gate cheap path: exit 0, GATE_REACHABLE=0 (T-17073s > 10000s budget; est. cutoff 2026-11-21T20:02:07Z < gate 22:00Z). State sha256 matches 6b7f37e6...; data/raw clean. Gate structurally unreachable this session. No mutating post-gate cycle. No source/test/data/config changes."}
+{
+  "gate_epoch": 1795298400,
+  "gate_human": "2026-11-21T22:00:00Z",
+  "now_epoch": 1795281768,
+  "now_human": "2026-11-21T17:22:48Z",
+  "time_to_gate_s": 16632,
+  "session_budget_seconds": 18075,
+  "remaining_to_cutoff_s": 18075,
+  "margin_after_gate_s": 1443,
+  "gate_reachable": 1,
+  "state_sha256": "6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f",
+  "data_raw_clean": true,
+  "state_sha256_matches": true,
+  "pre_gate_exit": 0,
+  "verdict": "GATE_REACHABLE=1 — gate falls inside this session; use post_gate_orchestrator.sh --wait-until-gate",
+  "correction": "Re-ran pre_gate_check with real controller budget (~18075s) instead of the prior arbitrary 10000s; prior sessions wrongly concluded GATE_REACHABLE=0 and handed off with no durable changes.",
+  "action": "Started post_gate_orchestrator.sh --wait-until-gate (persistent background) to run the post-gate cycle at gate release; cycle outputs pending gate release (22:00Z).",
+  "next_step": "Poll background process; at/after 22:00Z verify extend + idempotent re-run + pytest/ruff/audit outputs; confirm sessions_extended==1 then idempotent re-run ==0; data/raw untouched."
+}
