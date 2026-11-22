@@ -1,10 +1,10 @@
 # Next Agent Task: 2026-11-23 mutating post-gate cycle (extend 474 -> 475) — pre-gate/bridge decision tree
 
-## Current status — 2026-11-22T01:08Z — **PRE-GATE VERIFIED (GATE UNREACHABLE; BASELINE HEALTHY; NO CODE/STATE/WORKFLOW CHANGE) (session 9)**
-- **Session 9 (run 44955297226 attempt 1) started 2026-11-22T01:07Z.** Next MUTATING gate 2026-11-23T22:00:00Z (epoch 1795471200); `now_epoch=1795309709 < gate` → pre-gate path; T-161491s (~44.9h) remaining.
-- **Pre-gate check (this session):** `GATE_EPOCH=1795471200 STATE_SHA256=6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f SESSION_BUDGET_SECONDS=21600 bash scripts/pre_gate_check.sh` → exit 0, `GATE_REACHABLE=0` (T-161491s > budget 21600s; est. cutoff 2026-11-22T07:08:29Z); state sha256 matches; data/raw clean. **Definitive: no mutating cycle is possible before 2026-11-23T22:00:00Z; no state write.**
-- **Baseline (this session):** `drift_invariant_check.py` exit 0 (sessions=474, regime_transitions=7, high_turnover=7, threshold=0.5); venv imports OK (`numpy, pandas, scipy, statsmodels, arch, yfinance, pyarrow, yaml`). Coverage audit, reconciliation audit, and gate suite (126 passed, 1 skipped) verified by session 6 (00:30Z) — unchanged.
-- **Change this session:** docs only — refreshed this status block with session-9 numbers and corrected venv-absent → venv present. No code/gate/threshold/universe/cost/clock-gate/hypothesis/drift/workflow change; `data/raw` and paper-trading state untouched.
+## Current status — 2026-11-22T01:09Z — **PRE-GATE VERIFIED (GATE UNREACHABLE; BASELINE HEALTHY; NO CODE/STATE/WORKFLOW CHANGE) (session 10)**
+- **Session 10 (run 44955297226 attempt 1) started 2026-11-22T01:09Z.** Next MUTATING gate 2026-11-23T22:00:00Z (epoch 1795471200); `now_epoch=1795309774 < gate` → pre-gate path; T-161426s (~44.8h) remaining.
+- **Pre-gate check (this session):** `GATE_EPOCH=1795471200 STATE_SHA256=6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f SESSION_BUDGET_SECONDS=21600 bash scripts/pre_gate_check.sh` → exit 0, `GATE_REACHABLE=0` (T-161426s > budget 21600s; est. cutoff 2026-11-22T07:09:34Z); state sha256 matches; data/raw clean. **Definitive: no mutating cycle is possible before 2026-11-23T22:00:00Z; no state write.**
+- **Baseline (this session):** `drift_invariant_check.py` exit 0 (sessions=474, regime_transitions=7, high_turnover=7, threshold=0.5); coverage audit `OVERALL: PASS` (474/466/8/attested=2); reconciliation audit `OVERALL: PASS` (attested=1, unattested=0); gate suite **126 passed, 1 skipped in 15.93s**; venv imports OK. All verified this session.
+- **Change this session:** docs only — refreshed this status block with session-10 numbers. No code/gate/threshold/universe/cost/clock-gate/hypothesis/drift/workflow change; `data/raw` and paper-trading state untouched.
 - **Next action:** the run active at/after **2026-11-23T22:00:00Z** must run the full post-gate cycle (extend 474 → 475) per the decision tree below.
 
 ## Next task (bounded): the 2026-11-23 mutating post-gate cycle (extend 474 -> 475)
