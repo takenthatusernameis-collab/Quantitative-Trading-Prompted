@@ -359,10 +359,10 @@ def render_report(result: dict) -> str:
     required_session = result.get("extended_session")
     if required_session:
         required_line = f"extended `{required_session}` and required digest is valid"
-    elif result.get("require_digest_for") is not None:
-        required_line = "no session extended (digest requirement not triggered)"
     else:
-        required_line = "no extension observed in this invocation"
+        # Invocation-independent: the same committed state must render identically
+        # whether or not --extend-before was passed (avoids spurious git diffs).
+        required_line = "no session extended (digest requirement not triggered)"
     symbol_lines = "\n".join(
         f"| `{sym}` | `{last}` |" for sym, last in sorted(result["per_symbol_last_date"].items())
     )
