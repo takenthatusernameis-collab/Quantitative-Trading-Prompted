@@ -1,11 +1,11 @@
 {
   "gate_epoch": 1795471200,
   "gate_human": "2026-11-23T22:00:00Z",
-  "checked_at": "2026-11-22T01:17:33Z",
-  "now_epoch": 1795310201,
-  "t_minus_seconds": 160999,
-  "session_budget_seconds": 21600,
-  "est_cutoff": "2026-11-22T07:16:41Z",
+  "checked_at": "2026-11-22T02:05:23Z",
+  "now_epoch": 1795313123,
+  "t_minus_seconds": 158077,
+  "session_budget_seconds": 21300,
+  "est_cutoff": "2026-11-22T08:00:23Z",
   "gate_reachable": 0,
   "reachable": false,
   "pre_gate_exit": 0,
@@ -13,5 +13,10 @@
   "state_sha256": "6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f",
   "state_sha256_matches": true,
   "action": "record_verdict_and_handoff_pre_gate",
-  "note": "Session 14 (run 44955297226 attempt 1) started 2026-11-22T01:16Z. Gate 2026-11-23T22:00Z is T-160999s (~44.7h) away, far beyond the 21600s GitHub Actions max session budget, so the mutating post-gate cycle (extend 474->475) is structurally impossible this session. Baseline re-verified fresh this session (the audit suite the prior session had not run): drift_invariant_check exit 0 (sessions=474, regime_transitions=7, high_turnover=7, threshold=0.5), coverage audit OVERALL PASS (474/466/8, attested=2), artifact reconciliation OVERALL PASS (attested=1, unattested=0), focused gate suite 126 passed/1 skipped, ruff All checks passed, venv present. No code/state/workflow change; benign regenerated coverage report reverted to keep tree clean; no commit made (controller checkpoints)."
+  "spot_checks": {
+    "drift_invariant_check": {"exit": 0, "sessions": 474, "regime_transitions": 7, "high_turnover_sessions": 7, "threshold": 0.5},
+    "coverage_audit": {"exit": 0, "overall": "PASS", "sessions": 474, "covered": 466, "unverified": 8, "attested": 2},
+    "artifact_reconciliation": {"exit": 0, "overall": "PASS", "sessions": 474, "attested": 1, "unattested": 0}
+  },
+  "note": "Corrective invocation 406: diagnostic log (kilo-session-15-recovery-405.log) exited status 1 on an external model-quota error (`Error: Sign up for free to continue…`) — NOT a code/test/data defect, same class as corrective invocations 1-348. No project change made or needed. Gate 2026-11-23T22:00Z is T-158077s (~43.9h) away, beyond the 21300s (355-min) session budget, so the mutating post-gate cycle (extend 474->475) is structurally impossible this session. Pre-gate cheap path applies: exit 0, GATE_REACHABLE=0, state sha256 matches, data/raw clean. Baseline healthy: drift/cov/reconcile all exit 0. Worktree clean; no commit (controller checkpoints). Next mutating opportunity 2026-11-23T22:00:00Z."
 }
