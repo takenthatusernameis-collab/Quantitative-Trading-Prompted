@@ -11,18 +11,19 @@
 > Keep this file to one Context block, one Current-status block, and the
 > standing sections below. Do not append another per-invocation section.
 
-## Context (verified 2026-11-22T10:04Z)
-- Current time: 2026-11-22T10:04Z (epoch ~1795341840).
-- Gate for 2026-11-23: NOT released — releases 2026-11-23T22:00:00Z (epoch 1795471200); T-~129348s remaining (~35.9h).
+## Context (verified 2026-11-22T16:08Z)
+- Current time: 2026-11-22T16:08Z (epoch ~1795363700).
+- Gate for 2026-11-23: NOT released — releases 2026-11-23T22:00:00Z (epoch 1795471200); T-~107500s remaining (~29.9h).
 - Last processed session: 2026-11-20; NAV `130307.21196257228`; `run_history` 474; attested 2.
 - State: `data/processed/paper_trading_state.yaml`, SHA256 `6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f`.
 - Rolling 63d Sharpe at 2026-11-20: `-2.0441`.
 - `git status --porcelain -- data/raw`: clean (untouched).
 
 ## Current status (2026-11-23 gate — pre-gate; gate structurally unreachable this session)
-- `GATE_EPOCH=1795471200 STATE_SHA256=6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f SESSION_BUDGET_SECONDS=21600 bash scripts/pre_gate_check.sh` → exit 0, `GATE_REACHABLE=0` (T-remaining > 21600s budget; est. cutoff < gate 2026-11-23T22:00:00Z). State sha256 matches; `data/raw` clean.
+- `GATE_EPOCH=1795471200 STATE_SHA256=6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f SESSION_BUDGET_SECONDS=21600 bash scripts/pre_gate_check.sh` → exit 0, `GATE_REACHABLE=0` (T-107642s > 21600s budget; est. cutoff 2026-11-22T22:05:58Z < gate 2026-11-23T22:00:00Z). State sha256 matches; `data/raw` clean.
+- `GATE_EPOCH=1795471200 PYTHON=/tmp/kilo-venv/bin/python RUFF=/tmp/kilo-venv/bin/ruff bash scripts/post_gate_orchestrator.sh --force --read-only` → `ORCH_EXIT=0`, `Status: OK — all verification steps passed`, `Mode: pre-gate verification (extend withheld — gate not released)`, `Gate state: NOT released — pre-gate verification run only (T-107625s remaining; mutating extend withheld)`. Durable handoff written to `CORRECTIVE_HANDOFF_POSTGATE_20261123.md` (new file). Cmds run: 1 date, 3 drift, 5 6-module pytest (69 passed), 6 git status, 7 data-cost inventory + tests (001 PASS, 002 NO-GO/PASS, 007c 43 passed), 8 ruff (All checks passed), 8b drift invariant exit 0, 8c coverage audit OVERALL: PASS (attested=2), 8d reconciliation OVERALL: PASS (attested=1), 9 state fingerprint OK. Mutating extend (cmd2/4) withheld — gate not released.
+- Focused gate suite `127 passed` (exit 0); ruff gate test files `All checks passed!`; drift invariant exit 0 (sessions=474, regime_transitions=7, high_turnover=7, threshold=0.5). `/tmp/kilo-venv` present, imports OK.
 - Even a max-length GitHub Actions session starting in the morning cannot reach the 22:00Z gate → no mutating extend (474→475) is possible before 2026-11-23T22:00:00Z. Do not force it (scope boundaries + safety).
-- Baseline health (read-only, verified 2026-11-22T10:02Z): focused gate suite `130 passed, 1 skipped` (legitimate forward-compat skip); drift invariant exit 0 (sessions=474, regime_transitions=7, high_turnover=7, threshold=0.5); coverage audit `OVERALL: PASS` (attested=2); reconciliation `OVERALL: PASS` (attested=1). `/tmp/kilo-venv` present, imports OK.
 
 ## Root cause
 No source/test/data defect. The mutating paper-trading extension is blocked by the hard clock gate: the 2026-11-23 session has not closed (gate 22:00Z), which falls beyond the ~355-minute cutoff of any morning session. See `research/reports/gate_unreachable_structural_20261121.md`. Repeated corrective invocations that "fail" are hitting an external provider model-quota error (`Error: Sign up for free to continue…`), which is not remediable from project code.
