@@ -1,0 +1,17 @@
+{
+  "gate_epoch": 1795471200,
+  "gate_human": "2026-11-23T22:00:00Z",
+  "checked_at": "2026-11-22T00:16:42Z",
+  "now_epoch": 1795306602,
+  "t_minus_seconds": 164598,
+  "session_budget_seconds": 21600,
+  "est_cutoff": "2026-11-22T06:16:42Z",
+  "gate_reachable": 0,
+  "reachable": false,
+  "pre_gate_exit": 0,
+  "data_raw_clean": true,
+  "state_sha256": "6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f",
+  "state_sha256_matches": true,
+  "action": "record_verdict_and_handoff_pre_gate",
+  "note": "Session 5 (run 44955297226 attempt 1) started 2026-11-22T00:16Z. Gate 2026-11-23T22:00Z is T-164598s (~45.7h) away, far beyond the 21600s GitHub Actions max session budget, so the mutating post-gate cycle (extend 474->475) is structurally impossible this session. Baseline re-verified healthy: drift_invariant_check exit 0 (sessions=474, regime_transitions=7, high_turnover=7), coverage audit OVERALL PASS (474/466/8, attested=2), artifact reconciliation OVERALL PASS (attested=1, unattested=0), focused gate suite 126 passed/1 skipped, fast gate tests 75 passed. New durable finding: the full 1016-test suite cannot complete inside a single tool-call window (timed out at 56% after 480s; slow walk-forward/subprocess tests), so pre-gate spot-checks should use the focused gate subset rather than the whole suite. No code/state/workflow change; no commit made (controller checkpoints)."
+}
