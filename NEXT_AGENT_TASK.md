@@ -1,10 +1,10 @@
 # Next Agent Task: 2026-11-23 mutating post-gate cycle (extend 474 -> 475) — pre-gate/bridge decision tree
 
-## Current status — 2026-11-22T19:27Z — **PRE-GATE (GATE UNREACHABLE); BASELINE HEALTHY; NO CODE/STATE CHANGE THIS SESSION**
-- **Session 2026-11-22T19:27Z (corrective invocation 361).** Next MUTATING gate 2026-11-23T22:00:00Z (epoch 1795471200); `now_epoch=1795375632 < gate` → pre-gate path; gate unreachable in-session (T-95568s > 21600s budget; structural, unchanged).
+## Current status — 2026-11-22T19:30Z — **PRE-GATE (GATE UNREACHABLE); BASELINE HEALTHY; NO CODE/STATE CHANGE THIS SESSION**
+- **Session 2026-11-22T19:30Z.** Next MUTATING gate 2026-11-23T22:00:00Z (epoch 1795471200); `now_epoch=1795375763 < gate` → pre-gate path; gate unreachable in-session (T-95437s > 21600s budget; structural, unchanged).
 - **Pre-gate verdict (`scripts/pre_gate_check.sh`, exit 0, SESSION_BUDGET_SECONDS=21600):** `GATE_REACHABLE=0`; state sha256 matches `6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f`; data/raw clean. **No mutating cycle is possible before 2026-11-23T22:00:00Z; no state write.**
-- **Verification this session (all green, read-only):** focused gate+erratum+hygiene pytest **135 passed / 1 skipped in 19.34s** (erratum test green → committed README erratum fix survived controller checkpoints fc4e02e/22b1473/4c3bd6a); `drift_invariant_check.py` EXIT=0 (474/7/7/0.5); coverage audit `OVERALL: PASS` (474/466/8/attested=2, coverage_end=2026-11-10); reconciliation `OVERALL: PASS` (attested=1, unattested=0; benign 2026-11-02 drawdown note); `git status --porcelain` empty after audits (Cycle-1293 determinism holds).
-- **Change this session:** none to code/state/config/workflow; only this status block and `CORRECTIVE_HANDOFF_CURRENT.md` refreshed in place (no new section, no commit). Working tree otherwise clean; state sha unchanged; `data/raw` untouched.
+- **Verification this session (read-only spot-check):** `drift_invariant_check.py` EXIT=0 (474/7/7/0.5); working tree clean; state sha unchanged; `data/raw` untouched. Full pytest/coverage/reconciliation suite deferred per supervisor advice (gate not within 6h budget, no state/code change); full focused suite was green at 19:27Z (135 passed / 1 skipped).
+- **Change this session:** none to code/state/config/workflow; only this status block refreshed in place (no new section, no commit). Working tree otherwise clean; state sha unchanged; `data/raw` untouched.
 - **Next action:** hand off; the run active at/after **2026-11-23T22:00:00Z** must run the full post-gate cycle (extend 474 → 475) per the decision tree below.
 
 ## Next task (bounded): the 2026-11-23 mutating post-gate cycle (extend 474 -> 475)
