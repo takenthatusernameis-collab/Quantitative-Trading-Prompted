@@ -9,16 +9,16 @@
 > `NEXT_AGENT_TASK.md` and `tests/test_handoff_hygiene.py` warn against, and
 > restores this file to its stated purpose: one concise current handoff.
 
-## Context (verified 2026-11-22T01:05Z)
-- Current time: 2026-11-22T01:05:28Z (epoch 1795309528).
-- Gate for 2026-11-23: NOT released — releases 2026-11-23T22:00:00Z (epoch 1795471200); T-161672s remaining (~44.9h).
+## Context (verified 2026-11-22T03:05Z)
+- Current time: 2026-11-22T03:05:19Z (epoch 1795316719).
+- Gate for 2026-11-23: NOT released — releases 2026-11-23T22:00:00Z (epoch 1795471200); T-154481s remaining (~42.9h).
 - Last processed session: 2026-11-20; NAV `130307.21196257228`; `run_history` 474; attested 2.
 - State: `data/processed/paper_trading_state.yaml`, SHA256 `6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f` (verified unchanged).
 - Rolling 63d Sharpe at 2026-11-20: `-2.0441`.
 - `git status --porcelain -- data/raw`: clean (untouched).
 
 ## Current status (2026-11-23 gate — pre-gate; gate structurally unreachable this session)
-- Pre-gate: `GATE_EPOCH=1795471200 STATE_SHA256=6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f SESSION_BUDGET_SECONDS=21300 bash scripts/pre_gate_check.sh` → exit 0, `GATE_REACHABLE=0` (T-161672s > 21300s budget; est. cutoff 2026-11-22T07:00:28Z < gate 2026-11-23T22:00:00Z). State sha256 matches `6b7f37e6…`; `data/raw` clean.
+- Pre-gate: `GATE_EPOCH=1795471200 STATE_SHA256=6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f SESSION_BUDGET_SECONDS=21300 bash scripts/pre_gate_check.sh` → exit 0, `GATE_REACHABLE=0` (T-154462s > 21300s budget; est. cutoff 2026-11-22T09:00:38Z < gate 2026-11-23T22:00:00Z). State sha256 matches `6b7f37e6…`; `data/raw` clean.
 - Corrective invocation 167 (`kilo-session-7-recovery-167.log`) exited status 1 on an infrastructure/model-quota error (`Error: Sign up for free to continue…`) — same class as corrective invocations 1–348; NOT a code/test/data defect.
 - **Materially different approach (invocation 167 recovery):** instead of retrying the model call, reverted the unintended worktree residue — `research/reports/tsmomentum_sma175_candidate_eval_001.md` date `2026-11-22` → `2026-11-18` (restored to committed state via `git checkout --`). Then ran pre-gate verification: gate unreachable, baseline healthy, no project file changed.
 - Sanity checks (all pass): `git status --porcelain` clean; `git status --porcelain -- data/raw` empty; `/tmp/kilo-venv/bin/python -c "import numpy,pandas,scipy,statsmodels,arch,yfinance,pyarrow,yaml"` → exit 0. No source/test/data/config/threshold/gate changes.
@@ -33,12 +33,23 @@
 - `/tmp/kilo-venv/bin/python research/paper_trading_artifact_reconciliation_audit.py` → **OVERALL: PASS**, exit 0; sessions=474, attested=1, unattested=0.
 - Worktree clean: `git status --porcelain` → empty; no commit made (controller checkpoints).
 
+## Corrective invocation 417 verification (2026-11-22T03:05Z)
+- **Materially different approach:** invocations 1–416 all exited status 1 on an external provider model-quota error (`Error: Sign up for free to continue…`); invocation 417 did NOT retry the model call. Instead it reverted unintended worktree residue (`research/reports/paper_record_raw_coverage_001.md` one-line edit "no extension observed in this invocation" → "no session extended (digest requirement not triggered)" restored via `git checkout --`) and ran read-only pre-gate verification only.
+- `date -u` → now_epoch `1795316719` (03:05:19Z); gate_epoch `1795471200` (2026-11-23T22:00:00Z); T-154481s > 21300s budget → structurally unreachable this session.
+- `GATE_EPOCH=1795471200 STATE_SHA256=6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f SESSION_BUDGET_SECONDS=21300 bash scripts/pre_gate_check.sh` → **exit 0**, `GATE_REACHABLE=0` (T-154462s > 21300s budget; est. cutoff 2026-11-22T09:00:38Z < gate 2026-11-23T22:00:00Z); state sha256 matches `6b7f37e6…`; `data/raw` clean.
+- `/tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py tests/test_drift_persistence.py tests/test_drift_invariant_check.py` → **126 passed, 1 skipped in 15.50s**, exit 0.
+- `/tmp/kilo-venv/bin/python research/drift_invariant_check.py` → **exit 0**; sessions=474, regime_transitions=7, high_turnover_sessions=7, threshold=0.5.
+- `/tmp/kilo-venv/bin/python research/paper_record_raw_coverage_audit.py --extend-before 2026-11-20` → **OVERALL: PASS**, exit 0; sessions=474, attested=2.
+- `/tmp/kilo-venv/bin/python research/paper_trading_artifact_reconciliation_audit.py` → **OVERALL: PASS**, exit 0; sessions=474, attested=1, unattested=0.
+- Worktree clean: `git status --porcelain` → empty; no commit made (controller checkpoints).
+
+
 ## Root cause
 No source/test/data defect. The mutating paper-trading extension is blocked by the hard clock gate: the 2026-11-23 session has not closed (gate 22:00Z). Gate release falls beyond the 355-minute cutoff of any session starting before ~16:05Z, so the post-gate cycle is structurally unreachable from morning sessions. See `research/reports/gate_unreachable_structural_20261121.md`. Corrective invocation 167 additionally hit an independent infrastructure/model-quota error (external provider, not project code).
 
 ## What changed (this refresh)
-- **Reverted:** unintended date change in `research/reports/tsmomentum_sma175_candidate_eval_001.md` (`2026-11-22` → `2026-11-18`), restoring committed state; worktree now clean.
-- **Updated:** Context gate epoch → 1795471200 (2026-11-23T22:00:00Z), remaining → T-161672s; added Corrective invocation 167 verification section.
+- **Reverted:** unintended edit in `research/reports/paper_record_raw_coverage_001.md` (`"no extension observed in this invocation"` → `"no session extended (digest requirement not triggered)"`), restoring committed state via `git checkout --`; worktree now clean.
+- **Updated:** Context gate epoch → 1795471200 (2026-11-23T22:00:00Z), remaining → T-154462s; added Corrective invocation 417 verification section.
 - **No changes to:** source code, tests, `data/processed/*`, `data/raw/*`, `config/*`, thresholds, gates, cost model, universe, clock-gate logic, or `NEXT_AGENT_TASK.md` (state sha `6b7f37e6…`, run_history 474, `GATE_REACHABLE=0`).
 
 ## Unresolved blockers
@@ -51,5 +62,4 @@ No source/test/data defect. The mutating paper-trading extension is blocked by t
 
 ## Verification of this refresh
 - `git diff --check` clean; `data/raw` untouched; no commit made (controller checkpoints).
-- Focused gate test subset: 126 passed, 1 skipped; drift/cov
-erage/reconciliation audits all exit 0.
+- Focused gate test subset: 126 passed, 1 skipped; drift/cov/erage/reconciliation audits all exit 0. Pre-gate check exit 0, `GATE_REACHABLE=0`.
