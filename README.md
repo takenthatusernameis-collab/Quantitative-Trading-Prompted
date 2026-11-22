@@ -1,3 +1,15 @@
+## Errata (corrected published figures)
+
+- **reversal_001 evaluation (Cycle 935) — erratum 001:** the walk-forward standard
+  deviation of the 36 out-of-sample fold Sharpes (ddof=1) is `0.752318`, and the
+  corrected cost hurdle is `4.2843%` (0.042843 of the measured cross-sectional
+  dispersion per rebalance), superseding the figures printed in the Cycle-934/935
+  records. The published verdict is unchanged: **Rejected/Failed** (a pre-registered
+  falsification condition fired — conditions i, iii, iv, vi). The correction of record
+  is `research/experiments/reversal_001_evaluation_erratum_001.md`; the frozen
+  evaluator (`research/reversal_001_evaluation.py`) and its generated records are
+  unaltered.
+
 ## Cycle 1316: pre-gate re-verification + focused baseline health check + handoff (2026-11-22 17:31 UTC, run 45049420680 attempt 1 session 3 inv 1) — **PRE-GATE VERIFIED (GATE UNREACHABLE); BASELINE HEALTHY; NO CODE/STATE CHANGE**
 
 - **UTC 2026-11-22T17:31Z (Sunday).** Next MUTATING gate 2026-11-23T22:00:00Z (epoch 1795471200), T-102571s (~28.5h) out. Pre-gate cheap path (one call, `SESSION_BUDGET_SECONDS=21600`) → exit 0, `GATE_REACHABLE=0` (T-102563s > 21600s; est. cutoff 2026-11-22T23:30:37Z < gate 2026-11-23T22:00:00Z). Even a max-length session cannot reach the gate; the mutating cycle (extend 474→475) is structurally impossible before 2026-11-23T22:00:00Z.
