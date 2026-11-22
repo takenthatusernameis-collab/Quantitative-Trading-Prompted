@@ -1,11 +1,11 @@
 {
   "gate_epoch": 1795471200,
   "gate_human": "2026-11-23T22:00:00Z",
-  "checked_at": "2026-11-22T02:05:23Z",
-  "now_epoch": 1795313123,
-  "t_minus_seconds": 158077,
-  "session_budget_seconds": 21300,
-  "est_cutoff": "2026-11-22T08:00:23Z",
+  "checked_at": "2026-11-22T04:10:20Z",
+  "now_epoch": 1795320620,
+  "t_minus_seconds": 150580,
+  "session_budget_seconds": 21600,
+  "est_cutoff": "2026-11-22T10:10:20Z",
   "gate_reachable": 0,
   "reachable": false,
   "pre_gate_exit": 0,
@@ -16,7 +16,8 @@
   "spot_checks": {
     "drift_invariant_check": {"exit": 0, "sessions": 474, "regime_transitions": 7, "high_turnover_sessions": 7, "threshold": 0.5},
     "coverage_audit": {"exit": 0, "overall": "PASS", "sessions": 474, "covered": 466, "unverified": 8, "attested": 2},
-    "artifact_reconciliation": {"exit": 0, "overall": "PASS", "sessions": 474, "attested": 1, "unattested": 0}
+    "artifact_reconciliation": {"exit": 0, "overall": "PASS", "sessions": 474, "attested": 1, "unattested": 0},
+    "focused_pytest": {"passed": 126, "skipped": 1, "duration_seconds": 16.92}
   },
-  "note": "Corrective invocation 406: diagnostic log (kilo-session-15-recovery-405.log) exited status 1 on an external model-quota error (`Error: Sign up for free to continue…`) — NOT a code/test/data defect, same class as corrective invocations 1-348. No project change made or needed. Gate 2026-11-23T22:00Z is T-158077s (~43.9h) away, beyond the 21300s (355-min) session budget, so the mutating post-gate cycle (extend 474->475) is structurally impossible this session. Pre-gate cheap path applies: exit 0, GATE_REACHABLE=0, state sha256 matches, data/raw clean. Baseline healthy: drift/cov/reconcile all exit 0. Worktree clean; no commit (controller checkpoints). Next mutating opportunity 2026-11-23T22:00:00Z."
+  "note": "Session 33, 2026-11-22T04:09Z (Sunday). Gate 2026-11-23T22:00:00Z is T-150580s (~41.8h) away, beyond the 21600s (GitHub Actions max) session budget, so the mutating post-gate cycle (extend 474->475) is structurally impossible this session. Pre-gate cheap path: exit 0, GATE_REACHABLE=0, state sha256 matches (6b7f37e6...), data/raw clean. Baseline healthy: drift/cov/reconcile all exit 0, focused pytest 126 passed/1 skipped. Venv present (Python 3.14.4). Coverage audit rewrote research/reports/paper_record_raw_coverage_001.md with cosmetically different wording (benign generator nondeterminism) — reverted. Worktree clean; no commit (controller checkpoints). Next mutating opportunity 2026-11-23T22:00:00Z."
 }
