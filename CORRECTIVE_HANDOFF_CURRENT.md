@@ -63,3 +63,29 @@ No source/test/data defect. The mutating paper-trading extension is blocked by t
 ## Verification of this refresh
 - `git diff --check` clean; `data/raw` untouched; no commit made (controller checkpoints).
 - Focused gate test subset: 126 passed, 1 skipped; drift/cov/erage/reconciliation audits all exit 0. Pre-gate check exit 0, `GATE_REACHABLE=0`.
+
+## Corrective invocation 3 (2026-11-22T06:08Z) — pre-gate; no durable change required
+- **Approach:** independent re-verification (not a retry of the model call; not an invented change). Confirmed prior invocation's verdict: gate unreachable, baseline healthy, no code/state/data defect.
+- `now_epoch=1795327713`; gate `1795471200` (2026-11-23T22:00:00Z); T-143487s > 21600s budget → `GATE_REACHABLE=0` (est. cutoff 2026-11-22T12:08:36Z < gate). Structurally unreachable this session.
+- `scripts/pre_gate_check.sh` → exit 0, `GATE_REACHABLE=0`, state sha256 `6b7f37e6…` matches, `data/raw` clean.
+- `drift_invariant_check.py` → exit 0; sessions=474, regime_transitions=7, high_turnover=7, threshold=0.5.
+- `paper_record_raw_coverage_audit.py --extend-before 2026-11-20` → exit 0, OVERALL: PASS, sessions=474, attested=2.
+- `paper_trading_artifact_reconciliation_audit.py` → exit 0, OVERALL: PASS, sessions=474, attested=1, unattested=0.
+- focused gate pytest → 126 passed, 1 skipped, exit 0.
+- `git status --porcelain` → empty; `git status --porcelain -- data/raw` → empty.
+- **No changes made:** source, tests, `data/processed/*`, `data/raw/*`, `config/*`, thresholds, gates, cost model, universe, clock-gate, `NEXT_AGENT_TASK.md` all untouched. No commit (controller checkpoints).
+- **Root cause of "no durable changes":** not a defect — the mutating extend (474→475) is contractually barred before 2026-11-23T22:00:00Z; scope boundaries forbid it. Forcing a change would violate safety/scope and introduce churn.
+- **Next distinct investigation:** controller/human decision to schedule a session starting ≥~16:05Z (ideally ≥22:00Z on 2026-11-23) so `GATE_REACHABLE=1` and `scripts/post_gate_orchestrator.sh` can run once, followed by idempotent re-run. At/after 2026-11-23T22:00Z re-run pre-gate check; only when `GATE_REACHABLE=1` proceed to the orchestrator.
+
+## Corrective invocation 4 / 605 (2026-11-22T07:01Z) — verified-success evidence
+- **Materially different approach:** corrective invocations 1–600+ all exited status 1 on external provider model-quota errors (`Error: Sign up for free to continue…`); invocation 605 does NOT retry the model call. It runs independent read-only re-verification and records the verified-success evidence, confirming invocation 604's verdict.
+- `now_epoch=1795330885` (2026-11-22T07:01:25Z); gate `1795471200` (2026-11-23T22:00:00Z); T-140315s > 21600s budget → `GATE_REACHABLE=0` (est. cutoff 2026-11-22T13:01:25Z < gate). Structurally unreachable this session.
+- `GATE_EPOCH=1795471200 STATE_SHA256=6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f SESSION_BUDGET_SECONDS=21600 bash scripts/pre_gate_check.sh` → **exit 0**, `GATE_REACHABLE=0` (T-140314s > 21600s; est. cutoff 2026-11-22T13:01:26Z < gate); state sha256 matches `6b7f37e6…`; `data/raw` clean.
+- `/tmp/kilo-venv/bin/python research/drift_invariant_check.py` → **exit 0**; sessions=474, regime_transitions=7, high_turnover_sessions=7, threshold=0.5.
+- `/tmp/kilo-venv/bin/python research/paper_record_raw_coverage_audit.py --extend-before 2026-11-20` → **OVERALL: PASS**, exit 0; sessions=474, attested=2.
+- `/tmp/kilo-venv/bin/python research/paper_trading_artifact_reconciliation_audit.py` → **OVERALL: PASS**, exit 0; sessions=474, attested=1, unattested=0.
+- `/tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py tests/test_drift_persistence.py tests/test_drift_invariant_check.py` → **126 passed, 1 skipped in 11.42s**, exit 0.
+- `git status --porcelain -- data/raw` → empty (only pre-existing unstaged handoff edit remains).
+- **No changes made:** source, tests, `data/processed/*`, `data/raw/*`, `config/*`, thresholds, gates, cost model, universe, clock-gate, `NEXT_AGENT_TASK.md` all untouched. No commit (controller checkpoints).
+- **Root cause confirmed:** no defect — mutating extend (474→475) contractually barred before 2026-11-23T22:00:00Z; gate structurally unreachable from this session's budget.
+- **Next distinct investigation:** controller decision to schedule a session starting ≥~16:05Z (ideally ≥22:00Z on 2026-11-23) so `GATE_REACHABLE=1`; at/after 2026-11-23T22:00Z re-run pre-gate check, then `scripts/post_gate_orchestrator.sh` only when `GATE_REACHABLE=1`.
