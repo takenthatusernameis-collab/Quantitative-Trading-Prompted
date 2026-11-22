@@ -28,7 +28,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from research.reversal_001_evaluation import build_payload  # noqa: E402
+from research.reversal_001_evaluation import build_payload
 
 ERRATUM = (
     REPO_ROOT / "research" / "experiments" / "reversal_001_evaluation_erratum_001.md"
@@ -53,6 +53,7 @@ def _git_show(path: str) -> bytes | None:
     result = subprocess.run(
         ["git", "show", f"{CYCLE_COMMIT}:{path}"],
         cwd=REPO_ROOT,
+        check=False,
         capture_output=True,
         timeout=120,
     )
