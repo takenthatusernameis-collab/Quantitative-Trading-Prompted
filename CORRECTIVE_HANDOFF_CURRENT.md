@@ -11,9 +11,9 @@
 > Keep this file to one Context block, one Current-status block, and the
 > standing sections below. Do not append another per-invocation section.
 
-## Context (verified 2026-11-23T07:21Z)
-- Current time: 2026-11-23T07:21Z (epoch 1795418494).
-- Gate for 2026-11-23: NOT released — releases 2026-11-23T22:00:00Z (epoch 1795471200); T-52706s remaining (~14.6h). Session est. cutoff ~13:16Z precedes gate → mutating cycle structurally unreachable this session.
+## Context (re-verified 2026-11-23T08:18Z — corrective invocation 381; no defect found, temporal blocker only)
+- Current time: 2026-11-23T08:18Z (epoch 1795421883).
+- Gate for 2026-11-23: NOT released — releases 2026-11-23T22:00:00Z (epoch 1795471200); T-49317s remaining (~13.7h). Session est. cutoff ~13:18Z precedes gate → mutating cycle structurally unreachable this session. Independently re-confirmed: `pre_gate_check.sh` EXIT=0, `GATE_REACHABLE=0`, state sha `6b7f37e6…`, `data/raw` clean, working tree clean.
 - Last processed session: 2026-11-20; NAV `130307.21196257228`; `run_history` 474; attested 2.
 - State: `data/processed/paper_trading_state.yaml`, SHA256 `6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f`.
 - Rolling 63d Sharpe at 2026-11-20: `-2.0441`.
