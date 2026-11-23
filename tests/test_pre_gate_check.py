@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import time
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -226,6 +227,66 @@ def test_bad_session_budget_exits_2(tmp_path: Path) -> None:
     proc = _run(tmp_path, FUTURE_GATE, sha, extra_env={"SESSION_BUDGET_SECONDS": "1h"})
     assert proc.returncode == 2, proc.stdout + proc.stderr
     assert "SESSION_BUDGET_SECONDS" in proc.stderr, proc.stderr
+
+
+def test_bad_cutoff_epoch_exits_2(tmp_path: Path) -> None:
+    """A non-numeric CUTOFF_EPOCH fails closed instead of acting as 0.
+
+    Mirrors the GATE_EPOCH/SESSION_BUDGET_SECONDS guards: an absolute cutoff that
+    silently degraded to 0 would report the gate as trivially unreachable, a false
+    verdict that defeats the deterministic reachability this input exists to add.
+    """
+    sha = _sha256(_make_state(tmp_path))
+    proc = _run(tmp_path, FUTURE_GATE, sha, extra_env={"CUTOFF_EPOCH": "soon"})
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    assert "CUTOFF_EPOCH" in proc.stderr, proc.stderr
+
+
+def test_reachability_absolute_cutoff_unreachable(tmp_path: Path) -> None:
+    """An absolute CUTOFF_EPOCH just after now, with a far-future gate, is unreachable.
+
+    The absolute cutoff is the exact global run deadline (controller start + 355m);
+    it must yield the same GATE_REACHABLE=0 verdict as a small relative budget, but
+    without any session-start estimation.
+    """
+    sha = _sha256(_make_state(tmp_path))
+    cutoff = str(int(time.time()) + 1)
+    proc = _run(tmp_path, FUTURE_GATE, sha, extra_env={"CUTOFF_EPOCH": cutoff})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "GATE_REACHABLE=0" in proc.stderr, proc.stderr
+    assert "absolute CUTOFF_EPOCH" in proc.stderr, proc.stderr
+
+
+def test_reachability_absolute_cutoff_waitable(tmp_path: Path) -> None:
+    """An absolute CUTOFF_EPOCH at/after the gate yields GATE_REACHABLE=1.
+
+    With CUTOFF_EPOCH == the far-future gate, remaining budget equals T-remaining,
+    so the gate is (boundary) reachable and the script must say so on exit 0.
+    """
+    sha = _sha256(_make_state(tmp_path))
+    proc = _run(tmp_path, FUTURE_GATE, sha, extra_env={"CUTOFF_EPOCH": FUTURE_GATE})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "GATE_REACHABLE=1" in proc.stderr, proc.stderr
+
+
+def test_absolute_cutoff_takes_precedence_over_relative_budget(tmp_path: Path) -> None:
+    """When both are set, the absolute CUTOFF_EPOCH wins over SESSION_BUDGET_SECONDS.
+
+    A relative budget of ~1e12s would say "reachable"; the absolute cutoff just
+    after now must override it and report unreachable. Otherwise a caller who sets
+    both could get the optimistic (wrong) relative verdict instead of the exact one.
+    """
+    sha = _sha256(_make_state(tmp_path))
+    cutoff = str(int(time.time()) + 1)
+    proc = _run(
+        tmp_path,
+        FUTURE_GATE,
+        sha,
+        extra_env={"CUTOFF_EPOCH": cutoff, "SESSION_BUDGET_SECONDS": "999999999999"},
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "GATE_REACHABLE=0" in proc.stderr, proc.stderr
+    assert "absolute CUTOFF_EPOCH" in proc.stderr, proc.stderr
 
 
 def test_reachability_is_side_effect_free(tmp_path: Path) -> None:

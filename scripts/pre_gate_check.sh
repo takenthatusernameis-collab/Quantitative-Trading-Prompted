@@ -26,8 +26,18 @@
 # ---------------------------------------------------------------------------
 # Consecutive pre-gate sessions each re-derived by hand that the gate release
 # (22:00Z) falls after the run's ~355-minute cutoff, so the post-gate cycle is
-# structurally unreachable. Passing SESSION_BUDGET_SECONDS makes that arithmetic
-# deterministic and machine-readable instead:
+# structurally unreachable. Two inputs make that arithmetic deterministic and
+# machine-readable instead (CUTOFF_EPOCH is preferred when both are set):
+#   CUTOFF_EPOCH         the ABSOLUTE global run cutoff (epoch). Preferred: the
+#                        controller knows it exactly (job_start + 355*60), so
+#                        the verdict is exact with NO session-start estimation.
+#                        The recurring failure was estimating the budget from an
+#                        assumed session start and then hand-correcting the
+#                        prose; an absolute cutoff removes that guesswork.
+#   SESSION_BUDGET_SECONDS  a RELATIVE remaining budget (kept for backward
+#                        compatibility). Callers must pass the *remaining*
+#                        budget, not the full ~21300s, or the verdict over-
+#                        estimates the reachable window.
 #   GATE_REACHABLE=0   gate not reached AND T-remaining > budget (unreachable)
 #   GATE_REACHABLE=1   gate not reached AND T-remaining <= budget (waitable with
 #                      post_gate_orchestrator.sh --wait-until-gate)
@@ -81,6 +91,18 @@ if [[ -n "$SESSION_BUDGET_SECONDS" && ! "$SESSION_BUDGET_SECONDS" =~ ^[0-9]+$ ]]
   exit 2
 fi
 
+# Optional ABSOLUTE global run cutoff (epoch). Preferred over the relative
+# SESSION_BUDGET_SECONDS because the controller knows the exact cutoff
+# (job_start + 355*60) -- no session-start estimation, no per-call prose
+# correction. Validate it exactly like GATE_EPOCH: a non-numeric value must not
+# flow into `(( ))` (where bash treats it as 0 and would report the gate as
+# trivially reachable). When set, it takes precedence in the reachability verdict.
+CUTOFF_EPOCH="${CUTOFF_EPOCH:-}"
+if [[ -n "$CUTOFF_EPOCH" && ! "$CUTOFF_EPOCH" =~ ^[0-9]+$ ]]; then
+  echo "FATAL: CUTOFF_EPOCH must be a non-negative integer epoch, got '$CUTOFF_EPOCH'" >&2
+  exit 2
+fi
+
 now_epoch="$(date -u +%s)"
 gate_human="$(date -u -d "@$GATE_EPOCH" +%FT%TZ 2>/dev/null || echo "$GATE_EPOCH")"
 
@@ -125,14 +147,28 @@ echo "  state sha256 matches ($actual_sha); data/raw clean. STOP — do not re-r
 
 # Informational only: never alters the exit code. This replaces the manual
 # "cutoff precedes gate release" arithmetic repeated every pre-gate session.
-if [[ -n "$SESSION_BUDGET_SECONDS" ]]; then
+# CUTOFF_EPOCH (absolute) is preferred over SESSION_BUDGET_SECONDS (relative):
+# the absolute cutoff is exact and needs no session-start estimation, whereas the
+# relative budget requires the caller to pass the *remaining* budget (not the
+# full ~21300s) or the verdict overestimates the reachable window.
+if [[ -n "$CUTOFF_EPOCH" ]]; then
+  budget_remaining=$(( CUTOFF_EPOCH - now_epoch ))
+  cutoff_human="$(date -u -d "@$CUTOFF_EPOCH" +%FT%TZ 2>/dev/null || echo "$CUTOFF_EPOCH")"
+  budget_source="absolute CUTOFF_EPOCH=$CUTOFF_EPOCH ($cutoff_human)"
+elif [[ -n "$SESSION_BUDGET_SECONDS" ]]; then
+  budget_remaining="$SESSION_BUDGET_SECONDS"
   cutoff_epoch=$(( now_epoch + SESSION_BUDGET_SECONDS ))
   cutoff_human="$(date -u -d "@$cutoff_epoch" +%FT%TZ 2>/dev/null || echo "$cutoff_epoch")"
-  if (( remaining > SESSION_BUDGET_SECONDS )); then
-    echo "GATE_REACHABLE=0: T-${remaining}s > session budget ${SESSION_BUDGET_SECONDS}s (est. cutoff $cutoff_human, gate $gate_human);" >&2
+  budget_source="relative SESSION_BUDGET_SECONDS=${SESSION_BUDGET_SECONDS}s (est. cutoff $cutoff_human)"
+else
+  budget_remaining=""
+fi
+if [[ -n "$budget_remaining" ]]; then
+  if (( remaining > budget_remaining )); then
+    echo "GATE_REACHABLE=0: T-${remaining}s > ${budget_source}; remaining budget ${budget_remaining}s, gate $gate_human;" >&2
     echo "  the post-gate cycle cannot run in this session — record this verdict and hand off." >&2
   else
-    echo "GATE_REACHABLE=1: T-${remaining}s <= session budget ${SESSION_BUDGET_SECONDS}s (est. cutoff $cutoff_human, gate $gate_human);" >&2
+    echo "GATE_REACHABLE=1: T-${remaining}s <= ${budget_source}; remaining budget ${budget_remaining}s, gate $gate_human;" >&2
     echo "  the gate falls inside this session — use post_gate_orchestrator.sh --wait-until-gate." >&2
   fi
 fi
