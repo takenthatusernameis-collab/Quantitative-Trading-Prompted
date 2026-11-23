@@ -62,6 +62,10 @@ def _run(
 
     env = dict(os.environ)
     env.update({"GATE_EPOCH": gate_epoch, "STATE_SHA256": state_sha})
+    # Default to an empty RUNNER_TEMP so the heartbeat auto-derivation is
+    # deterministic (no real controller progress file leaks in); tests that
+    # exercise auto-derivation override RUNNER_TEMP via extra_env.
+    env["RUNNER_TEMP"] = str(tmp_path / "runner-temp")
     if extra_env:
         env.update(extra_env)
     return subprocess.run(
@@ -300,6 +304,111 @@ def test_reachability_is_side_effect_free(tmp_path: Path) -> None:
     proc = _run(tmp_path, FUTURE_GATE, sha, extra_env={"SESSION_BUDGET_SECONDS": "1"})
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert _snapshot(tmp_path) == before
+
+
+def _write_heartbeat(dirpath: Path, updated_utc: str, remaining_seconds: str) -> Path:
+    """Write a controller-style progress heartbeat and return its path."""
+    dirpath.mkdir(parents=True, exist_ok=True)
+    hb = dirpath / "kilo-progress-state-45173663210-1.txt"
+    hb.write_text(
+        f"updated_utc={updated_utc}\nphase=invocation-start\nsession=1\n"
+        f"session_limit=1000\nattempt=1\nremaining_seconds={remaining_seconds}\n"
+    )
+    return hb
+
+
+def _utc_now_iso() -> str:
+    from datetime import UTC, datetime
+
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def test_reachability_auto_derives_unreachable_from_heartbeat(tmp_path: Path) -> None:
+    """With no explicit budget, a stale/small heartbeat yields GATE_REACHABLE=0.
+
+    This is the durable fix for the recurring hand-computation of the cutoff:
+    the controller's own heartbeat (updated_utc + remaining_seconds) is the
+    authoritative source. A tiny remaining budget against a far-future gate must
+    report unreachable, on exit 0, without the caller passing CUTOFF_EPOCH.
+    """
+    sha = _sha256(_make_state(tmp_path))
+    hb_dir = tmp_path / "runner-temp"
+    _write_heartbeat(hb_dir, _utc_now_iso(), "1")
+    proc = _run(tmp_path, FUTURE_GATE, sha, extra_env={"RUNNER_TEMP": str(hb_dir)})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "GATE_REACHABLE=0" in proc.stderr, proc.stderr
+    assert "controller heartbeat" in proc.stderr, proc.stderr
+
+
+def test_reachability_auto_derives_waitable_from_heartbeat(tmp_path: Path) -> None:
+    """A heartbeat with a huge remaining budget yields GATE_REACHABLE=1.
+
+    cutoff = epoch(updated_utc) + remaining_seconds; a near-infinite budget puts
+    the cutoff past the far-future gate, so the gate is waitable.
+    """
+    sha = _sha256(_make_state(tmp_path))
+    hb_dir = tmp_path / "runner-temp"
+    _write_heartbeat(hb_dir, _utc_now_iso(), "999999999999")
+    proc = _run(tmp_path, FUTURE_GATE, sha, extra_env={"RUNNER_TEMP": str(hb_dir)})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "GATE_REACHABLE=1" in proc.stderr, proc.stderr
+    assert "controller heartbeat" in proc.stderr, proc.stderr
+
+
+def test_reachability_auto_derive_no_heartbeat_emits_no_verdict(tmp_path: Path) -> None:
+    """No heartbeat and no explicit budget means no verdict, still exit 0.
+
+    The auto-derivation must never fail the cheap path or invent a budget: with
+    an empty RUNNER_TEMP and no CONTROLLER_PROGRESS_FILE, the script prints no
+    GATE_REACHABLE line but still exits 0 (reachability is informational only).
+    """
+    sha = _sha256(_make_state(tmp_path))
+    proc = _run(tmp_path, FUTURE_GATE, sha)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "GATE_REACHABLE" not in proc.stderr, proc.stderr
+
+
+def test_reachability_explicit_cutoff_beats_auto_heartbeat(tmp_path: Path) -> None:
+    """An explicit CUTOFF_EPOCH takes precedence over the auto-derived heartbeat.
+
+    A heartbeat with a near-infinite budget would say reachable; a CUTOFF_EPOCH
+    just after now must override it and report unreachable, so an explicit
+    absolute cutoff is never second-guessed by heartbeat auto-derivation.
+    """
+    sha = _sha256(_make_state(tmp_path))
+    hb_dir = tmp_path / "runner-temp"
+    _write_heartbeat(hb_dir, _utc_now_iso(), "999999999999")
+    cutoff = str(int(time.time()) + 1)
+    proc = _run(
+        tmp_path,
+        FUTURE_GATE,
+        sha,
+        extra_env={"RUNNER_TEMP": str(hb_dir), "CUTOFF_EPOCH": cutoff},
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "GATE_REACHABLE=0" in proc.stderr, proc.stderr
+    assert "absolute CUTOFF_EPOCH" in proc.stderr, proc.stderr
+
+
+def test_reachability_auto_derive_uses_explicit_progress_file(tmp_path: Path) -> None:
+    """CONTROLLER_PROGRESS_FILE selects the heartbeat path explicitly.
+
+    RUNNER_TEMP points at an empty dir, so only an explicit CONTROLLER_PROGRESS_FILE
+    can supply the heartbeat. This pins the override that lets a caller (or test)
+    name the exact heartbeat regardless of RUNNER_TEMP/GITHUB_* layout.
+    """
+    sha = _sha256(_make_state(tmp_path))
+    hb_dir = tmp_path / "elsewhere"
+    hb = _write_heartbeat(hb_dir, _utc_now_iso(), "1")
+    proc = _run(
+        tmp_path,
+        FUTURE_GATE,
+        sha,
+        extra_env={"CONTROLLER_PROGRESS_FILE": str(hb)},
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "GATE_REACHABLE=0" in proc.stderr, proc.stderr
+    assert "controller heartbeat" in proc.stderr, proc.stderr
 
 
 def test_hash_drift_exits_3(tmp_path: Path) -> None:

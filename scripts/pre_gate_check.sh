@@ -44,6 +44,16 @@
 # The verdict stays on exit 0 (the cheap path still applies and the caller must
 # still STOP); a reachable gate never implies permission to extend early.
 #
+#   When neither CUTOFF_EPOCH nor SESSION_BUDGET_SECONDS is supplied, the script
+#   auto-derives the absolute cutoff from the controller's own progress heartbeat
+#   ($RUNNER_TEMP/kilo-progress-state-<run>-<attempt>.txt, or the newest matching
+#   file): cutoff = epoch(updated_utc) + remaining_seconds. Both fields are
+#   written from the SAME instant, so the derived cutoff is exact regardless of
+#   heartbeat staleness. This removes the recurring hand-computation of the
+#   cutoff that every pre-gate session previously repeated (and occasionally got
+#   wrong). CONTROLLER_PROGRESS_FILE overrides the heartbeat path. Auto-derivation
+#   is informational only and never changes the exit code.
+#
 # Usage:
 #   GATE_EPOCH=1794866400 \
 #   STATE_SHA256=c438cd71785459e2612e2dda3425d670de920a62de532c0dff2da6fe332b6365 \
@@ -151,6 +161,36 @@ echo "  state sha256 matches ($actual_sha); data/raw clean. STOP — do not re-r
 # the absolute cutoff is exact and needs no session-start estimation, whereas the
 # relative budget requires the caller to pass the *remaining* budget (not the
 # full ~21300s) or the verdict overestimates the reachable window.
+# Auto-derive the absolute cutoff from the controller's progress heartbeat when
+# the caller supplies neither CUTOFF_EPOCH nor SESSION_BUDGET_SECONDS. The
+# controller writes "<key>=<value>" lines including updated_utc and
+# remaining_seconds from the SAME instant, so cutoff = epoch(updated_utc) +
+# remaining_seconds is exact regardless of how stale the heartbeat is (both
+# fields move together). Prints "<cutoff_epoch> <remaining_seconds>" on success
+# and returns non-zero when no usable heartbeat exists. Read-only.
+derive_cutoff_from_heartbeat() {
+  local rt="${RUNNER_TEMP:-}" f="${CONTROLLER_PROGRESS_FILE:-}"
+  local updated remaining updated_epoch
+  if [[ -z "$f" ]]; then
+    [[ -n "$rt" ]] || return 1
+    if [[ -n "${GITHUB_RUN_ID:-}" && -n "${GITHUB_RUN_ATTEMPT:-}" ]]; then
+      f="$rt/kilo-progress-state-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.txt"
+      [[ -f "$f" ]] || f=""
+    fi
+  fi
+  if [[ -z "$f" || ! -f "$f" ]]; then
+    [[ -n "$rt" ]] || return 1
+    f="$(ls -1t "$rt"/kilo-progress-state-*.txt 2>/dev/null | head -n 1 || true)"
+  fi
+  [[ -n "$f" && -f "$f" ]] || return 1
+  updated="$(sed -n 's/^updated_utc=//p' "$f" | head -n 1)"
+  remaining="$(sed -n 's/^remaining_seconds=//p' "$f" | head -n 1)"
+  [[ -n "$updated" && "$remaining" =~ ^[0-9]+$ ]] || return 1
+  updated_epoch="$(date -u -d "$updated" +%s 2>/dev/null || true)"
+  [[ "$updated_epoch" =~ ^[0-9]+$ ]] || return 1
+  printf '%s %s\n' "$(( updated_epoch + remaining ))" "$remaining"
+}
+
 if [[ -n "$CUTOFF_EPOCH" ]]; then
   budget_remaining=$(( CUTOFF_EPOCH - now_epoch ))
   cutoff_human="$(date -u -d "@$CUTOFF_EPOCH" +%FT%TZ 2>/dev/null || echo "$CUTOFF_EPOCH")"
@@ -162,6 +202,13 @@ elif [[ -n "$SESSION_BUDGET_SECONDS" ]]; then
   budget_source="relative SESSION_BUDGET_SECONDS=${SESSION_BUDGET_SECONDS}s (est. cutoff $cutoff_human)"
 else
   budget_remaining=""
+  if hb="$(derive_cutoff_from_heartbeat)"; then
+    cutoff_epoch="${hb%% *}"
+    hb_remaining="${hb##* }"
+    budget_remaining=$(( cutoff_epoch - now_epoch ))
+    cutoff_human="$(date -u -d "@$cutoff_epoch" +%FT%TZ 2>/dev/null || echo "$cutoff_epoch")"
+    budget_source="controller heartbeat (updated_utc+remaining_seconds=${hb_remaining}s, cutoff $cutoff_human)"
+  fi
 fi
 if [[ -n "$budget_remaining" ]]; then
   if (( remaining > budget_remaining )); then
