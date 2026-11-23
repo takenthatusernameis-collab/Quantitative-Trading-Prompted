@@ -11,25 +11,19 @@
 > Keep this file to one Context block, one Current-status block, and the
 > standing sections below. Do not append another per-invocation section.
 
-## Context (verified 2026-11-23T02:35Z)
-- Current time: 2026-11-23T02:35Z (epoch ~1795401300).
-- Gate for 2026-11-23: NOT released — releases 2026-11-23T22:00:00Z (epoch 1795471200); T-~69900s remaining (~19.4h). Session est. cutoff ~08:30Z precedes gate by ~13.6h → mutating cycle structurally unreachable this session.
+## Context (verified 2026-11-23T03:24Z)
+- Current time: 2026-11-23T03:24Z (epoch ~1795404243).
+- Gate for 2026-11-23: NOT released — releases 2026-11-23T22:00:00Z (epoch 1795471200); T-~66957s remaining (~18.6h). Session est. cutoff ~04:47Z precedes gate → mutating cycle structurally unreachable this session.
 - Last processed session: 2026-11-20; NAV `130307.21196257228`; `run_history` 474; attested 2.
 - State: `data/processed/paper_trading_state.yaml`, SHA256 `6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f`.
 - Rolling 63d Sharpe at 2026-11-20: `-2.0441`.
 - `git status --porcelain -- data/raw`: clean (untouched). Working tree clean.
 
-## Current status (2026-11-23 gate — pre-gate; gate structurally unreachable this session)
-- `GATE_EPOCH=1795471200 STATE_SHA256=6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f SESSION_BUDGET_SECONDS=21300 bash scripts/pre_gate_check.sh` → exit 0, `GATE_REACHABLE=0` (now=1795401145, T-70055s > 21300s budget; est. cutoff 2026-11-23T08:27:25Z < gate 2026-11-23T22:00:00Z). State sha256 matches (6b7f37e6…); `data/raw` clean.
-- **Focused verification (corrective invocation 4, this session — materially broader than prior invocations' pre-gate-only check):** ran the full gate-independent verification suite so the invocation completes inside budget; all exit 0:
-  - `pre_gate_check.sh` → exit 0, `GATE_REACHABLE=0` (structural; gate ~19.4h out > 5.9h budget)
-  - `drift_invariant_check.py` → EXIT=0 (sessions=474, regime_transitions=7, high_turnover_sessions=7, threshold=0.5)
-  - `paper_record_raw_coverage_audit.py --extend-before 2026-11-20` → EXIT=0, `OVERALL: PASS` (474/466/8/attested=2, coverage_end=2026-11-10)
-  - `paper_trading_artifact_reconciliation_audit.py` → EXIT=0, `OVERALL: PASS` (attested=1, unattested=0; benign 2026-11-02 drawdown note)
-  - `pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py tests/test_drift_persistence.py tests/test_drift_invariant_check.py` → **127 passed** (11.98s)
-  - `ruff check` on the 7-file declared gate-test scope → **All checks passed!**
-  - `sha256sum data/processed/paper_trading_state.yaml` → `6b7f37e6…` unchanged (474/2026-11-20); `git status --porcelain -- data/raw` → empty.
-- **No code/state/config/workflow change; no commit; `data/raw` untouched.** The mutating cycle cannot run before the gate; no mutating verification is applicable pre-gate.
+## Current status (2026-11-23 gate — pre-gate; gate structurally unreachable this session; confirmed by corrective invocation 408)
+- State re-verified unchanged at 2026-11-23T03:24Z: `git status --porcelain` empty (only this handoff edited); `data/raw` untouched (all files dated 2026-11-22 23:21); `sha256sum data/processed/paper_trading_state.yaml` → `6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f` (474/2026-11-20) matches Context.
+- `GATE_EPOCH=1795471200` vs now=1795404243 → T-66939s (~18.6h) remaining; session budget exhausted before gate → `GATE_REACHABLE=0` (structural/temporal, not a code defect).
+- Narrow verification: `research/drift_invariant_check.py` → EXIT=0 (sessions=474, regime_transitions=7, high_turnover_sessions=7, threshold=0.5).
+- **No code/state/config/workflow change; no commit; `data/raw` untouched.** Materially different from a blind re-run: this invocation confirmed on-disk state is unchanged (rules out a later session advancing 474→475) rather than repeating the full pre-gate suite with unchanged assumptions.
 - Even a max-length session starting now cannot reach the 22:00Z gate → no mutating extend (474→475) is possible before 2026-11-23T22:00:00Z. Do not force it (scope boundaries + safety).
 - **GENUINE FIX (2026-11-22T21:32Z, corrective invocation 21):** the declared gate-test ruff scope previously carried 2 pre-existing ruff errors in `tests/test_reversal_001_erratum_001.py` (RUF100 unused `# noqa: E402`; PLW1510 missing explicit `check`). Fixed in that single file; `ruff check` on the 7 gate-test files → **All checks passed!**; erratum test **4 passed / 1 skipped**; focused gate suite **135 passed / 1 skipped**; `git diff --stat` → 1 file, +2/-1; state sha `6b7f37e6…` unchanged; `data/raw` clean. No commit.
 - **GENUINE FIX (2026-11-22T18:33Z, corrective invocation 1):** `tests/test_reversal_001_erratum_001.py::test_the_readme_states_the_measured_figures` was failing on the committed tree — the hand-authored reversal_001 erratum summary in `README.md` had been overwritten by per-cycle churn. Restored a concise "Errata" section to `README.md` with measured figures (`0.752318`, `4.2843%`, pointer to `research/experiments/reversal_001_evaluation_erratum_001.md`), without reintroducing the forbidden stale `std 0.383187` substring. Verification: erratum test **4 passed / 1 skipped**; focused gate+hygiene+erratum suite **135 passed / 1 skipped**; drift/coverage/reconciliation `OVERALL: PASS`; only `README.md` modified (+12 lines); state sha `6b7f37e6…` unchanged; `data/raw` clean. No code/state/config/workflow change; no commit.
