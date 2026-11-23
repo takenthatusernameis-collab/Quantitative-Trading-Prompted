@@ -20,7 +20,10 @@ Reconstruction sources (all canonical, no invented data):
     existing regime artifact).
   * risk_state_20261102  -> vol_scale / dd_scale from the run_history row, plus
     exposure = vol_scale * regime_exposure (verified identical across all 462
-    existing risk_state artifacts) and drawdown = state.max_drawdown.
+    existing risk_state artifacts) and drawdown = running maximum drawdown of
+    the record NAV series up to and including the target date (same algorithm
+    as research/paper_trading_artifact_reconciliation_audit.py::_running_drawdown),
+    not the all-time state.max_drawdown.
 
 Pre-write guard: every existing artifact of each kind is verified to be
 reconstructable from the same provenance before any write, so the repair cannot
@@ -123,13 +126,25 @@ def reconstruct(state: dict, weights: dict[str, float]) -> dict[str, pd.DataFram
         ]
     )
 
+    # Running maximum drawdown of the record NAV series up to and including
+    # TARGET_DATE — same algorithm as
+    # research/paper_trading_artifact_reconciliation_audit.py::_running_drawdown.
+    navs = [float(e["nav"]) for e in state["run_history"]]
+    target_idx = next(i for i, e in enumerate(state["run_history"]) if e["date"] == TARGET_DATE)
+    peak = float("-inf")
+    running_dd = 0.0
+    for i in range(target_idx + 1):
+        peak = max(peak, navs[i])
+        dd = min(navs[i] / peak - 1.0, 0.0)
+        running_dd = min(running_dd, dd)
+
     risk_df = pd.DataFrame(
         [
             {
                 "date": TARGET_DATE,
                 "vol_scale": row["vol_scale"],
                 "dd_scale": row["dd_scale"],
-                "drawdown": state["max_drawdown"],
+                "drawdown": running_dd,
                 "exposure": row["vol_scale"] * row["regime_exposure"],
             }
         ]
