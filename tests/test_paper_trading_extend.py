@@ -659,3 +659,37 @@ def test_gate_epoch_matches_configured_session_close_boundary():
         )
         is False
     )
+
+
+# The 2026-11-23 gate (epoch 1795471200 = 2026-11-23T22:00:00Z) is the CURRENT
+# active mutating gate per NEXT_AGENT_TASK.md, scripts/pre_gate_check.sh and
+# scripts/post_gate_orchestrator.sh. The 2026-11-16 alignment test above pins
+# the invariant for a gate whose session has ALREADY closed; the live 2026-11-23
+# gate is the one the next mutating cycle will actually run against, and until now
+# it was pinned by prose only (NEXT_AGENT_TASK.md "Decision tree") -- a silent
+# drift of market_close_hour, the documented epoch, or session_is_complete would
+# release the cheap path while the extend still no-ops, or fire into a not-yet-
+# closed partial session bar. Same invariant, same live-config anchoring, same
+# False->True boundary check, for the gate that is actually in force.
+DOCUMENTED_GATE_20261123 = 1795471200  # 2026-11-23T22:00:00Z
+
+
+def test_gate_epoch_20261123_matches_configured_session_close_boundary():
+    cfg = yaml.safe_load((ROOT / "config" / "paper_trading_config.yaml").read_text())
+    close_hour = cfg["data_refresh"]["market_close_hour"]
+    tz = ZoneInfo(cfg["data_refresh"]["timezone"])
+
+    gate_dt = datetime.fromtimestamp(DOCUMENTED_GATE_20261123, tz=UTC)
+    assert gate_dt.astimezone(tz) == datetime(
+        2026, 11, 23, close_hour + 1, 0, tzinfo=tz
+    ), "documented 2026-11-23 gate epoch is not close_hour+1 on 2026-11-23 in the exchange tz"
+
+    assert (
+        session_is_complete("2026-11-23", gate_dt, close_hour=close_hour, tz=tz)
+        is True
+    )
+    before = datetime.fromtimestamp(DOCUMENTED_GATE_20261123 - 1, tz=UTC)
+    assert (
+        session_is_complete("2026-11-23", before, close_hour=close_hour, tz=tz)
+        is False
+    )
