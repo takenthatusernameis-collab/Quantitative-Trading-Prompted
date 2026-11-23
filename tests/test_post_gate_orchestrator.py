@@ -145,6 +145,28 @@ def test_wait_until_gate_times_out_before_release(tmp_path: Path) -> None:
     assert "wait budget exhausted" in proc.stdout
 
 
+def test_wait_until_gate_budget_exhausted_fails_closed(tmp_path: Path) -> None:
+    # The third --wait-until-gate branch: the wait budget expires while the gate
+    # is still in the future. Every other wait test either (a) never reaches the
+    # gate (FUTURE_GATE with a 1s budget -> the same "budget exhausted" message,
+    # but that path is exercised through the 1s-budget case above) or (b) is past
+    # the gate already (no wait at all). Neither pins the *budget-limited* exit:
+    # a regression that silently dropped the exit-3 after the wait loop, or that
+    # wrote a handoff anyway, would pass the existing suite. This pins the exact
+    # durable-evidence contract: budget exhausted -> rc=3, no handoff, and the
+    # log names the exhausted budget rather than claiming the gate released.
+    handoff = tmp_path / "handoff.md"
+    proc = _run(
+        ["--read-only", "--wait-until-gate", "--max-wait-seconds", "2"],
+        FUTURE_GATE,
+        handoff,
+    )
+    assert proc.returncode == 3, proc.stdout + proc.stderr
+    assert not handoff.exists()
+    assert "wait budget exhausted" in proc.stdout, proc.stdout
+    assert "refusing to run" in proc.stdout, proc.stdout
+
+
 def test_wait_until_gate_past_gate_proceeds(tmp_path: Path) -> None:
     # If the gate is already released, --wait-until-gate must not block.
     handoff = tmp_path / "handoff.md"
