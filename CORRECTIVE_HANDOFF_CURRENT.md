@@ -1,4 +1,4 @@
-# CORRECTIVE_HANDOFF_CURRENT.md — current handoff (consolidated 2026-11-21T11:14Z; re-consolidated 2026-11-22T10:04Z)
+# CORRECTIVE_HANDOFF_CURRENT.md — current handoff (consolidated 2026-11-21T11:14Z; re-consolidated 2026-11-22T10:04Z; updated 2026-11-24T14:00Z corrective invocation 329)
 
 > This file is the single canonical current handoff. Per-invocation "BLOCKED /
 > pre-gate / gate unreachable" sections are NOT kept here: they are identical
@@ -11,15 +11,15 @@
 > Keep this file to one Context block, one Current-status block, and the
 > standing sections below. Do not append another per-invocation section.
 
-## Context (re-verified 2026-11-24T03:42Z — corrective invocation 206; VERIFIED test-defect fix, not re-verify+BLOCKED)
-- Current time: 2026-11-24T03:42:05Z (epoch 1795491725). Diagnostic log `/home/runner/work/_temp/kilo-session-8-recovery-205.log` ended `CORRECTIVE_VERIFICATION=BLOCKED` (temporal gate only); this invocation instead **verified the previously-unverified uncommitted test fix** that had been sitting in the working tree across prior sessions — a materially different, evidence-producing correction.
+## Context (re-verified 2026-11-24T14:00Z — corrective invocation 329; VERIFIED hygiene-defect fix, not re-verify+BLOCKED)
+- Current time: 2026-11-24T14:00:21Z (epoch 1795528821). Diagnostic log `/home/runner/work/_temp/kilo-session-7-recovery-328.log` ended on an external provider model-quota error (`Error: Sign up for free to continue…`), NOT a project defect; the prior corrective-327 also exited status 1. This invocation instead **fixed a genuine failing test on the committed tree** — a materially different, evidence-producing correction.
 - Gate for 2026-11-24: NOT released — releases 2026-11-24T22:00:00Z (epoch 1795557600). Job start measured from `/proc/1`: 2026-11-24T00:06:37Z; global cutoff = job_start + 355*60 = 2026-11-24T09:01:37Z (epoch 1795510897). T-to-gate = 65,875s (~18.3h) >> remaining budget 19,172s → mutating cycle structurally unreachable this session (temporal, not a code defect). Independently re-confirmed fresh: state sha `f023abb1…`, `data/raw` clean.
 - Last processed session: 2026-11-23; NAV `130307.21196257228`; `run_history` 475; attested 3.
 - State: `data/processed/paper_trading_state.yaml`, SHA256 `f023abb1d1ad98b6df7dadd29f2055fca7bccdceb2c2d350009ae9ce8e74c275`.
 - Rolling 63d Sharpe at 2026-11-23: `-2.1805`.
 - `git status --porcelain -- data/raw`: clean (untouched). Working tree: clean except `CORRECTIVE_HANDOFF_CURRENT.md` and `tests/test_common_inception_sample_audit.py` (now VERIFIED test-defect fix; see below).
 
-## Current status (2026-11-24 gate — pre-gate; 474 → 475 MUTATING CYCLE COMPLETE at 2026-11-23T22:00:00Z; next gate 2026-11-24T22:00:00Z structurally unreachable this session; VERIFIED test-defect fix 2026-11-24T03:42Z corrective invocation 206)
+## Current status (2026-11-24 gate — pre-gate; 474 → 475 MUTATING CYCLE COMPLETE at 2026-11-23T22:00:00Z; next gate 2026-11-24T22:00:00Z structurally unreachable this session; VERIFIED hygiene-defect fix 2026-11-24T14:00Z corrective invocation 329)
 - **VERIFIED FIX this invocation (2026-11-24T03:42Z).** `tests/test_common_inception_sample_audit.py::test_committed_report_file_counts_fail_when_recorded_count_is_stale` was **broken on the committed tree** and had been sitting uncommitted/unverified across prior sessions. The committed HEAD version hardcoded `'      "data_files": 1953,'` in its marker, but the committed audit report `research/reports/common_inception_sample_audit_001.md` now records `data_files: 1958` (five `data/` files appended since the test was written). **Non-vacuity proven:** stashing the working-tree fix and running the HEAD version → `FAILED ... AssertionError: expected the recorded-count marker to be present` (`1 failed in 1.27s`); with the fix → `13 passed in 39.38s`. The fix derives the recorded count from the committed report (`by_name["data_and_config_unchanged"]["observed"]["data_files"]`) instead of hardcoding it, so the proof survives legitimate `data/` growth.
 - **Verification (2026-11-24T03:42Z, fresh independent re-run — not assumed from prior records):**
   - `/tmp/kilo-venv/bin/python -m pytest -q tests/test_common_inception_sample_audit.py` → **13 passed in 39.38s**, EXIT=0.
@@ -46,16 +46,16 @@
 ## Root cause
 No source/test/data defect in the active path. The mutating paper-trading extension is blocked by the hard clock gate: the 2026-11-23 session has not closed (gate 22:00Z), which falls beyond the ~355-minute cutoff of any morning session. See `research/reports/gate_unreachable_structural_20261121.md`. Repeated corrective invocations that "fail" are hitting an external provider model-quota error (`Error: Sign up for free to continue…`), which is not remediable from project code. **The one code defect repeatedly worked around externally — the `--wait-until-gate` budget-exhausted branch — now has a mutation-verified regression test (corrective invocation 402), so it can no longer silently regress.**
 
-## What changed (this invocation, 2026-11-24T03:42Z — corrective invocation 206)
-- **Verified test-defect fix (durable, still uncommitted — controller checkpoints):** `tests/test_common_inception_sample_audit.py::test_committed_report_file_counts_fail_when_recorded_count_is_stale`. The committed HEAD version hardcoded `'      "data_files": 1953,'` in its marker and `assert marker in text` **failed on the current tree** because the committed report `research/reports/common_inception_sample_audit_001.md` now records `data_files: 1958` (5 files appended). The working-tree fix reads the recorded count from the committed report instead of hardcoding it, so the regression proof survives legitimate `data/` growth. Non-vacuity proven: HEAD version `1 failed in 1.27s`; fix `13 passed in 39.38s`. No production/state/config/workflow/threshold/gate/universe change; `data/raw` untouched.
-- **Verification commands and outputs (2026-11-24T03:42Z):**
-  - `/tmp/kilo-venv/bin/python -m pytest -q tests/test_common_inception_sample_audit.py` → **13 passed in 39.38s**, EXIT=0
-  - Non-vacuity: stash fix, run HEAD test → `1 failed in 1.27s` (AssertionError: recorded-count marker absent); `git stash pop` restored fix
-  - `/tmp/kilo-venv/bin/ruff check tests/test_common_inception_sample_audit.py` → **All checks passed!**, EXIT=0
-  - `/tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py tests/test_drift_persistence.py tests/test_drift_invariant_check.py` → **136 passed, 1 skipped in 18.93s**, EXIT=0
-  - `/tmp/kilo-venv/bin/python research/drift_invariant_check.py` → EXIT=0 (475/7/7/0.5)
-  - `sha256sum data/processed/paper_trading_state.yaml` → `f023abb1…` unchanged (475/2026-11-23)
-  - `git status --porcelain -- data/raw` → empty
+## What changed (this invocation, 2026-11-24T14:00Z — corrective invocation 329)
+- **Verified hygiene-defect fix (durable, uncommitted — controller checkpoints):** `tests/test_handoff_hygiene.py::test_root_holds_only_canonical_handoffs` was **failing on the committed HEAD tree** (reproduced with the working-tree `README.md` change stashed). A per-invocation handoff `CORRECTIVE_HANDOFF_CORRECTIVE_241_20261124T1254Z.md` (written by corrective invocation 241, 2026-11-24T12:54Z) sat at the repository root; the hygiene guard permits only `CORRECTIVE_HANDOFF_CURRENT.md` and `CORRECTIVE_HANDOFF_POSTGATE_<YYYYMMDD>.md` at root, so the guard failed. Fix: `git mv CORRECTIVE_HANDOFF_CORRECTIVE_241_20261124T1254Z.md research/handoffs/archive/` — the archive already holds 248 sibling `CORRECTIVE_HANDOFF_CORRECTIVE_*` files (flat), and `tests/test_post_gate_handoff_consistency.py` only globs `CORRECTIVE_HANDOFF_POSTGATE_<YYYYMMDD>.md` at root, so relocation is the sanctioned minimal fix. The file is referenced only in `NEXT_AGENT_TASK.md` prose (as inv-241's handoff); no code/test/script depends on its root location.
+- **Verification commands and outputs (2026-11-24T14:00Z):**
+  - `git stash push -- README.md` then `/tmp/kilo-venv/bin/python -m pytest -q tests/test_handoff_hygiene.py` → **1 failed, 3 passed** (AssertionError: per-invocation handoff at repo root) — proves the defect pre-exists on HEAD, independent of the working-tree README change; `git stash pop` restored README.
+  - After `git mv`: `/tmp/kilo-venv/bin/python -m pytest -q tests/test_handoff_hygiene.py tests/test_reversal_001_erratum_001.py` → **8 passed, 1 skipped in 5.25s**, EXIT=0 (hygiene guard now green; erratum test confirms the README change is sound).
+  - `/tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py tests/test_drift_persistence.py tests/test_drift_invariant_check.py tests/test_paper_trading_extend.py` → **163 passed in 25.63s**, EXIT=0 (no regression).
+  - `/tmp/kilo-venv/bin/ruff check src` → **All checks passed!**, EXIT=0.
+  - `GATE_EPOCH=1795557600 STATE_SHA256=f023abb1… bash scripts/pre_gate_check.sh` → EXIT=0, `GATE_REACHABLE=0` (now=1795528821, T-28779s > heartbeat budget 6879s, cutoff 2026-11-24T15:40:45Z < gate 22:00:00Z).
+  - `sha256sum data/processed/paper_trading_state.yaml` → `f023abb1…` unchanged (475/2026-11-23); `git status --porcelain -- data/raw` → empty.
+- **Working-tree note:** `README.md` carried a pre-existing consolidation (259→91 lines; per-cycle churn log collapsed, Errata section preserved with measured figures `0.752318` / `4.2843%`, stale `std 0.383187` absent) — verified sound by the erratum test above; left in place (controller checkpoints). No production/state/config/workflow/threshold/gate/universe change; `data/raw` untouched.
 
 ## Unresolved blockers
 - **Structural/temporal gate mismatch (primary):** daily gate releases 22:00Z; morning sessions have ~355-minute cutoffs, so the mutating cycle is unreachable from them. Requires a controller/human scheduling decision; workers must not edit workflow scheduling. Documented in `research/reports/gate_unreachable_structural_20261121.md`.
