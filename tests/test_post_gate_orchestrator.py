@@ -223,12 +223,18 @@ def test_wait_budget_is_time_to_gate_not_run_cutoff(tmp_path: Path) -> None:
     time-to-gate, and the default (no --max-wait-seconds) must NOT reference a
     run cutoff.
     """
+    import re
     import time as _time
 
     handoff = tmp_path / "handoff.md"
     now = int(_time.time())
-    # Gate 8s out; the time-to-gate is 8s. With no --max-wait-seconds the budget
-    # must be exactly the time-to-gate (8s), and the log must name it.
+    # Gate 8s out; the time-to-gate is ~8s. With no --max-wait-seconds the budget
+    # must be the time-to-gate (a small number of seconds), and the log must name
+    # it. The script recomputes ``now_epoch`` at start, so under load the logged
+    # budget can be 8s minus a 1-2s launch/boundary crossing (observed as 7s under
+    # full-suite load). Accept a small jitter band so the test is not flaky, while
+    # still proving the bound is a time-to-gate value and never a run-cutoff-scale
+    # number (thousands of seconds).
     gate_epoch = str(now + 8)
     proc = _run(
         ["--read-only", "--wait-until-gate"],
@@ -237,7 +243,10 @@ def test_wait_budget_is_time_to_gate_not_run_cutoff(tmp_path: Path) -> None:
         env_extra={"PYTHON": "true", "RUFF": "true"},
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
-    assert "waiting up to 8s for release" in proc.stdout, proc.stdout
+    match = re.search(r"waiting up to (\d+)s for release", proc.stdout)
+    assert match is not None, proc.stdout
+    wait_seconds = int(match.group(1))
+    assert 5 <= wait_seconds <= 8, (wait_seconds, proc.stdout)
     assert "355-minute" not in proc.stdout, proc.stdout
     assert "run cutoff" not in proc.stdout, proc.stdout
     assert "clock gate released after wait" in proc.stdout, proc.stdout

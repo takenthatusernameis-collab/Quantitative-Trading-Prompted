@@ -1,4 +1,4 @@
-last_run_date: '2026-11-23'
+last_run_date: '2026-11-24'
 current_positions:
   SPY: 0.0
   QQQ: 0.0
@@ -483,6 +483,7 @@ cumulative_returns:
 - 0.0
 - 0.0
 - 0.0
+- 0.0
 cumulative_pnl:
 - 194.62434871237997
 - 695.0473902981554
@@ -956,6 +957,7 @@ cumulative_pnl:
 - -1617.8564332896028
 - -709.3281978608838
 - -20.065417958188544
+- 0.0
 - 0.0
 - 0.0
 - 0.0
@@ -1435,19 +1437,16 @@ cumulative_dates:
 - '2026-11-19'
 - '2026-11-20'
 - '2026-11-23'
+- '2026-11-24'
 peak_nav: 139120.07235486925
 current_nav: 130307.21196257228
 max_drawdown: -0.06562469374042057
 drift_flags:
   low_rolling_sharpe:
-    value: -2.1805161107015505
+    value: -2.1090291833779418
     threshold: 0.5
-    date: '2026-11-23'
-    persistence_days: 19
-  regime_persistence_low:
-    value: 4
-    threshold: 5
-    date: '2026-11-23'
+    date: '2026-11-24'
+    persistence_days: 20
 run_history:
 - date: '2025-01-02'
   nav: 100194.62434871239
@@ -5724,13 +5723,22 @@ run_history:
   dd_scale: 1.0
   regime_exposure: 0.0
   n_positions: 0
+- date: '2026-11-24'
+  nav: 130307.21196257228
+  daily_return: 0.0
+  daily_pnl: 0.0
+  turnover: 0.0
+  vol_scale: 0.5194969610044462
+  dd_scale: 1.0
+  regime_exposure: 0.0
+  n_positions: 0
 previous_regime_exposure: 0.0
-rolling_sharpe_63d: -2.1805161107015505
-rolling_max_dd_63d: -0.06544463769225373
-regime_persistence_days: 4
+rolling_sharpe_63d: -2.1090291833779418
+rolling_max_dd_63d: -0.06544463769225395
+regime_persistence_days: 5
 vol_scale_min: 0.43731674589035896
 vol_scale_max: 1.0
 dd_scale_min: 1.0
 dd_scale_max: 1.0
-turnover_median: 0.0014510156735600965
+turnover_median: 0.001428232499268045
 turnover_p95: 0.5
