@@ -59,7 +59,7 @@ Digest-attested unverified sessions:   - 2026-11-19
   - 2026-11-23
   - 2026-11-24
 
-This cycle's extension: extended `2026-11-24` and required digest is valid
+This cycle's extension: no session extended (digest requirement not triggered)
 
 Digests are validated for schema, session/universe consistency and positive,
 finite closes; a malformed digest fails the audit (exit 1) rather than being
