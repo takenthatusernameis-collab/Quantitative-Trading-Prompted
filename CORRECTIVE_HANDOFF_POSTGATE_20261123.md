@@ -4,7 +4,7 @@
 - **Status:** OK — all verification steps passed
 - **Mode:** pre-gate verification (extend withheld — gate not released)
 - **Gate state:** NOT released — pre-gate verification run only (T-107625s remaining; mutating extend withheld)
-- **State:** 6b7f37e6731d19fa736f58934bfd34ef127d2788eabcfbd100f8e50460a9033f last_run=2026-11-20 nav=130307.21196257228 runs=474
+- **State:** f023abb1d1ad98b6df7dadd29f2055fca7bccdceb2c2d350009ae9ce8e74c275 last_run=2026-11-23 nav=130307.21196257228 runs=475
 - **Gate epoch:** 1795471200 (2026-11-23T22:00:00Z)
 - **Orchestrator:** scripts/post_gate_orchestrator.sh (idempotent, restart-safe)
 - **Cmds run:** 1 date, 3 drift, 5 6-module pytest, 6 git status, 7 data-cost inventory + tests, 8 ruff, 8b drift invariant, 8c coverage audit, 8d artifact reconciliation, 9 state fingerprint
