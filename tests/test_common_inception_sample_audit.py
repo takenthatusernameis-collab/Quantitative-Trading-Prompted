@@ -284,23 +284,34 @@ def test_committed_report_file_counts_match_committed_tree(tool_run):
 def test_committed_report_file_counts_fail_when_recorded_count_is_stale(tmp_path):
     """A stale recorded count fails the new check (regression proof).
 
-    The committed report records 1953; rewrite the value the tool reads as the
-    *previously published* count (the ``data_and_config_unchanged`` block) to the
-    stale 1948 the tree held before the last data append, write the result to a
-    scratch report path, and run the tool against it. The new check must fail
-    without touching the committed tree.
+    The recorded ``data_files`` count is read from the committed report rather
+    than hardcoded, so this proof survives legitimate ``data/`` growth (the
+    count rose 1953 -> 1958 when five files were appended; a hardcoded marker
+    silently broke this test). The value the tool reads as the *previously
+    published* count (the ``data_and_config_unchanged`` block) is rewritten to
+    one lower than recorded, written to a scratch report path, and the tool is
+    run against it. The new check must fail without touching the committed tree.
     """
     text = AUDIT_REPORT.read_text()
+    structural = _audit_json("## Structural checks")
+    by_name = {c["name"]: c for c in structural}
+    recorded = int(by_name["data_and_config_unchanged"]["observed"]["data_files"])
+
     marker = (
         '"name": "data_and_config_unchanged",\n'
         '    "expected": "identical SHA-256 fingerprint of every file under data/ and config/",\n'
         '    "observed": {\n'
-        '      "data_files": 1953,'
+        f'      "data_files": {recorded},'
     )
     assert marker in text, "expected the recorded-count marker to be present"
-    stale = text.replace(marker, marker.replace('"data_files": 1953,', '"data_files": 1948,'), 1)
+    stale_value = recorded - 1
+    stale = text.replace(
+        marker,
+        marker.replace(f'"data_files": {recorded},', f'"data_files": {stale_value},'),
+        1,
+    )
     assert stale != text, "expected the replacement to take effect"
-    assert '"data_files": 1948,' in stale
+    assert f'"data_files": {stale_value},' in stale
 
     scratch = tmp_path / "stale_audit.md"
     scratch.write_text(stale)
