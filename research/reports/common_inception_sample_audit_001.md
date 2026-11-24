@@ -843,10 +843,10 @@ Are the incumbent's published long-sample numbers and its NO-GO verdict an artef
       "config_files": 19
     },
     "observed": {
-      "data_files": 1958,
+      "data_files": 1963,
       "config_files": 19
     },
-    "pass": false
+    "pass": true
   },
   {
     "name": "committed_artifact_untouched",

@@ -730,3 +730,40 @@ def test_gate_epoch_20261124_matches_configured_session_close_boundary():
         session_is_complete("2026-11-24", before, close_hour=close_hour, tz=tz)
         is False
     )
+
+
+# The 2026-11-25 gate (epoch 1795644000 = 2026-11-25T22:00:00Z) is the CURRENT
+# active mutating gate per NEXT_AGENT_TASK.md ("Decision tree" / "Validation
+# commands"), and it is the epoch the next mutating cycle will actually pass to
+# scripts/pre_gate_check.sh and scripts/post_gate_orchestrator.sh. The tests above
+# pin gates whose sessions have ALREADY closed (2026-11-16, 2026-11-23) or that
+# are now past (2026-11-24); none exercises the live epoch, so a drift of
+# market_close_hour, a mistyped documented epoch, or a change to
+# session_is_complete would release the cheap path (pre_gate_check.sh sees
+# now < GATE_EPOCH) while the extend still no-ops (session_is_complete never
+# flips True at the gate), or, worse, fire into a not-yet-closed partial bar.
+# Same invariant, same live-config anchoring, same False->True boundary check,
+# pinned for the gate that is actually in force. When the live gate advances this
+# test must advance with it (as test_gate_epoch_20261124_* did for the prior gate).
+DOCUMENTED_GATE_20261125 = 1795644000  # 2026-11-25T22:00:00Z
+
+
+def test_gate_epoch_20261125_matches_configured_session_close_boundary():
+    cfg = yaml.safe_load((ROOT / "config" / "paper_trading_config.yaml").read_text())
+    close_hour = cfg["data_refresh"]["market_close_hour"]
+    tz = ZoneInfo(cfg["data_refresh"]["timezone"])
+
+    gate_dt = datetime.fromtimestamp(DOCUMENTED_GATE_20261125, tz=UTC)
+    assert gate_dt.astimezone(tz) == datetime(
+        2026, 11, 25, close_hour + 1, 0, tzinfo=tz
+    ), "documented 2026-11-25 gate epoch is not close_hour+1 on 2026-11-25 in the exchange tz"
+
+    assert (
+        session_is_complete("2026-11-25", gate_dt, close_hour=close_hour, tz=tz)
+        is True
+    )
+    before = datetime.fromtimestamp(DOCUMENTED_GATE_20261125 - 1, tz=UTC)
+    assert (
+        session_is_complete("2026-11-25", before, close_hour=close_hour, tz=tz)
+        is False
+    )
