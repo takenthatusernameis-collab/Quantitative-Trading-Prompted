@@ -210,6 +210,40 @@ def test_wait_until_gate_blocks_then_releases_and_runs_cycle(tmp_path: Path) -> 
     assert f"**Gate epoch:** {gate_epoch}" in text, text
 
 
+def test_wait_budget_is_time_to_gate_not_run_cutoff(tmp_path: Path) -> None:
+    """The --wait-until-gate budget is GATE_EPOCH - now, and the header must say so.
+
+    The script header (and the durable handoff) previously claimed the wait was
+    bounded by "the run's own 355-minute cutoff", but the code binds the wait
+    budget to ``GATE_EPOCH - now_epoch`` (the time-to-gate) -- the run cutoff is
+    not known to this script at all. A session whose cutoff falls before the
+    gate would therefore have waited past its own deadline under the old prose,
+    and a reader trusting the header would misjudge the flag's safety. This
+    pins the real bound: the logged "waiting up to N" must equal the remaining
+    time-to-gate, and the default (no --max-wait-seconds) must NOT reference a
+    run cutoff.
+    """
+    import time as _time
+
+    handoff = tmp_path / "handoff.md"
+    now = int(_time.time())
+    # Gate 8s out; the time-to-gate is 8s. With no --max-wait-seconds the budget
+    # must be exactly the time-to-gate (8s), and the log must name it.
+    gate_epoch = str(now + 8)
+    proc = _run(
+        ["--read-only", "--wait-until-gate"],
+        gate_epoch,
+        handoff,
+        env_extra={"PYTHON": "true", "RUFF": "true"},
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "waiting up to 8s for release" in proc.stdout, proc.stdout
+    assert "355-minute" not in proc.stdout, proc.stdout
+    assert "run cutoff" not in proc.stdout, proc.stdout
+    assert "clock gate released after wait" in proc.stdout, proc.stdout
+    assert handoff.exists()
+
+
 def _stub_python(tmp_path: Path) -> tuple[Path, Path]:
     """A fake interpreter that records every invocation and exits 0.
 

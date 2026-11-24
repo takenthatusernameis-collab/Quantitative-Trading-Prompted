@@ -21,12 +21,19 @@
 #               mutating extend (cmds 2,4). Safe to run before the gate.
 #   --wait-until-gate
 #               instead of exiting 3 before the gate, block (60s heartbeat) until
-#               GATE_EPOCH is reached, then run the cycle. The run's own 355-minute
-#               cutoff bounds the wait. Use this from the session whose run is
-#               active across the gate (see NEXT_AGENT_TASK.md "Note").
+#               GATE_EPOCH is reached, then run the cycle. The wait is bounded by
+#               the time-to-gate (GATE_EPOCH - now), NOT by the run's 355-minute
+#               cutoff: the wait budget is exactly how far ahead the gate is, so
+#               the loop always terminates at or before the gate release. Use this
+#               from the session whose run is active across the gate (see
+#               NEXT_AGENT_TASK.md "Note"). A session whose 355-minute cutoff falls
+#               before the gate must NOT use this flag -- it will exhaust its
+#               wait budget and exit 3 (see --max-wait-seconds).
 #   --max-wait-seconds N
 #               cap the --wait-until-gate wait at N seconds; if the gate is still
-#               not released afterwards, exit 3 (default: wait until run cutoff).
+#               not released afterwards, exit 3 (default: the time-to-gate, i.e.
+#               GATE_EPOCH - now -- NOT the run cutoff, which this script does not
+#               know). N must be a positive integer.
 #
 # Both GATE_EPOCH and HANDOFF are env-overridable so this script is reusable for
 # later gates without editing it. Defaults below target the 2026-11-12 gate.
