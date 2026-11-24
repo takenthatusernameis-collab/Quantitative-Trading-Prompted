@@ -101,7 +101,10 @@ def fetch_symbol(symbol: str, start: str, end: str) -> pd.DataFrame:
     else:
         idx = idx.tz_convert("UTC")
     raw.index = idx
-    return raw[~raw.index.duplicated(keep="last")].sort_index()
+    raw = raw[~raw.index.duplicated(keep="last")].sort_index()
+    # Drop rows where Close is NaN (incomplete/invalid data, e.g. current day partial)
+    raw = raw.dropna(subset=["Close"])
+    return raw
 
 
 def describe(symbol: str, frame: pd.DataFrame, retrieval_date: str) -> dict[str, Any]:
