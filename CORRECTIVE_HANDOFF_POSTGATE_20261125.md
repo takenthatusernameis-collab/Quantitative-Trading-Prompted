@@ -1,9 +1,9 @@
 # Post-Gate Handoff — cycle for gate 2026-11-25T22:00:00Z (orchestrator scripts/post_gate_orchestrator.sh)
 
-- **Generated:** 2026-11-25T15:36:43Z UTC
+- **Generated:** 2026-11-25T16:40:10Z UTC
 - **Status:** OK — all verification steps passed
 - **Mode:** pre-gate verification (extend withheld — gate not released)
-- **Gate state:** NOT released — pre-gate verification run only (T-23091s remaining; mutating extend withheld)
+- **Gate state:** NOT released — pre-gate verification run only (T-19279s remaining; mutating extend withheld)
 - **State:** 51a736ecf50f15926605038476454baff1abb480b6a0dd859ca5b6739454b40b last_run=2026-11-24 nav=130307.21196257228 runs=476
 - **Gate epoch:** 1795644000 (2026-11-25T22:00:00Z)
 - **Orchestrator:** scripts/post_gate_orchestrator.sh (idempotent, restart-safe)
