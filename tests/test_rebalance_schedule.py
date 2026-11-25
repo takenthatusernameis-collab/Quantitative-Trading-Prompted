@@ -136,9 +136,9 @@ def test_weekend_month_end_rebalances_on_the_friday_session():
     assert len(february) == 1
     signal_date = february[0]["signal_date"]
     # The last calendar day of February 2020 is Saturday 2020-02-29.
-    assert pd.Timestamp("2020-02-29").dayofweek == 5
+    assert pd.Timestamp("2020-02-29").day_of_week == 5
     assert signal_date.date().isoformat() == "2020-02-28"
-    assert signal_date.dayofweek == 4  # Friday
+    assert signal_date.day_of_week == 4  # Friday
     # The calendar predicate the simulation engine uses does not fire here.
     assert not bool(pd.Timestamp("2020-02-28").is_month_end)
     # The February selection (B) becomes effective from the next session.
