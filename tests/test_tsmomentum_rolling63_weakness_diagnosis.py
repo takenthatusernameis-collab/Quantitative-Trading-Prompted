@@ -30,6 +30,8 @@ from research.tsmomentum_rolling63_weakness_diagnosis import (  # noqa: E402
     eta_squared,
     failing_runs,
     recovery_lags,
+    render_experiment,
+    render_report,
     rolling_sharpe_series,
     run_diagnosis,
     spearman,
@@ -99,14 +101,32 @@ def test_tool_is_deterministic():
 
 
 def test_tool_writes_report_and_experiment():
-    result = _run_tool()
-    assert result.returncode == 0, result.stderr
-    assert REPORT.is_file() and EXPERIMENT.is_file()
-    report = REPORT.read_text(encoding="utf-8")
-    assert "Rolling 63d Sharpe Weakness Diagnosis" in report
-    assert "OVERALL" not in report or "## 7. Checks" in report
-    experiment = EXPERIMENT.read_text(encoding="utf-8")
-    assert "Objective" in experiment and "Verdict" in experiment
+    # The tool writes the tracked report/experiment in place. Snapshot their
+    # bytes first and restore them in a finally so this test verifies the write
+    # WITHOUT leaving the working tree dirty. Leaving them overwritten (the
+    # prior behaviour) both polluted `git status` and masked the staleness guard
+    # in test_committed_records_are_exactly_what_the_tool_renders, which reads
+    # these same files: the write test ran first and hid a genuine stale-artifact
+    # failure behind a vacuous pass (the exact pattern fixed in the sibling
+    # tsmomentum_same_session_vol_correction / vol_estimate_consolidation files).
+    before = {p: p.read_bytes() for p in (REPORT, EXPERIMENT)}
+    try:
+        result = _run_tool()
+        assert result.returncode == 0, result.stderr
+        assert REPORT.is_file() and EXPERIMENT.is_file()
+        report = REPORT.read_text(encoding="utf-8")
+        assert "Rolling 63d Sharpe Weakness Diagnosis" in report
+        assert "OVERALL" not in report or "## 7. Checks" in report
+        experiment = EXPERIMENT.read_text(encoding="utf-8")
+        assert "Objective" in experiment and "Verdict" in experiment
+    finally:
+        for path, data in before.items():
+            path.write_bytes(data)
+
+
+def test_committed_records_are_exactly_what_the_tool_renders(payload):
+    assert REPORT.read_text(encoding="utf-8") == render_report(payload)
+    assert EXPERIMENT.read_text(encoding="utf-8") == render_experiment(payload)
 
 
 # ----------------------------------------------------------------------
