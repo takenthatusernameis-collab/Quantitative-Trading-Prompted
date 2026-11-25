@@ -150,9 +150,21 @@ def test_tool_output_is_deterministic():
 
 
 def test_tool_writes_report_and_experiment():
-    result = _run_tool()
-    assert result.returncode == 0, result.stderr
-    assert OUT_REPORT.is_file() and OUT_EXP.is_file()
+    # The tool writes the tracked report/experiment in place. Snapshot their
+    # bytes first and restore them in a finally so this test verifies the write
+    # WITHOUT leaving the working tree dirty. Leaving them overwritten (the
+    # prior behaviour) both polluted `git status` and masked the staleness guard
+    # in test_committed_records_match_what_the_tool_renders, which reads these
+    # same files: the write test ran first and hid a genuine stale-artifact
+    # failure behind a vacuous pass.
+    before = {p: p.read_bytes() for p in (OUT_REPORT, OUT_EXP)}
+    try:
+        result = _run_tool()
+        assert result.returncode == 0, result.stderr
+        assert OUT_REPORT.is_file() and OUT_EXP.is_file()
+    finally:
+        for path, data in before.items():
+            path.write_bytes(data)
 
 
 def test_committed_records_match_what_the_tool_renders(payload):
