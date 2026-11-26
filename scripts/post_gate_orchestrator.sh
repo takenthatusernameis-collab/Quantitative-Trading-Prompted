@@ -357,6 +357,43 @@ else
   record_rc $cmd4b_rc "cmd4b record-status regen"
 fi
 
+# --- 4c. Regenerate derived tsmomentum reports (post-extend only) ------------
+# research/{reports,experiments}/tsmomentum_{rolling63_weakness_diagnosis,
+# same_session_vol_correction,vol_estimate_consolidation}_001.md are derived
+# snapshots of the paper-trading state (session count, Sharpe, percentile,
+# window, excluded-tail values). Like the record-status artifacts, NO cycle step
+# regenerated them, so after cmd2 appends a session they go stale (e.g. 476
+# sessions / last 2026-11-24 while the state is 477 / 2026-11-25) and their guard
+# tests (test_committed_records_are_exactly_what_the_tool_renders in
+# tests/test_tsmomentum_*.py) fail. The 476->477 extension left exactly this
+# staleness; it was repaired manually but nothing prevented recurrence on the
+# next extend. Regenerate them here, after the extend writes the new state, so
+# the committed reports track it. The three tools are read-only w.r.t. state and
+# data/config: each writes ONLY its own report/experiment files (and is
+# byte-identical on re-run). Gated on EXTEND_DISABLED so --read-only and pre-gate
+# runs stay side-effect free (their contract: they must never write a file). They
+# are intentionally NOT added to RUFF4 (cmd8's extension-script lint list): they
+# carry pre-existing style findings, the same exclusion the data-cost inventory
+# scripts (cmd7a/7b) have.
+if (( EXTEND_DISABLED )); then
+  log "cmd4c: SKIP tsmomentum report regen (gate not released: $MODE)"
+  mark_skipped "4c tsmomentum report regen (gate not released)"
+else
+  log "cmd4c: regenerate derived tsmomentum reports"
+  mark_run "4c tsmomentum report regen"
+  cmd4c_rc=0
+  for _tsm in tsmomentum_rolling63_weakness_diagnosis tsmomentum_same_session_vol_correction tsmomentum_vol_estimate_consolidation; do
+    "$PY" "research/${_tsm}.py" > "/tmp/cmd4c_${_tsm}.out" 2>&1
+    _rc=$?
+    tail -2 "/tmp/cmd4c_${_tsm}.out"
+    if (( _rc != 0 )); then
+      cmd4c_rc=$_rc
+      log "STEP FAILED (rc=$_rc): cmd4c ${_tsm}"
+    fi
+  done
+  record_rc $cmd4c_rc "cmd4c tsmomentum report regen"
+fi
+
 # --- 5. 6-module pytest ------------------------------------------------------
 log "cmd5: 6-module pytest"
 mark_run "5 6-module pytest"

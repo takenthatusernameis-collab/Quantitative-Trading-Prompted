@@ -883,6 +883,69 @@ def test_pre_gate_forced_full_run_withholds_record_status_regen(tmp_path: Path) 
     assert "4b record-status regen (gate not released)" in text, text
 
 
+_TSMOMENTUM_TOOLS = (
+    "research/tsmomentum_rolling63_weakness_diagnosis.py",
+    "research/tsmomentum_same_session_vol_correction.py",
+    "research/tsmomentum_vol_estimate_consolidation.py",
+)
+
+
+def test_full_cycle_regenerates_tsmomentum_reports_after_extend(tmp_path: Path) -> None:
+    # The derived tsmomentum reports (research/{reports,experiments}/
+    # tsmomentum_*_001.md) are snapshots of the paper-trading state but no cycle
+    # step regenerated them, so after cmd2 appends a session they go stale (the
+    # 476->477 extension left them at 476/2026-11-24 while the state was
+    # 477/2026-11-25) and their guard tests fail. A full post-gate cycle must
+    # regenerate them after the extend so the committed reports track the state.
+    # The stub log is the proof: each tool runs exactly once, after the extend.
+    handoff = tmp_path / "handoff.md"
+    py, log = _stub_python(tmp_path)
+    proc = _run([], PAST_GATE, handoff, env_extra={"PYTHON": str(py), "RUFF": str(py)})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    calls = _calls(log)
+    extend_idx = next(i for i, c in enumerate(calls) if c.startswith("research/extend_paper_trading_state.py"))
+    for tool in _TSMOMENTUM_TOOLS:
+        tool_calls = [i for i, c in enumerate(calls) if c.startswith(tool)]
+        assert len(tool_calls) == 1, (tool, calls)
+        # Must run after the (first) extend so it captures the post-extend state.
+        assert tool_calls[0] > extend_idx, (tool, calls)
+    text = handoff.read_text()
+    run_line = text.split("- **Cmds run:**")[1].split("\n")[0]
+    assert "4c tsmomentum report regen" in run_line, text
+    assert "- **Cmds skipped:** none" in text, text
+
+
+def test_read_only_cycle_does_not_regenerate_tsmomentum_reports(tmp_path: Path) -> None:
+    # Side-effect-free contract: --read-only (and pre-gate) runs must never write
+    # the derived tsmomentum reports. The regen is gated on the extend running, so
+    # a read-only cycle must not invoke the tools and must list the step skipped.
+    handoff = tmp_path / "handoff.md"
+    py, log = _stub_python(tmp_path)
+    proc = _run(["--read-only"], PAST_GATE, handoff, env_extra={"PYTHON": str(py), "RUFF": str(py)})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    calls = _calls(log)
+    for tool in _TSMOMENTUM_TOOLS:
+        assert not [c for c in calls if c.startswith(tool)], (tool, calls)
+    text = handoff.read_text()
+    assert "4c tsmomentum report regen (gate not released)" in text, text
+
+
+def test_pre_gate_forced_full_run_withholds_tsmomentum_regen(tmp_path: Path) -> None:
+    # The regen must follow the SAME clock gate as the mutating extend: a --force
+    # FULL run before the gate withholds the extend (EXTEND_DISABLED=1), so it
+    # must also withhold the tsmomentum regen -- otherwise a pre-gate run would
+    # write the reports while claiming the extend was withheld.
+    handoff = tmp_path / "handoff.md"
+    py, log = _stub_python(tmp_path)
+    proc = _run(["--force"], FUTURE_GATE, handoff, env_extra={"PYTHON": str(py), "RUFF": str(py)})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    calls = _calls(log)
+    for tool in _TSMOMENTUM_TOOLS:
+        assert not [c for c in calls if c.startswith(tool)], (tool, calls)
+    text = handoff.read_text()
+    assert "4c tsmomentum report regen (gate not released)" in text, text
+
+
 def test_cmd8_ruff_list_covers_every_script_the_cycle_executes() -> None:
     """cmd8 must lint every script the orchestrator actually invokes.
 
