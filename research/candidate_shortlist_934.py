@@ -1404,8 +1404,12 @@ def render_report(payload: dict[str, Any]) -> str:
     rows = payload["ranked"]
     selected = next(row for row in payload["measured"] if row["id"] == payload["selected_id"])
     inventory_rows = []
+    seen_symbols: set[str] = set()
     for row in payload["measured"]:
         for symbol in row["universe"]:
+            if symbol in seen_symbols:
+                continue
+            seen_symbols.add(symbol)
             facts = row["measured"]["facts"][symbol]
             inventory_rows.append(
                 f"| `{symbol}` | {facts['rows']} | {facts['first']} | {facts['last']} | "
