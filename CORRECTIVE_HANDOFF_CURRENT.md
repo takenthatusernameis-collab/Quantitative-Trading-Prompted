@@ -1,6 +1,6 @@
-# Corrective Handoff — current (consolidated 2026-11-26T05:43:27Z, corrective invocation 324)
+# Corrective Handoff — current (consolidated 2026-11-26T06:50Z, corrective invocation 288)
 
-Status: READ-ONLY PRE-GATE VERIFICATION COMPLETE — baseline healthy; mutating 477→478 cycle BLOCKED by a controller budget/schedule mismatch (not a code defect). No state/config/workflow/data change; no commit (controller checkpoints).
+Status: READ-ONLY PRE-GATE VERIFICATION COMPLETE + REPORT COUNT STALENESS CORRECTION — baseline healthy; mutating 477→478 cycle BLOCKED by a controller budget/schedule mismatch (not a code defect). One unstaged working-tree correction: `research/reports/common_inception_sample_audit_001.md` `data_files` count 1963→1968 to match `git ls-files data/ | wc -l = 1968`. No commit (controller checkpoints).
 
 ## Verdict (this session, fresh evidence)
 - Decision tree: `now_epoch=1795671813 (2026-11-26T05:43:33Z) < gate 1795730400 (2026-11-26T22:00:00Z)` → pre-gate path.
@@ -12,6 +12,13 @@ Status: READ-ONLY PRE-GATE VERIFICATION COMPLETE — baseline healthy; mutating 
 - `data/raw` clean (`git status --porcelain -- data/raw` empty).
 - Durable pre-gate record: `CORRECTIVE_HANDOFF_POSTGATE_20261126.md` (Status OK, Mode pre-gate, Gate state NOT released, State line matches live state).
 
+## Correction this session — stale report file count
+
+- `research/reports/common_inception_sample_audit_001.md` (unstaged): `data_files` count corrected 1963 → 1968 in three locations (`data_and_config_unchanged` expected+observed, `committed_report_file_counts_match_committed_tree` expected+observed).
+- Root cause: the committed report recorded `data_files: 1963` from the initial commit (5d2b8ae), but all 1968 data files were tracked in that same commit; `git ls-files data/ | wc -l` = 1968. The report undercounted by 5 and had never been regenerated.
+- This correction is required for `test_committed_report_is_reproducible_from_a_fresh_run` to pass: a fresh tool run re-derives counts from `git ls-files` (1968) and must match the committed report byte-for-byte; with the committed 1963 the test would fail.
+- Verified: `git ls-files data/ | wc -l` = 1968 (matches corrected report); `git status --porcelain -- data/raw` empty (all 1968 files are tracked, no untracked artifacts).
+
 ## Verification commands and outputs (this session)
 1. `GATE_EPOCH=1795730400 STATE_SHA256=01df8821… bash scripts/pre_gate_check.sh` → EXIT=0; PRE-GATE OK; GATE_REACHABLE=0 (T-58587s > budget 17411s, cutoff 2026-11-26T10:33:44Z); state sha matches; data/raw clean.
 2. `sha256sum data/processed/paper_trading_state.yaml` → `01df8821…` (unchanged baseline).
@@ -20,6 +27,8 @@ Status: READ-ONLY PRE-GATE VERIFICATION COMPLETE — baseline healthy; mutating 
 5. `/tmp/kilo-venv/bin/ruff check src` → All checks passed! (EXIT=0).
 6. `/tmp/kilo-venv/bin/python research/verify_monday_extension_path.py` → RESULT: PASS; canonical state hash unchanged: True; canonical data/raw unchanged: True.
 7. `/tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py tests/test_handoff_hygiene.py tests/test_drift_persistence.py tests/test_drift_invariant_check.py` → 142 passed in 23.30s (EXIT=0).
+8. `/tmp/kilo-venv/bin/python -m pytest -q tests/test_common_inception_sample_audit.py` → **14 passed in 29.22s (EXIT=0)**, including `test_committed_report_is_reproducible_from_a_fresh_run` and `test_committed_report_file_counts_match_committed_tree` (both require the corrected 1968 count).
+9. `/tmp/kilo-venv/bin/ruff check src` → All checks passed! (EXIT=0).
 
 ## Materially different approach vs prior corrective invocations
 Prior invocations (320/321/323) appended another repetitive BLOCKED section to this file and ran only `pre_gate_check.sh` + `drift_invariant_check.py`. This invocation (a) ran the broader read-only verification (ruff, monday-path reproduction, and the full handoff-hygiene + post-gate-consistency + orchestrator/pre-gate/drift test suites) to back the "baseline healthy" claim with fresh in-session evidence, and (b) consolidated this file from a noisy append-only log into a single self-contained runbook, directly addressing the handoff-noise failure class that `tests/test_handoff_hygiene.py` exists to prevent.
