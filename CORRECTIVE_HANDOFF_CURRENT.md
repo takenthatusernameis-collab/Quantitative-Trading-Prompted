@@ -1,5 +1,26 @@
-# Corrective Handoff — current (2026-11-27T16:56Z, corrective invocation 1)
-Status: BASELINE HEALTHY; FOCUSED VERIFICATION PASSED → CORRECTIVE_VERIFICATION=PASS; CORE TASK (mutating 477→478) TEMPORALLY BLOCKED until gate 1795816800 = 2026-11-27T22:00:00Z. now=1795798534 (2026-11-27T16:55:34Z), T-18266s ≈ 5.07h > controller-heartbeat budget 12359s (cutoff 2026-11-27T20:21:33Z); remaining budget 12359s. Gap ≈ 5.07h ≫ session budget → structurally unreachable; root cause = controller/human scheduling mismatch, NOT a code defect. Scope forbids editing scheduling, the gate epoch, or `data/raw`, and forbids a mutating extend before the gate. STATE UNCHANGED 477/2026-11-25 SHA 01df8821… DURABLE; data/raw CLEAN.
+# Corrective Handoff — current (2026-11-27T17:30Z, corrective invocation 185)
+Status: BASELINE HEALTHY; CORE TASK (mutating 477→478) TEMPORALLY BLOCKED until gate 1795816800 = 2026-11-27T22:00:00Z → **CORRECTIVE_VERIFICATION=BLOCKED**. now=1795800646 (2026-11-27T17:30:46Z), T-16154s ≈ 4.49h > controller-heartbeat budget 10247s (cutoff 2026-11-27T20:21:33Z). Gap ≈ 4.49h ≫ session budget → structurally unreachable; root cause = controller/human scheduling mismatch, NOT a code defect. Scope forbids editing scheduling, the gate epoch, or `data/raw`, and forbids a mutating extend before the gate. STATE UNCHANGED 477/2026-11-25 SHA 01df8821… DURABLE; data/raw CLEAN.
+
+## Why BLOCKED (materially different from recovery-184's false-PASS)
+- recovery-184 emitted `CORRECTIVE_VERIFICATION=PASS` while making NO durable project change (working tree clean) — the exact masked failure the corrective framework flagged. This invocation corrects that record: the honest verdict is BLOCKED because the assigned mutating task is temporally unreachable AND no safe in-scope worker action can produce durable 477→478 progress.
+- This session genuinely searched for a fixable defect before concluding BLOCKED (not a repeat of prior re-verify-only churn): checked derived-report staleness (all tsmomentum/candidate reports in sync at 477, no 476 stragglers), ran the integrity audits (coverage/reconciliation/cache all PASS), and ran the fast reproducibility guard tests (candidate_shortlist 22 passed). No defect found → no safe correction supported.
+
+## Verification commands and outputs (this session, 2026-11-27T17:27–17:30Z, all foreground, <600s idle window)
+- `GATE_EPOCH=1795816800 STATE_SHA256=01df8821… bash scripts/pre_gate_check.sh` → EXIT=0, `GATE_REACHABLE=0` (T-16154s > budget 10247s; post-gate cycle cannot run this session).
+- focused gate+hygiene pytest (`test_post_gate_orchestrator`, `test_pre_gate_check`, `test_post_gate_handoff_consistency`, `test_drift_persistence`, `test_drift_invariant_check`, `test_handoff_hygiene`) → **145 passed in 24.75s** (EXIT=0).
+- `test_candidate_shortlist_934.py` → **22 passed in 7.54s** (EXIT=0; committed report reproducible).
+- `paper_record_raw_coverage_audit.py --extend-before 2026-11-25` → OVERALL: PASS (sessions=477, attested=5, coverage_end=2026-11-10).
+- `paper_trading_artifact_reconciliation_audit.py` → OVERALL: PASS (attested=1, unattested=0).
+- `paper_trading_cache_reproducibility_audit.py` → EXIT=0 (state frontier 2026-11-25 vs cache frontier 2026-11-10; 11 known-missing sessions — expected gap, not a defect).
+- `sha256sum data/processed/paper_trading_state.yaml` = `01df8821…` (unchanged, 477/2026-11-25); `git status --porcelain -- data/raw` empty.
+
+## What changed this session (durable)
+- `NEXT_AGENT_TASK.md` (Current status block replaced in place; prior false-PASS corrected to BLOCKED) + `CORRECTIVE_HANDOFF_CURRENT.md` (this entry + header). NO state/config/threshold/cost/universe/clock-gate/workflow/data change. NO commit (controller checkpoints).
+
+## Unresolved blocker (controller/human only)
+- Mutating 477→478 blocked until 2026-11-27T22:00:00Z; per-session budget (~2.85h) ≪ time-to-gate (~4.49h). Not fixable by any worker code change. Unblocking action: start ONE session alive until ≥ 2026-11-27T22:00:00Z then run `GATE_EPOCH=1795816800 PYTHON=/tmp/kilo-venv/bin/python RUFF=/tmp/kilo-venv/bin/ruff bash scripts/post_gate_orchestrator.sh` (supports `--wait-until-gate` / chunked sub-600s sleeps), OR advance the gate epoch, OR accept 477/2026-11-25 as terminal and STOP scheduling re-verification sessions to end the degenerate loop.
+
+---
 
 ## Verification commands and outputs (this session, 2026-11-27T16:55–16:56Z, all foreground, output-producing, well under 600s idle window)
 - `GATE_EPOCH=1795816800 STATE_SHA256=01df8821085208f5d2b79e1c14137fec4d190499be4e4245cac2a5a9750edebf bash scripts/pre_gate_check.sh` → EXIT=0, `GATE_REACHABLE=0` (T-18266s > budget 12359s, gate 2026-11-27T22:00:00Z; post-gate cycle cannot run in this session).
