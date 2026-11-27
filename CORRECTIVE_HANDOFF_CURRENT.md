@@ -1,5 +1,5 @@
-# Corrective Handoff — current (2026-11-27T00:14Z, corrective invocation 4)
-Status: BASELINE HEALTHY; NO NEW CODE CHANGE (none justified). Mutating 477→478 cycle BLOCKED — gate 1795816800 (2026-11-27T22:00:00Z) unreachable in-session: T-78536s > controller-heartbeat budget ~17000s (cutoff 2026-11-27T04:51:42Z). Fresh evidence gathered this session: full orchestrator `--force --read-only` cycle EXIT=0 (all 13 steps passed; cmds 2/4/4b/4c correctly skipped — gate not released); durable handoff `CORRECTIVE_HANDOFF_POSTGATE_20261127.md` written (Status: OK, Mode: pre-gate verification). State sha `01df8821…` unchanged (477/2026-11-25); `data/raw` clean. No state/config/threshold/cost/universe/clock-gate change; `data/raw` untouched. Working-tree changes: this file + new `CORRECTIVE_HANDOFF_POSTGATE_20261127.md`. No commit (controller checkpoints).
+# Corrective Handoff — current (2026-11-27T00:57Z, corrective invocation 296)
+Status: BASELINE HEALTHY; NO NEW CODE CHANGE (none justified). Mutating 477→478 cycle BLOCKED — gate 1795816800 (2026-11-27T22:00:00Z) unreachable in-session: T-75742s > controller-heartbeat budget 14044s (cutoff 2026-11-27T04:51:42Z). Diagnostic logs 293–296 all show the same model-access/billing error ("Sign up for free to continue…") — an infrastructure issue, not a project defect; all 295 prior recovery invocations failed before doing project work. Corrective invocation #4 (00:14Z) already ran the full `--force --read-only` orchestrator cycle (EXIT=0, all 13 steps passed) and wrote `CORRECTIVE_HANDOFF_POSTGATE_20261127.md`. This invocation (296) re-ran the narrow focused verification locally: all checks passed. State sha `01df8821…` unchanged (477/2026-11-25); `data/raw` clean; working tree clean (git status --porcelain empty). No state/config/threshold/cost/universe/clock-gate change. No commit (controller checkpoints).
 
 ## Verdict (this session, fresh evidence)
 - Decision tree: `now_epoch=1795738208 (2026-11-27T00:10:08Z) < gate 1795816800 (2026-11-27T22:00:00Z)` → pre-gate path. Authoritative `pre_gate_check.sh` EXIT=0 `GATE_REACHABLE=0` (T-78536s > controller-heartbeat budget; cutoff 2026-11-27T04:51:42Z). No in-session path to the gate; record verdict and hand off.
@@ -14,18 +14,17 @@ Status: BASELINE HEALTHY; NO NEW CODE CHANGE (none justified). Mutating 477→47
 - Durable pre-gate record: `CORRECTIVE_HANDOFF_POSTGATE_20261126.md` (Status OK, Mode pre-gate, Gate state NOT released, State line matches live state) — validated by `tests/test_post_gate_handoff_consistency.py`.
 - Durable post-gate read-only record: `CORRECTIVE_HANDOFF_POSTGATE_20261127.md` (Status: OK, Mode: pre-gate verification (extend withheld — gate not released), all 13 orchestrator steps passed, cmds 2/4/4b/4c skipped).
 
-## Verification commands and outputs (this session, 2026-11-27T00:14Z)
-1. `GATE_EPOCH=1795816800 STATE_SHA256=01df8821085208f5d2b79e1c14137fec4d190499be4e4245cac2a5a9750edebf bash scripts/pre_gate_check.sh` → EXIT=0, `GATE_REACHABLE=0` (T-78536s > controller-heartbeat budget; cutoff 2026-11-27T04:51:42Z).
-2. `GATE_EPOCH=1795816800 PYTHON=/tmp/kilo-venv/bin/python RUFF=/tmp/kilo-venv/bin/ruff bash scripts/post_gate_orchestrator.sh --force --read-only` → ORCH_READONLY_EXIT=0, all 13 steps passed; durable handoff `CORRECTIVE_HANDOFF_POSTGATE_20261127.md` written (Status: OK).
-3. `/tmp/kilo-venv/bin/python research/verify_monday_extension_path.py` → RESULT: PASS; canonical state hash unchanged; canonical data/raw unchanged.
-4. `/tmp/kilo-venv/bin/python research/drift_invariant_check.py` → EXIT=0, `SUMMARY sessions=477 regime_transitions=7 high_turnover_sessions=7 threshold=0.5`.
-5. `/tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py tests/test_drift_persistence.py tests/test_drift_invariant_check.py` → **140 passed, 1 skipped in 26.19s**.
-6. `/tmp/kilo-venv/bin/ruff check src` → All checks passed!
-7. `sha256sum data/processed/paper_trading_state.yaml` → `01df8821085208f5d2b79e1c14137fec4d190499be4e4245cac2a5a9750edebf` (unchanged); `git status --porcelain -- data/raw` → empty.
-8. `git show HEAD:scripts/post_gate_orchestrator.sh | grep cmd4c` → present at line 360; working tree matches HEAD (no diff) → durable fix committed and intact.
+## Verification commands and outputs (this session, 2026-11-27T00:57Z)
+1. `GATE_EPOCH=1795816800 STATE_SHA256=01df8821085208f5d2b79e1c14137fec4d190499be4e4245cac2a5a9750edebf bash scripts/pre_gate_check.sh` → EXIT=0, `GATE_REACHABLE=0` (T-75742s > budget 14044s, cutoff 2026-11-27T04:51:42Z).
+2. `/tmp/kilo-venv/bin/ruff check src` → All checks passed! (RUFF_EXIT=0)
+3. `/tmp/kilo-venv/bin/python research/drift_invariant_check.py` → EXIT=0, `SUMMARY sessions=477 regime_transitions=7 high_turnover_sessions=7 threshold=0.5` (DRIFT_EXIT=0)
+4. `/tmp/kilo-venv/bin/python research/verify_monday_extension_path.py` → RESULT: PASS; canonical state hash unchanged; canonical data/raw unchanged (VERIFY_EXIT=0)
+5. `/tmp/kilo-venv/bin/python -m pytest -q tests/test_post_gate_orchestrator.py tests/test_pre_gate_check.py tests/test_post_gate_handoff_consistency.py tests/test_drift_persistence.py tests/test_drift_invariant_check.py` → **141 passed in 26.13s** (PYTEST_EXIT=0)
+6. `git status --porcelain` → empty; `git log --oneline -1` → `0ce8293` (working tree clean, matches HEAD)
 
 ## Unresolved blocker
-- Mutating 477→478 cycle blocked temporally until 2026-11-27T22:00:00Z (epoch 1795816800). Current session cutoff 2026-11-27T04:51:42Z < gate, so unreachable in-session. Bridging via chunked sub-600s sleeps is infeasible: gate is ~22h away (~78536s) vs ~17000s remaining budget. Not fixable by any worker code change; requires controller/human scheduling action (start a session whose budget ≥ T-to-gate, or advance the gate epoch). Per spec: do NOT force a state write before the gate.
+- Mutating 477→478 cycle blocked temporally until 2026-11-27T22:00:00Z (epoch 1795816800). Current session cutoff 2026-11-27T04:51:42Z < gate, so unreachable in-session (~21h away). Not fixable by any worker code change; requires controller/human scheduling action (start a session whose budget ≥ T-to-gate, or advance the gate epoch). Per spec: do NOT force a state write before the gate.
+- Model-access/billing error in diagnostic logs 293–296 ("Sign up for free to continue…") is an infrastructure issue outside the project; no project code change can resolve it. All focused local verification passed (see above).
 
 ## Next distinct step (for a session whose budget covers the gate)
 A session that remains alive until ≥2026-11-27T22:00:00Z should bridge via sequential foreground sleeps of 300–540s each (each < 600s idle timeout), then run:
@@ -33,4 +32,4 @@ A session that remains alive until ≥2026-11-27T22:00:00Z should bridge via seq
 followed by an idempotent re-run (expect `sessions extended: 0`, no second state write) and the validation commands in `NEXT_AGENT_TASK.md` acceptance criteria. This requires controller/human scheduling action; workers cannot edit scheduling or gate epochs.
 
 ## Bounded follow-up (DONE this session)
-Full orchestrator `--force --read-only` cycle completed: ORCH_READONLY_EXIT=0, all 13 steps passed, durable handoff `CORRECTIVE_HANDOFF_POSTGATE_20261127.md` written. Confirms baseline healthy, gate unreachable, no mutation justified. Materially different from recovery-3 (individual ad-hoc checks) — this is the complete read-only orchestrator path end-to-end with step exit-code tracking and durable handoff. No further action needed until a session covers the gate.
+Focused local verification re-confirmed baseline healthy: pre_gate_check EXIT=0 (GATE_REACHABLE=0), ruff All checks passed!, drift EXIT=0 (477/7/7/0.5), verify_monday_extension_path RESULT: PASS, focused pytest 141 passed, working tree clean. No code change invented (none justified — baseline already healthy, durable cmd4c fix committed and intact). Materially different from prior failed recovery invocations (which never reached project code due to the model-access error) — this invocation executed local verification directly.
