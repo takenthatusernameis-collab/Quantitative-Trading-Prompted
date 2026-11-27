@@ -1,0 +1,50 @@
+{
+  "previous_session": "2026-11-25",
+  "prices": {
+    "EEM": {
+      "close": 58.099998474121094,
+      "previous_close": 56.400001525878906
+    },
+    "EFA": {
+      "close": 100.5199966430664,
+      "previous_close": 99.18000030517578
+    },
+    "GLD": {
+      "close": 334.3999938964844,
+      "previous_close": 327.45001220703125
+    },
+    "IWM": {
+      "close": 273.7900085449219,
+      "previous_close": 268.8699951171875
+    },
+    "QQQ": {
+      "close": 650.989990234375,
+      "previous_close": 633.9299926757812
+    },
+    "SPY": {
+      "close": 728.3200073242188,
+      "previous_close": 716.7000122070312
+    },
+    "TLT": {
+      "close": 81.2699966430664,
+      "previous_close": 82.23999786376953
+    }
+  },
+  "schema_version": 1,
+  "session": "2026-11-27",
+  "slice": {
+    "columns": 35,
+    "first_session": "1993-01-29",
+    "rows": 8516,
+    "sha256": "e9edf5c0550182fd2ee2049524d62f0e1f551dcf024ac716d2f98c6128f6edd8"
+  },
+  "universe": [
+    "SPY",
+    "QQQ",
+    "IWM",
+    "TLT",
+    "GLD",
+    "EFA",
+    "EEM"
+  ]
+}

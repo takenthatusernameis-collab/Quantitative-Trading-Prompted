@@ -97,13 +97,13 @@ PSR settings (the repository's own): `n_bootstrap=1000`, `block_size=22`, `seed=
 
 | Gate | Published record | Corrected record | Threshold |
 |---|---|---|---|
-| `track_record_length` | 477.000000 | 466.000000 | >= 126 |
-| `full_period_sharpe` | 1.463161 | 1.410227 | >= 0.9 |
-| `rolling_63d_sharpe` | -2.237965 | -1.621363 | >= 0.9 |
+| `track_record_length` | 478.000000 | 466.000000 | >= 126 |
+| `full_period_sharpe` | 1.461619 | 1.410227 | >= 0.9 |
+| `rolling_63d_sharpe` | -2.112473 | -1.621363 | >= 0.9 |
 | `max_drawdown` | -0.065625 | -0.078141 | >= -0.15 |
 | `rolling_63d_max_dd` | -0.065445 | -0.073811 | >= -0.15 |
 | `regime_flips` | 7.000000 | 7.000000 | >= 1 |
-| `psr` | 0.526046 | 0.495713 | >= 0.95 |
+| `psr` | 0.525077 | 0.495713 | >= 0.95 |
 | **decision** | **NO-GO** | **NO-GO** | failed gates: rolling_63d_sharpe, psr |
 
 The corrected record's gate table is computed by the production code (`src/simulation/evaluation.py::evaluate_go_no_go`) on the corrected return series with the committed configuration; only the return series and the dates are substituted, because the promotion gates consume only the returns, the dates, the run-history turnover and the run-history regime exposure.
@@ -286,9 +286,9 @@ The same-session estimate is a point-in-time error in the live path, so a new li
 
 ## 8. Checks
 
-- [committed_record_loaded]: PASS (observed: 477 sessions (last 2026-11-25), expected: >= 126 sessions)
-- [committed_record_series_are_length_consistent]: PASS (observed: returns 477, dates 477, run_history 477, expected: all equal)
-- [excluded_sessions_are_only_the_post_cache_tail]: PASS (observed: 11 excluded session(s) after cache end 2026-11-10: ['2026-11-11', '2026-11-12', '2026-11-13', '2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19', '2026-11-20', '2026-11-23', '2026-11-24', '2026-11-25'], expected: every excluded date strictly after the cache's last session)
+- [committed_record_loaded]: PASS (observed: 478 sessions (last 2026-11-27), expected: >= 126 sessions)
+- [committed_record_series_are_length_consistent]: PASS (observed: returns 478, dates 478, run_history 478, expected: all equal)
+- [excluded_sessions_are_only_the_post_cache_tail]: PASS (observed: 12 excluded session(s) after cache end 2026-11-10: ['2026-11-11', '2026-11-12', '2026-11-13', '2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19', '2026-11-20', '2026-11-23', '2026-11-24', '2026-11-25', '2026-11-27'], expected: every excluded date strictly after the cache's last session)
 - [default_path_reproduces_every_committed_session]: PASS (observed: max |diff| = 5.421e-20 over 466 sessions, expected: <= 1e-12)
 - [default_research_path_is_bit_identical_to_the_pre_change_implementation]: PASS (observed: net max |diff| = 0.000e+00, weights max |diff| = 0.000e+00, expected: 0.0 (bit-identical))
 - [default_simulation_path_is_bit_identical_to_the_pre_change_implementation]: PASS (observed: weights max |diff| = 0.000e+00, vol_scale max |diff| = 0.000e+00, expected: 0.0 (bit-identical))
@@ -557,19 +557,19 @@ git status --porcelain data/ config/
     {
       "expected": ">= 126 sessions",
       "name": "committed_record_loaded",
-      "observed": "477 sessions (last 2026-11-25)",
+      "observed": "478 sessions (last 2026-11-27)",
       "pass": true
     },
     {
       "expected": "all equal",
       "name": "committed_record_series_are_length_consistent",
-      "observed": "returns 477, dates 477, run_history 477",
+      "observed": "returns 478, dates 478, run_history 478",
       "pass": true
     },
     {
       "expected": "every excluded date strictly after the cache's last session",
       "name": "excluded_sessions_are_only_the_post_cache_tail",
-      "observed": "11 excluded session(s) after cache end 2026-11-10: ['2026-11-11', '2026-11-12', '2026-11-13', '2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19', '2026-11-20', '2026-11-23', '2026-11-24', '2026-11-25']",
+      "observed": "12 excluded session(s) after cache end 2026-11-10: ['2026-11-11', '2026-11-12', '2026-11-13', '2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19', '2026-11-20', '2026-11-23', '2026-11-24', '2026-11-25', '2026-11-27']",
       "pass": true
     },
     {
@@ -795,15 +795,15 @@ git status --porcelain data/ config/
         "psr"
       ],
       "gates": {
-        "full_period_sharpe": 1.463160550117671,
+        "full_period_sharpe": 1.4616194423586255,
         "max_drawdown": -0.06562469374042079,
-        "psr": 0.5260455212052609,
+        "psr": 0.5250769650121797,
         "regime_flips": 7.0,
-        "rolling_63d_max_dd": -0.06544463769225362,
-        "rolling_63d_sharpe": -2.2379649609922154,
-        "track_record_length": 477.0
+        "rolling_63d_max_dd": -0.06544463769225395,
+        "rolling_63d_sharpe": -2.1124732431204927,
+        "track_record_length": 478.0
       },
-      "psr_normal": 0.5260455212052609
+      "psr_normal": 0.5250769650121797
     },
     "psr_settings": {
       "block_size": 22,
