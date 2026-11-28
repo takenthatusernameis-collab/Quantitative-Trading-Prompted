@@ -310,3 +310,45 @@ def test_prior_lines_cover_every_committed_candidate_record():
     for entry in PRIOR_LINES:
         assert (REPO_ROOT / entry["record"]).exists()
     assert len(records) >= 8
+
+
+def test_committed_artifacts_are_reproducible_from_a_fresh_run():
+    """The committed report/experiment must equal what a fresh run renders.
+
+    Staleness guard (mirrors the common-inception and tsmomentum sibling
+    guards): the committed artifacts embed data-driven cells -- notably the
+    ``data/`` file count -- that go stale whenever the controller appends
+    cache files without a cycle regenerating this report. No other test in
+    this file compares the committed bytes with a fresh render (the module
+    fixture only checks two live renders agree), so a stale count would
+    survive every test. The default run rewrites both artifacts; they are
+    snapshotted and restored so the tree is left byte-identical.
+    """
+    committed_exp = OUT_EXP.read_bytes()
+    committed_report = OUT_REPORT.read_bytes()
+    try:
+        proc = subprocess.run(
+            [sys.executable, "research/candidate_shortlist_934.py"],
+            cwd=REPO_ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=1800,
+        )
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        assert "OVERALL: PASS" in proc.stdout
+        fresh_exp = OUT_EXP.read_bytes()
+        fresh_report = OUT_REPORT.read_bytes()
+    finally:
+        OUT_EXP.write_bytes(committed_exp)
+        OUT_REPORT.write_bytes(committed_report)
+    assert fresh_exp == committed_exp, (
+        "the committed candidate_shortlist experiment record is not reproduced "
+        "byte-identically by a fresh run: it is stale (e.g. the data/ file "
+        "count moved) and must be regenerated and re-committed"
+    )
+    assert fresh_report == committed_report, (
+        "the committed candidate_shortlist report is not reproduced "
+        "byte-identically by a fresh run: it is stale and must be regenerated "
+        "and re-committed"
+    )
